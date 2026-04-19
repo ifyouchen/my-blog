@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.UserDO">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="email" property="email"/>
+        <result column="password_hash" property="passwordHash"/>
+        <result column="nickname" property="nickname"/>
+        <result column="avatar_url" property="avatarUrl"/>
+        <result column="bio" property="bio"/>
+        <result column="role" property="role"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, email, password_hash, nickname, avatar_url, bio, role, status,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByAccount" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE (username = #{account} OR email = #{account})
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="countByUsername" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE username = #{username}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countByEmail" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE email = #{email}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 1000) + 1
+        FROM blog_user
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
+        INSERT INTO blog_user
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            id,
+            username,
+            email,
+            password_hash,
+            nickname,
+            avatar_url,
+            bio,
+            role,
+            status,
+            created_at,
+            updated_at,
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            #{id},
+            #{username},
+            #{email},
+            #{passwordHash},
+            #{nickname},
+            #{avatarUrl},
+            #{bio},
+            #{role},
+            #{status},
+            #{createdAt},
+            #{updatedAt},
+        </trim>
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
+        UPDATE blog_user
+        SET username = #{username},
+            email = #{email},
+            password_hash = #{passwordHash},
+            nickname = #{nickname},
+            avatar_url = #{avatarUrl},
+            bio = #{bio},
+            role = #{role},
+            status = #{status},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+</mapper>

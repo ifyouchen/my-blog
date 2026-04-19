@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>my-blog 首页原型</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="#" aria-label="my-blog 首页">
+                <span class="brand-mark">M</span>
+                <span class="brand-name">my-blog</span>
+            </a>
+
+            <nav class="main-nav" aria-label="主导航">
+                <a href="#" class="active">推荐</a>
+                <a href="#">关注</a>
+                <a href="#">专栏</a>
+                <a href="#">排行榜</a>
+            </nav>
+
+            <form class="search-box" role="search">
+                <label for="site-search" class="sr-only">搜索文章</label>
+                <input id="site-search" type="search" placeholder="搜索 Java、Spring Boot、Vue、MySQL">
+                <button type="submit">搜索</button>
+            </form>
+
+            <div class="header-actions">
+                <a class="text-link" href="#">登录</a>
+                <a class="primary-action" href="#">写文章</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="quick-panel" aria-labelledby="quick-title">
+            <div>
+                <p class="eyebrow">技术创作者社区</p>
+                <h1 id="quick-title">今天值得读的工程实践</h1>
+                <p class="quick-copy">从后端架构、前端体验到数据库调优，把能直接用在项目里的经验放到最前面。</p>
+            </div>
+            <div class="quick-stats" aria-label="平台数据">
+                <span><strong>2,481</strong> 篇文章</span>
+                <span><strong>128</strong> 位作者</span>
+                <span><strong>36</strong> 个专题</span>
+            </div>
+        </section>
+
+        <section class="topic-strip" aria-label="技术分类">
+            <button class="topic active">全部</button>
+            <button class="topic">Java</button>
+            <button class="topic">Spring Boot</button>
+            <button class="topic">Vue</button>
+            <button class="topic">MySQL</button>
+            <button class="topic">Redis</button>
+            <button class="topic">AI 工程</button>
+            <button class="topic">运维</button>
+        </section>
+
+        <div class="content-grid">
+            <section class="feed" aria-labelledby="feed-title">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">推荐阅读</p>
+                        <h2 id="feed-title">最新技术文章</h2>
+                    </div>
+                    <div class="sort-tabs" aria-label="排序">
+                        <button class="active">最新</button>
+                        <button>最热</button>
+                        <button>精选</button>
+                    </div>
+                </div>
+
+                <article class="post-item featured-post">
+                    <a class="post-cover" href="#" aria-label="查看文章：Spring Boot 登录鉴权从 0 到 1">
+                        <img src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=80" alt="代码编辑器中的后端服务代码">
+                    </a>
+                    <div class="post-content">
+                        <div class="post-meta">
+                            <span>后端</span>
+                            <span>12 分钟阅读</span>
+                            <span>刚刚更新</span>
+                        </div>
+                        <h3><a href="#">Spring Boot 登录鉴权从 0 到 1：JWT、权限拦截和异常返回</a></h3>
+                        <p>把登录态、角色权限、接口拦截、统一错误码串成完整闭环，适合直接迁移到第一版博客后端。</p>
+                        <div class="post-footer">
+                            <a class="author" href="#">
+                                <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                                <span>林知远</span>
+                            </a>
+                            <span>1,204 阅读</span>
+                            <span>86 赞</span>
+                            <span>24 评论</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="post-item">
+                    <a class="post-cover" href="#" aria-label="查看文章：Vue 3 博客编辑器体验设计">
+                        <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=700&q=80" alt="笔记本电脑上的前端开发界面">
+                    </a>
+                    <div class="post-content">
+                        <div class="post-meta">
+                            <span>前端</span>
+                            <span>8 分钟阅读</span>
+                            <span>今天</span>
+                        </div>
+                        <h3><a href="#">Vue 3 博客编辑器体验设计：草稿、预览、标签和封面上传</a></h3>
+                        <p>文章编辑不是一个表单，而是一条创作路径：先稳住输入，再减少发布前的不确定。</p>
+                        <div class="post-footer">
+                            <a class="author" href="#">
+                                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                                <span>沈星</span>
+                            </a>
+                            <span>832 阅读</span>
+                            <span>51 赞</span>
+                            <span>13 评论</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="post-item">
+                    <a class="post-cover" href="#" aria-label="查看文章：MySQL 文章列表查询优化">
+                        <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80" alt="服务器机柜和数据中心设备">
+                    </a>
+                    <div class="post-content">
+                        <div class="post-meta">
+                            <span>数据库</span>
+                            <span>10 分钟阅读</span>
+                            <span>昨天</span>
+                        </div>
+                        <h3><a href="#">MySQL 文章列表查询优化：分类、标签、排序和分页索引怎么建</a></h3>
+                        <p>第一版不用上搜索引擎，也能通过清晰的索引和查询边界撑住常见列表场景。</p>
+                        <div class="post-footer">
+                            <a class="author" href="#">
+                                <img src="https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                                <span>周行</span>
+                            </a>
+                            <span>1,608 阅读</span>
+                            <span>103 赞</span>
+                            <span>31 评论</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="post-item">
+                    <a class="post-cover" href="#" aria-label="查看文章：DDD 单体项目怎么拆包">
+                        <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=700&q=80" alt="团队在白板前讨论系统设计">
+                    </a>
+                    <div class="post-content">
+                        <div class="post-meta">
+                            <span>架构</span>
+                            <span>15 分钟阅读</span>
+                            <span>本周</span>
+                        </div>
+                        <h3><a href="#">DDD 单体项目怎么拆包：interfaces、application、domain 和 infrastructure</a></h3>
+                        <p>先把依赖方向管住，再谈模型边界。单体项目也可以有清晰的领域结构。</p>
+                        <div class="post-footer">
+                            <a class="author" href="#">
+                                <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                                <span>陈野</span>
+                            </a>
+                            <span>2,019 阅读</span>
+                            <span>147 赞</span>
+                            <span>45 评论</span>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <aside class="sidebar" aria-label="侧边栏">
+                <section class="side-section">
+                    <div class="section-heading compact">
+                        <div>
+                            <p class="eyebrow">本周</p>
+                            <h2>热门专题</h2>
+                        </div>
+                    </div>
+                    <div class="special-list">
+                        <a href="#" class="special-item">
+                            <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=220&q=80" alt="网络安全主题图">
+                            <span>Spring Security 实战</span>
+                        </a>
+                        <a href="#" class="special-item">
+                            <img src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=220&q=80" alt="代码屏幕主题图">
+                            <span>Vue 3 工程化</span>
+                        </a>
+                        <a href="#" class="special-item">
+                            <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=220&q=80" alt="数据分析屏幕主题图">
+                            <span>MySQL 性能调优</span>
+                        </a>
+                    </div>
+                </section>
+
+                <section class="side-section">
+                    <div class="section-heading compact">
+                        <div>
+                            <p class="eyebrow">创作者</p>
+                            <h2>活跃作者</h2>
+                        </div>
+                    </div>
+                    <ol class="author-rank">
+                        <li>
+                            <span class="rank-no">1</span>
+                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                            <div>
+                                <strong>秦川</strong>
+                                <span>后端架构 · 36 篇</span>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="rank-no">2</span>
+                            <img src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                            <div>
+                                <strong>叶澜</strong>
+                                <span>前端工程 · 28 篇</span>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="rank-no">3</span>
+                            <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=96&q=80" alt="作者头像">
+                            <div>
+                                <strong>何青</strong>
+                                <span>数据库 · 22 篇</span>
+                            </div>
+                        </li>
+                    </ol>
+                </section>
+
+                <section class="side-section write-box">
+                    <p class="eyebrow">开始创作</p>
+                    <h2>把项目经验写成下一篇文章</h2>
+                    <p>标题、Markdown、分类、标签、封面图，第一版先把写作路径做顺。</p>
+                    <a class="primary-action block" href="#">发布文章</a>
+                </section>
+            </aside>
+        </div>
+    </main>
+</body>
+</html>

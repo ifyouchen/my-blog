@@ -1,0 +1,48 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: my-blog-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:my_blog}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    hikari:
+      pool-name: MyBlogHikariCP
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+  redis:
+    host: ${REDIS_HOST:192.168.80.128}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:123456}
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 2
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.myblog.infrastructure.repository.persistence.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+my-blog:
+  jwt:
+    secret: "replace-with-a-long-random-secret-for-local-development"
+    expire-seconds: 86400
+
+logging:
+  level:
+    root: INFO
+    com.myblog: DEBUG
+  file:
+    name: logs/application.log
