@@ -3,6 +3,7 @@ package com.myblog.domain.repository;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -52,6 +53,13 @@ public interface UserRepository {
      * @return 保存后的用户
      */
     User save(User user);
+
+    /**
+     * 查询所有用户。
+     *
+     * @return 用户列表
+     */
+    List<User> findAll();
 
     /**
      * 生成下一个用户 ID。

@@ -22,6 +22,13 @@ public interface ArticleMapper {
     ArticleDO selectById(@Param("id") Long id);
 
     /**
+     * 查询所有文章。
+     *
+     * @return 文章数据对象列表
+     */
+    List<ArticleDO> selectAll();
+
+    /**
      * 查询已发布文章。
      *
      * @param keyword 关键字

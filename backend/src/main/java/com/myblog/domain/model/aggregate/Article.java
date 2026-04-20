@@ -137,6 +137,60 @@ public class Article {
     }
 
     /**
+     * 增加评论数。
+     */
+    public void increaseCommentCount() {
+        this.commentCount++;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 减少评论数。
+     */
+    public void decreaseCommentCount() {
+        if (this.commentCount > 0) {
+            this.commentCount--;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 增加收藏数。
+     */
+    public void increaseFavoriteCount() {
+        this.favoriteCount++;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 减少收藏数。
+     */
+    public void decreaseFavoriteCount() {
+        if (this.favoriteCount > 0) {
+            this.favoriteCount--;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 增加点赞数。
+     */
+    public void increaseLikeCount() {
+        this.likeCount++;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 减少点赞数。
+     */
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 发布文章。
      */
     public void publish() {
@@ -146,6 +200,14 @@ public class Article {
         this.status = ArticleStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
         this.updatedAt = this.publishedAt;
+    }
+
+    /**
+     * 更新文章状态。
+     */
+    public void updateStatus(ArticleStatus status) {
+        this.status = status;
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**

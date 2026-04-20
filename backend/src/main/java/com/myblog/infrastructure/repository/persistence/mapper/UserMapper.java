@@ -3,6 +3,8 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 import com.myblog.infrastructure.repository.persistence.entity.UserDO;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 /**
  * 用户 MyBatis Mapper。
  *
@@ -18,6 +20,13 @@ public interface UserMapper {
      * @return 用户数据对象
      */
     UserDO selectById(@Param("id") Long id);
+
+    /**
+     * 查询所有用户。
+     *
+     * @return 用户列表
+     */
+    List<UserDO> selectAll();
 
     /**
      * 根据账号查询用户。

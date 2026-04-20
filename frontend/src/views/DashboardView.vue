@@ -1,17 +1,50 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
+import { getMyFavoritesApi } from '@/api/favorites';
 import { articles, dashboardArticles } from '@/data/home';
+import { useSession } from '@/stores/session';
 
 const route = useRoute();
+const { state: sessionState, isLoggedIn } = useSession();
+
 const isFavorites = computed(() => route.name === 'favorites');
+const remoteFavorites = ref([]);
+const isLoading = ref(false);
+const loadError = ref('');
+
 const favoriteArticles = computed(() => {
+    if (isLoggedIn.value && remoteFavorites.value.length > 0) {
+        return remoteFavorites.value;
+    }
     const storedFavorites = articles.filter((article) => {
         return localStorage.getItem(`my-blog-favorited-${article.id}`) === 'true';
     });
 
     return storedFavorites.length ? storedFavorites : articles.slice(0, 2);
+});
+
+const fetchMyFavorites = async () => {
+    if (!isLoggedIn.value) {
+        return;
+    }
+    isLoading.value = true;
+    loadError.value = '';
+    try {
+        const data = await getMyFavoritesApi(1, 20);
+        remoteFavorites.value = data.list || [];
+    } catch (error) {
+        loadError.value = error.message || '加载失败';
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+onMounted(() => {
+    if (isFavorites.value) {
+        fetchMyFavorites();
+    }
 });
 </script>
 
@@ -35,7 +68,9 @@ const favoriteArticles = computed(() => {
             </div>
 
             <div v-if="isFavorites" class="favorite-grid">
-                <article v-for="article in favoriteArticles" :key="article.id" class="favorite-card">
+                <p v-if="isLoading" class="loading-text">加载中...</p>
+                <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
+                <article v-else-if="favoriteArticles.length" v-for="article in favoriteArticles" :key="article.id" class="favorite-card">
                     <img :src="article.cover" :alt="article.coverAlt">
                     <div>
                         <span>{{ article.category }}</span>
@@ -44,6 +79,7 @@ const favoriteArticles = computed(() => {
                         <RouterLink :to="`/articles/${article.id}`">继续阅读</RouterLink>
                     </div>
                 </article>
+                <p v-else class="empty-text">暂无收藏，去发现感兴趣的文章吧</p>
             </div>
 
             <div v-else class="table-panel">

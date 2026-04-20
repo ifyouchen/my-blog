@@ -31,6 +31,13 @@
         AND deleted_at IS NULL
     </select>
 
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE deleted_at IS NULL
+        ORDER BY id ASC
+    </select>
+
     <select id="selectByAccount" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_user

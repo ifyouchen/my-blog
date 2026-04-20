@@ -1,13 +1,17 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted, inject } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { getArticleApi } from '@/api/articles';
+import { likeArticleApi, unlikeArticleApi, getLikeStatusApi } from '@/api/likes';
+import { favoriteArticleApi, unfavoriteArticleApi, getFavoriteStatusApi } from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { articles, comments } from '@/data/home';
-import { useSession } from '@/stores/session';
+import ArticleToc from '@/components/ArticleToc.vue';
+import CommentList from '@/components/CommentList.vue';
+import { articles } from '@/data/home';
 
 const route = useRoute();
-const { isLoggedIn, state } = useSession();
+const loginModal = inject('loginModal', { requireLogin: () => false });
+
 const remoteArticle = ref(null);
 const isLoading = ref(false);
 const loadError = ref('');
@@ -20,33 +24,44 @@ const article = computed(() => {
     }
     return useLocalFallback.value ? localArticle.value : null;
 });
+const articleMarkdown = computed(() => {
+    if (!article.value) {
+        return '';
+    }
+    if (article.value.rawContent) {
+        return article.value.rawContent;
+    }
+    if (Array.isArray(article.value.content)) {
+        return article.value.content.join('\n\n');
+    }
+    return article.value.content || '';
+});
 
-const getStorageKey = (type) => `my-blog-${type}-${article.value.id}`;
+const getStorageKey = (type) => `my-blog-${type}-${article.value?.id}`;
 const readBoolean = (key) => localStorage.getItem(key) === 'true';
 const parseCount = (text) => Number(String(text).replace(/[^\d]/g, '')) || 0;
 
 const liked = ref(false);
 const favorited = ref(false);
 const likeCount = ref(0);
-const localComments = ref([]);
-const commentText = ref('');
 const feedback = ref('');
+const showBackToTop = ref(false);
 
 const syncArticleState = () => {
     if (!article.value) {
         liked.value = false;
         favorited.value = false;
         likeCount.value = 0;
-        localComments.value = [];
-        commentText.value = '';
         feedback.value = '';
         return;
     }
     liked.value = readBoolean(getStorageKey('liked'));
     favorited.value = readBoolean(getStorageKey('favorited'));
-    likeCount.value = parseCount(article.value.stats.likes) + (liked.value ? 1 : 0);
-    localComments.value = [...comments];
-    commentText.value = '';
+    if (remoteArticle.value) {
+        likeCount.value = parseCount(article.value.stats?.likes || '0');
+    } else {
+        likeCount.value = parseCount(article.value.stats?.likes || '0') + (liked.value ? 1 : 0);
+    }
     feedback.value = '';
 };
 
@@ -76,55 +91,106 @@ const fetchArticle = async () => {
     }
 };
 
-const requireLogin = () => {
-    if (isLoggedIn.value) {
-        return true;
+const fetchLikeStatus = async () => {
+    if (!article.value || !remoteArticle.value) {
+        return;
     }
-    feedback.value = '请先登录后再互动';
-    return false;
+    try {
+        const status = await getLikeStatusApi(article.value.id);
+        liked.value = status.liked;
+    } catch (error) {
+        console.error('获取点赞状态失败:', error);
+    }
 };
 
-const toggleLike = () => {
-    if (!requireLogin()) {
-        return;
-    }
-    liked.value = !liked.value;
-    localStorage.setItem(getStorageKey('liked'), String(liked.value));
-    likeCount.value += liked.value ? 1 : -1;
-    feedback.value = liked.value ? '已点赞' : '已取消点赞';
-};
-
-const toggleFavorite = () => {
-    if (!requireLogin()) {
-        return;
-    }
-    favorited.value = !favorited.value;
-    localStorage.setItem(getStorageKey('favorited'), String(favorited.value));
-    feedback.value = favorited.value ? '已加入收藏' : '已取消收藏';
-};
-
-const submitComment = () => {
-    if (!requireLogin()) {
-        return;
-    }
-    const content = commentText.value.trim();
-    if (!content) {
-        feedback.value = '评论内容不能为空';
-        return;
-    }
-    localComments.value.unshift({
-        id: Date.now(),
-        author: state.user.nickname,
-        avatar: state.user.avatar,
-        content,
-        time: '刚刚'
+const toggleLike = async () => {
+    const canContinue = loginModal.requireLogin(() => toggleLike(), {
+        title: '登录后点赞',
+        message: '登录后可以把喜欢的文章同步到你的账号，并继续刚才的点赞操作。',
+        actionText: '登录并点赞'
     });
-    commentText.value = '';
-    feedback.value = '评论已发布';
+    if (!canContinue) {
+        feedback.value = '登录后可以点赞文章';
+        return;
+    }
+    try {
+        if (liked.value) {
+            await unlikeArticleApi(article.value.id);
+            liked.value = false;
+            likeCount.value = Math.max(0, likeCount.value - 1);
+            feedback.value = '已取消点赞';
+        } else {
+            await likeArticleApi(article.value.id);
+            liked.value = true;
+            likeCount.value++;
+            feedback.value = '已点赞';
+        }
+    } catch (error) {
+        feedback.value = error.message || '操作失败';
+    }
+};
+
+const fetchFavoriteStatus = async () => {
+    if (!article.value || !remoteArticle.value) {
+        return;
+    }
+    try {
+        const status = await getFavoriteStatusApi(article.value.id);
+        favorited.value = status.favorited;
+    } catch (error) {
+        console.error('获取收藏状态失败:', error);
+    }
+};
+
+const toggleFavorite = async () => {
+    const canContinue = loginModal.requireLogin(() => toggleFavorite(), {
+        title: '登录后收藏',
+        message: '登录后可以把文章加入收藏夹，之后在个人中心继续阅读。',
+        actionText: '登录并收藏'
+    });
+    if (!canContinue) {
+        feedback.value = '登录后可以收藏文章';
+        return;
+    }
+    try {
+        if (favorited.value) {
+            await unfavoriteArticleApi(article.value.id);
+            favorited.value = false;
+            feedback.value = '已取消收藏';
+        } else {
+            await favoriteArticleApi(article.value.id);
+            favorited.value = true;
+            feedback.value = '已加入收藏';
+        }
+    } catch (error) {
+        feedback.value = error.message || '操作失败';
+    }
+};
+
+const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const handleScroll = () => {
+    showBackToTop.value = window.scrollY > 500;
 };
 
 watch(article, syncArticleState, { immediate: true });
 watch(() => route.params.id, fetchArticle, { immediate: true });
+watch(remoteArticle, (newVal) => {
+    if (newVal) {
+        fetchLikeStatus();
+        fetchFavoriteStatus();
+    }
+}, { immediate: true });
+
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll);
+});
 </script>
 
 <template>
@@ -155,10 +221,16 @@ watch(() => route.params.id, fetchArticle, { immediate: true });
                     </RouterLink>
                 </div>
 
-                <section class="markdown-preview">
-                    <p v-for="paragraph in article.content" :key="paragraph">{{ paragraph }}</p>
-                    <pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
-                    <p>后端启动后，这个页面会优先从 `GET /api/articles/{id}` 获取正文、作者和标签；接口不可用时保留本地内容。</p>
+                <MarkdownPreview :content="articleMarkdown" />
+
+                <section class="article-comment">
+                    <CommentList
+                        v-if="remoteArticle"
+                        :article-id="article.id"
+                    />
+                    <div v-else class="comment-placeholder">
+                        <p>登录后可查看和发表评论</p>
+                    </div>
                 </section>
             </div>
         </article>
@@ -171,36 +243,13 @@ watch(() => route.params.id, fetchArticle, { immediate: true });
                 <button type="button" :class="{ active: favorited }" @click="toggleFavorite">
                     {{ favorited ? '已收藏' : '收藏' }}
                 </button>
-                <a href="#comment-input">评论</a>
                 <p v-if="feedback" class="form-message">{{ feedback }}</p>
             </section>
-
-            <section class="side-section">
-                <div class="section-heading compact">
-                    <div>
-                        <p class="eyebrow">评论</p>
-                        <h2>读者讨论</h2>
-                    </div>
-                </div>
-                <form class="comment-form" @submit.prevent="submitComment">
-                    <textarea
-                        id="comment-input"
-                        v-model="commentText"
-                        placeholder="写下你的想法"
-                    ></textarea>
-                    <button type="submit">发表评论</button>
-                </form>
-                <div class="comment-list">
-                    <article v-for="comment in localComments" :key="comment.id" class="comment-item">
-                        <img :src="comment.avatar" alt="评论者头像">
-                        <div>
-                            <strong>{{ comment.author }}</strong>
-                            <span>{{ comment.time }}</span>
-                            <p>{{ comment.content }}</p>
-                        </div>
-                    </article>
-                </div>
-            </section>
+            <ArticleToc
+                v-if="remoteArticle"
+                :content="articleMarkdown"
+                class="detail-toc"
+            />
         </aside>
     </main>
     <main v-else class="page-shell detail-layout">
@@ -211,4 +260,29 @@ watch(() => route.params.id, fetchArticle, { immediate: true });
             <RouterLink to="/">返回首页</RouterLink>
         </section>
     </main>
+
+    <button
+        v-show="showBackToTop"
+        class="back-to-top"
+        type="button"
+        @click="scrollToTop"
+    >
+        ↑
+    </button>
 </template>
+
+<style scoped>
+.article-comment {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+.comment-placeholder {
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    background: var(--surface);
+    border-radius: 8px;
+}
+</style>

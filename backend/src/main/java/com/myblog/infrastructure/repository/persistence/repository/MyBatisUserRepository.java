@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -97,6 +99,19 @@ public class MyBatisUserRepository implements UserRepository {
         }
         userMapper.insert(userDO);
         return user;
+    }
+
+    /**
+     * 查询所有用户。
+     */
+    @Override
+    public List<User> findAll() {
+        List<UserDO> userDOList = userMapper.selectAll();
+        List<User> users = new ArrayList<>(userDOList.size());
+        for (UserDO userDO : userDOList) {
+            users.add(UserPersistenceConverter.toDomain(userDO));
+        }
+        return users;
     }
 
     /**

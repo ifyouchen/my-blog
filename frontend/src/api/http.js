@@ -5,7 +5,10 @@ const getToken = () => {
     try {
         const raw = localStorage.getItem(SESSION_KEY);
         const session = raw ? JSON.parse(raw) : null;
-        return session ? session.token : '';
+        if (!session || !session.token || session.token === 'local-dev-token') {
+            return '';
+        }
+        return session.token;
     } catch (error) {
         return '';
     }
@@ -22,7 +25,8 @@ export const request = async (path, options = {}) => {
         headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+    const response = await fetch(url, {
         ...options,
         headers
     });
@@ -34,6 +38,10 @@ export const request = async (path, options = {}) => {
     }
 
     if (!response.ok || payload.code !== 0) {
+        if (response.status === 401 || payload.code === 401) {
+            localStorage.removeItem(SESSION_KEY);
+            window.dispatchEvent(new CustomEvent('my-blog-auth-expired'));
+        }
         throw new Error(payload.message || '请求失败');
     }
 

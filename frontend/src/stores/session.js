@@ -1,13 +1,28 @@
 import { computed, reactive } from 'vue';
-import { loginApi, registerApi } from '@/api/auth';
+import { currentUserApi, loginApi, registerApi } from '@/api/auth';
 
 const STORAGE_KEY = 'my-blog-session';
+
+const isValidStoredSession = (session) => {
+    return Boolean(
+        session
+        && session.token
+        && session.user
+        && session.token !== 'local-dev-token'
+    );
+};
 
 const readSession = () => {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : null;
+        const session = raw ? JSON.parse(raw) : null;
+        if (isValidStoredSession(session)) {
+            return session;
+        }
+        localStorage.removeItem(STORAGE_KEY);
+        return null;
     } catch (error) {
+        localStorage.removeItem(STORAGE_KEY);
         return null;
     }
 };
@@ -16,72 +31,57 @@ const initialSession = readSession();
 
 const state = reactive({
     user: initialSession ? initialSession.user : null,
-    token: initialSession ? initialSession.token : ''
+    token: initialSession ? initialSession.token : '',
+    verified: false,
+    ready: !initialSession
 });
 
 const saveSession = (session) => {
     state.user = session.user;
     state.token = session.token;
+    state.verified = true;
+    state.ready = true;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 };
 
 const clearSession = () => {
     state.user = null;
     state.token = '';
+    state.verified = false;
+    state.ready = true;
     localStorage.removeItem(STORAGE_KEY);
 };
 
-const isNetworkError = (error) => {
-    return error instanceof TypeError || error.message === 'Failed to fetch';
-};
+if (typeof window !== 'undefined') {
+    window.addEventListener('my-blog-auth-expired', clearSession);
+}
 
 export const useSession = () => {
-    const isLoggedIn = computed(() => Boolean(state.user));
+    const isLoggedIn = computed(() => Boolean(state.user && state.token && state.verified));
+
+    const initializeSession = async () => {
+        if (!state.token) {
+            clearSession();
+            return;
+        }
+        state.ready = false;
+        try {
+            const user = await currentUserApi();
+            saveSession({
+                token: state.token,
+                user
+            });
+        } catch (error) {
+            clearSession();
+        }
+    };
 
     const login = async ({ account, password }) => {
-        try {
-            saveSession(await loginApi({ account, password }));
-            return;
-        } catch (error) {
-            if (!isNetworkError(error)) {
-                throw error;
-            }
-        }
-
-        const displayName = account.includes('@') ? account.split('@')[0] : account;
-        saveSession({
-            token: 'local-dev-token',
-            user: {
-                id: 1001,
-                username: displayName,
-                nickname: displayName || '技术作者',
-                role: 'USER',
-                avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'
-            }
-        });
+        saveSession(await loginApi({ account, password }));
     };
 
     const register = async ({ username, email, password }) => {
-        try {
-            saveSession(await registerApi({ username, email, password }));
-            return;
-        } catch (error) {
-            if (!isNetworkError(error)) {
-                throw error;
-            }
-        }
-
-        saveSession({
-            token: 'local-dev-token',
-            user: {
-                id: 1002,
-                username,
-                nickname: username,
-                email,
-                role: 'USER',
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=96&q=80'
-            }
-        });
+        saveSession(await registerApi({ username, email, password }));
     };
 
     const logout = () => {
@@ -91,6 +91,7 @@ export const useSession = () => {
     return {
         state,
         isLoggedIn,
+        initializeSession,
         login,
         register,
         logout

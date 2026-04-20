@@ -41,6 +41,13 @@ public interface ArticleRepository {
     Article save(Article article);
 
     /**
+     * 查询所有文章。
+     *
+     * @return 文章列表
+     */
+    List<Article> findAll();
+
+    /**
      * 生成下一个文章 ID。
      *
      * @return 文章 ID

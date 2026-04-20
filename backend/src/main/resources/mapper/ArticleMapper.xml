@@ -29,38 +29,18 @@
         created_at, updated_at, deleted_at, version
     </sql>
 
-    <select id="selectById" resultMap="BaseResultMap">
+<select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
         WHERE id = #{id}
         AND deleted_at IS NULL
     </select>
 
-    <select id="selectPublished" resultMap="BaseResultMap">
+    <select id="selectAll" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
-        FROM blog_article a
-        WHERE a.status = 'PUBLISHED'
-        AND a.deleted_at IS NULL
-        <if test="keyword != null and keyword != ''">
-            AND (
-                a.title LIKE CONCAT('%', #{keyword}, '%')
-                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                OR a.content LIKE CONCAT('%', #{keyword}, '%')
-            )
-        </if>
-        <if test="category != null and category != ''">
-            AND a.category = #{category}
-        </if>
-        <if test="tag != null and tag != ''">
-            AND EXISTS (
-                SELECT 1
-                FROM blog_article_tag t
-                WHERE t.article_id = a.id
-                AND t.tag_name = #{tag}
-                AND t.deleted_at IS NULL
-            )
-        </if>
-        ORDER BY a.created_at DESC
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        ORDER BY created_at DESC
     </select>
 
     <select id="countById" resultType="int">

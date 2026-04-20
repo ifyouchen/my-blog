@@ -28,6 +28,7 @@ public class User {
     private UserStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
 
     private User() {
     }
@@ -104,6 +105,14 @@ public class User {
         if (!UserStatus.NORMAL.equals(status)) {
             throw new DomainException(ErrorCode.FORBIDDEN, "账号不可用");
         }
+    }
+
+    /**
+     * 更新用户状态。
+     */
+    public void updateStatus(UserStatus status) {
+        this.status = status;
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -203,5 +212,12 @@ public class User {
      */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    /**
+     * 判断是否已删除。
+     */
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

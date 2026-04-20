@@ -89,6 +89,17 @@ public class MyBatisArticleRepository implements ArticleRepository {
         return article;
     }
 
+    @Override
+    public List<Article> findAll() {
+        List<ArticleDO> articleDOList = articleMapper.selectAll();
+        List<Article> articles = new ArrayList<>(articleDOList.size());
+        for (ArticleDO articleDO : articleDOList) {
+            List<String> tags = articleMapper.selectTagNamesByArticleId(articleDO.getId());
+            articles.add(ArticlePersistenceConverter.toDomain(articleDO, tags));
+        }
+        return articles;
+    }
+
     /**
      * 生成下一个文章 ID。
      *
