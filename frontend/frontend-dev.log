@@ -1,0 +1,13 @@
+
+  #  npm exec @modelcontextprotocol/server-memory[30460]: std::shared_ptr<InitializationResultImpl> __cdecl node::InitializeOncePerProcessInternal(const std::vector<std::string> &, ProcessInitializationFlags::Flags) at src\node.cc:1221
+  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)
+
+----- Native stack trace -----
+
+ 1: 00007FF7B25DBADA EVP_MD_meth_get_input_blocksize+196378
+ 2: 00007FF7B2635E06 node::InitializeOncePerProcess+2790
+ 3: 00007FF7B2636EEC node::Start+156
+ 4: 00007FF7B36550C2 AES_cbc_encrypt+2546
+ 5: 00007FF7B44C8FF4 v8::base::UnsignedDivisionByConstant<unsigned __int64>+2833348
+ 6: 00007FFDC4157374 BaseThreadInitThunk+20
+ 7: 00007FFDC429CC91 RtlUserThreadStart+33
