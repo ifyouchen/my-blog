@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.AdminLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AdminLogDO">
+        <id column="id" property="id"/>
+        <result column="admin_user_id" property="adminUserId"/>
+        <result column="admin_username" property="adminUsername"/>
+        <result column="operation" property="operation"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="detail" property="detail"/>
+        <result column="request_method" property="requestMethod"/>
+        <result column="request_uri" property="requestUri"/>
+        <result column="ip_address" property="ipAddress"/>
+        <result column="user_agent" property="userAgent"/>
+        <result column="result_status" property="resultStatus"/>
+        <result column="before_snapshot" property="beforeSnapshot"/>
+        <result column="after_snapshot" property="afterSnapshot"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, admin_user_id, admin_username, operation, target_type, target_id, detail,
+        request_method, request_uri, ip_address, user_agent, result_status, before_snapshot, after_snapshot,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.AdminLogDO">
+        INSERT INTO blog_admin_log
+        (id, admin_user_id, admin_username, operation, target_type, target_id, detail,
+        request_method, request_uri, ip_address, user_agent, result_status, before_snapshot, after_snapshot,
+        created_at, updated_at)
+        VALUES
+        (#{id}, #{adminUserId}, #{adminUsername}, #{operation}, #{targetType}, #{targetId}, #{detail},
+        #{requestMethod}, #{requestUri}, #{ipAddress}, #{userAgent}, #{resultStatus}, #{beforeSnapshot}, #{afterSnapshot},
+        #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_admin_log
+        WHERE deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_admin_log
+        WHERE deleted_at IS NULL
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_admin_log
+    </select>
+</mapper>

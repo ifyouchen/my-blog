@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.CommentMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
+        <id column="id" property="id"/>
+        <result column="article_id" property="articleId"/>
+        <result column="user_id" property="userId"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="content" property="content"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, article_id, user_id, parent_id, content, status,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE deleted_at IS NULL
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByArticleId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE article_id = #{articleId}
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_comment
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_comment
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
+        INSERT INTO blog_comment
+        (id, article_id, user_id, parent_id, content, status, created_at, updated_at)
+        VALUES
+        (#{id}, #{articleId}, #{userId}, #{parentId}, #{content}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
+        UPDATE blog_comment
+        SET content = #{content},
+            status = #{status},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteById">
+        UPDATE blog_comment
+        SET deleted_at = NOW(),
+            updated_at = NOW(),
+            status = 'DELETED',
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+</mapper>

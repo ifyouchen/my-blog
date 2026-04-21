@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.ArticleLikeMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO">
+        <id column="id" property="id"/>
+        <result column="article_id" property="articleId"/>
+        <result column="user_id" property="userId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, article_id, user_id, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectByArticleAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article_like
+        WHERE article_id = #{articleId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectAnyByArticleAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article_like
+        WHERE article_id = #{articleId}
+        AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="countByArticleAndUser" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_article_like
+        WHERE article_id = #{articleId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByArticleId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article_like
+        WHERE article_id = #{articleId}
+        AND deleted_at IS NULL
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countByArticleId" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_article_like
+        WHERE article_id = #{articleId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_article_like
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_article_like
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO">
+        INSERT INTO blog_article_like
+        (id, article_id, user_id, created_at, updated_at)
+        VALUES
+        (#{id}, #{articleId}, #{userId}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO">
+        UPDATE blog_article_like
+        SET updated_at = #{updatedAt},
+            deleted_at = #{deletedAt},
+            version = version + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteByArticleAndUser">
+        UPDATE blog_article_like
+        SET deleted_at = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE article_id = #{articleId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </update>
+</mapper>
