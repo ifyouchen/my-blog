@@ -4,8 +4,6 @@ import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
-import org.springframework.stereotype.Component;
-
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -14,7 +12,6 @@ import java.time.format.DateTimeFormatter;
  * @author Codex
  * @since 1.0.0
  */
-@Component
 public final class ArticleAssembler {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

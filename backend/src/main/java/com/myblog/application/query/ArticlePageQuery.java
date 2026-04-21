@@ -8,11 +8,16 @@ package com.myblog.application.query;
  */
 public class ArticlePageQuery {
 
+    public static final String SORT_LATEST = "latest";
+    public static final String SORT_HOT = "hot";
+    public static final String SORT_FEATURED = "featured";
+
     private int page;
     private int pageSize;
     private String keyword;
     private String category;
     private String tag;
+    private String sort;
 
     /**
      * 创建文章分页查询。
@@ -22,13 +27,15 @@ public class ArticlePageQuery {
      * @param keyword 关键字
      * @param category 分类
      * @param tag 标签
+     * @param sort 排序方式
      */
-    public ArticlePageQuery(int page, int pageSize, String keyword, String category, String tag) {
+    public ArticlePageQuery(int page, int pageSize, String keyword, String category, String tag, String sort) {
         this.page = page <= 0 ? 1 : page;
         this.pageSize = pageSize <= 0 ? 10 : pageSize;
         this.keyword = keyword;
         this.category = category;
         this.tag = tag;
+        this.sort = normalizeSort(sort);
     }
 
     /**
@@ -74,5 +81,30 @@ public class ArticlePageQuery {
      */
     public String getTag() {
         return tag;
+    }
+
+    /**
+     * 获取排序方式。
+     *
+     * @return 排序方式
+     */
+    public String getSort() {
+        return sort;
+    }
+
+    /**
+     * 规范化排序方式。
+     *
+     * @param sort 原始排序方式
+     * @return 规范化后的排序方式
+     */
+    private String normalizeSort(String sort) {
+        if (SORT_HOT.equals(sort)) {
+            return SORT_HOT;
+        }
+        if (SORT_FEATURED.equals(sort)) {
+            return SORT_FEATURED;
+        }
+        return SORT_LATEST;
     }
 }

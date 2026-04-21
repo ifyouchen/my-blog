@@ -198,8 +198,67 @@ public class Article {
             throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能发布");
         }
         this.status = ArticleStatus.PUBLISHED;
-        this.publishedAt = LocalDateTime.now();
-        this.updatedAt = this.publishedAt;
+        if (this.publishedAt == null) {
+            this.publishedAt = LocalDateTime.now();
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 保存为草稿。
+     */
+    public void saveDraft() {
+        if (ArticleStatus.DELETED.equals(status)) {
+            throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能保存为草稿");
+        }
+        this.status = ArticleStatus.DRAFT;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 下架文章。
+     */
+    public void offline() {
+        if (ArticleStatus.DELETED.equals(status)) {
+            throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能下架");
+        }
+        this.status = ArticleStatus.OFFLINE;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 更新文章内容。
+     *
+     * @param title 标题
+     * @param summary 摘要
+     * @param content 正文
+     * @param coverUrl 封面地址
+     * @param category 分类
+     * @param tags 标签列表
+     */
+    public void updateContent(String title, String summary, String content, String coverUrl,
+                              String category, List<String> tags) {
+        if (title == null || title.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "文章标题不能为空");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "文章正文不能为空");
+        }
+        this.title = title.trim();
+        this.summary = summary == null ? "" : summary.trim();
+        this.content = content;
+        this.coverUrl = coverUrl;
+        this.category = category == null || category.trim().isEmpty() ? "后端" : category.trim();
+        this.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 删除文章。
+     */
+    public void delete() {
+        this.status = ArticleStatus.DELETED;
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -207,6 +266,9 @@ public class Article {
      */
     public void updateStatus(ArticleStatus status) {
         this.status = status;
+        if (ArticleStatus.PUBLISHED.equals(status) && this.publishedAt == null) {
+            this.publishedAt = LocalDateTime.now();
+        }
         this.updatedAt = LocalDateTime.now();
     }
 

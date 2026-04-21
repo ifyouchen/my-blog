@@ -73,10 +73,12 @@ const writeArticle = () => {
 
             <div class="header-actions">
                 <template v-if="isLoggedIn">
-                    <RouterLink class="user-chip" to="/dashboard/articles">
+                    <RouterLink class="user-chip" :to="`/users/${state.user?.id}`">
                         <img :src="avatarUrl" alt="用户头像">
                         <span>{{ displayName }}</span>
                     </RouterLink>
+                    <RouterLink class="text-link" to="/dashboard/articles">创作台</RouterLink>
+                    <RouterLink v-if="state.user?.role === 'ADMIN'" class="text-link" to="/admin">后台</RouterLink>
                     <button class="text-button" type="button" @click="logoutAndGoHome">退出</button>
                 </template>
                 <RouterLink v-else class="text-link" to="/login">登录</RouterLink>

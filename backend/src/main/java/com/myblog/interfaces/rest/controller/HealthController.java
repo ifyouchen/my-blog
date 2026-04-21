@@ -5,6 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,6 +21,17 @@ import java.util.Map;
 @RequestMapping("/api")
 public class HealthController {
 
+    private final DataSource dataSource;
+
+    /**
+     * 创建健康检查接口。
+     *
+     * @param dataSource 数据源
+     */
+    public HealthController(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     /**
      * 获取应用健康状态。
      *
@@ -27,7 +41,13 @@ public class HealthController {
     public Result<Map<String, String>> health() {
         Map<String, String> data = new HashMap<String, String>();
         data.put("status", "UP");
-        data.put("database", "in-memory");
+        try (Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            data.put("database", metaData.getDatabaseProductName());
+        } catch (Exception ex) {
+            data.put("database", "UNKNOWN");
+            data.put("status", "DEGRADED");
+        }
         return Result.success(data);
     }
 }

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { articles as defaultArticles } from '@/data/home';
+import { ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST } from '@/constants/articleSort';
 
 const props = defineProps({
     articles: {
@@ -38,30 +39,19 @@ const props = defineProps({
     errorMessage: {
         type: String,
         default: ''
+    },
+    sort: {
+        type: String,
+        default: ARTICLE_SORT_LATEST
+    },
+    sortItems: {
+        type: Array,
+        default: () => ARTICLE_SORT_ITEMS
     }
 });
 
-const emit = defineEmits(['page-change']);
-
-const activeSort = ref('最新');
+const emit = defineEmits(['page-change', 'sort-change']);
 const jumpPage = ref(String(props.page));
-const sortItems = ['最新', '最热', '精选'];
-
-const parseCount = (text) => Number(String(text).replace(/[^\d]/g, '')) || 0;
-
-const visibleArticles = computed(() => {
-    const articleList = [...props.articles];
-
-    if (activeSort.value === '最热') {
-        return articleList.sort((a, b) => parseCount(b.stats.views) - parseCount(a.stats.views));
-    }
-
-    if (activeSort.value === '精选') {
-        return articleList.sort((a, b) => parseCount(b.stats.likes) - parseCount(a.stats.likes));
-    }
-
-    return articleList;
-});
 
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
 const pageStart = computed(() => {
@@ -143,19 +133,20 @@ watch(
             </div>
             <div class="sort-tabs" aria-label="排序">
                 <button
-                    v-for="item in sortItems"
-                    :key="item"
+                    v-for="item in props.sortItems"
+                    :key="item.value"
                     type="button"
-                    :class="{ active: activeSort === item }"
-                    @click="activeSort = item"
+                    :class="{ active: props.sort === item.value }"
+                    :disabled="loading || props.sort === item.value"
+                    @click="emit('sort-change', item.value)"
                 >
-                    {{ item }}
+                    {{ item.label }}
                 </button>
             </div>
         </div>
 
         <article
-            v-for="article in visibleArticles"
+            v-for="article in articles"
             :key="article.id"
             class="post-item"
             :class="{ 'featured-post': article.featured }"
@@ -187,7 +178,7 @@ watch(
             </div>
         </article>
 
-        <div v-if="visibleArticles.length === 0" class="empty-state">
+        <div v-if="articles.length === 0" class="empty-state">
             {{ emptyText }}
         </div>
 

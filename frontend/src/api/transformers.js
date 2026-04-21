@@ -1,12 +1,15 @@
 export const normalizeUser = (user) => ({
     id: user.id,
     username: user.username,
+    name: user.nickname || user.username,
     nickname: user.nickname || user.username,
     email: user.email,
     role: user.role,
+    status: user.status,
     bio: user.bio,
     avatar: user.avatar || user.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80',
-    avatarUrl: user.avatarUrl || user.avatar
+    avatarUrl: user.avatarUrl || user.avatar,
+    createdAt: user.createdAt
 });
 
 const splitContent = (content) => {
@@ -53,6 +56,7 @@ export const normalizeArticle = (article) => {
         title: article.title,
         summary: article.summary,
         category: article.category,
+        status: article.status,
         rawContent,
         readingTime: `${Math.max(5, Math.ceil(rawContent.length / 120))} 分钟阅读`,
         publishedText: article.publishedAt || '刚刚更新',
@@ -62,6 +66,10 @@ export const normalizeArticle = (article) => {
         author: normalizeUser(article.author || {}),
         tags: article.tags || [],
         content: splitContent(rawContent),
+        viewCount: article.viewCount || 0,
+        likeCount: article.likeCount || 0,
+        favoriteCount: article.favoriteCount || 0,
+        commentCount: article.commentCount || 0,
         stats: {
             views: `${article.viewCount || 0} 阅读`,
             likes: `${article.likeCount || 0} 赞`,

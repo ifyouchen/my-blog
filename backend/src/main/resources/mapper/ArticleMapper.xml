@@ -43,6 +43,59 @@
         ORDER BY created_at DESC
     </select>
 
+    <select id="selectPublished" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                title LIKE CONCAT('%', #{keyword}, '%')
+                OR summary LIKE CONCAT('%', #{keyword}, '%')
+                OR content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND id IN (
+                SELECT article_id
+                FROM blog_article_tag
+                WHERE tag_name = #{tag}
+                AND deleted_at IS NULL
+            )
+        </if>
+        <choose>
+            <when test="sort == 'hot'">
+                ORDER BY view_count DESC, published_at DESC, id DESC
+            </when>
+            <when test="sort == 'featured'">
+                ORDER BY like_count DESC, published_at DESC, id DESC
+            </when>
+            <otherwise>
+                ORDER BY published_at DESC, id DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="selectByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND deleted_at IS NULL
+        ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="selectPublishedByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        ORDER BY published_at DESC, id DESC
+    </select>
+
     <select id="countById" resultType="int">
         SELECT COUNT(1)
         FROM blog_article

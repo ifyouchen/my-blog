@@ -37,13 +37,10 @@ const articleMarkdown = computed(() => {
     return article.value.content || '';
 });
 
-const getStorageKey = (type) => `my-blog-${type}-${article.value?.id}`;
-const readBoolean = (key) => localStorage.getItem(key) === 'true';
-const parseCount = (text) => Number(String(text).replace(/[^\d]/g, '')) || 0;
-
 const liked = ref(false);
 const favorited = ref(false);
 const likeCount = ref(0);
+const favoriteCount = ref(0);
 const feedback = ref('');
 const showBackToTop = ref(false);
 
@@ -52,16 +49,12 @@ const syncArticleState = () => {
         liked.value = false;
         favorited.value = false;
         likeCount.value = 0;
+        favoriteCount.value = 0;
         feedback.value = '';
         return;
     }
-    liked.value = readBoolean(getStorageKey('liked'));
-    favorited.value = readBoolean(getStorageKey('favorited'));
-    if (remoteArticle.value) {
-        likeCount.value = parseCount(article.value.stats?.likes || '0');
-    } else {
-        likeCount.value = parseCount(article.value.stats?.likes || '0') + (liked.value ? 1 : 0);
-    }
+    likeCount.value = article.value.likeCount || 0;
+    favoriteCount.value = article.value.favoriteCount || 0;
     feedback.value = '';
 };
 
@@ -156,10 +149,12 @@ const toggleFavorite = async () => {
         if (favorited.value) {
             await unfavoriteArticleApi(article.value.id);
             favorited.value = false;
+            favoriteCount.value = Math.max(0, favoriteCount.value - 1);
             feedback.value = '已取消收藏';
         } else {
             await favoriteArticleApi(article.value.id);
             favorited.value = true;
+            favoriteCount.value++;
             feedback.value = '已加入收藏';
         }
     } catch (error) {
@@ -211,7 +206,7 @@ onUnmounted(() => {
                     <img :src="article.author.avatar" alt="作者头像">
                     <div>
                         <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
-                        <span>{{ article.stats.views }} · {{ article.stats.likes }} · {{ article.stats.comments }}</span>
+                        <span>{{ article.viewCount }} 阅读 · {{ likeCount }} 赞 · {{ article.commentCount }} 评论</span>
                     </div>
                 </RouterLink>
 
@@ -241,7 +236,7 @@ onUnmounted(() => {
                     {{ liked ? '已点赞' : '点赞' }} {{ likeCount }}
                 </button>
                 <button type="button" :class="{ active: favorited }" @click="toggleFavorite">
-                    {{ favorited ? '已收藏' : '收藏' }}
+                    {{ favorited ? '已收藏' : '收藏' }} {{ favoriteCount }}
                 </button>
                 <p v-if="feedback" class="form-message">{{ feedback }}</p>
             </section>

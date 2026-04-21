@@ -45,6 +45,32 @@ public final class AuthContext {
     }
 
     /**
+     * 获取当前登录用户角色。
+     *
+     * @return 当前用户角色，未登录时返回 null
+     */
+    public static String getRole() {
+        JwtPayload payload = HOLDER.get();
+        if (payload == null) {
+            return null;
+        }
+        return payload.getRole();
+    }
+
+    /**
+     * 获取当前登录用户名。
+     *
+     * @return 当前用户名，未登录时返回 null
+     */
+    public static String getUsername() {
+        JwtPayload payload = HOLDER.get();
+        if (payload == null) {
+            return null;
+        }
+        return payload.getUsername();
+    }
+
+    /**
      * 清理当前请求认证信息。
      */
     public static void clear() {

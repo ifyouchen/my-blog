@@ -57,11 +57,46 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @param keyword 关键字
      * @param category 分类
      * @param tag 标签
+     * @param sort 排序方式
      * @return 已发布文章列表
      */
     @Override
-    public List<Article> findPublished(String keyword, String category, String tag) {
-        List<ArticleDO> articleDOList = articleMapper.selectPublished(keyword, category, tag);
+    public List<Article> findPublished(String keyword, String category, String tag, String sort) {
+        List<ArticleDO> articleDOList = articleMapper.selectPublished(keyword, category, tag, sort);
+        List<Article> articles = new ArrayList<Article>(articleDOList.size());
+        for (ArticleDO articleDO : articleDOList) {
+            List<String> tags = articleMapper.selectTagNamesByArticleId(articleDO.getId());
+            articles.add(ArticlePersistenceConverter.toDomain(articleDO, tags));
+        }
+        return articles;
+    }
+
+    /**
+     * 查询作者自己的文章列表。
+     *
+     * @param authorId 作者 ID
+     * @return 作者文章列表
+     */
+    @Override
+    public List<Article> findByAuthorId(Long authorId) {
+        List<ArticleDO> articleDOList = articleMapper.selectByAuthorId(authorId);
+        List<Article> articles = new ArrayList<Article>(articleDOList.size());
+        for (ArticleDO articleDO : articleDOList) {
+            List<String> tags = articleMapper.selectTagNamesByArticleId(articleDO.getId());
+            articles.add(ArticlePersistenceConverter.toDomain(articleDO, tags));
+        }
+        return articles;
+    }
+
+    /**
+     * 查询作者已发布文章列表。
+     *
+     * @param authorId 作者 ID
+     * @return 已发布文章列表
+     */
+    @Override
+    public List<Article> findPublishedByAuthorId(Long authorId) {
+        List<ArticleDO> articleDOList = articleMapper.selectPublishedByAuthorId(authorId);
         List<Article> articles = new ArrayList<Article>(articleDOList.size());
         for (ArticleDO articleDO : articleDOList) {
             List<String> tags = articleMapper.selectTagNamesByArticleId(articleDO.getId());

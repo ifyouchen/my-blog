@@ -25,9 +25,16 @@ export const request = async (path, options = {}) => {
         headers.Authorization = `Bearer ${token}`;
     }
 
+    const body = headers['Content-Type'] === 'application/json'
+        && options.body
+        && typeof options.body !== 'string'
+        ? JSON.stringify(options.body)
+        : options.body;
+
     const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
     const response = await fetch(url, {
         ...options,
+        body,
         headers
     });
     let payload;

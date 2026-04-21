@@ -19,22 +19,62 @@ export const listArticlesApi = async (params = {}) => {
 
 export const getArticleApi = async (id) => normalizeArticle(await request(`/articles/${id}`));
 
-export const createArticleApi = async (draft, status) => {
-    const tags = String(draft.tags || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
+export const getEditableArticleApi = async (id) => normalizeArticle(await request(`/articles/${id}/edit`));
 
+export const createArticleApi = async (draft, status) => {
     return normalizeArticle(await request('/articles', {
         method: 'POST',
-        body: JSON.stringify({
-            title: draft.title,
-            summary: draft.summary,
-            content: draft.content,
-            coverUrl: draft.coverUrl,
-            category: draft.category,
-            tags,
-            status
-        })
+        body: buildArticlePayload(draft, status)
     }));
+};
+
+export const updateArticleApi = async (articleId, draft, status) => {
+    return normalizeArticle(await request(`/articles/${articleId}`, {
+        method: 'PUT',
+        body: buildArticlePayload(draft, status)
+    }));
+};
+
+export const deleteArticleApi = async (articleId) => {
+    return await request(`/articles/${articleId}`, {
+        method: 'DELETE'
+    });
+};
+
+export const getMyArticlesApi = async ({ page = 1, pageSize = 10, status = '' } = {}) => {
+    const query = new URLSearchParams({ page, pageSize });
+    if (status) {
+        query.set('status', status);
+    }
+    const data = await request(`/users/me/articles?${query.toString()}`);
+    return {
+        ...data,
+        items: (data.items || []).map(normalizeArticle)
+    };
+};
+
+export const getUserArticlesApi = async (userId, { page = 1, pageSize = 10 } = {}) => {
+    const data = await request(`/users/${userId}/articles?page=${page}&pageSize=${pageSize}`);
+    return {
+        ...data,
+        items: (data.items || []).map(normalizeArticle)
+    };
+};
+
+const buildArticlePayload = (draft, status) => {
+    const sourceTags = Array.isArray(draft.tags) ? draft.tags : String(draft.tags || '')
+        .split(',');
+    const tags = sourceTags
+        .map((item) => String(item).trim())
+        .filter(Boolean);
+
+    return {
+        title: draft.title,
+        summary: draft.summary,
+        content: draft.content,
+        coverUrl: draft.coverUrl,
+        category: draft.category,
+        tags,
+        status
+    };
 };

@@ -8,6 +8,7 @@ import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.dto.CommentDTO;
 import com.myblog.application.dto.UserDTO;
+import com.myblog.application.dto.UserProfileDTO;
 import com.myblog.interfaces.rest.dto.request.CreateArticleRequest;
 import com.myblog.interfaces.rest.dto.request.CreateCommentRequest;
 import com.myblog.interfaces.rest.dto.request.LoginRequest;
@@ -16,6 +17,7 @@ import com.myblog.interfaces.rest.dto.response.ArticleResponse;
 import com.myblog.interfaces.rest.dto.response.AuthResponse;
 import com.myblog.interfaces.rest.dto.response.CommentResponse;
 import com.myblog.interfaces.rest.dto.response.UserResponse;
+import com.myblog.interfaces.rest.dto.response.UserProfileResponse;
 import org.springframework.stereotype.Component;
 
 /**
@@ -109,6 +111,21 @@ public class RestDtoMapper {
         response.setAvatarUrl(dto.getAvatarUrl());
         response.setBio(dto.getBio());
         response.setRole(dto.getRole());
+        return response;
+    }
+
+    /**
+     * 将用户主页 DTO 转换为响应。
+     *
+     * @param dto 用户主页 DTO
+     * @return 用户主页响应
+     */
+    public UserProfileResponse toResponse(UserProfileDTO dto) {
+        UserProfileResponse response = new UserProfileResponse();
+        response.setUser(toResponse(dto.getUser()));
+        response.setArticleCount(dto.getArticleCount());
+        response.setTotalViewCount(dto.getTotalViewCount());
+        response.setTotalLikeCount(dto.getTotalLikeCount());
         return response;
     }
 

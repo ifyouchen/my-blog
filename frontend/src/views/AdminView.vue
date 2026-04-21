@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {
     getAdminStatsApi,
@@ -8,7 +8,16 @@ import {
     getAdminArticlesApi,
     updateAdminArticleStatusApi,
     getAdminCommentsApi,
-    deleteAdminCommentApi
+    getAdminLogsApi,
+    deleteAdminCommentApi,
+    getCategoriesApi,
+    getTagsApi,
+    createCategoryApi,
+    updateCategoryApi,
+    deleteCategoryApi,
+    createTagApi,
+    updateTagApi,
+    deleteTagApi
 } from '@/api/admin';
 
 const stats = ref({
@@ -21,7 +30,11 @@ const stats = ref({
 const users = ref([]);
 const articles = ref([]);
 const comments = ref([]);
-const isLoading = ref(false);
+const logs = ref([]);
+const categories = ref([]);
+const tags = ref([]);
+const categoryForm = reactive({ name: '', description: '', sortOrder: 0 });
+const tagForm = reactive({ name: '', description: '' });
 
 const fetchStats = async () => {
     try {
@@ -58,11 +71,37 @@ const fetchComments = async () => {
     }
 };
 
+const fetchLogs = async () => {
+    try {
+        const result = await getAdminLogsApi(1, 20);
+        logs.value = result.items || [];
+    } catch (error) {
+        console.error('获取操作日志失败:', error);
+    }
+};
+
+const fetchCategories = async () => {
+    try {
+        categories.value = await getCategoriesApi(null);
+    } catch (error) {
+        console.error('获取分类失败:', error);
+    }
+};
+
+const fetchTags = async () => {
+    try {
+        tags.value = await getTagsApi(null);
+    } catch (error) {
+        console.error('获取标签失败:', error);
+    }
+};
+
 const toggleUserStatus = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'NORMAL' ? 'DISABLED' : 'NORMAL';
     try {
         await updateAdminUserStatusApi(userId, newStatus);
         await fetchUsers();
+        await fetchLogs();
     } catch (error) {
         alert(error.message || '操作失败');
     }
@@ -73,6 +112,7 @@ const toggleArticleStatus = async (articleId, currentStatus) => {
     try {
         await updateAdminArticleStatusApi(articleId, newStatus);
         await fetchArticles();
+        await fetchLogs();
     } catch (error) {
         alert(error.message || '操作失败');
     }
@@ -83,8 +123,92 @@ const handleDeleteComment = async (commentId) => {
     try {
         await deleteAdminCommentApi(commentId);
         await fetchComments();
+        await fetchLogs();
     } catch (error) {
         alert(error.message || '删除失败');
+    }
+};
+
+const submitCategory = async () => {
+    try {
+        await createCategoryApi({
+            name: categoryForm.name,
+            description: categoryForm.description,
+            sortOrder: Number(categoryForm.sortOrder || 0)
+        });
+        categoryForm.name = '';
+        categoryForm.description = '';
+        categoryForm.sortOrder = 0;
+        await fetchCategories();
+        await fetchLogs();
+    } catch (error) {
+        alert(error.message || '分类创建失败');
+    }
+};
+
+const toggleCategory = async (category) => {
+    try {
+        await updateCategoryApi(category.id, {
+            name: category.name,
+            description: category.description,
+            sortOrder: category.sortOrder || 0,
+            enabled: !category.enabled
+        });
+        await fetchCategories();
+        await fetchLogs();
+    } catch (error) {
+        alert(error.message || '分类更新失败');
+    }
+};
+
+const removeCategory = async (categoryId) => {
+    if (!confirm('确定删除这个分类吗？')) return;
+    try {
+        await deleteCategoryApi(categoryId);
+        await fetchCategories();
+        await fetchLogs();
+    } catch (error) {
+        alert(error.message || '分类删除失败');
+    }
+};
+
+const submitTag = async () => {
+    try {
+        await createTagApi({
+            name: tagForm.name,
+            description: tagForm.description
+        });
+        tagForm.name = '';
+        tagForm.description = '';
+        await fetchTags();
+        await fetchLogs();
+    } catch (error) {
+        alert(error.message || '标签创建失败');
+    }
+};
+
+const toggleTag = async (tag) => {
+    try {
+        await updateTagApi(tag.id, {
+            name: tag.name,
+            description: tag.description,
+            enabled: !tag.enabled
+        });
+        await fetchTags();
+        await fetchLogs();
+    } catch (error) {
+        alert(error.message || '标签更新失败');
+    }
+};
+
+const removeTag = async (tagId) => {
+    if (!confirm('确定删除这个标签吗？')) return;
+    try {
+        await deleteTagApi(tagId);
+        await fetchTags();
+        await fetchLogs();
+    } catch (error) {
+        alert(error.message || '标签删除失败');
     }
 };
 
@@ -93,19 +217,25 @@ onMounted(() => {
     fetchUsers();
     fetchArticles();
     fetchComments();
+    fetchCategories();
+    fetchTags();
+    fetchLogs();
 });
 </script>
 
 <template>
     <SiteHeader />
     <main class="page-shell admin-layout">
-        <aside class="dashboard-nav">
-            <p class="eyebrow">管理后台</p>
-            <a href="#stats">数据概览</a>
-            <a href="#users">用户管理</a>
-            <a href="#articles">文章管理</a>
-            <a href="#comments">评论管理</a>
-        </aside>
+            <aside class="dashboard-nav">
+                <p class="eyebrow">管理后台</p>
+                <a href="#stats">数据概览</a>
+                <a href="#users">用户管理</a>
+                <a href="#articles">文章管理</a>
+                <a href="#comments">评论管理</a>
+                <a href="#categories">分类管理</a>
+                <a href="#tags">标签管理</a>
+                <a href="#logs">操作日志</a>
+            </aside>
 
         <section class="dashboard-main">
             <section id="stats" class="admin-stats">
@@ -240,6 +370,150 @@ onMounted(() => {
                     </tbody>
                 </table>
             </section>
+
+            <section id="categories" class="table-panel">
+                <div class="section-heading compact">
+                    <div>
+                        <p class="eyebrow">内容组织</p>
+                        <h2>分类管理</h2>
+                    </div>
+                </div>
+                <form class="admin-inline-form" @submit.prevent="submitCategory">
+                    <input v-model.trim="categoryForm.name" type="text" placeholder="分类名称" required>
+                    <input v-model.trim="categoryForm.description" type="text" placeholder="分类说明">
+                    <input v-model.number="categoryForm.sortOrder" type="number" placeholder="排序值">
+                    <button type="submit">新增分类</button>
+                </form>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="category in categories" :key="category.id">
+                            <td>{{ category.id }}</td>
+                            <td>{{ category.name }}</td>
+                            <td>{{ category.description || '-' }}</td>
+                            <td><span class="status-pill">{{ category.enabled ? 'NORMAL' : 'DISABLED' }}</span></td>
+                            <td class="table-actions">
+                                <button type="button" @click="toggleCategory(category)">
+                                    {{ category.enabled ? '禁用' : '启用' }}
+                                </button>
+                                <button type="button" class="danger-link" @click="removeCategory(category.id)">删除</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="tags" class="table-panel">
+                <div class="section-heading compact">
+                    <div>
+                        <p class="eyebrow">内容组织</p>
+                        <h2>标签管理</h2>
+                    </div>
+                </div>
+                <form class="admin-inline-form" @submit.prevent="submitTag">
+                    <input v-model.trim="tagForm.name" type="text" placeholder="标签名称" required>
+                    <input v-model.trim="tagForm.description" type="text" placeholder="标签说明">
+                    <button type="submit">新增标签</button>
+                </form>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="tag in tags" :key="tag.id">
+                            <td>{{ tag.id }}</td>
+                            <td>{{ tag.name }}</td>
+                            <td>{{ tag.description || '-' }}</td>
+                            <td><span class="status-pill">{{ tag.enabled ? 'NORMAL' : 'DISABLED' }}</span></td>
+                            <td class="table-actions">
+                                <button type="button" @click="toggleTag(tag)">
+                                    {{ tag.enabled ? '禁用' : '启用' }}
+                                </button>
+                                <button type="button" class="danger-link" @click="removeTag(tag.id)">删除</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="logs" class="table-panel">
+                <div class="section-heading compact">
+                    <div>
+                        <p class="eyebrow">审计记录</p>
+                        <h2>管理员操作日志</h2>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>管理员</th>
+                            <th>操作</th>
+                            <th>请求</th>
+                            <th>结果</th>
+                            <th>目标</th>
+                            <th>详情</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="log in logs" :key="log.id">
+                            <td>{{ log.id }}</td>
+                            <td>{{ log.adminUsername || `#${log.adminUserId}` }}</td>
+                            <td>{{ log.operation }}</td>
+                            <td>{{ log.requestMethod || '-' }} {{ log.requestUri || '-' }}</td>
+                            <td>{{ log.resultStatus || '-' }}</td>
+                            <td>{{ log.targetType }} #{{ log.targetId ?? '-' }}</td>
+                            <td>{{ log.detail }}</td>
+                            <td>{{ log.createdAt }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
         </section>
     </main>
 </template>
+
+<style scoped>
+.admin-inline-form {
+    display: grid;
+    grid-template-columns: 1.1fr 1.6fr 140px 120px;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.admin-inline-form input {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.table-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.danger-link {
+    color: #d14343;
+}
+
+@media (max-width: 960px) {
+    .admin-inline-form {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

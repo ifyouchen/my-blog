@@ -26,3 +26,16 @@ export const registerApi = async (payload) => {
 };
 
 export const currentUserApi = async () => normalizeUser(await request('/users/me'));
+
+export const updateProfileApi = async (payload) => normalizeUser(await request('/users/me/profile', {
+    method: 'PUT',
+    body: payload
+}));
+
+export const getUserProfileApi = async (userId) => {
+    const data = await request(`/users/${userId}`);
+    return {
+        ...data,
+        user: normalizeUser(data.user || {})
+    };
+};

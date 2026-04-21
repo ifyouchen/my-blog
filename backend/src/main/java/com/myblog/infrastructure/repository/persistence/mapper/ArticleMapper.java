@@ -34,11 +34,29 @@ public interface ArticleMapper {
      * @param keyword 关键字
      * @param category 分类
      * @param tag 标签
+     * @param sort 排序方式
      * @return 文章数据对象列表
      */
     List<ArticleDO> selectPublished(@Param("keyword") String keyword,
                                     @Param("category") String category,
-                                    @Param("tag") String tag);
+                                    @Param("tag") String tag,
+                                    @Param("sort") String sort);
+
+    /**
+     * 查询作者自己的文章列表。
+     *
+     * @param authorId 作者 ID
+     * @return 文章数据对象列表
+     */
+    List<ArticleDO> selectByAuthorId(@Param("authorId") Long authorId);
+
+    /**
+     * 查询作者已发布文章列表。
+     *
+     * @param authorId 作者 ID
+     * @return 文章数据对象列表
+     */
+    List<ArticleDO> selectPublishedByAuthorId(@Param("authorId") Long authorId);
 
     /**
      * 根据 ID 统计文章数量。

@@ -41,15 +41,21 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod()) || isPublicRequest(request)) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
         String header = request.getHeader(AUTHORIZATION);
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            JwtPayload payload = jwtTokenProvider.parseToken(header.substring(BEARER_PREFIX.length()));
+            AuthContext.set(payload);
+            return true;
+        }
+        if (isPublicRequest(request)) {
+            return true;
+        }
         if (header == null || !header.startsWith(BEARER_PREFIX)) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        JwtPayload payload = jwtTokenProvider.parseToken(header.substring(BEARER_PREFIX.length()));
-        AuthContext.set(payload);
         return true;
     }
 
@@ -62,7 +68,15 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         if (!"GET".equalsIgnoreCase(method)) {
             return false;
         }
-        return "/api/articles".equals(path) || path.matches("^/api/articles/\\d+$");
+        return "/api/articles".equals(path)
+            || "/api/categories".equals(path)
+            || "/api/tags".equals(path)
+            || path.matches("^/api/articles/\\d+$")
+            || path.matches("^/api/articles/\\d+/comments$")
+            || path.matches("^/api/articles/\\d+/like/status$")
+            || path.matches("^/api/articles/\\d+/favorite/status$")
+            || path.matches("^/api/users/\\d+$")
+            || path.matches("^/api/users/\\d+/articles$");
     }
 
     /**

@@ -88,12 +88,20 @@ export const useSession = () => {
         clearSession();
     };
 
+    const updateCurrentUser = (user) => {
+        saveSession({
+            token: state.token,
+            user
+        });
+    };
+
     return {
         state,
         isLoggedIn,
         initializeSession,
         login,
         register,
-        logout
+        logout,
+        updateCurrentUser
     };
 };

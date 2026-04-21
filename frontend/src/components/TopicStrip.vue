@@ -1,21 +1,22 @@
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 import { topics } from '@/data/home';
 
-const activeTopic = ref('全部');
+const route = useRoute();
+const activeTopic = computed(() => String(route.query.category || '全部'));
 </script>
 
 <template>
     <section class="topic-strip" aria-label="技术分类">
-        <button
+        <RouterLink
             v-for="topic in topics"
             :key="topic"
             class="topic"
             :class="{ active: activeTopic === topic }"
-            type="button"
-            @click="activeTopic = topic"
+            :to="topic === '全部' ? '/' : { path: '/search', query: { category: topic } }"
         >
             {{ topic }}
-        </button>
+        </RouterLink>
     </section>
 </template>

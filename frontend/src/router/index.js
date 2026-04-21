@@ -6,6 +6,7 @@ import CollectionView from '@/views/CollectionView.vue';
 import DashboardView from '@/views/DashboardView.vue';
 import EditorView from '@/views/EditorView.vue';
 import HomeView from '@/views/HomeView.vue';
+import ProfileSettingsView from '@/views/ProfileSettingsView.vue';
 import SearchView from '@/views/SearchView.vue';
 import UserProfileView from '@/views/UserProfileView.vue';
 
@@ -40,6 +41,14 @@ const routes = [
         component: EditorView,
         meta: {
             title: '写文章'
+        }
+    },
+    {
+        path: '/editor/:id',
+        name: 'editorEdit',
+        component: EditorView,
+        meta: {
+            title: '编辑文章'
         }
     },
     {
@@ -104,6 +113,14 @@ const routes = [
         component: DashboardView,
         meta: {
             title: '我的收藏'
+        }
+    },
+    {
+        path: '/settings/profile',
+        name: 'profileSettings',
+        component: ProfileSettingsView,
+        meta: {
+            title: '个人资料'
         }
     },
     {

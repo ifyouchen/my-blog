@@ -116,6 +116,23 @@ public class User {
     }
 
     /**
+     * 更新用户个人资料。
+     *
+     * @param nickname 昵称
+     * @param avatarUrl 头像地址
+     * @param bio 个人简介
+     */
+    public void updateProfile(String nickname, String avatarUrl, String bio) {
+        if (nickname == null || nickname.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "昵称不能为空");
+        }
+        this.nickname = nickname.trim();
+        this.avatarUrl = avatarUrl == null ? null : avatarUrl.trim();
+        this.bio = bio == null ? "" : bio.trim();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 获取用户 ID。
      *
      * @return 用户 ID

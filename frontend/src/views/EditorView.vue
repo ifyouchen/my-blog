@@ -1,7 +1,8 @@
 <script setup>
-import { computed, inject, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { createArticleApi } from '@/api/articles';
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { createArticleApi, getEditableArticleApi, updateArticleApi } from '@/api/articles';
+import { getCategoriesApi, getTagsApi } from '@/api/admin';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import RichMarkdownEditor from '@/components/RichMarkdownEditor.vue';
@@ -10,27 +11,13 @@ import { topics } from '@/data/home';
 const DRAFT_KEY = 'my-blog-editor-draft';
 
 const defaultDraft = {
-    title: 'Spring Boot 登录鉴权从 0 到 1',
-    summary: '把登录态、角色权限、接口拦截、统一错误码串成完整闭环。',
-    content: `# 登录鉴权设计
+    title: '',
+    summary: '',
+    content: `# 开始写作
 
-第一版博客系统采用 JWT 认证。
-
-## 核心流程
-
-- 登录成功后签发 Token
-- 前端请求时携带 Authorization
-- 后端统一解析身份和角色
-- 资源归属由应用服务校验
-
-\`\`\`java
-@Transactional(rollbackFor = Exception.class)
-public ArticleId publish(PublishArticleCommand command) {
-    return articleAppService.publish(command);
-}
-\`\`\``,
+用一篇文章把你最近解决的问题写清楚。`,
     category: 'Spring Boot',
-    tags: 'Spring Boot, JWT, 权限设计',
+    tags: 'Spring Boot, JWT',
     coverUrl: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=700&q=80'
 };
 
@@ -40,25 +27,47 @@ const coverOptions = [
     'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80'
 ];
 
-const loadDraft = () => {
-    try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        return raw ? { ...defaultDraft, ...JSON.parse(raw) } : defaultDraft;
-    } catch (error) {
-        return defaultDraft;
-    }
-};
-
+const route = useRoute();
+const router = useRouter();
+const loginModal = inject('loginModal', { requireLogin: () => false });
+const isEditMode = computed(() => route.name === 'editorEdit');
 const draft = reactive(loadDraft());
 const statusMessage = ref('');
 const validationErrors = ref([]);
 const publishLoading = ref(false);
 const publishedArticle = ref(null);
 const feedbackType = ref('info');
-const router = useRouter();
-const loginModal = inject('loginModal', { requireLogin: () => false });
+const categoryOptions = ref(topics.slice(1));
+const tagOptions = ref([]);
+const pageLoading = ref(false);
+const lastSavedSnapshot = ref('');
 
 const wordCount = computed(() => draft.content.trim().length);
+const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
+
+function loadDraft() {
+    try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        return raw ? { ...defaultDraft, ...JSON.parse(raw) } : { ...defaultDraft };
+    } catch (error) {
+        return { ...defaultDraft };
+    }
+}
+
+function createDraftSnapshot(currentDraft) {
+    return JSON.stringify({
+        title: currentDraft.title || '',
+        summary: currentDraft.summary || '',
+        content: currentDraft.content || '',
+        category: currentDraft.category || '',
+        tags: currentDraft.tags || '',
+        coverUrl: currentDraft.coverUrl || ''
+    });
+}
+
+function syncSavedSnapshot() {
+    lastSavedSnapshot.value = createDraftSnapshot(draft);
+}
 
 const validateDraft = () => {
     const errors = [];
@@ -78,50 +87,117 @@ const validateDraft = () => {
     return errors.length === 0;
 };
 
-const saveDraft = () => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    statusMessage.value = `草稿已保存，当前正文 ${wordCount.value} 字`;
-    feedbackType.value = 'success';
-    publishedArticle.value = null;
-    validationErrors.value = [];
+const syncDraft = (article) => {
+    draft.title = article.title || '';
+    draft.summary = article.summary || '';
+    draft.content = article.rawContent || '';
+    draft.category = article.category || categoryOptions.value[0] || '';
+    draft.tags = Array.isArray(article.tags) ? article.tags.join(', ') : '';
+    draft.coverUrl = article.coverUrl || defaultDraft.coverUrl;
 };
 
-const publishArticle = async () => {
-    if (publishLoading.value) {
+const fetchMetadata = async () => {
+    try {
+        const [categories, tags] = await Promise.all([
+            getCategoriesApi(true),
+            getTagsApi(true)
+        ]);
+        if (categories?.length) {
+            categoryOptions.value = categories.map((item) => item.name);
+            if (!draft.category) {
+                draft.category = categoryOptions.value[0];
+            }
+        }
+        if (tags?.length) {
+            tagOptions.value = tags.map((item) => item.name);
+        }
+    } catch (error) {
+        categoryOptions.value = topics.slice(1);
+        tagOptions.value = [];
+    }
+};
+
+const fetchArticle = async () => {
+    if (!isEditMode.value) {
+        syncSavedSnapshot();
         return;
     }
-    const canContinue = loginModal.requireLogin(() => publishArticle(), {
-        title: '登录后发布文章',
-        message: '登录后可以发布文章、保存到创作中心，并在个人主页展示。',
-        actionText: '登录并继续发布'
+    pageLoading.value = true;
+    try {
+        const article = await getEditableArticleApi(route.params.id);
+        syncDraft(article);
+        localStorage.removeItem(DRAFT_KEY);
+        syncSavedSnapshot();
+    } catch (error) {
+        statusMessage.value = error.message || '文章加载失败';
+        feedbackType.value = 'error';
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
+const persistArticle = async (status) => {
+    if (publishLoading.value) {
+        return null;
+    }
+    const actionText = status === 'PUBLISHED' ? '发布' : '保存草稿';
+    const canContinue = loginModal.requireLogin(() => persistArticle(status), {
+        title: `登录后${actionText}`,
+        message: `登录后可以${actionText}文章，并在个人中心管理内容。`,
+        actionText: `登录并${actionText}`
     });
     if (!canContinue) {
-        statusMessage.value = '请先登录后再发布文章';
+        statusMessage.value = `请先登录后再${actionText}`;
         feedbackType.value = 'warning';
-        return;
+        return null;
     }
     if (!validateDraft()) {
-        statusMessage.value = '发布前请补齐必要信息';
+        statusMessage.value = `${actionText}前请补齐必要信息`;
         feedbackType.value = 'warning';
-        return;
+        return null;
     }
+
     publishLoading.value = true;
-    publishedArticle.value = null;
-    statusMessage.value = '正在发布文章，请稍候...';
+    statusMessage.value = status === 'PUBLISHED' ? '正在发布文章，请稍候...' : '正在保存草稿，请稍候...';
     feedbackType.value = 'info';
+    publishedArticle.value = null;
+
     try {
-        const article = await createArticleApi(draft, 'PUBLISHED');
+        const article = isEditMode.value
+            ? await updateArticleApi(route.params.id, draft, status)
+            : await createArticleApi(draft, status);
+        syncDraft(article);
+        if (!isEditMode.value) {
+            await router.replace(`/editor/${article.id}`);
+        }
         localStorage.removeItem(DRAFT_KEY);
-        publishedArticle.value = article;
-        statusMessage.value = `发布成功，文章 ID：${article.id}`;
-        feedbackType.value = 'success';
+        if (status === 'PUBLISHED') {
+            publishedArticle.value = article;
+            statusMessage.value = `发布成功，文章 ID：${article.id}`;
+            feedbackType.value = 'success';
+        } else {
+            statusMessage.value = `草稿已保存，文章 ID：${article.id}`;
+            feedbackType.value = 'success';
+        }
+        syncSavedSnapshot();
+        validationErrors.value = [];
+        return article;
     } catch (error) {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-        statusMessage.value = error.message || '后端未启动，已保留本地草稿';
+        statusMessage.value = error.message || `${actionText}失败`;
         feedbackType.value = 'error';
+        return null;
     } finally {
         publishLoading.value = false;
     }
+};
+
+const saveDraft = async () => {
+    await persistArticle('DRAFT');
+};
+
+const publishArticle = async () => {
+    await persistArticle('PUBLISHED');
 };
 
 const changeCover = () => {
@@ -130,7 +206,6 @@ const changeCover = () => {
     draft.coverUrl = coverOptions[nextIndex];
     statusMessage.value = '已更换封面预览';
     feedbackType.value = 'info';
-    publishedArticle.value = null;
 };
 
 const viewPublishedArticle = () => {
@@ -141,9 +216,29 @@ const viewPublishedArticle = () => {
 
 const continueWriting = () => {
     publishedArticle.value = null;
-    statusMessage.value = '可以继续编辑当前内容，或保存为新的草稿';
+    statusMessage.value = '可以继续编辑当前内容';
     feedbackType.value = 'info';
 };
+
+watch(
+    () => route.params.id,
+    () => {
+        if (isEditMode.value) {
+            fetchArticle();
+            return;
+        }
+        Object.assign(draft, loadDraft());
+        syncSavedSnapshot();
+    }
+);
+
+onMounted(async () => {
+    await fetchMetadata();
+    await fetchArticle();
+    if (!isEditMode.value) {
+        syncSavedSnapshot();
+    }
+});
 </script>
 
 <template>
@@ -153,20 +248,22 @@ const continueWriting = () => {
             <div class="section-heading">
                 <div>
                     <p class="eyebrow">创作中心</p>
-                    <h1>发布文章</h1>
+                    <h1>{{ isEditMode ? '编辑文章' : '发布文章' }}</h1>
                 </div>
                 <div class="editor-actions">
-                    <button type="button" :disabled="publishLoading" @click="saveDraft">保存草稿</button>
+                    <button type="button" :disabled="publishLoading || pageLoading" @click="saveDraft">保存草稿</button>
                     <button
                         class="primary-action"
                         type="button"
-                        :disabled="publishLoading"
+                        :disabled="publishLoading || pageLoading"
                         @click="publishArticle"
                     >
-                        {{ publishLoading ? '发布中...' : '发布文章' }}
+                        {{ publishLoading ? '提交中...' : '发布文章' }}
                     </button>
                 </div>
             </div>
+
+            <p v-if="pageLoading" class="loading-text">正在加载文章内容...</p>
 
             <section
                 v-if="publishedArticle"
@@ -202,6 +299,9 @@ const continueWriting = () => {
             <RichMarkdownEditor v-model="draft.content" />
             <div class="editor-feedback">
                 <span>正文 {{ wordCount }} 字</span>
+                <span :class="['editor-dirty', hasUnsavedChanges ? 'warning' : 'saved']">
+                    {{ hasUnsavedChanges ? '未保存改动' : '内容已同步到当前编辑态' }}
+                </span>
                 <span v-if="statusMessage" :class="['editor-status', feedbackType]">
                     {{ statusMessage }}
                 </span>
@@ -219,12 +319,12 @@ const continueWriting = () => {
             <section class="side-section">
                 <p class="eyebrow">分类</p>
                 <select v-model="draft.category">
-                    <option v-for="topic in topics.slice(1)" :key="topic" :value="topic">{{ topic }}</option>
+                    <option v-for="topic in categoryOptions" :key="topic" :value="topic">{{ topic }}</option>
                 </select>
             </section>
             <section class="side-section">
                 <p class="eyebrow">标签</p>
-                <input v-model="draft.tags" type="text">
+                <input v-model="draft.tags" type="text" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
             </section>
             <section class="side-section upload-box">
                 <p class="eyebrow">封面图</p>

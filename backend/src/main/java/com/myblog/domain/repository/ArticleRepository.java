@@ -28,9 +28,26 @@ public interface ArticleRepository {
      * @param keyword 关键字
      * @param category 分类
      * @param tag 标签
+     * @param sort 排序方式
      * @return 已发布文章列表
      */
-    List<Article> findPublished(String keyword, String category, String tag);
+    List<Article> findPublished(String keyword, String category, String tag, String sort);
+
+    /**
+     * 查询作者自己的文章列表。
+     *
+     * @param authorId 作者 ID
+     * @return 作者文章列表
+     */
+    List<Article> findByAuthorId(Long authorId);
+
+    /**
+     * 查询作者已发布文章列表。
+     *
+     * @param authorId 作者 ID
+     * @return 已发布文章列表
+     */
+    List<Article> findPublishedByAuthorId(Long authorId);
 
     /**
      * 保存文章。
