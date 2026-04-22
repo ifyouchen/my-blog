@@ -43,6 +43,24 @@ public class MyBatisCategoryRepository implements CategoryRepository {
     }
 
     @Override
+    public List<Category> findPage(Boolean enabled, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<CategoryDO> categoryDOList = categoryMapper.selectPage(enabled, offset, currentPageSize);
+        List<Category> categories = new ArrayList<>(categoryDOList.size());
+        for (CategoryDO categoryDO : categoryDOList) {
+            categories.add(CategoryPersistenceConverter.toDomain(categoryDO));
+        }
+        return categories;
+    }
+
+    @Override
+    public long count(Boolean enabled) {
+        return categoryMapper.countAll(enabled);
+    }
+
+    @Override
     public boolean existsByName(String name, CategoryId excludeId) {
         Long excludeIdValue = excludeId != null ? excludeId.getValue() : null;
         return categoryMapper.countByName(name, excludeIdValue) > 0;

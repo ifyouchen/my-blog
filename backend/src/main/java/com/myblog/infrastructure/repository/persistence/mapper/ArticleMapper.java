@@ -59,6 +59,16 @@ public interface ArticleMapper {
     List<ArticleDO> selectPublishedByAuthorId(@Param("authorId") Long authorId);
 
     /**
+     * 查询作者热门已发布文章列表。
+     *
+     * @param authorId 作者 ID
+     * @param limit 限制数量
+     * @return 文章数据对象列表
+     */
+    List<ArticleDO> selectHotPublishedByAuthorId(@Param("authorId") Long authorId,
+                                                 @Param("limit") int limit);
+
+    /**
      * 根据 ID 统计文章数量。
      *
      * @param id 文章 ID

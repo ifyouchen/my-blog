@@ -2,7 +2,11 @@ package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.service.AdminAppService;
 import com.myblog.application.service.AdminLogAppService;
+import com.myblog.application.service.CategoryAppService;
+import com.myblog.application.service.TagAppService;
 import com.myblog.application.command.RecordAdminLogCommand;
+import com.myblog.application.dto.CategoryDTO;
+import com.myblog.application.dto.TagDTO;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
@@ -27,10 +31,15 @@ public class AdminController {
 
     private final AdminAppService adminAppService;
     private final AdminLogAppService adminLogAppService;
+    private final CategoryAppService categoryAppService;
+    private final TagAppService tagAppService;
 
-    public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService) {
+    public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService,
+                           CategoryAppService categoryAppService, TagAppService tagAppService) {
         this.adminAppService = adminAppService;
         this.adminLogAppService = adminLogAppService;
+        this.categoryAppService = categoryAppService;
+        this.tagAppService = tagAppService;
     }
 
     private void ensureAdmin() {
@@ -75,6 +84,40 @@ public class AdminController {
             @RequestParam(required = false) Long articleId) {
         ensureAdmin();
         return Result.success(adminAppService.getComments(page, pageSize, articleId));
+    }
+
+    /**
+     * 分页查询后台分类列表。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param enabled 启用状态
+     * @return 分类分页结果
+     */
+    @GetMapping("/categories")
+    public Result<PageResult<CategoryDTO>> getCategories(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) Boolean enabled) {
+        ensureAdmin();
+        return Result.success(categoryAppService.getCategoryPage(page, pageSize, enabled));
+    }
+
+    /**
+     * 分页查询后台标签列表。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param enabled 启用状态
+     * @return 标签分页结果
+     */
+    @GetMapping("/tags")
+    public Result<PageResult<TagDTO>> getTags(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) Boolean enabled) {
+        ensureAdmin();
+        return Result.success(tagAppService.getTagPage(page, pageSize, enabled));
     }
 
     /**

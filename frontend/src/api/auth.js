@@ -1,5 +1,5 @@
 import { request } from './http';
-import { normalizeUser } from './transformers';
+import { normalizeArticle, normalizeUser } from './transformers';
 
 export const loginApi = async (payload) => {
     const data = await request('/auth/login', {
@@ -38,4 +38,9 @@ export const getUserProfileApi = async (userId) => {
         ...data,
         user: normalizeUser(data.user || {})
     };
+};
+
+export const getUserHotArticlesApi = async (userId, limit = 3) => {
+    const data = await request(`/users/${userId}/articles/hot?limit=${limit}`);
+    return (data || []).map(normalizeArticle);
 };

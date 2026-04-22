@@ -179,19 +179,181 @@ CREATE TABLE IF NOT EXISTS blog_admin_log (
     CONSTRAINT fk_blog_admin_log_admin FOREIGN KEY (admin_user_id) REFERENCES blog_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客管理员操作日志表';
 
-ALTER TABLE blog_admin_log
-    ADD COLUMN IF NOT EXISTS admin_username VARCHAR(100) DEFAULT NULL COMMENT '管理员用户名' AFTER admin_user_id,
-    ADD COLUMN IF NOT EXISTS request_method VARCHAR(16) DEFAULT NULL COMMENT '请求方法' AFTER detail,
-    ADD COLUMN IF NOT EXISTS request_uri VARCHAR(255) DEFAULT NULL COMMENT '请求路径' AFTER request_method,
-    ADD COLUMN IF NOT EXISTS user_agent VARCHAR(255) DEFAULT NULL COMMENT '用户代理' AFTER ip_address,
-    ADD COLUMN IF NOT EXISTS result_status VARCHAR(32) DEFAULT NULL COMMENT '结果状态' AFTER user_agent,
-    ADD COLUMN IF NOT EXISTS before_snapshot TEXT COMMENT '变更前快照' AFTER result_status,
-    ADD COLUMN IF NOT EXISTS after_snapshot TEXT COMMENT '变更后快照' AFTER before_snapshot;
+SET @blog_admin_log_add_admin_username = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN admin_username VARCHAR(100) DEFAULT NULL COMMENT ''管理员用户名'' AFTER admin_user_id',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'admin_username'
+);
+PREPARE stmt FROM @blog_admin_log_add_admin_username;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE blog_category
-    ADD COLUMN IF NOT EXISTS description VARCHAR(255) DEFAULT NULL COMMENT '分类说明' AFTER name,
-    ADD COLUMN IF NOT EXISTS enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用：1-启用 0-禁用' AFTER sort_order;
+SET @blog_admin_log_add_request_method = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN request_method VARCHAR(16) DEFAULT NULL COMMENT ''请求方法'' AFTER detail',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'request_method'
+);
+PREPARE stmt FROM @blog_admin_log_add_request_method;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE blog_tag
-    ADD COLUMN IF NOT EXISTS description VARCHAR(255) DEFAULT NULL COMMENT '标签说明' AFTER name,
-    ADD COLUMN IF NOT EXISTS enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用：1-启用 0-禁用' AFTER use_count;
+SET @blog_admin_log_add_request_uri = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN request_uri VARCHAR(255) DEFAULT NULL COMMENT ''请求路径'' AFTER request_method',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'request_uri'
+);
+PREPARE stmt FROM @blog_admin_log_add_request_uri;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_admin_log_add_user_agent = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN user_agent VARCHAR(255) DEFAULT NULL COMMENT ''用户代理'' AFTER ip_address',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'user_agent'
+);
+PREPARE stmt FROM @blog_admin_log_add_user_agent;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_admin_log_add_result_status = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN result_status VARCHAR(32) DEFAULT NULL COMMENT ''结果状态'' AFTER user_agent',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'result_status'
+);
+PREPARE stmt FROM @blog_admin_log_add_result_status;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_admin_log_add_before_snapshot = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN before_snapshot TEXT COMMENT ''变更前快照'' AFTER result_status',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'before_snapshot'
+);
+PREPARE stmt FROM @blog_admin_log_add_before_snapshot;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_admin_log_add_after_snapshot = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_admin_log ADD COLUMN after_snapshot TEXT COMMENT ''变更后快照'' AFTER before_snapshot',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_admin_log'
+      AND column_name = 'after_snapshot'
+);
+PREPARE stmt FROM @blog_admin_log_add_after_snapshot;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_category_add_description = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_category ADD COLUMN description VARCHAR(255) DEFAULT NULL COMMENT ''分类说明'' AFTER name',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_category'
+      AND column_name = 'description'
+);
+PREPARE stmt FROM @blog_category_add_description;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_category_add_enabled = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_category ADD COLUMN enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''是否启用：1-启用 0-禁用'' AFTER sort_order',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_category'
+      AND column_name = 'enabled'
+);
+PREPARE stmt FROM @blog_category_add_enabled;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_tag_add_description = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_tag ADD COLUMN description VARCHAR(255) DEFAULT NULL COMMENT ''标签说明'' AFTER name',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_tag'
+      AND column_name = 'description'
+);
+PREPARE stmt FROM @blog_tag_add_description;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_tag_add_enabled = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_tag ADD COLUMN enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT ''是否启用：1-启用 0-禁用'' AFTER use_count',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_tag'
+      AND column_name = 'enabled'
+);
+PREPARE stmt FROM @blog_tag_add_enabled;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+UPDATE blog_category
+SET enabled = CASE
+    WHEN status = 'DISABLED' THEN 0
+    ELSE 1
+END
+WHERE deleted_at IS NULL;
+
+UPDATE blog_tag
+SET enabled = CASE
+    WHEN status = 'DISABLED' THEN 0
+    ELSE 1
+END
+WHERE deleted_at IS NULL;

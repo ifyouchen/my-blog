@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile *)",
+      "Bash(node -c src/stores/session.js)",
+      "Bash(mvn spring-boot:run -q)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/articles)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(curl -s http://localhost:8080/api/articles/501)",
+      "Bash(pkill -f \"spring-boot:run\")",
+      "Bash(taskkill //F //IM java.exe)",
+      "Bash(pkill -f \"vite\")"
+    ]
+  }
+}

@@ -1,6 +1,5 @@
 package com.myblog.interfaces.rest.dto.request;
 
-import javax.validation.constraints.NotBlank;
 import java.util.List;
 
 /**
@@ -11,17 +10,14 @@ import java.util.List;
  */
 public class CreateArticleRequest {
 
-    @NotBlank(message = "标题不能为空")
     private String title;
 
     private String summary;
 
-    @NotBlank(message = "正文不能为空")
     private String content;
 
     private String coverUrl;
 
-    @NotBlank(message = "分类不能为空")
     private String category;
 
     private List<String> tags;

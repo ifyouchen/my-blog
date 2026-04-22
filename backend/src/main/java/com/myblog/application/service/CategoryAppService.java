@@ -6,6 +6,7 @@ import com.myblog.domain.model.valueobject.CategoryId;
 import com.myblog.domain.repository.CategoryRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.result.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,24 @@ public class CategoryAppService {
         return categories.stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
+    }
+
+    /**
+     * 分页查询分类列表。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param enabled 启用状态
+     * @return 分类分页结果
+     */
+    public PageResult<CategoryDTO> getCategoryPage(int page, int pageSize, Boolean enabled) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        long total = categoryRepository.count(enabled);
+        List<CategoryDTO> items = categoryRepository.findPage(enabled, currentPage, currentPageSize).stream()
+            .map(this::toDTO)
+            .collect(Collectors.toList());
+        return new PageResult<CategoryDTO>(items, currentPage, currentPageSize, total);
     }
 
     public CategoryDTO getCategory(Long id) {

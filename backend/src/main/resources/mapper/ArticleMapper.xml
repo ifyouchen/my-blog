@@ -96,6 +96,16 @@
         ORDER BY published_at DESC, id DESC
     </select>
 
+    <select id="selectHotPublishedByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        ORDER BY view_count DESC, like_count DESC, published_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="countById" resultType="int">
         SELECT COUNT(1)
         FROM blog_article
@@ -161,6 +171,7 @@
             updated_at = #{updatedAt},
             version = version + 1
         WHERE id = #{id}
+        AND version = #{version}
         AND deleted_at IS NULL
     </update>
 

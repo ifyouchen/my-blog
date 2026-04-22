@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
+import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import { getMyFavoritesApi } from '@/api/favorites';
 import { deleteArticleApi, getMyArticlesApi } from '@/api/articles';
 import { useSession } from '@/stores/session';
@@ -20,6 +21,7 @@ const total = ref(0);
 const isLoading = ref(false);
 const loadError = ref('');
 const feedback = ref('');
+const jumpPage = ref(String(currentPage.value));
 
 const statusOptions = [
     { label: '全部', value: '' },
@@ -93,6 +95,10 @@ const fetchCurrentTab = async () => {
 };
 
 const changePage = (page) => {
+    const totalPages = Math.max(1, Math.ceil(total.value / pageSize));
+    if (page < 1 || page > totalPages || page === currentPage.value || isLoading.value) {
+        return;
+    }
     currentPage.value = page;
     syncRoute({ page });
 };
@@ -120,11 +126,68 @@ const removeArticle = async (articleId) => {
     }
 };
 
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const pageStart = computed(() => {
+    if (!total.value) {
+        return 0;
+    }
+    return (currentPage.value - 1) * pageSize + 1;
+});
+const pageEnd = computed(() => Math.min(currentPage.value * pageSize, total.value));
+
+const paginationItems = computed(() => {
+    const pages = [];
+    const appendPage = (page) => {
+        if (!pages.some((item) => item.type === 'page' && item.value === page)) {
+            pages.push({ type: 'page', value: page });
+        }
+    };
+    const appendEllipsis = (key) => {
+        pages.push({ type: 'ellipsis', value: key });
+    };
+
+    if (totalPages.value <= 7) {
+        for (let page = 1; page <= totalPages.value; page++) {
+            appendPage(page);
+        }
+        return pages;
+    }
+
+    appendPage(1);
+    if (currentPage.value > 4) {
+        appendEllipsis('left');
+    }
+
+    const start = Math.max(2, currentPage.value - 1);
+    const end = Math.min(totalPages.value - 1, currentPage.value + 1);
+    for (let page = start; page <= end; page++) {
+        appendPage(page);
+    }
+
+    if (currentPage.value < totalPages.value - 3) {
+        appendEllipsis('right');
+    }
+    appendPage(totalPages.value);
+    return pages;
+});
+
+const submitJump = () => {
+    const page = Number.parseInt(jumpPage.value, 10);
+    if (Number.isNaN(page)) {
+        jumpPage.value = String(currentPage.value);
+        return;
+    }
+    const targetPage = Math.min(Math.max(1, page), totalPages.value);
+    jumpPage.value = String(targetPage);
+    changePage(targetPage);
+};
+
 watch(
     () => [route.name, route.query.page, route.query.status],
     () => {
         currentPage.value = Number.parseInt(route.query.page || '1', 10) || 1;
         articleStatus.value = String(route.query.status || '');
+        jumpPage.value = String(currentPage.value);
         fetchCurrentTab();
     },
     { immediate: true }
@@ -138,13 +201,7 @@ watch(isLoggedIn, () => {
 <template>
     <SiteHeader />
     <main class="page-shell dashboard-layout">
-        <aside class="dashboard-nav">
-            <p class="eyebrow">创作者后台</p>
-            <RouterLink to="/dashboard/articles">我的文章</RouterLink>
-            <RouterLink to="/dashboard/favorites">我的收藏</RouterLink>
-            <RouterLink to="/settings/profile">个人资料</RouterLink>
-            <RouterLink to="/editor/new">写文章</RouterLink>
-        </aside>
+        <CreatorSidebar />
 
         <section class="dashboard-main">
             <div class="section-heading">
@@ -170,22 +227,24 @@ watch(isLoggedIn, () => {
                 <p v-if="feedback" class="form-message success">{{ feedback }}</p>
             </div>
 
-            <div v-if="isFavorites" class="favorite-grid">
+            <section v-if="isFavorites" class="dashboard-content-panel">
                 <p v-if="isLoading" class="loading-text">加载中...</p>
                 <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
-                <article v-else-if="favorites.length" v-for="article in favorites" :key="article.id" class="favorite-card">
-                    <img :src="article.cover" :alt="article.coverAlt">
-                    <div>
-                        <span>{{ article.category }}</span>
-                        <h2>{{ article.title }}</h2>
-                        <p>{{ article.summary }}</p>
-                        <RouterLink :to="`/articles/${article.id}`">继续阅读</RouterLink>
-                    </div>
-                </article>
+                <div v-else-if="favorites.length" class="favorite-grid">
+                    <article v-for="article in favorites" :key="article.id" class="favorite-card">
+                        <img :src="article.cover" :alt="article.coverAlt">
+                        <div>
+                            <span>{{ article.category }}</span>
+                            <h2>{{ article.title }}</h2>
+                            <p>{{ article.summary }}</p>
+                            <RouterLink :to="`/articles/${article.id}`">继续阅读</RouterLink>
+                        </div>
+                    </article>
+                </div>
                 <p v-else class="empty-text">暂无收藏，去发现感兴趣的文章吧</p>
-            </div>
+            </section>
 
-            <div v-else class="table-panel">
+            <section v-else class="dashboard-content-panel table-panel">
                 <p v-if="isLoading" class="loading-text">正在加载文章...</p>
                 <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
                 <table v-else>
@@ -219,13 +278,46 @@ watch(isLoggedIn, () => {
                     </tbody>
                 </table>
                 <p v-if="!isLoading && !loadError && !articles.length" class="empty-text">还没有文章，先去写下第一篇吧</p>
-            </div>
+            </section>
 
-            <div v-if="total > pageSize" class="dashboard-pagination">
-                <button type="button" :disabled="currentPage <= 1 || isLoading" @click="changePage(currentPage - 1)">上一页</button>
-                <span>第 {{ currentPage }} 页</span>
-                <button type="button" :disabled="currentPage * pageSize >= total || isLoading" @click="changePage(currentPage + 1)">下一页</button>
-            </div>
+            <nav v-if="totalPages > 1" class="dashboard-pagination" aria-label="后台分页">
+                <p>
+                    第 {{ currentPage }} / {{ totalPages }} 页，
+                    共 {{ total }} 条，当前 {{ pageStart }}-{{ pageEnd }} 条
+                </p>
+                <div class="dashboard-pagination-actions">
+                    <button type="button" :disabled="isLoading || currentPage <= 1" @click="changePage(1)">首页</button>
+                    <button type="button" :disabled="isLoading || currentPage <= 1" @click="changePage(currentPage - 1)">上一页</button>
+                    <template v-for="item in paginationItems" :key="`${item.type}-${item.value}`">
+                        <span v-if="item.type === 'ellipsis'" class="pagination-ellipsis">...</span>
+                        <button
+                            v-else
+                            type="button"
+                            :class="{ active: item.value === currentPage }"
+                            :disabled="isLoading || item.value === currentPage"
+                            @click="changePage(item.value)"
+                        >
+                            {{ item.value }}
+                        </button>
+                    </template>
+                    <button type="button" :disabled="isLoading || currentPage >= totalPages" @click="changePage(currentPage + 1)">下一页</button>
+                    <button type="button" :disabled="isLoading || currentPage >= totalPages" @click="changePage(totalPages)">末页</button>
+                </div>
+                <form class="dashboard-pagination-jump" @submit.prevent="submitJump">
+                    <label for="dashboard-page-jump">跳至</label>
+                    <input
+                        id="dashboard-page-jump"
+                        v-model="jumpPage"
+                        type="number"
+                        min="1"
+                        :max="totalPages"
+                        :disabled="isLoading"
+                        inputmode="numeric"
+                    >
+                    <span>页</span>
+                    <button type="submit" :disabled="isLoading">跳转</button>
+                </form>
+            </nav>
         </section>
     </main>
 </template>
@@ -275,10 +367,82 @@ watch(isLoggedIn, () => {
 }
 
 .dashboard-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    display: grid;
     gap: 12px;
-    margin-top: 18px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.dashboard-pagination p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.dashboard-pagination-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.dashboard-pagination-actions button,
+.dashboard-pagination-jump button {
+    min-width: 40px;
+    min-height: 36px;
+    padding: 0 12px;
+    color: var(--text);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.dashboard-pagination-actions button:hover:not(:disabled),
+.dashboard-pagination-jump button:hover:not(:disabled),
+.dashboard-pagination-actions button.active {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.dashboard-pagination-jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.dashboard-pagination-jump label,
+.dashboard-pagination-jump span {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.dashboard-pagination-jump input {
+    width: 76px;
+    min-height: 36px;
+    padding: 0 10px;
+    color: var(--text);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: 0;
+}
+
+.dashboard-pagination-jump input:focus {
+    border-color: var(--brand);
+}
+
+@media (max-width: 760px) {
+    .dashboard-pagination-jump {
+        width: 100%;
+    }
+
+    .dashboard-pagination-jump input,
+    .dashboard-pagination-jump button {
+        width: 100%;
+    }
 }
 </style>

@@ -94,6 +94,24 @@ public class UserAppService {
     }
 
     /**
+     * 查询用户热门文章。
+     *
+     * @param userId 用户 ID
+     * @param limit 限制数量
+     * @return 热门文章列表
+     */
+    public List<ArticleDTO> listHotPublishedArticles(Long userId, int limit) {
+        List<Article> hotArticles = articleRepository.findHotPublishedByAuthorId(userId, limit);
+        List<ArticleDTO> result = new ArrayList<ArticleDTO>(hotArticles.size());
+        for (Article article : hotArticles) {
+            User author = userRepository.findById(article.getAuthorId())
+                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
+            result.add(ArticleAssembler.toDTO(article, author));
+        }
+        return result;
+    }
+
+    /**
      * 分页查询当前用户自己的文章。
      *
      * @param userId 用户 ID

@@ -57,7 +57,6 @@ public class ArticleLike {
     public void reactivate() {
         this.deletedAt = null;
         this.updatedAt = LocalDateTime.now();
-        this.version = this.version + 1;
     }
 
     /**
@@ -66,7 +65,6 @@ public class ArticleLike {
     public void delete() {
         this.deletedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.version = this.version + 1;
     }
 
     /**

@@ -78,6 +78,23 @@ public class UserController {
     }
 
     /**
+     * 获取用户热门文章。
+     *
+     * @param id 用户 ID
+     * @param limit 限制数量
+     * @return 热门文章列表
+     */
+    @GetMapping("/{id}/articles/hot")
+    public Result<List<ArticleResponse>> getUserHotArticles(@PathVariable Long id,
+                                                            @RequestParam(defaultValue = "3") int limit) {
+        List<ArticleResponse> items = new ArrayList<ArticleResponse>();
+        for (ArticleDTO articleDTO : userAppService.listHotPublishedArticles(id, limit)) {
+            items.add(restDtoMapper.toResponse(articleDTO));
+        }
+        return Result.success(items);
+    }
+
+    /**
      * 获取当前用户文章。
      *
      * @param page 页码

@@ -52,8 +52,11 @@ const clearSession = () => {
     localStorage.removeItem(STORAGE_KEY);
 };
 
-if (typeof window !== 'undefined') {
+// 事件监听器只在模块首次加载时注册一次
+const SESSION_LISTENER_KEY = 'my-blog-session-listener-registered';
+if (typeof window !== 'undefined' && !window[SESSION_LISTENER_KEY]) {
     window.addEventListener('my-blog-auth-expired', clearSession);
+    window[SESSION_LISTENER_KEY] = true;
 }
 
 export const useSession = () => {

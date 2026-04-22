@@ -35,6 +35,7 @@ public class Article {
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Integer version;
 
     private Article() {
     }
@@ -77,6 +78,7 @@ public class Article {
         article.commentCount = 0;
         article.createdAt = LocalDateTime.now();
         article.updatedAt = article.createdAt;
+        article.version = 0;
         if (ArticleStatus.PUBLISHED.equals(article.status)) {
             article.publishedAt = article.createdAt;
         }
@@ -107,7 +109,8 @@ public class Article {
     public static Article restore(Long id, UserId authorId, String title, String summary, String content,
                                   String coverUrl, String category, List<String> tags, ArticleStatus status,
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
-                                  LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                  LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                  Integer version) {
         Article article = new Article();
         article.id = new ArticleId(id);
         article.authorId = authorId;
@@ -125,6 +128,7 @@ public class Article {
         article.publishedAt = publishedAt;
         article.createdAt = createdAt;
         article.updatedAt = updatedAt;
+        article.version = version == null ? 0 : version;
         return article;
     }
 
@@ -414,5 +418,14 @@ public class Article {
      */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    /**
+     * 获取版本号。
+     *
+     * @return 版本号
+     */
+    public Integer getVersion() {
+        return version;
     }
 }

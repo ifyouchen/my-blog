@@ -6,6 +6,7 @@ import com.myblog.domain.model.valueobject.TagId;
 import com.myblog.domain.repository.TagRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.result.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,24 @@ public class TagAppService {
         return tags.stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
+    }
+
+    /**
+     * 分页查询标签列表。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param enabled 启用状态
+     * @return 标签分页结果
+     */
+    public PageResult<TagDTO> getTagPage(int page, int pageSize, Boolean enabled) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        long total = tagRepository.count(enabled);
+        List<TagDTO> items = tagRepository.findPage(enabled, currentPage, currentPageSize).stream()
+            .map(this::toDTO)
+            .collect(Collectors.toList());
+        return new PageResult<TagDTO>(items, currentPage, currentPageSize, total);
     }
 
     public TagDTO getTag(Long id) {

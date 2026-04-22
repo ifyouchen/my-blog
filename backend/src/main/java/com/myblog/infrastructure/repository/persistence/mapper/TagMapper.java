@@ -13,6 +13,12 @@ public interface TagMapper {
 
     List<TagDO> selectAll(@Param("enabled") Boolean enabled);
 
+    List<TagDO> selectPage(@Param("enabled") Boolean enabled,
+                           @Param("offset") int offset,
+                           @Param("pageSize") int pageSize);
+
+    long countAll(@Param("enabled") Boolean enabled);
+
     int countByName(@Param("name") String name, @Param("excludeId") Long excludeId);
 
     Long selectNextId();

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, ref } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { navItems } from '@/data/home';
@@ -8,6 +8,8 @@ import { useSession } from '@/stores/session';
 const route = useRoute();
 const router = useRouter();
 const keyword = ref('');
+const userMenuOpen = ref(false);
+const userMenuRef = ref(null);
 const { isLoggedIn, logout, state } = useSession();
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const displayName = computed(() => state.user?.nickname || state.user?.username || '用户');
@@ -25,8 +27,33 @@ const submitSearch = () => {
 };
 
 const logoutAndGoHome = () => {
+    userMenuOpen.value = false;
     logout();
     router.push('/');
+};
+
+const openUserMenu = () => {
+    userMenuOpen.value = true;
+};
+
+const closeUserMenu = () => {
+    userMenuOpen.value = false;
+};
+
+const toggleUserMenu = () => {
+    userMenuOpen.value = !userMenuOpen.value;
+};
+
+const goToProfile = () => {
+    userMenuOpen.value = false;
+    router.push('/settings/profile');
+};
+
+const goToUserHome = () => {
+    userMenuOpen.value = false;
+    if (state.user?.id) {
+        router.push(`/users/${state.user.id}`);
+    }
 };
 
 const writeArticle = () => {
@@ -39,6 +66,20 @@ const writeArticle = () => {
         router.push('/editor/new');
     }
 };
+
+const handleDocumentClick = (event) => {
+    if (!userMenuRef.value?.contains(event.target)) {
+        userMenuOpen.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleDocumentClick);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleDocumentClick);
+});
 </script>
 
 <template>
@@ -73,13 +114,52 @@ const writeArticle = () => {
 
             <div class="header-actions">
                 <template v-if="isLoggedIn">
-                    <RouterLink class="user-chip" :to="`/users/${state.user?.id}`">
-                        <img :src="avatarUrl" alt="用户头像">
-                        <span>{{ displayName }}</span>
-                    </RouterLink>
                     <RouterLink class="text-link" to="/dashboard/articles">创作台</RouterLink>
                     <RouterLink v-if="state.user?.role === 'ADMIN'" class="text-link" to="/admin">后台</RouterLink>
-                    <button class="text-button" type="button" @click="logoutAndGoHome">退出</button>
+                    <div
+                        ref="userMenuRef"
+                        class="user-menu"
+                        @mouseenter="openUserMenu"
+                        @mouseleave="closeUserMenu"
+                    >
+                        <div class="user-menu-trigger-group">
+                            <button
+                                class="user-chip user-home-link"
+                                type="button"
+                                @click="goToUserHome"
+                            >
+                                <img :src="avatarUrl" alt="用户头像">
+                                <span>{{ displayName }}</span>
+                            </button>
+                            <button
+                                class="user-menu-toggle"
+                                type="button"
+                                aria-label="展开用户菜单"
+                                :aria-expanded="userMenuOpen"
+                                @click.stop="toggleUserMenu"
+                            >
+                                <span
+                                    class="user-trigger-arrow"
+                                    :class="{ open: userMenuOpen }"
+                                    aria-hidden="true"
+                                >
+                                    ▾
+                                </span>
+                            </button>
+                        </div>
+                        <div v-if="userMenuOpen" class="user-menu-panel">
+                            <button class="user-menu-item" type="button" @click="goToProfile">
+                                个人资料
+                            </button>
+                            <button
+                                class="user-menu-item user-menu-item-danger"
+                                type="button"
+                                @click="logoutAndGoHome"
+                            >
+                                退出
+                            </button>
+                        </div>
+                    </div>
                 </template>
                 <RouterLink v-else class="text-link" to="/login">登录</RouterLink>
                 <button class="primary-action" type="button" @click="writeArticle">写文章</button>

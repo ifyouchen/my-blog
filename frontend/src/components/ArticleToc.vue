@@ -16,6 +16,7 @@ const props = defineProps({
 const activeId = ref('');
 const tocNavRef = ref(null);
 const observer = ref(null);
+let observerInitToken = 0;
 
 const toc = computed(() => extractToc(props.content));
 
@@ -71,6 +72,15 @@ const initObserver = () => {
     }
 };
 
+const scheduleObserverRefresh = async () => {
+    const currentToken = ++observerInitToken;
+    await nextTick();
+    if (currentToken !== observerInitToken) {
+        return;
+    }
+    initObserver();
+};
+
 const scrollToHeading = (id) => {
     const element = document.getElementById(id);
     if (element) {
@@ -80,15 +90,24 @@ const scrollToHeading = (id) => {
     }
 };
 
-watch(() => props.content, () => {
-    activeId.value = '';
-    nextTick(() => {
-        setTimeout(initObserver, 100);
-    });
+watch(toc, async (nextToc, previousToc) => {
+    const nextIds = nextToc.map((item) => item.id).join('|');
+    const previousIds = (previousToc || []).map((item) => item.id).join('|');
+    if (nextIds === previousIds && observer.value) {
+        return;
+    }
+
+    if (activeId.value && !nextToc.some((item) => item.id === activeId.value)) {
+        activeId.value = nextToc[0]?.id || '';
+    } else if (!activeId.value && nextToc.length > 0) {
+        activeId.value = nextToc[0].id;
+    }
+
+    await scheduleObserverRefresh();
 });
 
 onMounted(() => {
-    setTimeout(initObserver, 100);
+    scheduleObserverRefresh();
 });
 
 onUnmounted(() => {

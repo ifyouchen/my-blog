@@ -59,6 +59,12 @@ export const getCategoriesApi = async (enabled = null) => {
     return await request(`/categories${params}`);
 };
 
+export const getAdminCategoriesApi = async (page = 1, pageSize = 10, enabled = null) => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (enabled !== null) params.append('enabled', enabled);
+    return await request(`/admin/categories?${params}`);
+};
+
 export const createCategoryApi = async (payload) => {
     return await request('/categories', {
         method: 'POST',
@@ -82,6 +88,12 @@ export const deleteCategoryApi = async (categoryId) => {
 export const getTagsApi = async (enabled = null) => {
     const params = enabled !== null ? `?enabled=${enabled}` : '';
     return await request(`/tags${params}`);
+};
+
+export const getAdminTagsApi = async (page = 1, pageSize = 10, enabled = null) => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (enabled !== null) params.append('enabled', enabled);
+    return await request(`/admin/tags?${params}`);
 };
 
 export const createTagApi = async (payload) => {

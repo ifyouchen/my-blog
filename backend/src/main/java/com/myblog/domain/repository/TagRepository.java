@@ -12,6 +12,10 @@ public interface TagRepository {
 
     List<Tag> findAll(Boolean enabled);
 
+    List<Tag> findPage(Boolean enabled, int page, int pageSize);
+
+    long count(Boolean enabled);
+
     boolean existsByName(String name, TagId excludeId);
 
     Tag save(Tag tag);

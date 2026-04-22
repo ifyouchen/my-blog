@@ -106,6 +106,24 @@ public class MyBatisArticleRepository implements ArticleRepository {
     }
 
     /**
+     * 查询作者热门已发布文章列表。
+     *
+     * @param authorId 作者 ID
+     * @param limit 限制数量
+     * @return 热门文章列表
+     */
+    @Override
+    public List<Article> findHotPublishedByAuthorId(Long authorId, int limit) {
+        List<ArticleDO> articleDOList = articleMapper.selectHotPublishedByAuthorId(authorId, limit);
+        List<Article> articles = new ArrayList<Article>(articleDOList.size());
+        for (ArticleDO articleDO : articleDOList) {
+            List<String> tags = articleMapper.selectTagNamesByArticleId(articleDO.getId());
+            articles.add(ArticlePersistenceConverter.toDomain(articleDO, tags));
+        }
+        return articles;
+    }
+
+    /**
      * 保存文章。
      *
      * @param article 文章聚合根

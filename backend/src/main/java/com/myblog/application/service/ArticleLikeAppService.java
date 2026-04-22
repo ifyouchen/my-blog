@@ -12,6 +12,8 @@ import com.myblog.shared.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 /**
  * 文章点赞应用服务。
  *
@@ -46,14 +48,22 @@ public class ArticleLikeAppService {
             throw new ApplicationException(ErrorCode.CONFLICT, "不能在未发布的文章下点赞");
         }
 
-        ArticleLike articleLike = articleLikeRepository.findAnyByArticleAndUser(targetArticleId, targetUserId)
-            .map(existingLike -> reactivateLike(existingLike))
-            .orElseGet(() -> ArticleLike.create(articleLikeRepository.nextId(), targetArticleId, targetUserId));
+        Optional<ArticleLike> existingLike = articleLikeRepository.findAnyByArticleAndUser(targetArticleId, targetUserId);
 
-        articleLikeRepository.save(articleLike);
-
-        article.increaseLikeCount();
-        articleRepository.save(article);
+        if (existingLike.isPresent()) {
+            // 恢复已存在的点赞
+            ArticleLike like = existingLike.get();
+            reactivateLike(like);
+            articleLikeRepository.save(like);
+            article.increaseLikeCount();
+            articleRepository.save(article);
+        } else {
+            // 新建点赞
+            ArticleLike newLike = ArticleLike.create(articleLikeRepository.nextId(), targetArticleId, targetUserId);
+            articleLikeRepository.save(newLike);
+            article.increaseLikeCount();
+            articleRepository.save(article);
+        }
     }
 
     /**

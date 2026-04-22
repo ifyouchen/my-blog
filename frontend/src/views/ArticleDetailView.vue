@@ -7,6 +7,7 @@ import { favoriteArticleApi, unfavoriteArticleApi, getFavoriteStatusApi } from '
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import CommentList from '@/components/CommentList.vue';
+import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import { articles } from '@/data/home';
 
 const route = useRoute();
@@ -210,13 +211,16 @@ onUnmounted(() => {
                     </div>
                 </RouterLink>
 
-                <div class="tag-row">
-                    <RouterLink v-for="tag in article.tags" :key="tag" to="/search">
+                <div class="article-tag-list">
+                    <span v-for="tag in article.tags" :key="tag" class="article-tag-chip">
                         {{ tag }}
-                    </RouterLink>
+                    </span>
                 </div>
 
-                <MarkdownPreview :content="articleMarkdown" />
+                <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
+                <section v-else class="article-content-empty">
+                    <p>正文暂时为空，稍后再来看一眼。</p>
+                </section>
 
                 <section class="article-comment">
                     <CommentList
@@ -271,6 +275,38 @@ onUnmounted(() => {
     margin-top: 40px;
     padding-top: 24px;
     border-top: 1px solid var(--line);
+}
+
+.article-content-empty {
+    padding: 28px 24px;
+    color: var(--muted);
+    background: var(--surface-soft);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+}
+
+.article-content-empty p {
+    margin: 0;
+}
+
+.article-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 18px;
+}
+
+.article-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 12px;
+    line-height: 1;
+    color: var(--brand-strong);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
 }
 
 .comment-placeholder {

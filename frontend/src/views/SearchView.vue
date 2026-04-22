@@ -189,19 +189,44 @@ onMounted(fetchFilters);
 </template>
 
 <style scoped>
+.search-panel {
+    display: grid;
+    gap: 14px;
+}
+
+.search-panel .eyebrow {
+    margin: 0;
+}
+
+.search-panel h1 {
+    margin: 0;
+}
+
 .search-filters {
     display: grid;
-    gap: 18px;
-    margin-top: 20px;
+    gap: 14px;
+    margin-top: 6px;
 }
 
 .filter-group {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
 .filter-group > span {
     font-size: 13px;
     color: var(--muted);
+}
+
+.filter-group :deep(.tag-row) {
+    margin: 4px 0 8px;
+}
+
+.search-panel :deep(.search-large) {
+    margin-top: 4px;
+}
+
+.search-panel :deep(.result-note) {
+    margin-top: 0;
 }
 </style>

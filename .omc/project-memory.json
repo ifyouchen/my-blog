@@ -1,0 +1,393 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776862299867,
+  "projectRoot": "F:\\software\\IdeaProject\\my-blog",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1776862299855,
+      "keyFiles": [
+        "backend-dev.log",
+        "pom.xml"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 10,
+      "lastAccessed": 1776862299855,
+      "keyFiles": [
+        "01-需求说明书.md",
+        "02-功能模块设计.md",
+        "03-页面原型与页面清单.md",
+        "04-数据库设计.md",
+        "05-接口设计.md"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1776862299855,
+      "keyFiles": [
+        "frontend-dev.log",
+        "index.html",
+        "package-lock.json",
+        "package.json",
+        "vite.config.js"
+      ]
+    },
+    "prototype": {
+      "path": "prototype",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776862299855,
+      "keyFiles": [
+        "index.html",
+        "styles.css"
+      ]
+    },
+    "backend\\src": {
+      "path": "backend\\src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1776862299856,
+      "keyFiles": []
+    },
+    "frontend\\dist": {
+      "path": "frontend\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 1,
+      "lastAccessed": 1776862299856,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "frontend\\node_modules": {
+      "path": "frontend\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1776862299856,
+      "keyFiles": []
+    },
+    "frontend\\src": {
+      "path": "frontend\\src",
+      "purpose": "Source code",
+      "fileCount": 2,
+      "lastAccessed": 1776862299857,
+      "keyFiles": [
+        "App.vue",
+        "main.js"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\domain\\model\\aggregate\\Article.java",
+      "accessCount": 18,
+      "lastAccessed": 1776865276261,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\ArticleLikeAppService.java",
+      "accessCount": 15,
+      "lastAccessed": 1776865622896,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 6,
+      "lastAccessed": 1776862454957,
+      "type": "directory"
+    },
+    {
+      "path": "frontend\\src\\stores\\session.js",
+      "accessCount": 5,
+      "lastAccessed": 1776863465650,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\ArticleFavoriteAppService.java",
+      "accessCount": 5,
+      "lastAccessed": 1776865735229,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\security\\JwtTokenProvider.java",
+      "accessCount": 4,
+      "lastAccessed": 1776863436724,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\mapper\\ArticleMapper.xml",
+      "accessCount": 4,
+      "lastAccessed": 1776864610931,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\converter\\ArticlePersistenceConverter.java",
+      "accessCount": 4,
+      "lastAccessed": 1776865291586,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\resources",
+      "accessCount": 3,
+      "lastAccessed": 1776862377659,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\mapper\\ArticleLikeMapper.xml",
+      "accessCount": 3,
+      "lastAccessed": 1776863372755,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\mapper\\ArticleFavoriteMapper.xml",
+      "accessCount": 3,
+      "lastAccessed": 1776863378002,
+      "type": "file"
+    },
+    {
+      "path": "frontend",
+      "accessCount": 2,
+      "lastAccessed": 1776862480147,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\domain\\model\\aggregate\\ArticleLike.java",
+      "accessCount": 2,
+      "lastAccessed": 1776862773836,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\db\\schema.sql",
+      "accessCount": 2,
+      "lastAccessed": 1776863387011,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\repository\\MyBatisArticleRepository.java",
+      "accessCount": 2,
+      "lastAccessed": 1776864871360,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\entity\\ArticleDO.java",
+      "accessCount": 2,
+      "lastAccessed": 1776864918475,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1776862349339,
+      "type": "file"
+    },
+    {
+      "path": "backend\\pom.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776862349353,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\package.json",
+      "accessCount": 1,
+      "lastAccessed": 1776862358401,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\router\\index.js",
+      "accessCount": 1,
+      "lastAccessed": 1776862365730,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\vite.config.js",
+      "accessCount": 1,
+      "lastAccessed": 1776862365762,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces",
+      "accessCount": 1,
+      "lastAccessed": 1776862365799,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure",
+      "accessCount": 1,
+      "lastAccessed": 1776862365840,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\application.yml",
+      "accessCount": 1,
+      "lastAccessed": 1776862382054,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\mapper",
+      "accessCount": 1,
+      "lastAccessed": 1776862382123,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\mapper\\UserMapper.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776862463345,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\security\\JwtAuthenticationInterceptor.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862463381,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\CommentAppService.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862473303,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\CommentController.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862473364,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\ArticleFavoriteController.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862473429,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\ArticleLikeController.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862473449,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\AuthAppService.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862479625,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\AdminController.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862479674,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\resources\\mapper\\CommentMapper.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776862479715,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\AuthController.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862479739,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src",
+      "accessCount": 1,
+      "lastAccessed": 1776862486534,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\security\\AuthContext.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862486554,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\api\\http.js",
+      "accessCount": 1,
+      "lastAccessed": 1776862496274,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\api\\auth.js",
+      "accessCount": 1,
+      "lastAccessed": 1776862496297,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\GlobalExceptionHandler.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862496327,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\domain\\model\\aggregate\\ArticleFavorite.java",
+      "accessCount": 1,
+      "lastAccessed": 1776862504771,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\domain\\model\\aggregate",
+      "accessCount": 1,
+      "lastAccessed": 1776862504964,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main",
+      "accessCount": 1,
+      "lastAccessed": 1776862505049,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src",
+      "accessCount": 1,
+      "lastAccessed": 1776863393039,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\converter\\ArticleLikePersistenceConverter.java",
+      "accessCount": 1,
+      "lastAccessed": 1776864933353,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\converter\\ArticleFavoritePersistenceConverter.java",
+      "accessCount": 1,
+      "lastAccessed": 1776864937432,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

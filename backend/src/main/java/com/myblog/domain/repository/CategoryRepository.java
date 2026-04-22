@@ -12,6 +12,10 @@ public interface CategoryRepository {
 
     List<Category> findAll(Boolean enabled);
 
+    List<Category> findPage(Boolean enabled, int page, int pageSize);
+
+    long count(Boolean enabled);
+
     boolean existsByName(String name, CategoryId excludeId);
 
     Category save(Category category);

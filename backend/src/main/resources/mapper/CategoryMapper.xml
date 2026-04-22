@@ -43,6 +43,26 @@
         ORDER BY sort_order ASC, id ASC
     </select>
 
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_category
+        WHERE deleted_at IS NULL
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+        ORDER BY sort_order ASC, id ASC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_category
+        WHERE deleted_at IS NULL
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+    </select>
+
     <select id="countByName" resultType="int">
         SELECT COUNT(1)
         FROM blog_category

@@ -80,6 +80,7 @@
             deleted_at = #{deletedAt},
             version = version + 1
         WHERE id = #{id}
+        AND version = #{version}
     </update>
 
     <update id="deleteByArticleAndUser">

@@ -14,7 +14,9 @@ const activeTopic = computed(() => String(route.query.category || '全部'));
             :key="topic"
             class="topic"
             :class="{ active: activeTopic === topic }"
-            :to="topic === '全部' ? '/' : { path: '/search', query: { category: topic } }"
+            :to="topic === '全部'
+                ? { path: '/', query: { sort: route.query.sort, page: undefined } }
+                : { path: '/', query: { category: topic, sort: route.query.sort, page: undefined } }"
         >
             {{ topic }}
         </RouterLink>

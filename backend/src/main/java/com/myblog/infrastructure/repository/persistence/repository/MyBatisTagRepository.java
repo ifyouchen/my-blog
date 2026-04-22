@@ -43,6 +43,24 @@ public class MyBatisTagRepository implements TagRepository {
     }
 
     @Override
+    public List<Tag> findPage(Boolean enabled, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<TagDO> tagDOList = tagMapper.selectPage(enabled, offset, currentPageSize);
+        List<Tag> tags = new ArrayList<>(tagDOList.size());
+        for (TagDO tagDO : tagDOList) {
+            tags.add(TagPersistenceConverter.toDomain(tagDO));
+        }
+        return tags;
+    }
+
+    @Override
+    public long count(Boolean enabled) {
+        return tagMapper.countAll(enabled);
+    }
+
+    @Override
     public boolean existsByName(String name, TagId excludeId) {
         Long excludeIdValue = excludeId != null ? excludeId.getValue() : null;
         return tagMapper.countByName(name, excludeIdValue) > 0;

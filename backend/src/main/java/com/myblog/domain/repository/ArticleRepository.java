@@ -50,6 +50,15 @@ public interface ArticleRepository {
     List<Article> findPublishedByAuthorId(Long authorId);
 
     /**
+     * 查询作者热门文章列表。
+     *
+     * @param authorId 作者 ID
+     * @param limit 限制数量
+     * @return 热门文章列表
+     */
+    List<Article> findHotPublishedByAuthorId(Long authorId, int limit);
+
+    /**
      * 保存文章。
      *
      * @param article 文章聚合根

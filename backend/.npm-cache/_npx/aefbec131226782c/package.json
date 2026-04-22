@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@z_ai/mcp-server": "^0.1.4"
+  },
+  "_npx": {
+    "packages": [
+      "@z_ai/mcp-server"
+    ]
+  }
+}

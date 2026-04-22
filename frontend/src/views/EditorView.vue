@@ -69,7 +69,7 @@ function syncSavedSnapshot() {
     lastSavedSnapshot.value = createDraftSnapshot(draft);
 }
 
-const validateDraft = () => {
+const validatePublishDraft = () => {
     const errors = [];
     if (!draft.title.trim()) {
         errors.push('标题不能为空');
@@ -151,7 +151,7 @@ const persistArticle = async (status) => {
         feedbackType.value = 'warning';
         return null;
     }
-    if (!validateDraft()) {
+    if (status === 'PUBLISHED' && !validatePublishDraft()) {
         statusMessage.value = `${actionText}前请补齐必要信息`;
         feedbackType.value = 'warning';
         return null;
@@ -245,7 +245,7 @@ onMounted(async () => {
     <SiteHeader />
     <main class="page-shell editor-layout">
         <section class="editor-main">
-            <div class="section-heading">
+            <div class="section-heading editor-heading">
                 <div>
                     <p class="eyebrow">创作中心</p>
                     <h1>{{ isEditMode ? '编辑文章' : '发布文章' }}</h1>
@@ -262,6 +262,10 @@ onMounted(async () => {
                     </button>
                 </div>
             </div>
+
+            <p v-if="statusMessage" :class="['editor-action-status', feedbackType]">
+                {{ statusMessage }}
+            </p>
 
             <p v-if="pageLoading" class="loading-text">正在加载文章内容...</p>
 
@@ -302,9 +306,6 @@ onMounted(async () => {
                 <span :class="['editor-dirty', hasUnsavedChanges ? 'warning' : 'saved']">
                     {{ hasUnsavedChanges ? '未保存改动' : '内容已同步到当前编辑态' }}
                 </span>
-                <span v-if="statusMessage" :class="['editor-status', feedbackType]">
-                    {{ statusMessage }}
-                </span>
             </div>
             <ul v-if="validationErrors.length" class="error-list">
                 <li v-for="error in validationErrors" :key="error">{{ error }}</li>
@@ -316,11 +317,16 @@ onMounted(async () => {
                 :content="draft.content"
                 target-selector=".rich-markdown-editor .ProseMirror"
             />
-            <section class="side-section">
-                <p class="eyebrow">分类</p>
-                <select v-model="draft.category">
-                    <option v-for="topic in categoryOptions" :key="topic" :value="topic">{{ topic }}</option>
-                </select>
+            <section class="side-section editor-category-section">
+                <div class="editor-category-head">
+                    <p class="eyebrow">分类</p>
+                    <span class="editor-category-value">{{ draft.category || '请选择分类' }}</span>
+                </div>
+                <div class="editor-category-select-wrap">
+                    <select v-model="draft.category" class="editor-category-select">
+                        <option v-for="topic in categoryOptions" :key="topic" :value="topic">{{ topic }}</option>
+                    </select>
+                </div>
             </section>
             <section class="side-section">
                 <p class="eyebrow">标签</p>

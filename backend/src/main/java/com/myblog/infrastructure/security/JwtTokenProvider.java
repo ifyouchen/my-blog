@@ -77,6 +77,11 @@ public class JwtTokenProvider {
             if (parts.length != 3) {
                 throw new ApplicationException(ErrorCode.UNAUTHORIZED, "Token格式错误");
             }
+            // 验证算法字段，防止algorithm confusion攻击
+            String headerJson = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
+            if (!headerJson.contains("\"HS256\"")) {
+                throw new ApplicationException(ErrorCode.UNAUTHORIZED, "不支持的Token算法");
+            }
             String expectedSignature = sign(parts[0] + "." + parts[1]);
             if (!expectedSignature.equals(parts[2])) {
                 throw new ApplicationException(ErrorCode.UNAUTHORIZED, "Token签名无效");

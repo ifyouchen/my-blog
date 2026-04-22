@@ -54,13 +54,11 @@ public class ArticleFavorite {
     public void delete() {
         this.deletedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.version = this.version + 1;
     }
 
     public void reactivate() {
         this.deletedAt = null;
         this.updatedAt = LocalDateTime.now();
-        this.version = this.version + 1;
     }
 
     public boolean isDeleted() {

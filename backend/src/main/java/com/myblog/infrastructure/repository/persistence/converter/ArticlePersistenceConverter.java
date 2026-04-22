@@ -47,7 +47,8 @@ public final class ArticlePersistenceConverter {
             intValue(articleDO.getCommentCount()),
             articleDO.getPublishedAt(),
             articleDO.getCreatedAt(),
-            articleDO.getUpdatedAt()
+            articleDO.getUpdatedAt(),
+            articleDO.getVersion()
         );
     }
 
@@ -74,6 +75,7 @@ public final class ArticlePersistenceConverter {
         articleDO.setPublishedAt(article.getPublishedAt());
         articleDO.setCreatedAt(article.getCreatedAt());
         articleDO.setUpdatedAt(article.getUpdatedAt());
+        articleDO.setVersion(article.getVersion());
         return articleDO;
     }
 
