@@ -133,7 +133,8 @@ class ArticleAppServiceTest {
             0,
             status == ArticleStatus.PUBLISHED ? LocalDateTime.now() : null,
             LocalDateTime.now(),
-            LocalDateTime.now()
+            LocalDateTime.now(),
+            0
         );
     }
 

@@ -10,7 +10,11 @@
       "Bash(curl -s http://localhost:8080/api/articles/501)",
       "Bash(pkill -f \"spring-boot:run\")",
       "Bash(taskkill //F //IM java.exe)",
-      "Bash(pkill -f \"vite\")"
+      "Bash(pkill -f \"vite\")",
+      "Bash(mvn spring-boot:run -q -DskipTests)",
+      "Bash(curl -s http://localhost:8080/api/articles/1 -o /dev/null -w \"%{http_code}\")",
+      "Bash(java -jar target/*.jar --server.port=8080)",
+      "Bash(mvn spring-boot:run -Dmaven.test.skip=true -q)"
     ]
   }
 }

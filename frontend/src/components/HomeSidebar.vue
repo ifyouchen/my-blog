@@ -1,11 +1,15 @@
 <script setup>
-import { inject } from 'vue';
+import { inject, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useRouter } from 'vue-router';
-import { authors, specials } from '@/data/home';
+import { getRecommendedColumnsApi } from '@/api/columns';
+import { getAuthorRankingsApi } from '@/api/rankings';
 
 const router = useRouter();
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const specials = ref([]);
+const authors = ref([]);
+const loading = ref(false);
 
 const writeArticle = () => {
     const canContinue = loginModal.requireLogin(() => router.push('/editor/new'), {
@@ -17,6 +21,25 @@ const writeArticle = () => {
         router.push('/editor/new');
     }
 };
+
+const fetchSidebarData = async () => {
+    loading.value = true;
+    try {
+        const [columnItems, authorItems] = await Promise.all([
+            getRecommendedColumnsApi(3),
+            getAuthorRankingsApi(3)
+        ]);
+        specials.value = columnItems || [];
+        authors.value = authorItems || [];
+    } catch (error) {
+        specials.value = [];
+        authors.value = [];
+    } finally {
+        loading.value = false;
+    }
+};
+
+onMounted(fetchSidebarData);
 </script>
 
 <template>
@@ -31,13 +54,14 @@ const writeArticle = () => {
             <div class="special-list">
                 <RouterLink
                     v-for="special in specials"
-                    :key="special.title"
+                    :key="special.id"
                     class="special-item"
-                    to="/columns"
+                    :to="`/columns/${special.id}`"
                 >
-                    <img :src="special.image" :alt="special.alt">
+                    <img :src="special.coverUrl" :alt="`${special.title} 封面`">
                     <span>{{ special.title }}</span>
                 </RouterLink>
+                <p v-if="!loading && !specials.length" class="sidebar-empty">专栏内容正在整理中。</p>
             </div>
         </section>
 
@@ -49,13 +73,16 @@ const writeArticle = () => {
                 </div>
             </div>
             <ol class="author-rank">
-                <li v-for="(author, index) in authors" :key="author.name">
+                <li v-for="(author, index) in authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
-                    <img :src="author.avatar" alt="作者头像">
+                    <img :src="author.user.avatar" alt="作者头像">
                     <div>
-                        <strong>{{ author.name }}</strong>
-                        <span>{{ author.title }}</span>
+                        <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
+                        <span>{{ author.totalViewCount }} 阅读 · {{ author.articleCount }} 篇</span>
                     </div>
+                </li>
+                <li v-if="!loading && !authors.length" class="sidebar-empty">
+                    作者榜正在生成中。
                 </li>
             </ol>
         </section>
@@ -68,3 +95,16 @@ const writeArticle = () => {
         </section>
     </aside>
 </template>
+
+<style scoped>
+.sidebar-empty {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.author-rank a {
+    color: var(--text);
+    text-decoration: none;
+}
+</style>

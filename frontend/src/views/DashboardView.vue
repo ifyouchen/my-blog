@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import { getMyFavoritesApi } from '@/api/favorites';
-import { deleteArticleApi, getMyArticlesApi } from '@/api/articles';
+import { deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleApi } from '@/api/articles';
 import { useSession } from '@/stores/session';
 
 const route = useRoute();
@@ -18,9 +18,23 @@ const pageSize = 10;
 const articles = ref([]);
 const favorites = ref([]);
 const total = ref(0);
+const overview = ref({
+    totalCount: 0,
+    draftCount: 0,
+    publishedCount: 0,
+    offlineCount: 0,
+    deletedCount: 0,
+    totalViewCount: 0,
+    totalLikeCount: 0,
+    totalFavoriteCount: 0,
+    totalCommentCount: 0,
+    latestArticleTitle: '',
+    latestUpdatedAt: ''
+});
 const isLoading = ref(false);
 const loadError = ref('');
 const feedback = ref('');
+const actionLoadingId = ref(null);
 const jumpPage = ref(String(currentPage.value));
 
 const statusOptions = [
@@ -63,6 +77,42 @@ const fetchArticles = async () => {
     }
 };
 
+const fetchOverview = async () => {
+    if (!isLoggedIn.value || isFavorites.value) {
+        overview.value = {
+            totalCount: 0,
+            draftCount: 0,
+            publishedCount: 0,
+            offlineCount: 0,
+            deletedCount: 0,
+            totalViewCount: 0,
+            totalLikeCount: 0,
+            totalFavoriteCount: 0,
+            totalCommentCount: 0,
+            latestArticleTitle: '',
+            latestUpdatedAt: ''
+        };
+        return;
+    }
+    try {
+        overview.value = await getMyArticleOverviewApi();
+    } catch (error) {
+        overview.value = {
+            totalCount: 0,
+            draftCount: 0,
+            publishedCount: 0,
+            offlineCount: 0,
+            deletedCount: 0,
+            totalViewCount: 0,
+            totalLikeCount: 0,
+            totalFavoriteCount: 0,
+            totalCommentCount: 0,
+            latestArticleTitle: '',
+            latestUpdatedAt: ''
+        };
+    }
+};
+
 const fetchFavorites = async () => {
     isLoading.value = true;
     loadError.value = '';
@@ -91,7 +141,7 @@ const fetchCurrentTab = async () => {
         await fetchFavorites();
         return;
     }
-    await fetchArticles();
+    await Promise.all([fetchArticles(), fetchOverview()]);
 };
 
 const changePage = (page) => {
@@ -113,6 +163,27 @@ const editArticle = (articleId) => {
     router.push(`/editor/${articleId}`);
 };
 
+const publishOrOfflineArticle = async (article, nextStatus) => {
+    actionLoadingId.value = article.id;
+    feedback.value = '';
+    try {
+        await updateArticleApi(article.id, {
+            title: article.title,
+            summary: article.summary,
+            content: article.rawContent,
+            coverUrl: article.coverUrl,
+            category: article.category,
+            tags: article.tags
+        }, nextStatus);
+        feedback.value = nextStatus === 'PUBLISHED' ? '文章已发布' : '文章已下架';
+        await Promise.all([fetchArticles(), fetchOverview()]);
+    } catch (error) {
+        feedback.value = error.message || (nextStatus === 'PUBLISHED' ? '发布失败' : '下架失败');
+    } finally {
+        actionLoadingId.value = null;
+    }
+};
+
 const removeArticle = async (articleId) => {
     if (!confirm('确定删除这篇文章吗？')) {
         return;
@@ -120,11 +191,25 @@ const removeArticle = async (articleId) => {
     try {
         await deleteArticleApi(articleId);
         feedback.value = '文章已删除';
-        await fetchCurrentTab();
+        await Promise.all([fetchCurrentTab(), fetchOverview()]);
     } catch (error) {
         feedback.value = error.message || '删除失败';
     }
 };
+
+const overviewCards = computed(() => ([
+    { label: '全部文章', value: overview.value.totalCount, hint: '当前账号下的全部内容' },
+    { label: '草稿', value: overview.value.draftCount, hint: '还没发布的创作内容' },
+    { label: '已发布', value: overview.value.publishedCount, hint: '正在对外展示的文章' },
+    { label: '已下架', value: overview.value.offlineCount, hint: '可随时重新发布的文章' }
+]));
+
+const metricCards = computed(() => ([
+    { label: '总阅读', value: overview.value.totalViewCount, hint: '累计阅读量' },
+    { label: '总获赞', value: overview.value.totalLikeCount, hint: '累计点赞数' },
+    { label: '总收藏', value: overview.value.totalFavoriteCount, hint: '累计收藏数' },
+    { label: '总评论', value: overview.value.totalCommentCount, hint: '累计评论互动' }
+]));
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const pageStart = computed(() => {
@@ -212,6 +297,33 @@ watch(isLoggedIn, () => {
                 <RouterLink v-if="!isFavorites" class="primary-action" to="/editor/new">新建文章</RouterLink>
             </div>
 
+            <section v-if="!isFavorites" class="creator-overview">
+                <div class="creator-overview-grid">
+                    <article v-for="card in overviewCards" :key="card.label" class="creator-overview-card">
+                        <span>{{ card.label }}</span>
+                        <strong>{{ card.value }}</strong>
+                        <p>{{ card.hint }}</p>
+                    </article>
+                </div>
+                <div class="creator-overview-grid secondary">
+                    <article v-for="card in metricCards" :key="card.label" class="creator-overview-card secondary">
+                        <span>{{ card.label }}</span>
+                        <strong>{{ card.value }}</strong>
+                        <p>{{ card.hint }}</p>
+                    </article>
+                </div>
+                <div class="creator-overview-latest">
+                    <div>
+                        <p class="eyebrow">最近修改</p>
+                        <strong>{{ overview.latestArticleTitle || '还没有内容更新' }}</strong>
+                        <span>{{ overview.latestUpdatedAt || '创建或编辑一篇文章后，这里会显示最近的更新时间。' }}</span>
+                    </div>
+                    <RouterLink v-if="overview.draftCount > 0" class="creator-overview-link" to="/dashboard/articles?status=DRAFT">
+                        继续处理草稿
+                    </RouterLink>
+                </div>
+            </section>
+
             <div v-if="!isFavorites" class="dashboard-toolbar">
                 <div class="status-tabs">
                     <button
@@ -257,6 +369,7 @@ watch(isLoggedIn, () => {
                             <th>收藏</th>
                             <th>评论</th>
                             <th>更新时间</th>
+                            <th>状态操作</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -268,10 +381,31 @@ watch(isLoggedIn, () => {
                             <td>{{ article.likeCount }}</td>
                             <td>{{ article.favoriteCount }}</td>
                             <td>{{ article.commentCount }}</td>
-                            <td>{{ article.publishedText }}</td>
+                            <td>{{ article.updatedText }}</td>
+                            <td class="table-actions">
+                                <button
+                                    v-if="article.status === 'PUBLISHED'"
+                                    type="button"
+                                    :disabled="actionLoadingId === article.id"
+                                    @click="publishOrOfflineArticle(article, 'OFFLINE')"
+                                >
+                                    {{ actionLoadingId === article.id ? '处理中...' : '下架' }}
+                                </button>
+                                <button
+                                    v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE'"
+                                    type="button"
+                                    :disabled="actionLoadingId === article.id"
+                                    @click="publishOrOfflineArticle(article, 'PUBLISHED')"
+                                >
+                                    {{ actionLoadingId === article.id ? '处理中...' : '发布' }}
+                                </button>
+                                <span v-else class="table-action-muted">不可操作</span>
+                            </td>
                             <td class="table-actions">
                                 <RouterLink :to="`/articles/${article.id}`">查看</RouterLink>
-                                <button type="button" @click="editArticle(article.id)">编辑</button>
+                                <button v-if="article.status !== 'DELETED'" type="button" @click="editArticle(article.id)">
+                                    {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
+                                </button>
                                 <button type="button" class="danger-link" @click="removeArticle(article.id)">删除</button>
                             </td>
                         </tr>
@@ -323,6 +457,72 @@ watch(isLoggedIn, () => {
 </template>
 
 <style scoped>
+.creator-overview {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.creator-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.creator-overview-card,
+.creator-overview-latest {
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.creator-overview-card span,
+.creator-overview-latest span {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.creator-overview-card strong,
+.creator-overview-latest strong {
+    color: var(--text);
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.creator-overview-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.creator-overview-grid.secondary .creator-overview-card strong {
+    font-size: 20px;
+}
+
+.creator-overview-latest {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.creator-overview-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 14px;
+    color: var(--brand-strong);
+    background: rgba(15, 143, 117, 0.08);
+    border: 1px solid rgba(15, 143, 117, 0.16);
+    border-radius: 8px;
+}
+
 .dashboard-toolbar {
     display: grid;
     gap: 14px;
@@ -360,6 +560,11 @@ watch(isLoggedIn, () => {
     border: 0;
     background: transparent;
     color: var(--brand);
+}
+
+.table-action-muted {
+    color: var(--muted);
+    font-size: 13px;
 }
 
 .danger-link {
@@ -436,6 +641,15 @@ watch(isLoggedIn, () => {
 }
 
 @media (max-width: 760px) {
+    .creator-overview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .creator-overview-latest {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
     .dashboard-pagination-jump {
         width: 100%;
     }
@@ -443,6 +657,12 @@ watch(isLoggedIn, () => {
     .dashboard-pagination-jump input,
     .dashboard-pagination-jump button {
         width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .creator-overview-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>

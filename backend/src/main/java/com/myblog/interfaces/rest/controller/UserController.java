@@ -1,7 +1,9 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.MyArticleOverviewDTO;
 import com.myblog.application.dto.UserProfileDTO;
+import com.myblog.application.service.FollowAppService;
 import com.myblog.application.service.UserAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.UpdateProfileRequest;
@@ -17,10 +19,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import javax.validation.Valid;
 import java.util.ArrayList;
@@ -38,6 +42,7 @@ import java.util.List;
 public class UserController {
 
     private final UserAppService userAppService;
+    private final FollowAppService followAppService;
     private final RestDtoMapper restDtoMapper;
 
     /**
@@ -46,8 +51,11 @@ public class UserController {
      * @param userAppService 用户应用服务
      * @param restDtoMapper DTO 转换器
      */
-    public UserController(UserAppService userAppService, RestDtoMapper restDtoMapper) {
+    public UserController(UserAppService userAppService,
+                          FollowAppService followAppService,
+                          RestDtoMapper restDtoMapper) {
         this.userAppService = userAppService;
+        this.followAppService = followAppService;
         this.restDtoMapper = restDtoMapper;
     }
 
@@ -59,7 +67,7 @@ public class UserController {
      */
     @GetMapping("/{id}")
     public Result<UserProfileResponse> getUserProfile(@PathVariable Long id) {
-        return Result.success(restDtoMapper.toResponse(userAppService.getUserProfile(id)));
+        return Result.success(restDtoMapper.toResponse(userAppService.getUserProfile(id, AuthContext.getRequiredUserId())));
     }
 
     /**
@@ -111,6 +119,89 @@ public class UserController {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
         return Result.success(toArticlePage(userAppService.pageMyArticles(userId, page, pageSize, status)));
+    }
+
+    /**
+     * 获取当前用户创作概览。
+     *
+     * @return 创作概览
+     */
+    @GetMapping("/me/articles/overview")
+    public Result<MyArticleOverviewDTO> getMyArticleOverview() {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        return Result.success(userAppService.getMyArticleOverview(userId));
+    }
+
+    /**
+     * 关注作者。
+     *
+     * @param id 作者 ID
+     * @return 成功响应
+     */
+    @PostMapping("/{id}/follow")
+    public Result<Void> followUser(@PathVariable Long id) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        followAppService.followUser(id, userId);
+        return Result.success();
+    }
+
+    /**
+     * 取消关注作者。
+     *
+     * @param id 作者 ID
+     * @return 成功响应
+     */
+    @DeleteMapping("/{id}/follow")
+    public Result<Void> unfollowUser(@PathVariable Long id) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        followAppService.unfollowUser(id, userId);
+        return Result.success();
+    }
+
+    /**
+     * 获取当前用户关注作者。
+     *
+     * @return 作者列表
+     */
+    @GetMapping("/me/following")
+    public Result<List<UserResponse>> getMyFollowingUsers() {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        List<UserResponse> items = new ArrayList<UserResponse>();
+        for (com.myblog.application.dto.UserDTO userDTO : followAppService.listFollowingUsers(userId)) {
+            items.add(restDtoMapper.toResponse(userDTO));
+        }
+        return Result.success(items);
+    }
+
+    /**
+     * 获取当前用户关注流。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param sort 排序方式
+     * @return 关注流
+     */
+    @GetMapping("/me/feed")
+    public Result<PageResult<ArticleResponse>> getMyFollowingFeed(@RequestParam(defaultValue = "1") int page,
+                                                                  @RequestParam(defaultValue = "10") int pageSize,
+                                                                  @RequestParam(defaultValue = "latest") String sort) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        return Result.success(toArticlePage(followAppService.pageFollowingFeed(userId, page, pageSize, sort)));
     }
 
     /**

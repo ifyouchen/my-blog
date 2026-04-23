@@ -19,9 +19,13 @@ public class Comment {
     private CommentId id;
     private ArticleId articleId;
     private UserId userId;
+    private CommentId rootCommentId;
     private CommentId parentId;
     private String content;
     private CommentStatus status;
+    private Integer likeCount;
+    private Boolean pinned;
+    private LocalDateTime pinnedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -34,11 +38,13 @@ public class Comment {
      * @param id 评论 ID
      * @param articleId 文章 ID
      * @param userId 用户 ID
+     * @param rootCommentId 根评论 ID
      * @param parentId 父评论 ID
      * @param content 评论内容
      * @return 评论聚合根
      */
-    public static Comment create(Long id, ArticleId articleId, UserId userId, Long parentId, String content) {
+    public static Comment create(Long id, ArticleId articleId, UserId userId, Long rootCommentId,
+                                 Long parentId, String content) {
         if (articleId == null) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "文章 ID 不能为空");
         }
@@ -55,9 +61,13 @@ public class Comment {
         comment.id = new CommentId(id);
         comment.articleId = articleId;
         comment.userId = userId;
+        comment.rootCommentId = rootCommentId != null && rootCommentId > 0 ? new CommentId(rootCommentId) : comment.id;
         comment.parentId = parentId != null && parentId > 0 ? new CommentId(parentId) : null;
         comment.content = content.trim();
         comment.status = CommentStatus.PUBLISHED;
+        comment.likeCount = 0;
+        comment.pinned = Boolean.FALSE;
+        comment.pinnedAt = null;
         comment.createdAt = LocalDateTime.now();
         comment.updatedAt = comment.createdAt;
         return comment;
@@ -69,23 +79,32 @@ public class Comment {
      * @param id 评论 ID
      * @param articleId 文章 ID
      * @param userId 用户 ID
+     * @param rootCommentId 根评论 ID
      * @param parentId 父评论 ID
      * @param content 评论内容
      * @param status 评论状态
+     * @param likeCount 点赞数
+     * @param pinned 是否置顶
+     * @param pinnedAt 置顶时间
      * @param createdAt 创建时间
      * @param updatedAt 更新时间
      * @return 评论聚合根
      */
-    public static Comment restore(Long id, ArticleId articleId, UserId userId, Long parentId,
-                                 String content, CommentStatus status,
+    public static Comment restore(Long id, ArticleId articleId, UserId userId, Long rootCommentId,
+                                 Long parentId, String content, CommentStatus status,
+                                 Integer likeCount, Boolean pinned, LocalDateTime pinnedAt,
                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
         Comment comment = new Comment();
         comment.id = new CommentId(id);
         comment.articleId = articleId;
         comment.userId = userId;
+        comment.rootCommentId = rootCommentId != null && rootCommentId > 0 ? new CommentId(rootCommentId) : comment.id;
         comment.parentId = parentId != null && parentId > 0 ? new CommentId(parentId) : null;
         comment.content = content;
         comment.status = status;
+        comment.likeCount = likeCount == null ? 0 : likeCount;
+        comment.pinned = pinned != null && pinned;
+        comment.pinnedAt = pinnedAt;
         comment.createdAt = createdAt;
         comment.updatedAt = updatedAt;
         return comment;
@@ -99,6 +118,46 @@ public class Comment {
             throw new DomainException(ErrorCode.CONFLICT, "评论已删除");
         }
         this.status = CommentStatus.DELETED;
+        this.pinned = Boolean.FALSE;
+        this.pinnedAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 点赞评论。
+     */
+    public void increaseLikeCount() {
+        this.likeCount = this.likeCount == null ? 1 : this.likeCount + 1;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 取消点赞。
+     */
+    public void decreaseLikeCount() {
+        int currentLikeCount = this.likeCount == null ? 0 : this.likeCount;
+        this.likeCount = currentLikeCount > 0 ? currentLikeCount - 1 : 0;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 置顶评论。
+     */
+    public void pin() {
+        if (!isRootComment()) {
+            throw new DomainException(ErrorCode.CONFLICT, "仅一级评论支持置顶");
+        }
+        this.pinned = Boolean.TRUE;
+        this.pinnedAt = LocalDateTime.now();
+        this.updatedAt = this.pinnedAt;
+    }
+
+    /**
+     * 取消置顶评论。
+     */
+    public void unpin() {
+        this.pinned = Boolean.FALSE;
+        this.pinnedAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -148,6 +207,15 @@ public class Comment {
     }
 
     /**
+     * 获取根评论 ID。
+     *
+     * @return 根评论 ID
+     */
+    public Long getRootCommentId() {
+        return rootCommentId != null ? rootCommentId.getValue() : null;
+    }
+
+    /**
      * 获取评论内容。
      *
      * @return 评论内容
@@ -166,6 +234,33 @@ public class Comment {
     }
 
     /**
+     * 获取点赞数。
+     *
+     * @return 点赞数
+     */
+    public Integer getLikeCount() {
+        return likeCount == null ? 0 : likeCount;
+    }
+
+    /**
+     * 是否置顶。
+     *
+     * @return 是否置顶
+     */
+    public boolean isPinned() {
+        return Boolean.TRUE.equals(pinned);
+    }
+
+    /**
+     * 获取置顶时间。
+     *
+     * @return 置顶时间
+     */
+    public LocalDateTime getPinnedAt() {
+        return pinnedAt;
+    }
+
+    /**
      * 获取创建时间。
      *
      * @return 创建时间
@@ -181,6 +276,15 @@ public class Comment {
      */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    /**
+     * 是否一级评论。
+     *
+     * @return 是否一级评论
+     */
+    public boolean isRootComment() {
+        return parentId == null;
     }
 
     public enum CommentStatus {

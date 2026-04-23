@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.ColumnSubscriptionMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.ColumnSubscriptionDO">
+        <id column="id" property="id"/>
+        <result column="column_id" property="columnId"/>
+        <result column="user_id" property="userId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, column_id, user_id, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectByColumnAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column_subscription
+        WHERE column_id = #{columnId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectAnyByColumnAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column_subscription
+        WHERE column_id = #{columnId}
+        AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="countByColumnAndUser" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_column_subscription
+        WHERE column_id = #{columnId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 3000) + 1
+        FROM blog_column_subscription
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnSubscriptionDO">
+        INSERT INTO blog_column_subscription (
+            id, column_id, user_id, created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{id}, #{columnId}, #{userId}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnSubscriptionDO">
+        UPDATE blog_column_subscription
+        SET deleted_at = #{deletedAt},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+    </update>
+</mapper>

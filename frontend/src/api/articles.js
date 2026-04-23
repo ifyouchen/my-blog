@@ -53,6 +53,10 @@ export const getMyArticlesApi = async ({ page = 1, pageSize = 10, status = '' } 
     };
 };
 
+export const getMyArticleOverviewApi = async () => {
+    return await request('/users/me/articles/overview');
+};
+
 export const getUserArticlesApi = async (userId, { page = 1, pageSize = 10 } = {}) => {
     const data = await request(`/users/${userId}/articles?page=${page}&pageSize=${pageSize}`);
     return {

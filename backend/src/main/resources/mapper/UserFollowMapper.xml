@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.UserFollowMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.UserFollowDO">
+        <id column="id" property="id"/>
+        <result column="follower_user_id" property="followerUserId"/>
+        <result column="following_user_id" property="followingUserId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, follower_user_id, following_user_id, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectByUsers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user_follow
+        WHERE follower_user_id = #{followerUserId}
+        AND following_user_id = #{followingUserId}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectAnyByUsers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user_follow
+        WHERE follower_user_id = #{followerUserId}
+        AND following_user_id = #{followingUserId}
+        LIMIT 1
+    </select>
+
+    <select id="countByUsers" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user_follow
+        WHERE follower_user_id = #{followerUserId}
+        AND following_user_id = #{followingUserId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countFollowers" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user_follow
+        WHERE following_user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countFollowing" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user_follow
+        WHERE follower_user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectFollowingUserIds" resultType="long">
+        SELECT following_user_id
+        FROM blog_user_follow
+        WHERE follower_user_id = #{followerUserId}
+        AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 1000) + 1
+        FROM blog_user_follow
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserFollowDO">
+        INSERT INTO blog_user_follow (
+            id, follower_user_id, following_user_id, created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{id}, #{followerUserId}, #{followingUserId}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserFollowDO">
+        UPDATE blog_user_follow
+        SET deleted_at = #{deletedAt},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+    </update>
+</mapper>

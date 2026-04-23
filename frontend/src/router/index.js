@@ -2,11 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router';
 import AdminView from '@/views/AdminView.vue';
 import ArticleDetailView from '@/views/ArticleDetailView.vue';
 import AuthView from '@/views/AuthView.vue';
-import CollectionView from '@/views/CollectionView.vue';
+import ColumnDetailView from '@/views/ColumnDetailView.vue';
+import ColumnsView from '@/views/ColumnsView.vue';
 import DashboardView from '@/views/DashboardView.vue';
 import EditorView from '@/views/EditorView.vue';
+import FollowingView from '@/views/FollowingView.vue';
 import HomeView from '@/views/HomeView.vue';
 import ProfileSettingsView from '@/views/ProfileSettingsView.vue';
+import RankingView from '@/views/RankingView.vue';
 import SearchView from '@/views/SearchView.vue';
 import UserProfileView from '@/views/UserProfileView.vue';
 
@@ -54,7 +57,7 @@ const routes = [
     {
         path: '/following',
         name: 'following',
-        component: CollectionView,
+        component: FollowingView,
         meta: {
             title: '关注'
         }
@@ -62,15 +65,23 @@ const routes = [
     {
         path: '/columns',
         name: 'columns',
-        component: CollectionView,
+        component: ColumnsView,
         meta: {
             title: '专栏'
         }
     },
     {
+        path: '/columns/:id',
+        name: 'columnDetail',
+        component: ColumnDetailView,
+        meta: {
+            title: '专栏详情'
+        }
+    },
+    {
         path: '/ranking',
         name: 'ranking',
-        component: CollectionView,
+        component: RankingView,
         meta: {
             title: '排行榜'
         }

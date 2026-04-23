@@ -42,6 +42,7 @@ const liked = ref(false);
 const favorited = ref(false);
 const likeCount = ref(0);
 const favoriteCount = ref(0);
+const commentCount = ref(0);
 const feedback = ref('');
 const showBackToTop = ref(false);
 
@@ -51,12 +52,24 @@ const syncArticleState = () => {
         favorited.value = false;
         likeCount.value = 0;
         favoriteCount.value = 0;
+        commentCount.value = 0;
         feedback.value = '';
         return;
     }
     likeCount.value = article.value.likeCount || 0;
     favoriteCount.value = article.value.favoriteCount || 0;
+    commentCount.value = article.value.commentCount || 0;
     feedback.value = '';
+};
+
+const handleCommentCountChange = (delta) => {
+    commentCount.value = Math.max(0, commentCount.value + delta);
+    if (remoteArticle.value) {
+        remoteArticle.value = {
+            ...remoteArticle.value,
+            commentCount: commentCount.value
+        };
+    }
 };
 
 const fetchArticle = async () => {
@@ -207,7 +220,7 @@ onUnmounted(() => {
                     <img :src="article.author.avatar" alt="作者头像">
                     <div>
                         <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
-                        <span>{{ article.viewCount }} 阅读 · {{ likeCount }} 赞 · {{ article.commentCount }} 评论</span>
+                        <span>{{ article.viewCount }} 阅读 · {{ likeCount }} 赞 · {{ commentCount }} 评论</span>
                     </div>
                 </RouterLink>
 
@@ -226,6 +239,8 @@ onUnmounted(() => {
                     <CommentList
                         v-if="remoteArticle"
                         :article-id="article.id"
+                        :initial-count="commentCount"
+                        @count-change="handleCommentCountChange"
                     />
                     <div v-else class="comment-placeholder">
                         <p>登录后可查看和发表评论</p>

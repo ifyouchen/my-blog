@@ -1,14 +1,15 @@
 <script setup>
-import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { createArticleApi, getEditableArticleApi, updateArticleApi } from '@/api/articles';
 import { getCategoriesApi, getTagsApi } from '@/api/admin';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
+import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import RichMarkdownEditor from '@/components/RichMarkdownEditor.vue';
 import { topics } from '@/data/home';
 
-const DRAFT_KEY = 'my-blog-editor-draft';
+const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 
 const defaultDraft = {
     title: '',
@@ -30,8 +31,12 @@ const coverOptions = [
 const route = useRoute();
 const router = useRouter();
 const loginModal = inject('loginModal', { requireLogin: () => false });
+
 const isEditMode = computed(() => route.name === 'editorEdit');
-const draft = reactive(loadDraft());
+const editorArticleId = computed(() => (isEditMode.value ? String(route.params.id || '') : 'new'));
+const storageKey = computed(() => `${DRAFT_STORAGE_PREFIX}:${editorArticleId.value}`);
+
+const draft = reactive({ ...defaultDraft });
 const statusMessage = ref('');
 const validationErrors = ref([]);
 const publishLoading = ref(false);
@@ -41,17 +46,18 @@ const categoryOptions = ref(topics.slice(1));
 const tagOptions = ref([]);
 const pageLoading = ref(false);
 const lastSavedSnapshot = ref('');
+const previewVisible = ref(false);
+const recoveryInfo = ref(null);
+const hydratingDraft = ref(false);
+const allowRouteLeave = ref(false);
 
 const wordCount = computed(() => draft.content.trim().length);
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
+const previewTags = computed(() => parseTags(draft.tags));
+const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编辑内容' : '预览待发布内容'));
 
-function loadDraft() {
-    try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        return raw ? { ...defaultDraft, ...JSON.parse(raw) } : { ...defaultDraft };
-    } catch (error) {
-        return { ...defaultDraft };
-    }
+function createDefaultDraft() {
+    return { ...defaultDraft };
 }
 
 function createDraftSnapshot(currentDraft) {
@@ -65,11 +71,84 @@ function createDraftSnapshot(currentDraft) {
     });
 }
 
+function parseTags(sourceTags) {
+    const source = Array.isArray(sourceTags) ? sourceTags : String(sourceTags || '').split(',');
+    return source.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function applyDraft(source = {}) {
+    draft.title = source.title || '';
+    draft.summary = source.summary || '';
+    draft.content = source.content || '';
+    draft.category = source.category || categoryOptions.value[0] || '';
+    draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
+    draft.coverUrl = source.coverUrl || defaultDraft.coverUrl;
+}
+
 function syncSavedSnapshot() {
     lastSavedSnapshot.value = createDraftSnapshot(draft);
 }
 
-const validatePublishDraft = () => {
+function readStoredDraft(targetKey) {
+    try {
+        const raw = localStorage.getItem(targetKey);
+        return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function clearStoredDraft() {
+    localStorage.removeItem(storageKey.value);
+}
+
+function persistLocalDraft() {
+    if (hydratingDraft.value) {
+        return;
+    }
+    localStorage.setItem(storageKey.value, JSON.stringify({
+        ...draft,
+        savedAt: new Date().toISOString()
+    }));
+}
+
+function formatSavedAt(savedAt) {
+    if (!savedAt) {
+        return '刚刚';
+    }
+    const date = new Date(savedAt);
+    if (Number.isNaN(date.getTime())) {
+        return savedAt;
+    }
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function buildDraftSourceLabel() {
+    return isEditMode.value ? '本地编辑稿' : '本地草稿';
+}
+
+function restoreRecoveredDraft() {
+    if (!recoveryInfo.value?.draft) {
+        return;
+    }
+    hydratingDraft.value = true;
+    applyDraft(recoveryInfo.value.draft);
+    hydratingDraft.value = false;
+    statusMessage.value = `已恢复${buildDraftSourceLabel()}，保存时间 ${formatSavedAt(recoveryInfo.value.savedAt)}`;
+    feedbackType.value = 'success';
+    recoveryInfo.value = null;
+}
+
+function discardRecoveredDraft() {
+    if (recoveryInfo.value?.storageKey) {
+        localStorage.removeItem(recoveryInfo.value.storageKey);
+    }
+    recoveryInfo.value = null;
+    statusMessage.value = isEditMode.value ? '已使用线上版本继续编辑' : '已清空上次未发布内容';
+    feedbackType.value = 'info';
+}
+
+function validatePublishDraft() {
     const errors = [];
     if (!draft.title.trim()) {
         errors.push('标题不能为空');
@@ -85,18 +164,9 @@ const validatePublishDraft = () => {
     }
     validationErrors.value = errors;
     return errors.length === 0;
-};
+}
 
-const syncDraft = (article) => {
-    draft.title = article.title || '';
-    draft.summary = article.summary || '';
-    draft.content = article.rawContent || '';
-    draft.category = article.category || categoryOptions.value[0] || '';
-    draft.tags = Array.isArray(article.tags) ? article.tags.join(', ') : '';
-    draft.coverUrl = article.coverUrl || defaultDraft.coverUrl;
-};
-
-const fetchMetadata = async () => {
+async function fetchMetadata() {
     try {
         const [categories, tags] = await Promise.all([
             getCategoriesApi(true),
@@ -104,9 +174,6 @@ const fetchMetadata = async () => {
         ]);
         if (categories?.length) {
             categoryOptions.value = categories.map((item) => item.name);
-            if (!draft.category) {
-                draft.category = categoryOptions.value[0];
-            }
         }
         if (tags?.length) {
             tagOptions.value = tags.map((item) => item.name);
@@ -115,28 +182,66 @@ const fetchMetadata = async () => {
         categoryOptions.value = topics.slice(1);
         tagOptions.value = [];
     }
-};
+}
 
-const fetchArticle = async () => {
+async function setupNewDraft() {
+    hydratingDraft.value = true;
+    const storedDraft = readStoredDraft(storageKey.value);
+    if (storedDraft) {
+        applyDraft(storedDraft);
+        statusMessage.value = `已恢复本地草稿，保存时间 ${formatSavedAt(storedDraft.savedAt)}`;
+        feedbackType.value = 'info';
+    } else {
+        applyDraft(createDefaultDraft());
+    }
+    hydratingDraft.value = false;
+    syncSavedSnapshot();
+    recoveryInfo.value = null;
+}
+
+async function fetchArticle() {
     if (!isEditMode.value) {
-        syncSavedSnapshot();
+        await setupNewDraft();
         return;
     }
     pageLoading.value = true;
     try {
         const article = await getEditableArticleApi(route.params.id);
-        syncDraft(article);
-        localStorage.removeItem(DRAFT_KEY);
+        const serverDraft = {
+            title: article.title || '',
+            summary: article.summary || '',
+            content: article.rawContent || '',
+            category: article.category || categoryOptions.value[0] || '',
+            tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
+            coverUrl: article.coverUrl || defaultDraft.coverUrl
+        };
+        const storedDraft = readStoredDraft(storageKey.value);
+
+        hydratingDraft.value = true;
+        applyDraft(serverDraft);
+        hydratingDraft.value = false;
         syncSavedSnapshot();
+
+        if (storedDraft && createDraftSnapshot(storedDraft) !== createDraftSnapshot(serverDraft)) {
+            recoveryInfo.value = {
+                draft: storedDraft,
+                savedAt: storedDraft.savedAt,
+                storageKey: storageKey.value
+            };
+            statusMessage.value = `检测到一份未同步的本地编辑稿，保存时间 ${formatSavedAt(storedDraft.savedAt)}`;
+            feedbackType.value = 'warning';
+        } else {
+            recoveryInfo.value = null;
+        }
     } catch (error) {
         statusMessage.value = error.message || '文章加载失败';
         feedbackType.value = 'error';
     } finally {
         pageLoading.value = false;
     }
-};
+}
 
-const persistArticle = async (status) => {
+async function persistArticle(status) {
     if (publishLoading.value) {
         return null;
     }
@@ -166,11 +271,23 @@ const persistArticle = async (status) => {
         const article = isEditMode.value
             ? await updateArticleApi(route.params.id, draft, status)
             : await createArticleApi(draft, status);
-        syncDraft(article);
+        hydratingDraft.value = true;
+        applyDraft({
+            title: article.title,
+            summary: article.summary,
+            content: article.rawContent,
+            category: article.category,
+            tags: article.tags,
+            coverUrl: article.coverUrl
+        });
+        hydratingDraft.value = false;
         if (!isEditMode.value) {
+            allowRouteLeave.value = true;
             await router.replace(`/editor/${article.id}`);
+            allowRouteLeave.value = false;
         }
-        localStorage.removeItem(DRAFT_KEY);
+        clearStoredDraft();
+        recoveryInfo.value = null;
         if (status === 'PUBLISHED') {
             publishedArticle.value = article;
             statusMessage.value = `发布成功，文章 ID：${article.id}`;
@@ -183,61 +300,90 @@ const persistArticle = async (status) => {
         validationErrors.value = [];
         return article;
     } catch (error) {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        persistLocalDraft();
         statusMessage.value = error.message || `${actionText}失败`;
         feedbackType.value = 'error';
         return null;
     } finally {
         publishLoading.value = false;
     }
-};
+}
 
-const saveDraft = async () => {
+async function saveDraft() {
     await persistArticle('DRAFT');
-};
+}
 
-const publishArticle = async () => {
+async function publishArticle() {
     await persistArticle('PUBLISHED');
-};
+}
 
-const changeCover = () => {
+function changeCover() {
     const currentIndex = coverOptions.indexOf(draft.coverUrl);
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % coverOptions.length : 0;
     draft.coverUrl = coverOptions[nextIndex];
     statusMessage.value = '已更换封面预览';
     feedbackType.value = 'info';
-};
+}
 
-const viewPublishedArticle = () => {
+function viewPublishedArticle() {
     if (publishedArticle.value?.id) {
+        allowRouteLeave.value = true;
         router.push(`/articles/${publishedArticle.value.id}`);
     }
-};
+}
 
-const continueWriting = () => {
+function continueWriting() {
     publishedArticle.value = null;
     statusMessage.value = '可以继续编辑当前内容';
     feedbackType.value = 'info';
-};
+}
+
+function togglePreview() {
+    previewVisible.value = !previewVisible.value;
+}
+
+function confirmDiscardChanges() {
+    return window.confirm('当前还有未保存改动，确定要离开当前编辑页吗？');
+}
+
+function handleBeforeUnload(event) {
+    if (!hasUnsavedChanges.value || allowRouteLeave.value) {
+        return;
+    }
+    event.preventDefault();
+    event.returnValue = '';
+}
 
 watch(
     () => route.params.id,
-    () => {
-        if (isEditMode.value) {
-            fetchArticle();
-            return;
-        }
-        Object.assign(draft, loadDraft());
-        syncSavedSnapshot();
+    async () => {
+        publishedArticle.value = null;
+        previewVisible.value = false;
+        await fetchArticle();
     }
 );
 
+watch(draft, () => {
+    if (!pageLoading.value) {
+        persistLocalDraft();
+    }
+}, { deep: true });
+
+onBeforeRouteLeave(() => {
+    if (allowRouteLeave.value || !hasUnsavedChanges.value) {
+        return true;
+    }
+    return confirmDiscardChanges();
+});
+
 onMounted(async () => {
+    window.addEventListener('beforeunload', handleBeforeUnload);
     await fetchMetadata();
     await fetchArticle();
-    if (!isEditMode.value) {
-        syncSavedSnapshot();
-    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 </script>
 
@@ -251,6 +397,9 @@ onMounted(async () => {
                     <h1>{{ isEditMode ? '编辑文章' : '发布文章' }}</h1>
                 </div>
                 <div class="editor-actions">
+                    <button type="button" :disabled="publishLoading || pageLoading" @click="togglePreview">
+                        {{ previewVisible ? '收起预览' : '发布前预览' }}
+                    </button>
                     <button type="button" :disabled="publishLoading || pageLoading" @click="saveDraft">保存草稿</button>
                     <button
                         class="primary-action"
@@ -266,6 +415,18 @@ onMounted(async () => {
             <p v-if="statusMessage" :class="['editor-action-status', feedbackType]">
                 {{ statusMessage }}
             </p>
+
+            <section v-if="recoveryInfo" class="editor-recovery-banner">
+                <div>
+                    <p class="eyebrow">检测到本地恢复内容</p>
+                    <strong>{{ isEditMode ? '这篇文章有一份未同步的本地编辑稿。' : '你上次有一份未发布草稿。' }}</strong>
+                    <span>保存时间 {{ formatSavedAt(recoveryInfo.savedAt) }}，你可以选择恢复继续写，或丢弃它继续使用当前内容。</span>
+                </div>
+                <div class="editor-recovery-actions">
+                    <button class="primary-action" type="button" @click="restoreRecoveredDraft">恢复本地草稿</button>
+                    <button type="button" @click="discardRecoveredDraft">使用当前版本</button>
+                </div>
+            </section>
 
             <p v-if="pageLoading" class="loading-text">正在加载文章内容...</p>
 
@@ -290,6 +451,27 @@ onMounted(async () => {
                 </div>
             </section>
 
+            <section v-if="previewVisible" class="editor-preview-panel">
+                <div class="editor-preview-head">
+                    <div>
+                        <p class="eyebrow">发布前预览</p>
+                        <h2>{{ draft.title || '未填写标题' }}</h2>
+                    </div>
+                    <div class="editor-preview-meta">
+                        <span>{{ draft.category || '未选择分类' }}</span>
+                        <span>{{ previewPublishedText }}</span>
+                        <span>{{ wordCount }} 字</span>
+                    </div>
+                </div>
+                <p v-if="draft.summary" class="editor-preview-summary">{{ draft.summary }}</p>
+                <div v-if="previewTags.length" class="editor-preview-tags">
+                    <span v-for="tag in previewTags" :key="tag">{{ tag }}</span>
+                </div>
+                <img class="editor-preview-cover" :src="draft.coverUrl" alt="预览封面">
+                <MarkdownPreview v-if="draft.content.trim()" :content="draft.content" />
+                <div v-else class="editor-preview-empty">正文还没有内容，继续往下写就好。</div>
+            </section>
+
             <label class="editor-title">
                 <span class="sr-only">文章标题</span>
                 <input v-model="draft.title" type="text" placeholder="请输入文章标题">
@@ -304,7 +486,7 @@ onMounted(async () => {
             <div class="editor-feedback">
                 <span>正文 {{ wordCount }} 字</span>
                 <span :class="['editor-dirty', hasUnsavedChanges ? 'warning' : 'saved']">
-                    {{ hasUnsavedChanges ? '未保存改动' : '内容已同步到当前编辑态' }}
+                    {{ hasUnsavedChanges ? '未保存改动，离开页面会提醒你' : '内容已同步到当前编辑态' }}
                 </span>
             </div>
             <ul v-if="validationErrors.length" class="error-list">
@@ -340,3 +522,97 @@ onMounted(async () => {
         </aside>
     </main>
 </template>
+
+<style scoped>
+.editor-recovery-banner,
+.editor-preview-panel {
+    display: grid;
+    gap: 14px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.editor-recovery-banner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.editor-recovery-banner strong,
+.editor-preview-head h2 {
+    color: var(--text);
+}
+
+.editor-recovery-banner strong,
+.editor-preview-head h2,
+.editor-preview-summary {
+    margin: 0;
+}
+
+.editor-recovery-banner span,
+.editor-preview-meta span,
+.editor-preview-empty {
+    color: var(--muted);
+    line-height: 1.7;
+}
+
+.editor-recovery-actions,
+.editor-preview-meta,
+.editor-preview-tags {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.editor-preview-head {
+    display: flex;
+    gap: 14px;
+    align-items: end;
+    justify-content: space-between;
+}
+
+.editor-preview-meta span,
+.editor-preview-tags span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 10px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.editor-preview-summary {
+    color: var(--muted);
+    line-height: 1.8;
+}
+
+.editor-preview-cover {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.editor-preview-empty {
+    padding: 22px 18px;
+    background: var(--surface-soft);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+}
+
+@media (max-width: 760px) {
+    .editor-recovery-banner {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-preview-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+</style>

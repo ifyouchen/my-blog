@@ -12,6 +12,9 @@ public class UserProfileDTO {
     private long articleCount;
     private long totalViewCount;
     private long totalLikeCount;
+    private long followerCount;
+    private long followingCount;
+    private boolean following;
 
     /**
      * 获取用户信息。
@@ -83,5 +86,59 @@ public class UserProfileDTO {
      */
     public void setTotalLikeCount(long totalLikeCount) {
         this.totalLikeCount = totalLikeCount;
+    }
+
+    /**
+     * 获取粉丝数。
+     *
+     * @return 粉丝数
+     */
+    public long getFollowerCount() {
+        return followerCount;
+    }
+
+    /**
+     * 设置粉丝数。
+     *
+     * @param followerCount 粉丝数
+     */
+    public void setFollowerCount(long followerCount) {
+        this.followerCount = followerCount;
+    }
+
+    /**
+     * 获取关注数。
+     *
+     * @return 关注数
+     */
+    public long getFollowingCount() {
+        return followingCount;
+    }
+
+    /**
+     * 设置关注数。
+     *
+     * @param followingCount 关注数
+     */
+    public void setFollowingCount(long followingCount) {
+        this.followingCount = followingCount;
+    }
+
+    /**
+     * 获取当前用户是否已关注。
+     *
+     * @return 是否已关注
+     */
+    public boolean isFollowing() {
+        return following;
+    }
+
+    /**
+     * 设置当前用户是否已关注。
+     *
+     * @param following 是否已关注
+     */
+    public void setFollowing(boolean following) {
+        this.following = following;
     }
 }

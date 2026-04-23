@@ -93,9 +93,13 @@ CREATE TABLE IF NOT EXISTS blog_comment (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     article_id BIGINT UNSIGNED NOT NULL COMMENT '文章ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '评论用户ID',
+    root_comment_id BIGINT UNSIGNED DEFAULT NULL COMMENT '根评论ID',
     parent_id BIGINT UNSIGNED DEFAULT NULL COMMENT '父评论ID',
     content VARCHAR(1000) NOT NULL COMMENT '评论内容',
     status VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED' COMMENT '状态：PUBLISHED-已发布 DELETED-已删除',
+    like_count INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+    pinned TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否置顶',
+    pinned_at DATETIME DEFAULT NULL COMMENT '置顶时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
@@ -103,10 +107,118 @@ CREATE TABLE IF NOT EXISTS blog_comment (
     PRIMARY KEY (id),
     KEY idx_blog_comment_article (article_id),
     KEY idx_blog_comment_user (user_id),
+    KEY idx_blog_comment_root (root_comment_id),
     KEY idx_blog_comment_parent (parent_id),
     CONSTRAINT fk_blog_comment_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
     CONSTRAINT fk_blog_comment_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客评论表';
+
+CREATE TABLE IF NOT EXISTS blog_comment_like (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    comment_id BIGINT UNSIGNED NOT NULL COMMENT '评论ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version INT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_blog_comment_like_comment_user (comment_id, user_id),
+    KEY idx_blog_comment_like_user (user_id),
+    CONSTRAINT fk_blog_comment_like_comment FOREIGN KEY (comment_id) REFERENCES blog_comment (id),
+    CONSTRAINT fk_blog_comment_like_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客评论点赞表';
+
+SET @blog_comment_add_root_comment_id = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_comment ADD COLUMN root_comment_id BIGINT UNSIGNED DEFAULT NULL COMMENT ''根评论ID'' AFTER user_id',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_comment'
+      AND column_name = 'root_comment_id'
+);
+PREPARE stmt FROM @blog_comment_add_root_comment_id;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_comment_add_like_count = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_comment ADD COLUMN like_count INT NOT NULL DEFAULT 0 COMMENT ''点赞数'' AFTER status',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_comment'
+      AND column_name = 'like_count'
+);
+PREPARE stmt FROM @blog_comment_add_like_count;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_comment_add_pinned = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_comment ADD COLUMN pinned TINYINT(1) NOT NULL DEFAULT 0 COMMENT ''是否置顶'' AFTER like_count',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_comment'
+      AND column_name = 'pinned'
+);
+PREPARE stmt FROM @blog_comment_add_pinned;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_comment_add_pinned_at = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE blog_comment ADD COLUMN pinned_at DATETIME DEFAULT NULL COMMENT ''置顶时间'' AFTER pinned',
+        'SELECT 1'
+    )
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_comment'
+      AND column_name = 'pinned_at'
+);
+PREPARE stmt FROM @blog_comment_add_pinned_at;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @blog_comment_add_root_index = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'CREATE INDEX idx_blog_comment_root ON blog_comment (root_comment_id)',
+        'SELECT 1'
+    )
+    FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+      AND table_name = 'blog_comment'
+      AND index_name = 'idx_blog_comment_root'
+);
+PREPARE stmt FROM @blog_comment_add_root_index;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+WITH RECURSIVE blog_comment_tree AS (
+    SELECT id, id AS root_id
+    FROM blog_comment
+    WHERE deleted_at IS NULL
+      AND (parent_id IS NULL OR parent_id = 0)
+    UNION ALL
+    SELECT child.id, tree.root_id
+    FROM blog_comment child
+    INNER JOIN blog_comment_tree tree ON child.parent_id = tree.id
+    WHERE child.deleted_at IS NULL
+)
+UPDATE blog_comment target
+INNER JOIN blog_comment_tree source ON target.id = source.id
+SET target.root_comment_id = source.root_id
+WHERE target.root_comment_id IS NULL
+   OR target.root_comment_id <> source.root_id;
 
 CREATE TABLE IF NOT EXISTS blog_article_like (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -154,6 +266,71 @@ CREATE TABLE IF NOT EXISTS blog_article_view (
     CONSTRAINT fk_blog_article_view_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
     CONSTRAINT fk_blog_article_view_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客阅读记录表';
+
+CREATE TABLE IF NOT EXISTS blog_user_follow (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    follower_user_id BIGINT UNSIGNED NOT NULL COMMENT '关注者用户ID',
+    following_user_id BIGINT UNSIGNED NOT NULL COMMENT '被关注用户ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version INT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_blog_user_follow_pair (follower_user_id, following_user_id),
+    KEY idx_blog_user_follow_following (following_user_id),
+    CONSTRAINT fk_blog_user_follow_follower FOREIGN KEY (follower_user_id) REFERENCES blog_user (id),
+    CONSTRAINT fk_blog_user_follow_following FOREIGN KEY (following_user_id) REFERENCES blog_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客用户关注表';
+
+CREATE TABLE IF NOT EXISTS blog_column (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    author_id BIGINT UNSIGNED NOT NULL COMMENT '专栏作者ID',
+    title VARCHAR(120) NOT NULL COMMENT '专栏标题',
+    summary VARCHAR(500) DEFAULT '' COMMENT '专栏简介',
+    cover_url VARCHAR(500) DEFAULT NULL COMMENT '专栏封面',
+    status VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED' COMMENT '状态：PUBLISHED-已发布 OFFLINE-已下架 DELETED-已删除',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    subscriber_count INT NOT NULL DEFAULT 0 COMMENT '订阅数',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version INT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    KEY idx_blog_column_author (author_id),
+    KEY idx_blog_column_status_sort (status, sort_order),
+    CONSTRAINT fk_blog_column_author FOREIGN KEY (author_id) REFERENCES blog_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客专栏表';
+
+CREATE TABLE IF NOT EXISTS blog_column_article (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    column_id BIGINT UNSIGNED NOT NULL COMMENT '专栏ID',
+    article_id BIGINT UNSIGNED NOT NULL COMMENT '文章ID',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version INT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_blog_column_article_pair (column_id, article_id),
+    KEY idx_blog_column_article_article (article_id),
+    CONSTRAINT fk_blog_column_article_column FOREIGN KEY (column_id) REFERENCES blog_column (id),
+    CONSTRAINT fk_blog_column_article_article FOREIGN KEY (article_id) REFERENCES blog_article (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客专栏文章关联表';
+
+CREATE TABLE IF NOT EXISTS blog_column_subscription (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    column_id BIGINT UNSIGNED NOT NULL COMMENT '专栏ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version INT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_blog_column_subscription_pair (column_id, user_id),
+    KEY idx_blog_column_subscription_user (user_id),
+    CONSTRAINT fk_blog_column_subscription_column FOREIGN KEY (column_id) REFERENCES blog_column (id),
+    CONSTRAINT fk_blog_column_subscription_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客专栏订阅表';
 
 CREATE TABLE IF NOT EXISTS blog_admin_log (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',

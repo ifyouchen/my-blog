@@ -13,9 +13,13 @@ public class CommentDO {
     private Long id;
     private Long articleId;
     private Long userId;
+    private Long rootCommentId;
     private Long parentId;
     private String content;
     private String status;
+    private Integer likeCount;
+    private Boolean pinned;
+    private LocalDateTime pinnedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
@@ -45,6 +49,14 @@ public class CommentDO {
         this.userId = userId;
     }
 
+    public Long getRootCommentId() {
+        return rootCommentId;
+    }
+
+    public void setRootCommentId(Long rootCommentId) {
+        this.rootCommentId = rootCommentId;
+    }
+
     public Long getParentId() {
         return parentId;
     }
@@ -67,6 +79,30 @@ public class CommentDO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Integer getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(Integer likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public Boolean getPinned() {
+        return pinned;
+    }
+
+    public void setPinned(Boolean pinned) {
+        this.pinned = pinned;
+    }
+
+    public LocalDateTime getPinnedAt() {
+        return pinnedAt;
+    }
+
+    public void setPinnedAt(LocalDateTime pinnedAt) {
+        this.pinnedAt = pinnedAt;
     }
 
     public LocalDateTime getCreatedAt() {

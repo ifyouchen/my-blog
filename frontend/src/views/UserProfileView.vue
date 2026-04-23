@@ -2,11 +2,14 @@
 import { ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
+import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { getUserArticlesApi } from '@/api/articles';
 import { getUserProfileApi } from '@/api/auth';
+import { useSession } from '@/stores/session';
 
 const route = useRoute();
+const { state } = useSession();
 const profile = ref(null);
 const articles = ref([]);
 const page = ref(1);
@@ -42,6 +45,14 @@ const changePage = async (nextPage) => {
     await loadProfile();
 };
 
+const handleFollowChange = (followed) => {
+    if (!profile.value) {
+        return;
+    }
+    profile.value.following = followed;
+    profile.value.followerCount = Math.max(0, (profile.value.followerCount || 0) + (followed ? 1 : -1));
+};
+
 watch(() => route.params.id, () => {
     page.value = 1;
     loadProfile();
@@ -61,7 +72,15 @@ watch(() => route.params.id, () => {
                     <span><strong>{{ profile.articleCount }}</strong> 文章</span>
                     <span><strong>{{ profile.totalViewCount }}</strong> 阅读</span>
                     <span><strong>{{ profile.totalLikeCount }}</strong> 获赞</span>
+                    <span><strong>{{ profile.followerCount }}</strong> 粉丝</span>
+                    <span><strong>{{ profile.followingCount }}</strong> 关注</span>
                 </div>
+                <AuthorFollowButton
+                    v-if="profile.user.id !== state.user?.id"
+                    :user-id="profile.user.id"
+                    :followed="profile.following"
+                    @change="handleFollowChange"
+                />
             </div>
         </section>
 
@@ -78,6 +97,7 @@ watch(() => route.params.id, () => {
             :total="total"
             :loading="loading"
             :error-message="errorMessage"
+            :sort-items="[]"
             eyebrow="作者文章"
             title="最新发布"
             empty-text="这位作者还没有公开发布文章"

@@ -95,7 +95,9 @@ onUnmounted(() => {
                     v-for="item in navItems"
                     :key="item.label"
                     :to="item.path"
-                    :class="{ active: route.path === item.path }"
+                    :class="{ active: item.path === '/'
+                        ? route.path === '/'
+                        : route.path === item.path || route.path.startsWith(`${item.path}/`) }"
                 >
                     {{ item.label }}
                 </RouterLink>

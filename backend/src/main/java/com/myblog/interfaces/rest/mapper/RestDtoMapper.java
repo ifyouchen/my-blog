@@ -5,6 +5,8 @@ import com.myblog.application.command.CreateCommentCommand;
 import com.myblog.application.command.LoginCommand;
 import com.myblog.application.command.RegisterCommand;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.AuthorRankingDTO;
+import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.dto.CommentDTO;
 import com.myblog.application.dto.UserDTO;
@@ -14,7 +16,9 @@ import com.myblog.interfaces.rest.dto.request.CreateCommentRequest;
 import com.myblog.interfaces.rest.dto.request.LoginRequest;
 import com.myblog.interfaces.rest.dto.request.RegisterRequest;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
+import com.myblog.interfaces.rest.dto.response.AuthorRankingResponse;
 import com.myblog.interfaces.rest.dto.response.AuthResponse;
+import com.myblog.interfaces.rest.dto.response.ColumnResponse;
 import com.myblog.interfaces.rest.dto.response.CommentResponse;
 import com.myblog.interfaces.rest.dto.response.UserResponse;
 import com.myblog.interfaces.rest.dto.response.UserProfileResponse;
@@ -81,6 +85,7 @@ public class RestDtoMapper {
         CreateCommentCommand command = new CreateCommentCommand();
         command.setArticleId(articleId);
         command.setUserId(userId);
+        command.setRootCommentId(request.getRootCommentId());
         command.setParentId(request.getParentId());
         command.setContent(request.getContent());
         return command;
@@ -126,6 +131,46 @@ public class RestDtoMapper {
         response.setArticleCount(dto.getArticleCount());
         response.setTotalViewCount(dto.getTotalViewCount());
         response.setTotalLikeCount(dto.getTotalLikeCount());
+        response.setFollowerCount(dto.getFollowerCount());
+        response.setFollowingCount(dto.getFollowingCount());
+        response.setFollowing(dto.isFollowing());
+        return response;
+    }
+
+    /**
+     * 将专栏 DTO 转换为响应。
+     *
+     * @param dto 专栏 DTO
+     * @return 专栏响应
+     */
+    public ColumnResponse toResponse(ColumnDTO dto) {
+        ColumnResponse response = new ColumnResponse();
+        response.setId(dto.getId());
+        response.setTitle(dto.getTitle());
+        response.setSummary(dto.getSummary());
+        response.setCoverUrl(dto.getCoverUrl());
+        response.setSubscriberCount(dto.getSubscriberCount());
+        response.setArticleCount(dto.getArticleCount());
+        response.setSubscribed(dto.isSubscribed());
+        response.setAuthor(toResponse(dto.getAuthor()));
+        return response;
+    }
+
+    /**
+     * 将作者排行榜 DTO 转换为响应。
+     *
+     * @param dto 作者排行榜 DTO
+     * @return 作者排行榜响应
+     */
+    public AuthorRankingResponse toResponse(AuthorRankingDTO dto) {
+        AuthorRankingResponse response = new AuthorRankingResponse();
+        response.setRank(dto.getRank());
+        response.setUser(toResponse(dto.getUser()));
+        response.setArticleCount(dto.getArticleCount());
+        response.setTotalViewCount(dto.getTotalViewCount());
+        response.setTotalLikeCount(dto.getTotalLikeCount());
+        response.setFollowerCount(dto.getFollowerCount());
+        response.setFollowed(dto.isFollowed());
         return response;
     }
 
@@ -150,6 +195,7 @@ public class RestDtoMapper {
         response.setFavoriteCount(dto.getFavoriteCount());
         response.setCommentCount(dto.getCommentCount());
         response.setPublishedAt(dto.getPublishedAt());
+        response.setUpdatedAt(dto.getUpdatedAt());
         response.setAuthor(toResponse(dto.getAuthor()));
         return response;
     }
@@ -165,14 +211,25 @@ public class RestDtoMapper {
         response.setId(dto.getId());
         response.setArticleId(dto.getArticleId());
         response.setUserId(dto.getUserId());
+        response.setRootCommentId(dto.getRootCommentId());
         response.setParentId(dto.getParentId());
         response.setContent(dto.getContent());
+        response.setReplyCount(dto.getReplyCount());
+        response.setLikeCount(dto.getLikeCount());
+        response.setLiked(dto.getLiked());
+        response.setPinned(dto.getPinned());
+        response.setCanDelete(dto.getCanDelete());
+        response.setCanPin(dto.getCanPin());
+        response.setAuthor(dto.getAuthor());
         response.setCreatedAt(dto.getCreatedAt());
         if (dto.getUser() != null) {
             response.setUser(toResponse(dto.getUser()));
         }
-        if (dto.getReplies() != null && !dto.getReplies().isEmpty()) {
-            response.setReplies(dto.getReplies().stream()
+        if (dto.getReplyToUser() != null) {
+            response.setReplyToUser(toResponse(dto.getReplyToUser()));
+        }
+        if (dto.getReplyPreview() != null && !dto.getReplyPreview().isEmpty()) {
+            response.setReplyPreview(dto.getReplyPreview().stream()
                 .map(this::toResponse)
                 .collect(java.util.stream.Collectors.toList()));
         }

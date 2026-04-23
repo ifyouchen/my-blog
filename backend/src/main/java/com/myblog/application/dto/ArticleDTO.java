@@ -23,6 +23,7 @@ public class ArticleDTO {
     private int favoriteCount;
     private int commentCount;
     private String publishedAt;
+    private String updatedAt;
     private UserDTO author;
 
     /**
@@ -257,6 +258,24 @@ public class ArticleDTO {
      */
     public void setPublishedAt(String publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    /**
+     * 获取更新时间。
+     *
+     * @return 更新时间
+     */
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * 设置更新时间。
+     *
+     * @param updatedAt 更新时间
+     */
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     /**

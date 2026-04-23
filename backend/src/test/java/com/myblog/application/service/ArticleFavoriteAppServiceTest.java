@@ -66,7 +66,8 @@ class ArticleFavoriteAppServiceTest {
             0,
             LocalDateTime.now(),
             LocalDateTime.now(),
-            LocalDateTime.now()
+            LocalDateTime.now(),
+            0
         );
         ArticleFavorite favorite = ArticleFavorite.restore(
             88L,

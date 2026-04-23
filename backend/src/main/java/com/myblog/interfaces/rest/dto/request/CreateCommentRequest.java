@@ -15,6 +15,8 @@ public class CreateCommentRequest {
     @Size(max = 1000, message = "评论内容不能超过 1000 字符")
     private String content;
 
+    private Long rootCommentId;
+
     private Long parentId;
 
     public String getContent() {
@@ -23,6 +25,14 @@ public class CreateCommentRequest {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Long getRootCommentId() {
+        return rootCommentId;
+    }
+
+    public void setRootCommentId(Long rootCommentId) {
+        this.rootCommentId = rootCommentId;
     }
 
     public Long getParentId() {

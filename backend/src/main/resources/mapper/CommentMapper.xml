@@ -7,9 +7,13 @@
         <id column="id" property="id"/>
         <result column="article_id" property="articleId"/>
         <result column="user_id" property="userId"/>
+        <result column="root_comment_id" property="rootCommentId"/>
         <result column="parent_id" property="parentId"/>
         <result column="content" property="content"/>
         <result column="status" property="status"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="pinned" property="pinned"/>
+        <result column="pinned_at" property="pinnedAt"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="deleted_at" property="deletedAt"/>
@@ -17,7 +21,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, article_id, user_id, parent_id, content, status,
+        id, article_id, user_id, root_comment_id, parent_id, content, status, like_count, pinned, pinned_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
@@ -33,7 +37,7 @@
         SELECT <include refid="Base_Column_List"/>
         FROM blog_comment
         WHERE deleted_at IS NULL
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
     </select>
 
     <select id="selectByArticleId" resultMap="BaseResultMap">
@@ -42,7 +46,92 @@
         WHERE article_id = #{articleId}
         AND deleted_at IS NULL
         AND status = 'PUBLISHED'
-        ORDER BY created_at ASC
+        ORDER BY created_at ASC, id ASC
+    </select>
+
+    <select id="selectRootPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE article_id = #{articleId}
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        AND parent_id IS NULL
+        <choose>
+            <when test="sort == 'latest'">
+                ORDER BY pinned DESC, pinned_at DESC, created_at DESC, id DESC
+            </when>
+            <otherwise>
+                ORDER BY pinned DESC, pinned_at DESC, like_count DESC, created_at DESC, id DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countRootByArticleId" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_comment
+        WHERE article_id = #{articleId}
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        AND parent_id IS NULL
+    </select>
+
+    <select id="selectRepliesByRootCommentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE root_comment_id = #{rootCommentId}
+        AND parent_id IS NOT NULL
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        ORDER BY created_at ASC, id ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countRepliesByRootCommentId" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_comment
+        WHERE root_comment_id = #{rootCommentId}
+        AND parent_id IS NOT NULL
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+    </select>
+
+    <select id="selectReplyPreviewByRootIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM (
+            SELECT <include refid="Base_Column_List"/>,
+                   ROW_NUMBER() OVER (PARTITION BY root_comment_id ORDER BY created_at ASC, id ASC) AS row_num
+            FROM blog_comment
+            WHERE root_comment_id IN
+            <foreach collection="rootCommentIds" item="rootCommentId" open="(" separator="," close=")">
+                #{rootCommentId}
+            </foreach>
+            AND parent_id IS NOT NULL
+            AND deleted_at IS NULL
+            AND status = 'PUBLISHED'
+        ) preview_rows
+        WHERE row_num &lt;= #{limitPerRoot}
+        ORDER BY root_comment_id ASC, created_at ASC, id ASC
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE id IN
+        <foreach collection="commentIds" item="commentId" open="(" separator="," close=")">
+            #{commentId}
+        </foreach>
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+    </select>
+
+    <select id="selectThreadByRootCommentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE root_comment_id = #{rootCommentId}
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        ORDER BY parent_id IS NULL DESC, created_at ASC, id ASC
     </select>
 
     <select id="countById" resultType="int">
@@ -58,19 +147,38 @@
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
         INSERT INTO blog_comment
-        (id, article_id, user_id, parent_id, content, status, created_at, updated_at)
+        (id, article_id, user_id, root_comment_id, parent_id, content, status, like_count, pinned, pinned_at, created_at, updated_at)
         VALUES
-        (#{id}, #{articleId}, #{userId}, #{parentId}, #{content}, #{status}, #{createdAt}, #{updatedAt})
+        (#{id}, #{articleId}, #{userId}, #{rootCommentId}, #{parentId}, #{content}, #{status}, #{likeCount},
+         #{pinned}, #{pinnedAt}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
         UPDATE blog_comment
-        SET content = #{content},
+        SET root_comment_id = #{rootCommentId},
+            parent_id = #{parentId},
+            content = #{content},
             status = #{status},
+            like_count = #{likeCount},
+            pinned = #{pinned},
+            pinned_at = #{pinnedAt},
             updated_at = #{updatedAt},
             version = version + 1
         WHERE id = #{id}
         AND deleted_at IS NULL
+    </update>
+
+    <update id="clearPinnedByArticleId">
+        UPDATE blog_comment
+        SET pinned = 0,
+            pinned_at = NULL,
+            updated_at = NOW(),
+            version = version + 1
+        WHERE article_id = #{articleId}
+        AND parent_id IS NULL
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        AND pinned = 1
     </update>
 
     <update id="deleteById">
@@ -78,6 +186,8 @@
         SET deleted_at = NOW(),
             updated_at = NOW(),
             status = 'DELETED',
+            pinned = 0,
+            pinned_at = NULL,
             version = version + 1
         WHERE id = #{id}
         AND deleted_at IS NULL

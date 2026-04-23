@@ -31,9 +31,13 @@ public final class CommentPersistenceConverter {
             commentDO.getId(),
             new ArticleId(commentDO.getArticleId()),
             new UserId(commentDO.getUserId()),
+            commentDO.getRootCommentId(),
             commentDO.getParentId(),
             commentDO.getContent(),
             CommentStatus.valueOf(commentDO.getStatus()),
+            commentDO.getLikeCount(),
+            commentDO.getPinned(),
+            commentDO.getPinnedAt(),
             commentDO.getCreatedAt(),
             commentDO.getUpdatedAt()
         );
@@ -50,9 +54,13 @@ public final class CommentPersistenceConverter {
         commentDO.setId(comment.getId().getValue());
         commentDO.setArticleId(comment.getArticleId().getValue());
         commentDO.setUserId(comment.getUserId().getValue());
+        commentDO.setRootCommentId(comment.getRootCommentId());
         commentDO.setParentId(comment.getParentId());
         commentDO.setContent(comment.getContent());
         commentDO.setStatus(comment.getStatus().name());
+        commentDO.setLikeCount(comment.getLikeCount());
+        commentDO.setPinned(comment.isPinned());
+        commentDO.setPinnedAt(comment.getPinnedAt());
         commentDO.setCreatedAt(comment.getCreatedAt());
         commentDO.setUpdatedAt(comment.getUpdatedAt());
         return commentDO;

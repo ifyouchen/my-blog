@@ -3,12 +3,14 @@ package com.myblog.application.service;
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.assembler.UserAssembler;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.MyArticleOverviewDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.application.dto.UserProfileDTO;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
+import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserRole;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 用户应用服务。
@@ -30,8 +33,11 @@ import java.util.List;
 @Service
 public class UserAppService {
 
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
+    private final UserFollowRepository userFollowRepository;
 
     /**
      * 创建用户应用服务。
@@ -39,9 +45,12 @@ public class UserAppService {
      * @param userRepository 用户仓储
      * @param articleRepository 文章仓储
      */
-    public UserAppService(UserRepository userRepository, ArticleRepository articleRepository) {
+    public UserAppService(UserRepository userRepository,
+                          ArticleRepository articleRepository,
+                          UserFollowRepository userFollowRepository) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
+        this.userFollowRepository = userFollowRepository;
     }
 
     /**
@@ -68,7 +77,7 @@ public class UserAppService {
      * @param userId 用户 ID
      * @return 用户主页信息
      */
-    public UserProfileDTO getUserProfile(Long userId) {
+    public UserProfileDTO getUserProfile(Long userId, Long currentUserId) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         List<Article> publishedArticles = articleRepository.findPublishedByAuthorId(userId);
@@ -77,6 +86,13 @@ public class UserAppService {
         profileDTO.setArticleCount(publishedArticles.size());
         profileDTO.setTotalViewCount(publishedArticles.stream().mapToLong(Article::getViewCount).sum());
         profileDTO.setTotalLikeCount(publishedArticles.stream().mapToLong(Article::getLikeCount).sum());
+        profileDTO.setFollowerCount(userFollowRepository.countFollowers(new UserId(userId)));
+        profileDTO.setFollowingCount(userFollowRepository.countFollowing(new UserId(userId)));
+        profileDTO.setFollowing(
+            currentUserId != null
+                && !currentUserId.equals(userId)
+                && userFollowRepository.exists(new UserId(currentUserId), new UserId(userId))
+        );
         return profileDTO;
     }
 
@@ -129,6 +145,55 @@ public class UserAppService {
             }
         }
         return buildArticlePage(filtered, page, pageSize);
+    }
+
+    /**
+     * 获取当前用户创作概览。
+     *
+     * @param userId 用户 ID
+     * @return 创作概览
+     */
+    public MyArticleOverviewDTO getMyArticleOverview(Long userId) {
+        List<Article> ownArticles = articleRepository.findByAuthorId(userId);
+        MyArticleOverviewDTO overviewDTO = new MyArticleOverviewDTO();
+        overviewDTO.setTotalCount(ownArticles.size());
+
+        long totalViewCount = 0L;
+        long totalLikeCount = 0L;
+        long totalFavoriteCount = 0L;
+        long totalCommentCount = 0L;
+        Article latestArticle = null;
+
+        for (Article article : ownArticles) {
+            if (ArticleStatus.DRAFT.equals(article.getStatus())) {
+                overviewDTO.setDraftCount(overviewDTO.getDraftCount() + 1);
+            } else if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+                overviewDTO.setPublishedCount(overviewDTO.getPublishedCount() + 1);
+            } else if (ArticleStatus.OFFLINE.equals(article.getStatus())) {
+                overviewDTO.setOfflineCount(overviewDTO.getOfflineCount() + 1);
+            } else if (ArticleStatus.DELETED.equals(article.getStatus())) {
+                overviewDTO.setDeletedCount(overviewDTO.getDeletedCount() + 1);
+            }
+
+            totalViewCount += article.getViewCount();
+            totalLikeCount += article.getLikeCount();
+            totalFavoriteCount += article.getFavoriteCount();
+            totalCommentCount += article.getCommentCount();
+
+            if (latestArticle == null || latestArticle.getUpdatedAt().isBefore(article.getUpdatedAt())) {
+                latestArticle = article;
+            }
+        }
+
+        overviewDTO.setTotalViewCount(totalViewCount);
+        overviewDTO.setTotalLikeCount(totalLikeCount);
+        overviewDTO.setTotalFavoriteCount(totalFavoriteCount);
+        overviewDTO.setTotalCommentCount(totalCommentCount);
+        if (latestArticle != null) {
+            overviewDTO.setLatestArticleTitle(latestArticle.getTitle());
+            overviewDTO.setLatestUpdatedAt(DATETIME_FORMATTER.format(latestArticle.getUpdatedAt()));
+        }
+        return overviewDTO;
     }
 
     private PageResult<ArticleDTO> buildArticlePage(List<Article> source, int page, int pageSize) {

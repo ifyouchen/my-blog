@@ -10,6 +10,7 @@ public class CreateCommentCommand {
 
     private Long articleId;
     private Long userId;
+    private Long rootCommentId;
     private Long parentId;
     private String content;
 
@@ -27,6 +28,24 @@ public class CreateCommentCommand {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    /**
+     * 获取根评论 ID。
+     *
+     * @return 根评论 ID
+     */
+    public Long getRootCommentId() {
+        return rootCommentId;
+    }
+
+    /**
+     * 设置根评论 ID。
+     *
+     * @param rootCommentId 根评论 ID
+     */
+    public void setRootCommentId(Long rootCommentId) {
+        this.rootCommentId = rootCommentId;
     }
 
     public Long getParentId() {

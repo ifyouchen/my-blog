@@ -13,65 +13,41 @@ import java.util.List;
  */
 public interface CommentMapper {
 
-    /**
-     * 根据 ID 查询评论。
-     *
-     * @param id 评论 ID
-     * @return 评论数据对象
-     */
     CommentDO selectById(@Param("id") Long id);
 
-    /**
-     * 查询所有评论。
-     *
-     * @return 评论数据对象列表
-     */
     List<CommentDO> selectAll();
 
-    /**
-     * 根据文章 ID 查询评论列表。
-     *
-     * @param articleId 文章 ID
-     * @return 评论数据对象列表
-     */
     List<CommentDO> selectByArticleId(@Param("articleId") Long articleId);
 
-    /**
-     * 根据 ID 统计评论数量。
-     *
-     * @param id 评论 ID
-     * @return 评论数量
-     */
+    List<CommentDO> selectRootPage(@Param("articleId") Long articleId,
+                                   @Param("sort") String sort,
+                                   @Param("offset") int offset,
+                                   @Param("limit") int limit);
+
+    long countRootByArticleId(@Param("articleId") Long articleId);
+
+    List<CommentDO> selectRepliesByRootCommentId(@Param("rootCommentId") Long rootCommentId,
+                                                 @Param("offset") int offset,
+                                                 @Param("limit") int limit);
+
+    long countRepliesByRootCommentId(@Param("rootCommentId") Long rootCommentId);
+
+    List<CommentDO> selectReplyPreviewByRootIds(@Param("rootCommentIds") List<Long> rootCommentIds,
+                                                @Param("limitPerRoot") int limitPerRoot);
+
+    List<CommentDO> selectByIds(@Param("commentIds") List<Long> commentIds);
+
+    List<CommentDO> selectThreadByRootCommentId(@Param("rootCommentId") Long rootCommentId);
+
     int countById(@Param("id") Long id);
 
-    /**
-     * 查询下一个评论 ID。
-     *
-     * @return 下一个评论 ID
-     */
     Long selectNextId();
 
-    /**
-     * 插入评论。
-     *
-     * @param commentDO 评论数据对象
-     * @return 影响行数
-     */
     int insert(CommentDO commentDO);
 
-    /**
-     * 更新评论。
-     *
-     * @param commentDO 评论数据对象
-     * @return 影响行数
-     */
     int update(CommentDO commentDO);
 
-    /**
-     * 逻辑删除评论。
-     *
-     * @param id 评论 ID
-     * @return 影响行数
-     */
+    int clearPinnedByArticleId(@Param("articleId") Long articleId);
+
     int deleteById(@Param("id") Long id);
 }

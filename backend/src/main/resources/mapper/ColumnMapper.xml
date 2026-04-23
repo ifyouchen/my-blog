@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.ColumnMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
+        <id column="id" property="id"/>
+        <result column="author_id" property="authorId"/>
+        <result column="title" property="title"/>
+        <result column="summary" property="summary"/>
+        <result column="cover_url" property="coverUrl"/>
+        <result column="status" property="status"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="subscriber_count" property="subscriberCount"/>
+        <result column="article_count" property="articleCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        c.id, c.author_id, c.title, c.summary, c.cover_url, c.status, c.sort_order, c.subscriber_count,
+        (
+            SELECT COUNT(1)
+            FROM blog_column_article ca
+            INNER JOIN blog_article a ON a.id = ca.article_id
+            WHERE ca.column_id = c.id
+            AND ca.deleted_at IS NULL
+            AND a.deleted_at IS NULL
+            AND a.status = 'PUBLISHED'
+        ) AS article_count,
+        c.created_at, c.updated_at, c.deleted_at, c.version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column c
+        WHERE c.id = #{id}
+        AND c.deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectPublished" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column c
+        WHERE c.deleted_at IS NULL
+        AND c.status = 'PUBLISHED'
+        ORDER BY c.sort_order ASC, c.subscriber_count DESC, c.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countPublished" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_column
+        WHERE deleted_at IS NULL
+        AND status = 'PUBLISHED'
+    </select>
+
+    <select id="selectRecommended" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column c
+        WHERE c.deleted_at IS NULL
+        AND c.status = 'PUBLISHED'
+        ORDER BY c.sort_order ASC, c.subscriber_count DESC, c.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 2000) + 1
+        FROM blog_column
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_column
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
+        INSERT INTO blog_column (
+            id, author_id, title, summary, cover_url, status, sort_order, subscriber_count,
+            created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{subscriberCount},
+            #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
+        UPDATE blog_column
+        SET author_id = #{authorId},
+            title = #{title},
+            summary = #{summary},
+            cover_url = #{coverUrl},
+            status = #{status},
+            sort_order = #{sortOrder},
+            subscriber_count = #{subscriberCount},
+            updated_at = #{updatedAt},
+            deleted_at = #{deletedAt},
+            version = version + 1
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectArticleIds" resultType="long">
+        SELECT ca.article_id
+        FROM blog_column_article ca
+        INNER JOIN blog_article a ON a.id = ca.article_id
+        WHERE ca.column_id = #{columnId}
+        AND ca.deleted_at IS NULL
+        AND a.deleted_at IS NULL
+        AND a.status = 'PUBLISHED'
+        ORDER BY ca.sort_order ASC, ca.id ASC
+    </select>
+
+    <select id="countColumnArticle" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_column_article
+        WHERE column_id = #{columnId}
+        AND article_id = #{articleId}
+    </select>
+
+    <update id="restoreColumnArticle">
+        UPDATE blog_column_article
+        SET deleted_at = NULL,
+            updated_at = NOW(),
+            sort_order = #{sortOrder},
+            version = version + 1
+        WHERE column_id = #{columnId}
+        AND article_id = #{articleId}
+    </update>
+
+    <insert id="insertColumnArticle">
+        INSERT INTO blog_column_article (column_id, article_id, sort_order)
+        VALUES (#{columnId}, #{articleId}, #{sortOrder})
+    </insert>
+</mapper>

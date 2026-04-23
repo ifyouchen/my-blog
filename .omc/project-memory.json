@@ -126,14 +126,14 @@
     },
     {
       "path": "",
-      "accessCount": 6,
-      "lastAccessed": 1776862454957,
+      "accessCount": 8,
+      "lastAccessed": 1776874957312,
       "type": "directory"
     },
     {
       "path": "frontend\\src\\stores\\session.js",
-      "accessCount": 5,
-      "lastAccessed": 1776863465650,
+      "accessCount": 6,
+      "lastAccessed": 1776875151435,
       "type": "file"
     },
     {
@@ -141,6 +141,18 @@
       "accessCount": 5,
       "lastAccessed": 1776865735229,
       "type": "file"
+    },
+    {
+      "path": "frontend\\src\\components\\CommentItem.vue",
+      "accessCount": 5,
+      "lastAccessed": 1776873502621,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src",
+      "accessCount": 5,
+      "lastAccessed": 1776874994018,
+      "type": "directory"
     },
     {
       "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\security\\JwtTokenProvider.java",
@@ -158,6 +170,18 @@
       "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\converter\\ArticlePersistenceConverter.java",
       "accessCount": 4,
       "lastAccessed": 1776865291586,
+      "type": "directory"
+    },
+    {
+      "path": "frontend",
+      "accessCount": 4,
+      "lastAccessed": 1776872569871,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\src",
+      "accessCount": 4,
+      "lastAccessed": 1776874993985,
       "type": "directory"
     },
     {
@@ -179,10 +203,16 @@
       "type": "file"
     },
     {
-      "path": "frontend",
-      "accessCount": 2,
-      "lastAccessed": 1776862480147,
-      "type": "directory"
+      "path": "frontend\\src\\components\\CommentList.vue",
+      "accessCount": 3,
+      "lastAccessed": 1776874978229,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\CommentAppService.java",
+      "accessCount": 3,
+      "lastAccessed": 1776875012258,
+      "type": "file"
     },
     {
       "path": "backend\\src\\main\\java\\com\\myblog\\domain\\model\\aggregate\\ArticleLike.java",
@@ -209,6 +239,48 @@
       "type": "file"
     },
     {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\CommentController.java",
+      "accessCount": 2,
+      "lastAccessed": 1776872588381,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\AdminController.java",
+      "accessCount": 2,
+      "lastAccessed": 1776875003052,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\router\\index.js",
+      "accessCount": 2,
+      "lastAccessed": 1776875012190,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\api\\auth.js",
+      "accessCount": 2,
+      "lastAccessed": 1776875012320,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\AuthAppService.java",
+      "accessCount": 2,
+      "lastAccessed": 1776875012383,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\api\\comments.js",
+      "accessCount": 2,
+      "lastAccessed": 1776875129409,
+      "type": "file"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\AuthController.java",
+      "accessCount": 2,
+      "lastAccessed": 1776875151374,
+      "type": "file"
+    },
+    {
       "path": "README.md",
       "accessCount": 1,
       "lastAccessed": 1776862349339,
@@ -224,12 +296,6 @@
       "path": "frontend\\package.json",
       "accessCount": 1,
       "lastAccessed": 1776862358401,
-      "type": "file"
-    },
-    {
-      "path": "frontend\\src\\router\\index.js",
-      "accessCount": 1,
-      "lastAccessed": 1776862365730,
       "type": "file"
     },
     {
@@ -275,18 +341,6 @@
       "type": "file"
     },
     {
-      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\CommentAppService.java",
-      "accessCount": 1,
-      "lastAccessed": 1776862473303,
-      "type": "file"
-    },
-    {
-      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\CommentController.java",
-      "accessCount": 1,
-      "lastAccessed": 1776862473364,
-      "type": "file"
-    },
-    {
       "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\ArticleFavoriteController.java",
       "accessCount": 1,
       "lastAccessed": 1776862473429,
@@ -299,34 +353,10 @@
       "type": "file"
     },
     {
-      "path": "backend\\src\\main\\java\\com\\myblog\\application\\service\\AuthAppService.java",
-      "accessCount": 1,
-      "lastAccessed": 1776862479625,
-      "type": "file"
-    },
-    {
-      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\AdminController.java",
-      "accessCount": 1,
-      "lastAccessed": 1776862479674,
-      "type": "file"
-    },
-    {
       "path": "backend\\src\\main\\resources\\mapper\\CommentMapper.xml",
       "accessCount": 1,
       "lastAccessed": 1776862479715,
       "type": "file"
-    },
-    {
-      "path": "backend\\src\\main\\java\\com\\myblog\\interfaces\\rest\\controller\\AuthController.java",
-      "accessCount": 1,
-      "lastAccessed": 1776862479739,
-      "type": "file"
-    },
-    {
-      "path": "frontend\\src",
-      "accessCount": 1,
-      "lastAccessed": 1776862486534,
-      "type": "directory"
     },
     {
       "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\security\\AuthContext.java",
@@ -338,12 +368,6 @@
       "path": "frontend\\src\\api\\http.js",
       "accessCount": 1,
       "lastAccessed": 1776862496274,
-      "type": "file"
-    },
-    {
-      "path": "frontend\\src\\api\\auth.js",
-      "accessCount": 1,
-      "lastAccessed": 1776862496297,
       "type": "file"
     },
     {
@@ -371,12 +395,6 @@
       "type": "directory"
     },
     {
-      "path": "backend\\src",
-      "accessCount": 1,
-      "lastAccessed": 1776863393039,
-      "type": "directory"
-    },
-    {
       "path": "backend\\src\\main\\java\\com\\myblog\\infrastructure\\repository\\persistence\\converter\\ArticleLikePersistenceConverter.java",
       "accessCount": 1,
       "lastAccessed": 1776864933353,
@@ -387,6 +405,12 @@
       "accessCount": 1,
       "lastAccessed": 1776864937432,
       "type": "directory"
+    },
+    {
+      "path": "backend\\src\\main\\java\\com\\myblog\\domain\\model\\aggregate\\Comment.java",
+      "accessCount": 1,
+      "lastAccessed": 1776872581031,
+      "type": "file"
     }
   ],
   "userDirectives": []

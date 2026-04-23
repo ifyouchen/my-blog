@@ -32,9 +32,12 @@ public final class CommentAssembler {
         dto.setId(comment.getId().getValue());
         dto.setArticleId(comment.getArticleId().getValue());
         dto.setUserId(comment.getUserId().getValue());
+        dto.setRootCommentId(comment.getRootCommentId());
         dto.setParentId(comment.getParentId());
         dto.setContent(comment.getContent());
         dto.setStatus(comment.getStatus().name());
+        dto.setLikeCount(comment.getLikeCount());
+        dto.setPinned(comment.isPinned());
         if (comment.getCreatedAt() != null) {
             dto.setCreatedAt(FORMATTER.format(comment.getCreatedAt()));
         }

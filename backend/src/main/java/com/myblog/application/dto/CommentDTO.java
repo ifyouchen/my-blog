@@ -13,12 +13,21 @@ public class CommentDTO {
     private Long id;
     private Long articleId;
     private Long userId;
+    private Long rootCommentId;
     private Long parentId;
     private String content;
     private String status;
     private String createdAt;
+    private Integer replyCount;
+    private Integer likeCount;
+    private Boolean liked;
+    private Boolean pinned;
+    private Boolean canDelete;
+    private Boolean canPin;
+    private Boolean author;
     private UserDTO user;
-    private List<CommentDTO> replies;
+    private UserDTO replyToUser;
+    private List<CommentDTO> replyPreview;
 
     public Long getId() {
         return id;
@@ -42,6 +51,14 @@ public class CommentDTO {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public Long getRootCommentId() {
+        return rootCommentId;
+    }
+
+    public void setRootCommentId(Long rootCommentId) {
+        this.rootCommentId = rootCommentId;
     }
 
     public Long getParentId() {
@@ -76,6 +93,62 @@ public class CommentDTO {
         this.createdAt = createdAt;
     }
 
+    public Integer getReplyCount() {
+        return replyCount;
+    }
+
+    public void setReplyCount(Integer replyCount) {
+        this.replyCount = replyCount;
+    }
+
+    public Integer getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(Integer likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public Boolean getLiked() {
+        return liked;
+    }
+
+    public void setLiked(Boolean liked) {
+        this.liked = liked;
+    }
+
+    public Boolean getPinned() {
+        return pinned;
+    }
+
+    public void setPinned(Boolean pinned) {
+        this.pinned = pinned;
+    }
+
+    public Boolean getCanDelete() {
+        return canDelete;
+    }
+
+    public void setCanDelete(Boolean canDelete) {
+        this.canDelete = canDelete;
+    }
+
+    public Boolean getCanPin() {
+        return canPin;
+    }
+
+    public void setCanPin(Boolean canPin) {
+        this.canPin = canPin;
+    }
+
+    public Boolean getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(Boolean author) {
+        this.author = author;
+    }
+
     public UserDTO getUser() {
         return user;
     }
@@ -84,11 +157,19 @@ public class CommentDTO {
         this.user = user;
     }
 
-    public List<CommentDTO> getReplies() {
-        return replies;
+    public UserDTO getReplyToUser() {
+        return replyToUser;
     }
 
-    public void setReplies(List<CommentDTO> replies) {
-        this.replies = replies;
+    public void setReplyToUser(UserDTO replyToUser) {
+        this.replyToUser = replyToUser;
+    }
+
+    public List<CommentDTO> getReplyPreview() {
+        return replyPreview;
+    }
+
+    public void setReplyPreview(List<CommentDTO> replyPreview) {
+        this.replyPreview = replyPreview;
     }
 }

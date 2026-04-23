@@ -43,6 +43,9 @@ public final class ArticleAssembler {
         if (article.getPublishedAt() != null) {
             dto.setPublishedAt(FORMATTER.format(article.getPublishedAt()));
         }
+        if (article.getUpdatedAt() != null) {
+            dto.setUpdatedAt(FORMATTER.format(article.getUpdatedAt()));
+        }
         UserDTO authorDTO = UserAssembler.toDTO(author);
         dto.setAuthor(authorDTO);
         return dto;

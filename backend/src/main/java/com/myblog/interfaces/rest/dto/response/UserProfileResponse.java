@@ -12,6 +12,9 @@ public class UserProfileResponse {
     private long articleCount;
     private long totalViewCount;
     private long totalLikeCount;
+    private long followerCount;
+    private long followingCount;
+    private boolean following;
 
     /**
      * 获取用户信息。
@@ -83,5 +86,29 @@ public class UserProfileResponse {
      */
     public void setTotalLikeCount(long totalLikeCount) {
         this.totalLikeCount = totalLikeCount;
+    }
+
+    public long getFollowerCount() {
+        return followerCount;
+    }
+
+    public void setFollowerCount(long followerCount) {
+        this.followerCount = followerCount;
+    }
+
+    public long getFollowingCount() {
+        return followingCount;
+    }
+
+    public void setFollowingCount(long followingCount) {
+        this.followingCount = followingCount;
+    }
+
+    public boolean isFollowing() {
+        return following;
+    }
+
+    public void setFollowing(boolean following) {
+        this.following = following;
     }
 }

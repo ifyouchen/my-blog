@@ -1,0 +1,71 @@
+{
+  "updatedAt": "2026-04-22T16:22:22.896Z",
+  "missions": [
+    {
+      "id": "session:88633f42-ea5f-4843-91e8-251a533e4af0:none",
+      "source": "session",
+      "name": "none",
+      "objective": "Session mission",
+      "createdAt": "2026-04-22T15:42:32.425Z",
+      "updatedAt": "2026-04-22T16:22:22.896Z",
+      "status": "running",
+      "workerCount": 2,
+      "taskCounts": {
+        "total": 2,
+        "pending": 0,
+        "blocked": 0,
+        "inProgress": 1,
+        "completed": 1,
+        "failed": 0
+      },
+      "agents": [
+        {
+          "name": "Explore:ae1b9a0",
+          "role": "Explore",
+          "ownership": "ae1b9a0116127e244",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-04-22T15:43:30.104Z"
+        },
+        {
+          "name": "Explore:acfd1a4",
+          "role": "Explore",
+          "ownership": "acfd1a4cc29f27e59",
+          "status": "running",
+          "currentStep": null,
+          "latestUpdate": null,
+          "completedSummary": null,
+          "updatedAt": "2026-04-22T16:22:22.896Z"
+        }
+      ],
+      "timeline": [
+        {
+          "id": "session-start:ae1b9a0116127e244:2026-04-22T15:42:32.425Z",
+          "at": "2026-04-22T15:42:32.425Z",
+          "kind": "update",
+          "agent": "Explore:ae1b9a0",
+          "detail": "started Explore:ae1b9a0",
+          "sourceKey": "session-start:ae1b9a0116127e244"
+        },
+        {
+          "id": "session-stop:ae1b9a0116127e244:2026-04-22T15:43:30.104Z",
+          "at": "2026-04-22T15:43:30.104Z",
+          "kind": "completion",
+          "agent": "Explore:ae1b9a0",
+          "detail": "completed",
+          "sourceKey": "session-stop:ae1b9a0116127e244"
+        },
+        {
+          "id": "session-start:acfd1a4cc29f27e59:2026-04-22T16:22:22.896Z",
+          "at": "2026-04-22T16:22:22.896Z",
+          "kind": "update",
+          "agent": "Explore:acfd1a4",
+          "detail": "started Explore:acfd1a4",
+          "sourceKey": "session-start:acfd1a4cc29f27e59"
+        }
+      ]
+    }
+  ]
+}

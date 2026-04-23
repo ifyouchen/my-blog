@@ -1,406 +1,323 @@
 <script setup>
-import { ref, computed, inject, onMounted, watch } from 'vue';
-import { getCommentsApi, createCommentApi, deleteCommentApi } from '@/api/comments';
-import { normalizeComment } from '@/api/transformers';
+import { computed, inject, ref, watch } from 'vue';
+import { createCommentApi, pageCommentsApi } from '@/api/comments';
+import CommentComposer from '@/components/CommentComposer.vue';
+import CommentRootItem from '@/components/CommentRootItem.vue';
 import { useSession } from '@/stores/session';
-import CommentItem from '@/components/CommentItem.vue';
 
 const props = defineProps({
     articleId: {
         type: Number,
         required: true
+    },
+    initialCount: {
+        type: Number,
+        default: 0
     }
 });
+
+const emit = defineEmits(['count-change']);
 
 const { state } = useSession();
 const loginModal = inject('loginModal', { requireLogin: () => false });
 
-const comments = ref([]);
-const commentText = ref('');
-const replyText = ref('');
-const replyToId = ref(null);
-const feedback = ref('');
-const sortType = ref('time');
-const loading = ref(false);
+const composerDraft = ref('');
+const composerFeedback = ref('');
+const composerSubmitting = ref(false);
 
-const sortedComments = computed(() => {
-    const list = [...comments.value];
-    if (sortType.value === 'hot') {
-        return list.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
-    }
-    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+const comments = ref([]);
+const loading = ref(false);
+const errorMessage = ref('');
+const sort = ref('hot');
+const currentPage = ref(1);
+const pageSize = 20;
+const rootTotal = ref(0);
+const commentCount = ref(props.initialCount || 0);
+
+watch(() => props.initialCount, (value) => {
+    commentCount.value = Number(value) || 0;
 });
 
-const countCommentTree = (items) => {
-    return items.reduce((total, item) => {
-        return total + 1 + countCommentTree(item.replies || []);
-    }, 0);
-};
+const currentUser = computed(() => state.user || null);
+const totalPages = computed(() => Math.max(1, Math.ceil(rootTotal.value / pageSize)));
+const avatarUrl = computed(() => currentUser.value?.avatar || currentUser.value?.avatarUrl);
 
-const totalCommentCount = computed(() => countCommentTree(comments.value));
-
-const fetchComments = async () => {
+async function fetchComments(page = currentPage.value) {
     loading.value = true;
+    errorMessage.value = '';
     try {
-        const data = await getCommentsApi(props.articleId);
-        comments.value = (data || []).map(c => normalizeComment(c));
+        const result = await pageCommentsApi(props.articleId, {
+            page,
+            pageSize,
+            sort: sort.value
+        });
+        comments.value = result.items || [];
+        rootTotal.value = result.total || 0;
+        currentPage.value = result.page || page;
+        if (!comments.value.length && currentPage.value > 1 && rootTotal.value > 0) {
+            const fallbackPage = Math.max(1, Math.ceil(rootTotal.value / pageSize));
+            if (fallbackPage !== currentPage.value) {
+                await fetchComments(fallbackPage);
+                return;
+            }
+        }
     } catch (error) {
-        console.error('获取评论失败:', error);
+        errorMessage.value = error.message || '评论加载失败';
+        comments.value = [];
+        rootTotal.value = 0;
     } finally {
         loading.value = false;
     }
-};
+}
 
-const submitComment = async () => {
+async function submitComment() {
     const canContinue = loginModal.requireLogin(() => submitComment(), {
         title: '登录后发表评论',
-        message: '登录后可以参与讨论，并收到后续回复提醒。',
+        message: '登录后可以参与讨论，和其他读者一起把评论区聊热起来。',
         actionText: '登录并评论'
     });
     if (!canContinue) {
-        feedback.value = '登录后可以发表评论';
+        composerFeedback.value = '登录后可以发表评论';
         return;
     }
-    const content = commentText.value.trim();
+    const content = composerDraft.value.trim();
     if (!content) {
-        feedback.value = '评论内容不能为空';
+        composerFeedback.value = '评论内容不能为空';
         return;
     }
+    composerSubmitting.value = true;
     try {
-        await createCommentApi(props.articleId, { content, parentId: 0 });
-        feedback.value = '评论已发布';
-        commentText.value = '';
-        await fetchComments();
+        await createCommentApi(props.articleId, {
+            content,
+            parentId: 0,
+            rootCommentId: 0
+        });
+        composerDraft.value = '';
+        composerFeedback.value = '评论已发布';
+        handleCountChange(1);
+        await fetchComments(1);
     } catch (error) {
-        feedback.value = error.message || '评论失败';
+        composerFeedback.value = error.message || '发表评论失败';
+    } finally {
+        composerSubmitting.value = false;
     }
-};
+}
 
-const submitReply = async (parentId) => {
-    const canContinue = loginModal.requireLogin(() => submitReply(parentId), {
-        title: '登录后回复评论',
-        message: '登录后可以继续这段讨论，回复会展示在当前评论下。',
-        actionText: '登录并回复'
-    });
-    if (!canContinue) {
-        feedback.value = '登录后可以回复评论';
+function handleCountChange(delta) {
+    const next = Math.max(0, commentCount.value + delta);
+    commentCount.value = next;
+    emit('count-change', delta);
+}
+
+function changeSort(nextSort) {
+    if (sort.value === nextSort) {
         return;
     }
-    const content = replyText.value.trim();
-    if (!content) {
-        feedback.value = '回复内容不能为空';
+    sort.value = nextSort;
+    fetchComments(1);
+}
+
+function goPage(page) {
+    if (page < 1 || page > totalPages.value || page === currentPage.value || loading.value) {
         return;
     }
-    try {
-        await createCommentApi(props.articleId, { content, parentId });
-        feedback.value = '回复已发布';
-        replyText.value = '';
-        replyToId.value = null;
-        await fetchComments();
-    } catch (error) {
-        feedback.value = error.message || '回复失败';
-    }
-};
+    fetchComments(page);
+}
 
-const deleteComment = async (commentId) => {
-    const canContinue = loginModal.requireLogin(() => deleteComment(commentId), {
-        title: '登录后管理评论',
-        message: '登录后会校验你的身份，只允许删除自己或有权限管理的评论。',
-        actionText: '登录并继续'
-    });
-    if (!canContinue) {
-        feedback.value = '登录后可以管理评论';
-        return;
-    }
-    if (!confirm('确定要删除这条评论吗？')) {
-        return;
-    }
-    try {
-        await deleteCommentApi(commentId);
-        feedback.value = '评论已删除';
-        await fetchComments();
-    } catch (error) {
-        feedback.value = error.message || '删除失败';
-    }
-};
-
-const startReply = (commentId) => {
-    const canContinue = loginModal.requireLogin(() => startReply(commentId), {
-        title: '登录后回复评论',
-        message: '登录后可以继续这段讨论，回复会展示在当前评论下。',
-        actionText: '登录并回复'
-    });
-    if (!canContinue) {
-        feedback.value = '登录后可以回复评论';
-        return;
-    }
-    replyToId.value = commentId;
-    replyText.value = '';
-};
-
-const cancelReply = () => {
-    replyToId.value = null;
-    replyText.value = '';
-};
-
-const currentUserId = computed(() => state.user?.id);
-const currentUserRole = computed(() => state.user?.role || '');
-
-const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    const date = new Date(timeStr);
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes}分钟前`;
-    if (hours < 24) return `${hours}小时前`;
-    if (days < 30) return `${days}天前`;
-    return timeStr.substring(0, 10);
-};
-
-defineExpose({ fetchComments });
-
-onMounted(fetchComments);
-
-watch(() => props.articleId, fetchComments);
+watch(() => props.articleId, () => {
+    comments.value = [];
+    currentPage.value = 1;
+    rootTotal.value = 0;
+    fetchComments(1);
+}, { immediate: true });
 </script>
 
 <template>
-    <div class="comment-panel">
-        <div class="comment-header">
-            <span class="comment-title">评论 ({{ totalCommentCount }})</span>
-            <div class="comment-sort">
-                <button
-                    :class="{ active: sortType === 'time' }"
-                    @click="sortType = 'time'"
-                >时间</button>
-                <button
-                    :class="{ active: sortType === 'hot' }"
-                    @click="sortType = 'hot'"
-                >热度</button>
+    <section class="comment-panel">
+        <header class="comment-panel-header">
+            <div>
+                <h2 class="comment-panel-title">评论 {{ commentCount }}</h2>
+                <p class="comment-panel-subtitle">先看置顶，再看最热讨论，楼中楼会在当前评论下展开。</p>
             </div>
-        </div>
-
-        <div class="comment-input-wrap">
-            <textarea
-                v-model="commentText"
-                class="comment-input"
-                placeholder="发一条友善的评论..."
-                rows="3"
-            ></textarea>
-            <div class="comment-input-footer">
-                <span v-if="feedback" class="feedback">{{ feedback }}</span>
-                <button class="submit-btn" type="button" @click="submitComment">发表评论</button>
+            <div class="comment-sort-tabs">
+                <button
+                    type="button"
+                    :class="{ active: sort === 'hot' }"
+                    @click="changeSort('hot')"
+                >
+                    最热
+                </button>
+                <button
+                    type="button"
+                    :class="{ active: sort === 'latest' }"
+                    @click="changeSort('latest')"
+                >
+                    最新
+                </button>
             </div>
+        </header>
+
+        <CommentComposer
+            v-model="composerDraft"
+            class="comment-panel-composer"
+            :avatar-url="avatarUrl"
+            :feedback="composerFeedback"
+            :submitting="composerSubmitting"
+            placeholder="发一条友善的评论，和更多读者一起聊聊这篇文章。"
+            submit-text="发表评论"
+            @submit="submitComment"
+        />
+
+        <div v-if="loading" class="comment-panel-state">评论加载中...</div>
+        <div v-else-if="errorMessage" class="comment-panel-state error">{{ errorMessage }}</div>
+        <div v-else-if="!comments.length" class="comment-panel-state">
+            还没有评论，来写下第一条想法。
         </div>
-
-        <p v-if="loading" class="comment-empty">评论加载中...</p>
-        <p v-else-if="!sortedComments.length" class="comment-empty">还没有评论，来写下第一条想法。</p>
-
-        <div class="comment-items">
-            <CommentItem
-                v-for="comment in sortedComments"
+        <div v-else class="comment-panel-list">
+            <CommentRootItem
+                v-for="comment in comments"
                 :key="comment.id"
+                :article-id="articleId"
                 :comment="comment"
-                :current-user-id="currentUserId"
-                :current-user-role="currentUserRole"
-                :format-time="formatTime"
-                @reply="startReply"
-                @delete="deleteComment"
+                :current-user="currentUser"
+                @refresh="fetchComments(currentPage)"
+                @count-change="handleCountChange"
             />
         </div>
 
-        <div v-if="replyToId" class="reply-dock">
-            <textarea
-                v-model="replyText"
-                class="reply-input"
-                placeholder="写下你的回复..."
-                rows="2"
-            ></textarea>
-            <div class="reply-input-footer">
-                <span>正在回复 #{{ replyToId }}</span>
-                <div>
-                    <button class="cancel-btn" type="button" @click="cancelReply">取消</button>
-                    <button class="submit-btn" type="button" @click="submitReply(replyToId)">发布</button>
-                </div>
+        <footer v-if="rootTotal > 0" class="comment-panel-footer">
+            <div class="comment-panel-meta">
+                <span>一级评论 {{ rootTotal }} 条</span>
+                <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
             </div>
-        </div>
-    </div>
+            <div v-if="totalPages > 1" class="comment-panel-pagination">
+                <button type="button" :disabled="currentPage <= 1 || loading" @click="goPage(1)">首页</button>
+                <button type="button" :disabled="currentPage <= 1 || loading" @click="goPage(currentPage - 1)">上一页</button>
+                <button type="button" :disabled="currentPage >= totalPages || loading" @click="goPage(currentPage + 1)">下一页</button>
+                <button type="button" :disabled="currentPage >= totalPages || loading" @click="goPage(totalPages)">末页</button>
+            </div>
+        </footer>
+    </section>
 </template>
 
 <style scoped>
 .comment-panel {
-    padding: 16px 0;
+    display: grid;
+    gap: 18px;
 }
 
-.comment-header {
+.comment-panel-header,
+.comment-panel-footer {
     display: flex;
+    gap: 16px;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
 }
 
-.comment-title {
-    font-size: 16px;
-    font-weight: 600;
+.comment-panel-title {
+    margin: 0;
     color: var(--text);
+    font-size: 22px;
+    font-weight: 700;
 }
 
-.comment-sort {
-    display: flex;
-    gap: 8px;
-}
-
-.comment-sort button {
-    padding: 4px 12px;
-    font-size: 13px;
+.comment-panel-subtitle {
+    margin: 6px 0 0;
     color: var(--muted);
-    background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.6;
 }
 
-.comment-sort button.active {
-    color: var(--brand);
-    border-color: var(--brand);
-    background: rgba(15, 143, 117, 0.1);
-}
-
-.comment-input-wrap {
-    margin-bottom: 24px;
-    padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--line);
+.comment-sort-tabs {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    padding: 4px;
+    background: #f8fbfa;
+    border: 1px solid rgba(219, 227, 223, 0.92);
     border-radius: 8px;
 }
 
-.comment-input {
-    width: 100%;
-    padding: 8px;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--text);
-    background: transparent;
-    border: none;
-    outline: none;
-    resize: none;
-    box-sizing: border-box;
-}
-
-.comment-input::placeholder {
+.comment-sort-tabs button {
+    min-height: 34px;
+    padding: 0 14px;
     color: var(--muted);
-}
-
-.comment-input-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--line);
-}
-
-.feedback {
     font-size: 13px;
-    color: var(--brand);
-}
-
-.submit-btn {
-    padding: 6px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    color: #ffffff;
-    background: var(--brand);
-    border: none;
-    border-radius: 4px;
+    font-weight: 600;
     cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
 }
 
-.submit-btn:hover {
-    background: var(--brand-strong);
+.comment-sort-tabs button.active {
+    color: var(--brand-strong);
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
-.comment-items {
+.comment-panel-composer {
+    margin-top: 2px;
+}
+
+.comment-panel-list {
     display: grid;
     gap: 20px;
 }
 
-.reply-dock {
-    position: sticky;
-    bottom: 12px;
-    z-index: 2;
-    margin-top: 18px;
-    padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--line);
+.comment-panel-state {
+    padding: 18px 20px;
+    color: var(--muted);
+    background: #f8fbfa;
+    border: 1px solid rgba(219, 227, 223, 0.92);
     border-radius: 8px;
-    box-shadow: var(--shadow);
 }
 
-.reply-input {
-    width: 100%;
-    padding: 6px;
+.comment-panel-state.error {
+    color: #b42318;
+}
+
+.comment-panel-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--muted);
     font-size: 13px;
-    line-height: 1.5;
+}
+
+.comment-panel-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.comment-panel-pagination button {
+    min-height: 34px;
+    padding: 0 12px;
     color: var(--text);
-    background: transparent;
-    border: none;
-    outline: none;
-    resize: none;
-    box-sizing: border-box;
-}
-
-.reply-input::placeholder {
-    color: var(--muted);
-}
-
-.reply-input-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-}
-
-.reply-input-footer span,
-.comment-empty {
-    color: var(--muted);
     font-size: 13px;
-}
-
-.reply-input-footer div {
-    display: flex;
-    gap: 8px;
-}
-
-.cancel-btn {
-    padding: 4px 12px;
-    font-size: 12px;
-    color: var(--muted);
-    background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 4px;
     cursor: pointer;
+    background: #ffffff;
+    border: 1px solid rgba(219, 227, 223, 0.92);
+    border-radius: 8px;
 }
 
-.cancel-btn:hover {
-    border-color: var(--muted);
+.comment-panel-pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-@media (max-width: 520px) {
-    .comment-header,
-    .comment-input-footer,
-    .reply-input-footer {
+@media (max-width: 720px) {
+    .comment-panel-header,
+    .comment-panel-footer {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .reply-input-footer div {
-        justify-content: flex-end;
+    .comment-sort-tabs,
+    .comment-panel-pagination {
+        width: fit-content;
     }
 }
 </style>

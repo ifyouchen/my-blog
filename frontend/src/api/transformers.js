@@ -60,6 +60,8 @@ export const normalizeArticle = (article) => {
         rawContent,
         readingTime: `${Math.max(5, Math.ceil(rawContent.length / 120))} 分钟阅读`,
         publishedText: article.publishedAt || '刚刚更新',
+        updatedAt: article.updatedAt || article.publishedAt || '',
+        updatedText: article.updatedAt || article.publishedAt || '刚刚更新',
         cover: article.cover || article.coverUrl,
         coverUrl: article.coverUrl || article.cover,
         coverAlt: `${article.title} 封面图`,
@@ -78,17 +80,54 @@ export const normalizeArticle = (article) => {
     };
 };
 
-export const normalizeComment = (comment, parentUser = null) => ({
+export const normalizeColumn = (column) => ({
+    id: column.id,
+    title: column.title,
+    summary: column.summary,
+    coverUrl: column.coverUrl
+        || 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=900&q=80',
+    subscriberCount: column.subscriberCount || 0,
+    articleCount: column.articleCount || 0,
+    subscribed: Boolean(column.subscribed),
+    author: normalizeUser(column.author || {})
+});
+
+export const normalizeAuthorRanking = (item) => ({
+    rank: item.rank || 0,
+    user: normalizeUser(item.user || {}),
+    articleCount: item.articleCount || 0,
+    totalViewCount: item.totalViewCount || 0,
+    totalLikeCount: item.totalLikeCount || 0,
+    followerCount: item.followerCount || 0,
+    followed: Boolean(item.followed)
+});
+
+export const normalizeComment = (comment) => ({
     id: comment.id,
     articleId: comment.articleId,
     userId: comment.userId,
+    rootCommentId: comment.rootCommentId,
     parentId: comment.parentId,
     content: comment.content,
     createdAt: comment.createdAt,
     time: formatCommentTime(comment.createdAt),
+    replyCount: comment.replyCount || 0,
+    likeCount: comment.likeCount || 0,
+    liked: Boolean(comment.liked),
+    pinned: Boolean(comment.pinned),
+    canDelete: Boolean(comment.canDelete),
+    canPin: Boolean(comment.canPin),
+    author: Boolean(comment.author),
     user: normalizeUser(comment.user || {}),
-    parentUser: parentUser,
-    replies: (comment.replies || []).map((reply) => normalizeComment(reply, comment.user))
+    replyToUser: comment.replyToUser ? normalizeUser(comment.replyToUser) : null,
+    replyPreview: (comment.replyPreview || []).map((reply) => normalizeComment(reply))
+});
+
+export const normalizeCommentPage = (pageData = {}) => ({
+    items: (pageData.items || []).map((item) => normalizeComment(item)),
+    page: pageData.page || 1,
+    pageSize: pageData.pageSize || 10,
+    total: pageData.total || 0
 });
 
 const formatCommentTime = (timeStr) => {

@@ -67,6 +67,82 @@ public class MyBatisCommentRepository implements CommentRepository {
         return comments;
     }
 
+    @Override
+    public List<Comment> findRootComments(ArticleId articleId, String sort, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<CommentDO> commentDOList = commentMapper.selectRootPage(articleId.getValue(), sort, offset, currentPageSize);
+        List<Comment> comments = new ArrayList<>(commentDOList.size());
+        for (CommentDO commentDO : commentDOList) {
+            comments.add(CommentPersistenceConverter.toDomain(commentDO));
+        }
+        return comments;
+    }
+
+    @Override
+    public long countRootComments(ArticleId articleId) {
+        return commentMapper.countRootByArticleId(articleId.getValue());
+    }
+
+    @Override
+    public List<Comment> findReplies(CommentId rootCommentId, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<CommentDO> commentDOList = commentMapper.selectRepliesByRootCommentId(
+            rootCommentId.getValue(),
+            offset,
+            currentPageSize
+        );
+        List<Comment> comments = new ArrayList<>(commentDOList.size());
+        for (CommentDO commentDO : commentDOList) {
+            comments.add(CommentPersistenceConverter.toDomain(commentDO));
+        }
+        return comments;
+    }
+
+    @Override
+    public long countReplies(CommentId rootCommentId) {
+        return commentMapper.countRepliesByRootCommentId(rootCommentId.getValue());
+    }
+
+    @Override
+    public List<Comment> findReplyPreviewByRootIds(List<Long> rootCommentIds, int limitPerRoot) {
+        if (rootCommentIds == null || rootCommentIds.isEmpty()) {
+            return new ArrayList<Comment>();
+        }
+        List<CommentDO> commentDOList = commentMapper.selectReplyPreviewByRootIds(rootCommentIds, limitPerRoot);
+        List<Comment> comments = new ArrayList<>(commentDOList.size());
+        for (CommentDO commentDO : commentDOList) {
+            comments.add(CommentPersistenceConverter.toDomain(commentDO));
+        }
+        return comments;
+    }
+
+    @Override
+    public List<Comment> findByIds(List<Long> commentIds) {
+        if (commentIds == null || commentIds.isEmpty()) {
+            return new ArrayList<Comment>();
+        }
+        List<CommentDO> commentDOList = commentMapper.selectByIds(commentIds);
+        List<Comment> comments = new ArrayList<>(commentDOList.size());
+        for (CommentDO commentDO : commentDOList) {
+            comments.add(CommentPersistenceConverter.toDomain(commentDO));
+        }
+        return comments;
+    }
+
+    @Override
+    public List<Comment> findThreadByRootCommentId(CommentId rootCommentId) {
+        List<CommentDO> commentDOList = commentMapper.selectThreadByRootCommentId(rootCommentId.getValue());
+        List<Comment> comments = new ArrayList<>(commentDOList.size());
+        for (CommentDO commentDO : commentDOList) {
+            comments.add(CommentPersistenceConverter.toDomain(commentDO));
+        }
+        return comments;
+    }
+
     /**
      * 保存评论。
      *
@@ -87,6 +163,11 @@ public class MyBatisCommentRepository implements CommentRepository {
             commentMapper.insert(commentDO);
         }
         return comment;
+    }
+
+    @Override
+    public void clearPinnedByArticleId(ArticleId articleId) {
+        commentMapper.clearPinnedByArticleId(articleId.getValue());
     }
 
     @Override

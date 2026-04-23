@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { articles as defaultArticles } from '@/data/home';
-import { ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST } from '@/constants/articleSort';
+import { ARTICLE_SORT_LATEST } from '@/constants/articleSort';
 
 const props = defineProps({
     articles: {
@@ -46,7 +46,7 @@ const props = defineProps({
     },
     sortItems: {
         type: Array,
-        default: () => ARTICLE_SORT_ITEMS
+        default: () => []
     }
 });
 
@@ -131,7 +131,7 @@ watch(
                 <p class="eyebrow">{{ eyebrow }}</p>
                 <h2 id="feed-title">{{ title }}</h2>
             </div>
-            <div class="sort-tabs" aria-label="排序">
+            <div v-if="props.sortItems.length" class="sort-tabs" aria-label="排序">
                 <button
                     v-for="item in props.sortItems"
                     :key="item.value"

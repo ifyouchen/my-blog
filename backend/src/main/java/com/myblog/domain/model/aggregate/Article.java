@@ -56,20 +56,14 @@ public class Article {
      */
     public static Article create(Long id, UserId authorId, String title, String summary, String content,
                                  String coverUrl, String category, List<String> tags, ArticleStatus status) {
-        if (title == null || title.trim().isEmpty()) {
-            throw new DomainException(ErrorCode.PARAM_ERROR, "文章标题不能为空");
-        }
-        if (content == null || content.trim().isEmpty()) {
-            throw new DomainException(ErrorCode.PARAM_ERROR, "文章正文不能为空");
-        }
         Article article = new Article();
         article.id = new ArticleId(id);
         article.authorId = authorId;
-        article.title = title.trim();
+        article.title = normalizeText(title);
         article.summary = summary == null ? "" : summary.trim();
-        article.content = content;
+        article.content = normalizeText(content);
         article.coverUrl = coverUrl;
-        article.category = category == null ? "后端" : category;
+        article.category = normalizeText(category);
         article.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
         article.status = status == null ? ArticleStatus.DRAFT : status;
         article.viewCount = 0;
@@ -79,6 +73,9 @@ public class Article {
         article.createdAt = LocalDateTime.now();
         article.updatedAt = article.createdAt;
         article.version = 0;
+        if (requiresCompleteContent(article.status)) {
+            article.validatePublishable();
+        }
         if (ArticleStatus.PUBLISHED.equals(article.status)) {
             article.publishedAt = article.createdAt;
         }
@@ -201,6 +198,7 @@ public class Article {
         if (ArticleStatus.DELETED.equals(status)) {
             throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能发布");
         }
+        validatePublishable();
         this.status = ArticleStatus.PUBLISHED;
         if (this.publishedAt == null) {
             this.publishedAt = LocalDateTime.now();
@@ -226,6 +224,7 @@ public class Article {
         if (ArticleStatus.DELETED.equals(status)) {
             throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能下架");
         }
+        validatePublishable();
         this.status = ArticleStatus.OFFLINE;
         this.updatedAt = LocalDateTime.now();
     }
@@ -242,19 +241,33 @@ public class Article {
      */
     public void updateContent(String title, String summary, String content, String coverUrl,
                               String category, List<String> tags) {
+        this.title = normalizeText(title);
+        this.summary = summary == null ? "" : summary.trim();
+        this.content = normalizeText(content);
+        this.coverUrl = coverUrl;
+        this.category = normalizeText(category);
+        this.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    private void validatePublishable() {
         if (title == null || title.trim().isEmpty()) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "文章标题不能为空");
         }
         if (content == null || content.trim().isEmpty()) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "文章正文不能为空");
         }
-        this.title = title.trim();
-        this.summary = summary == null ? "" : summary.trim();
-        this.content = content;
-        this.coverUrl = coverUrl;
-        this.category = category == null || category.trim().isEmpty() ? "后端" : category.trim();
-        this.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
-        this.updatedAt = LocalDateTime.now();
+        if (category == null || category.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "文章分类不能为空");
+        }
+    }
+
+    private static boolean requiresCompleteContent(ArticleStatus status) {
+        return ArticleStatus.PUBLISHED.equals(status) || ArticleStatus.OFFLINE.equals(status);
+    }
+
+    private static String normalizeText(String value) {
+        return value == null ? "" : value.trim();
     }
 
     /**

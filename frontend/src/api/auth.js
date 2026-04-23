@@ -36,7 +36,10 @@ export const getUserProfileApi = async (userId) => {
     const data = await request(`/users/${userId}`);
     return {
         ...data,
-        user: normalizeUser(data.user || {})
+        user: normalizeUser(data.user || {}),
+        followerCount: data.followerCount || 0,
+        followingCount: data.followingCount || 0,
+        following: Boolean(data.following)
     };
 };
 

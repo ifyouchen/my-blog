@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.CommentLikeMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.CommentLikeDO">
+        <id column="id" property="id"/>
+        <result column="comment_id" property="commentId"/>
+        <result column="user_id" property="userId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, comment_id, user_id, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectByCommentAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment_like
+        WHERE comment_id = #{commentId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectAnyByCommentAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment_like
+        WHERE comment_id = #{commentId}
+        AND user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="countByCommentAndUser" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_comment_like
+        WHERE comment_id = #{commentId}
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByCommentIdsAndUser" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment_like
+        WHERE comment_id IN
+        <foreach collection="commentIds" item="commentId" open="(" separator="," close=")">
+            #{commentId}
+        </foreach>
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_comment_like
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_comment_like
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentLikeDO">
+        INSERT INTO blog_comment_like
+        (id, comment_id, user_id, created_at, updated_at)
+        VALUES
+        (#{id}, #{commentId}, #{userId}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentLikeDO">
+        UPDATE blog_comment_like
+        SET updated_at = #{updatedAt},
+            deleted_at = #{deletedAt},
+            version = version + 1
+        WHERE id = #{id}
+        AND version = #{version}
+    </update>
+</mapper>

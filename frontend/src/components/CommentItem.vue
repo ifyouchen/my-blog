@@ -67,17 +67,51 @@ const avatarUrl = (comment) => {
             </div>
 
             <div v-if="comment.replies && comment.replies.length" class="comment-thread-replies">
-                <CommentItem
-                    v-for="reply in comment.replies"
-                    :key="reply.id"
-                    :comment="reply"
-                    :current-user-id="currentUserId"
-                    :current-user-role="currentUserRole"
-                    :depth="depth + 1"
-                    :format-time="formatTime"
-                    @reply="emit('reply', $event)"
-                    @delete="emit('delete', $event)"
-                />
+                <template v-if="depth < 1">
+                    <CommentItem
+                        v-for="reply in comment.replies"
+                        :key="reply.id"
+                        :comment="reply"
+                        :current-user-id="currentUserId"
+                        :current-user-role="currentUserRole"
+                        :depth="depth + 1"
+                        :format-time="formatTime"
+                        @reply="emit('reply', $event)"
+                        @delete="emit('delete', $event)"
+                    />
+                </template>
+                <template v-else>
+                    <div
+                        v-for="reply in comment.replies"
+                        :key="reply.id"
+                        class="comment-flatten-item"
+                    >
+                        <div class="comment-thread-item nested">
+                            <img class="comment-thread-avatar" :src="avatarUrl(reply)" :alt="authorName(reply)">
+                            <div class="comment-thread-body">
+                                <div class="comment-thread-card">
+                                    <div class="comment-thread-meta">
+                                        <strong>{{ authorName(reply) }}</strong>
+                                        <span v-if="reply.parentUser" class="reply-target">
+                                            回复 {{ reply.parentUser.nickname || reply.parentUser.username }}
+                                        </span>
+                                    </div>
+                                    <p>{{ reply.content }}</p>
+                                    <div class="comment-thread-actions">
+                                        <span>{{ formatTime(reply.createdAt) }}</span>
+                                        <button type="button" @click="emit('reply', reply.id)">回复</button>
+                                        <button
+                                            v-if="normalizeId(currentUserId) === normalizeId(reply.userId) || currentUserRole === 'ADMIN'"
+                                            type="button"
+                                            class="danger"
+                                            @click="emit('delete', reply.id)"
+                                        >删除</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
     </article>
