@@ -9,6 +9,7 @@ export const normalizeUser = (user) => ({
     role: user.role,
     status: user.status,
     bio: user.bio,
+    followed: Boolean(user.followed),
     avatar: resolveMediaUrl(
         user.avatar || user.avatarUrl,
         'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'

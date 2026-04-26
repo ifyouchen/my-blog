@@ -17,6 +17,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
+@Async
 public class ArticleStatsEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(ArticleStatsEventListener.class);
@@ -31,7 +32,6 @@ public class ArticleStatsEventListener {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
     public void onArticleViewed(ArticleViewedEvent event) {
         log.info("Processing ArticleViewedEvent for article {}", event.getArticleId());
         try {

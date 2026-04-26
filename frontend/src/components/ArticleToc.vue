@@ -26,7 +26,17 @@ const scrollActiveItemIntoView = () => {
     }
     const activeLink = tocNavRef.value.querySelector(`[data-toc-id="${activeId.value}"]`);
     if (activeLink) {
-        activeLink.scrollIntoView({ block: 'nearest' });
+        const container = tocNavRef.value;
+        const linkTop = activeLink.offsetTop;
+        const linkBottom = linkTop + activeLink.offsetHeight;
+        const visibleTop = container.scrollTop;
+        const visibleBottom = visibleTop + container.clientHeight;
+        const padding = 8;
+        if (linkTop - padding < visibleTop) {
+            container.scrollTop = Math.max(0, linkTop - padding);
+        } else if (linkBottom + padding > visibleBottom) {
+            container.scrollTop = Math.max(0, linkBottom - container.clientHeight + padding);
+        }
     }
 };
 

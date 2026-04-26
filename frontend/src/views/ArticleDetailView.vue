@@ -8,10 +8,14 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import CommentList from '@/components/CommentList.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
+import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import { articles } from '@/data/home';
+import { useSession } from '@/stores/session';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const toast = inject('toast', { error: () => {} });
+const { state } = useSession();
 
 const remoteArticle = ref(null);
 const isLoading = ref(false);
@@ -43,25 +47,61 @@ const favorited = ref(false);
 const likeCount = ref(0);
 const favoriteCount = ref(0);
 const commentCount = ref(0);
-const feedback = ref('');
 const showBackToTop = ref(false);
+const likeSubmitting = ref(false);
+const favoriteSubmitting = ref(false);
+const currentUserId = computed(() => state.user?.id || null);
+const showAuthorFollow = computed(() => {
+    if (!article.value?.author?.id) {
+        return false;
+    }
+    return currentUserId.value !== article.value.author.id;
+});
+
+const applyInteractionState = ({
+    nextLiked = liked.value,
+    nextFavorited = favorited.value,
+    nextLikeCount = likeCount.value,
+    nextFavoriteCount = favoriteCount.value,
+    syncRemote = true
+} = {}) => {
+    liked.value = nextLiked;
+    favorited.value = nextFavorited;
+    likeCount.value = Math.max(0, nextLikeCount);
+    favoriteCount.value = Math.max(0, nextFavoriteCount);
+
+    if (!syncRemote || !remoteArticle.value) {
+        return;
+    }
+    remoteArticle.value = {
+        ...remoteArticle.value,
+        liked: liked.value,
+        favorited: favorited.value,
+        likeCount: likeCount.value,
+        favoriteCount: favoriteCount.value
+    };
+};
 
 const syncArticleState = () => {
     if (!article.value) {
-        liked.value = false;
-        favorited.value = false;
-        likeCount.value = 0;
-        favoriteCount.value = 0;
+        applyInteractionState({
+            nextLiked: false,
+            nextFavorited: false,
+            nextLikeCount: 0,
+            nextFavoriteCount: 0,
+            syncRemote: false
+        });
         commentCount.value = 0;
-        feedback.value = '';
         return;
     }
-    likeCount.value = article.value.likeCount || 0;
-    favoriteCount.value = article.value.favoriteCount || 0;
+    applyInteractionState({
+        nextLiked: Boolean(article.value.liked),
+        nextFavorited: Boolean(article.value.favorited),
+        nextLikeCount: article.value.likeCount || 0,
+        nextFavoriteCount: article.value.favoriteCount || 0,
+        syncRemote: false
+    });
     commentCount.value = article.value.commentCount || 0;
-    liked.value = Boolean(article.value.liked);
-    favorited.value = Boolean(article.value.favorited);
-    feedback.value = '';
 };
 
 const handleCommentCountChange = (delta) => {
@@ -72,6 +112,19 @@ const handleCommentCountChange = (delta) => {
             commentCount: commentCount.value
         };
     }
+};
+
+const handleAuthorFollowChange = (nextFollowed) => {
+    if (!remoteArticle.value?.author) {
+        return;
+    }
+    remoteArticle.value = {
+        ...remoteArticle.value,
+        author: {
+            ...remoteArticle.value.author,
+            followed: nextFollowed
+        }
+    };
 };
 
 const fetchArticle = async () => {
@@ -101,56 +154,74 @@ const fetchArticle = async () => {
 };
 
 const toggleLike = async () => {
+    if (likeSubmitting.value || !article.value) {
+        return;
+    }
     const canContinue = loginModal.requireLogin(() => toggleLike(), {
         title: '登录后点赞',
         message: '登录后可以把喜欢的文章同步到你的账号，并继续刚才的点赞操作。',
         actionText: '登录并点赞'
     });
     if (!canContinue) {
-        feedback.value = '登录后可以点赞文章';
         return;
     }
+    const previousLiked = liked.value;
+    const previousLikeCount = likeCount.value;
+    applyInteractionState({
+        nextLiked: !previousLiked,
+        nextLikeCount: previousLikeCount + (previousLiked ? -1 : 1)
+    });
+    likeSubmitting.value = true;
     try {
-        if (liked.value) {
+        if (previousLiked) {
             await unlikeArticleApi(article.value.id);
-            liked.value = false;
-            likeCount.value = Math.max(0, likeCount.value - 1);
-            feedback.value = '已取消点赞';
         } else {
             await likeArticleApi(article.value.id);
-            liked.value = true;
-            likeCount.value++;
-            feedback.value = '已点赞';
         }
     } catch (error) {
-        feedback.value = error.message || '操作失败';
+        applyInteractionState({
+            nextLiked: previousLiked,
+            nextLikeCount: previousLikeCount
+        });
+        toast.error(error.message || (previousLiked ? '取消点赞失败，请稍后再试' : '点赞失败，请稍后再试'));
+    } finally {
+        likeSubmitting.value = false;
     }
 };
 
 const toggleFavorite = async () => {
+    if (favoriteSubmitting.value || !article.value) {
+        return;
+    }
     const canContinue = loginModal.requireLogin(() => toggleFavorite(), {
         title: '登录后收藏',
         message: '登录后可以把文章加入收藏夹，之后在个人中心继续阅读。',
         actionText: '登录并收藏'
     });
     if (!canContinue) {
-        feedback.value = '登录后可以收藏文章';
         return;
     }
+    const previousFavorited = favorited.value;
+    const previousFavoriteCount = favoriteCount.value;
+    applyInteractionState({
+        nextFavorited: !previousFavorited,
+        nextFavoriteCount: previousFavoriteCount + (previousFavorited ? -1 : 1)
+    });
+    favoriteSubmitting.value = true;
     try {
-        if (favorited.value) {
+        if (previousFavorited) {
             await unfavoriteArticleApi(article.value.id);
-            favorited.value = false;
-            favoriteCount.value = Math.max(0, favoriteCount.value - 1);
-            feedback.value = '已取消收藏';
         } else {
             await favoriteArticleApi(article.value.id);
-            favorited.value = true;
-            favoriteCount.value++;
-            feedback.value = '已加入收藏';
         }
     } catch (error) {
-        feedback.value = error.message || '操作失败';
+        applyInteractionState({
+            nextFavorited: previousFavorited,
+            nextFavoriteCount: previousFavoriteCount
+        });
+        toast.error(error.message || (previousFavorited ? '取消收藏失败，请稍后再试' : '收藏失败，请稍后再试'));
+    } finally {
+        favoriteSubmitting.value = false;
     }
 };
 
@@ -197,24 +268,61 @@ onUnmounted(() => {
                     <p class="article-summary">{{ article.summary }}</p>
 
                     <div class="article-heading-bottom">
-                        <RouterLink class="article-author" :to="`/users/${article.author.id}`">
-                            <img :src="article.author.avatar" alt="作者头像">
-                            <div>
-                                <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
-                                <span>{{ article.viewCount }} 阅读 · {{ likeCount }} 赞 · {{ commentCount }} 评论</span>
+                        <div class="article-heading-meta">
+                            <RouterLink class="article-author" :to="`/users/${article.author.id}`">
+                                <img :src="article.author.avatar" alt="作者头像">
+                                <div>
+                                    <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
+                                    <span>{{ article.publishedText }} · {{ article.category }}</span>
+                                </div>
+                            </RouterLink>
+                            <div class="article-stats-row">
+                                <span class="article-stat-pill">
+                                    <strong>{{ article.viewCount }}</strong>
+                                    <em>阅读</em>
+                                </span>
+                                <span class="article-stat-pill">
+                                    <strong>{{ likeCount }}</strong>
+                                    <em>点赞</em>
+                                </span>
+                                <span class="article-stat-pill">
+                                    <strong>{{ commentCount }}</strong>
+                                    <em>评论</em>
+                                </span>
+                                <span class="article-stat-pill">
+                                    <strong>{{ favoriteCount }}</strong>
+                                    <em>收藏</em>
+                                </span>
                             </div>
-                        </RouterLink>
+                        </div>
 
                         <div class="article-quick-actions">
-                            <button type="button" :class="['article-quick-button', { active: liked }]" @click="toggleLike">
-                                {{ liked ? '已点赞' : '点赞' }} {{ likeCount }}
+                            <button
+                                type="button"
+                                :class="['article-quick-button', { active: liked }]"
+                                :disabled="likeSubmitting"
+                                @click="toggleLike"
+                            >
+                                <span class="article-quick-label">{{ liked ? '已点赞' : '点赞' }}</span>
                             </button>
-                            <button type="button" :class="['article-quick-button', { active: favorited }]" @click="toggleFavorite">
-                                {{ favorited ? '已收藏' : '收藏' }} {{ favoriteCount }}
+                            <button
+                                type="button"
+                                :class="['article-quick-button', { active: favorited }]"
+                                :disabled="favoriteSubmitting"
+                                @click="toggleFavorite"
+                            >
+                                <span class="article-quick-label">{{ favorited ? '已收藏' : '收藏' }}</span>
                             </button>
+                            <AuthorFollowButton
+                                v-if="showAuthorFollow"
+                                class="article-follow-button"
+                                :user-id="article.author.id"
+                                :followed="article.author.followed"
+                                detail
+                                @change="handleAuthorFollowChange"
+                            />
                         </div>
                     </div>
-                    <p v-if="feedback" class="form-message article-feedback">{{ feedback }}</p>
                 </section>
 
                 <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
@@ -237,30 +345,6 @@ onUnmounted(() => {
         </article>
 
         <aside class="detail-side">
-            <section class="side-section article-data-panel">
-                <div class="side-section-head">
-                    <p class="eyebrow">文章数据</p>
-                    <h2>阅读表现</h2>
-                </div>
-                <div class="article-data-grid">
-                    <div>
-                        <strong>{{ article.viewCount }}</strong>
-                        <span>阅读</span>
-                    </div>
-                    <div>
-                        <strong>{{ likeCount }}</strong>
-                        <span>点赞</span>
-                    </div>
-                    <div>
-                        <strong>{{ favoriteCount }}</strong>
-                        <span>收藏</span>
-                    </div>
-                    <div>
-                        <strong>{{ commentCount }}</strong>
-                        <span>评论</span>
-                    </div>
-                </div>
-            </section>
             <ArticleToc
                 v-if="remoteArticle"
                 :content="articleMarkdown"
@@ -302,7 +386,7 @@ onUnmounted(() => {
 .article-heading-bottom {
     display: flex;
     gap: 16px;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     flex-wrap: wrap;
 }
@@ -311,39 +395,97 @@ onUnmounted(() => {
     margin: 0;
 }
 
+.article-heading-meta {
+    display: grid;
+    gap: 14px;
+    flex: 1 1 460px;
+    min-width: 0;
+}
+
+.article-heading-meta :deep(.article-author),
+.article-heading-meta .article-author {
+    margin: 0;
+}
+
+.article-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.article-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 12px;
+    color: var(--muted);
+    background: rgba(31, 122, 224, 0.05);
+    border: 1px solid rgba(31, 122, 224, 0.08);
+    border-radius: 999px;
+    line-height: 1;
+}
+
+.article-stat-pill strong {
+    color: var(--text-strong);
+    font-size: 14px;
+}
+
+.article-stat-pill em {
+    font-style: normal;
+    font-size: 12px;
+}
+
 .article-quick-actions {
     display: flex;
     gap: 10px;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    flex: 0 1 auto;
 }
 
 .article-quick-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 94px;
     min-height: 40px;
     padding: 0 16px;
-    color: var(--text);
-    font-weight: 700;
-    background: #ffffff;
-    border: 1px solid var(--line);
+    color: var(--brand-strong);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(31, 122, 224, 0.08);
+    border: 1px solid rgba(31, 122, 224, 0.18);
     border-radius: 999px;
-    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
 }
 
-.article-quick-button:hover {
-    color: var(--brand-strong);
-    border-color: rgba(31, 122, 224, 0.18);
-    background: var(--brand-soft);
-    box-shadow: 0 10px 20px rgba(31, 122, 224, 0.08);
+.article-quick-button:hover:not(:disabled) {
+    background: rgba(31, 122, 224, 0.14);
+    border-color: rgba(31, 122, 224, 0.28);
+    transform: translateY(-1px);
 }
 
 .article-quick-button.active {
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-    border-color: transparent;
+    color: var(--brand-strong);
+    background: rgba(31, 122, 224, 0.1);
+    border-color: rgba(31, 122, 224, 0.2);
 }
 
-.article-feedback {
-    margin-top: -2px;
+.article-quick-label {
+    flex: none;
+}
+
+.article-quick-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
+.article-follow-button {
+    flex: none;
 }
 
 .article-comment {
@@ -391,49 +533,17 @@ onUnmounted(() => {
     border-radius: 8px;
 }
 
-.article-data-panel {
-    display: grid;
-    gap: 18px;
-}
-
-.side-section-head {
-    display: grid;
-    gap: 4px;
-}
-
-.side-section-head h2 {
-    margin: 0;
-}
-
-.article-data-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.article-data-grid div {
-    display: grid;
-    gap: 4px;
-    padding: 14px 16px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-}
-
-.article-data-grid strong {
-    color: var(--text-strong);
-    font-size: 22px;
-    line-height: 1.1;
-}
-
-.article-data-grid span {
-    color: var(--muted);
-    font-size: 13px;
-}
-
 @media (max-width: 760px) {
     .article-heading-panel {
         padding: 18px;
+    }
+
+    .article-quick-actions {
+        justify-content: flex-start;
+    }
+
+    .article-heading-meta {
+        flex-basis: 100%;
     }
 }
 </style>

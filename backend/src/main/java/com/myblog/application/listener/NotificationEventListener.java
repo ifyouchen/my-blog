@@ -18,6 +18,7 @@ import com.myblog.shared.enums.UserStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -34,6 +35,7 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Component
+@Async
 public class NotificationEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);

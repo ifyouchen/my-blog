@@ -354,24 +354,10 @@ const editorCommands = [
         run: applyTableShortcut
     },
     {
-        id: 'code-java',
-        label: 'Java 代码块',
-        description: '插入 Java 代码',
-        keywords: ['code', 'java', '代码', '代码块'],
-        run: (editorInstance) => applyCodeBlockShortcut(editorInstance, 'java')
-    },
-    {
-        id: 'code-html',
-        label: 'HTML 代码块',
-        description: '插入 HTML 代码',
-        keywords: ['code', 'html', '代码', '代码块'],
-        run: (editorInstance) => applyCodeBlockShortcut(editorInstance, 'html')
-    },
-    {
-        id: 'code-text',
-        label: '通用代码块',
-        description: '插入普通代码块',
-        keywords: ['code', 'text', 'plain', '代码', '代码块'],
+        id: 'code-block',
+        label: '代码块',
+        description: '插入代码块',
+        keywords: ['code', 'block', '代码', '代码块'],
         run: (editorInstance) => applyCodeBlockShortcut(editorInstance, 'text')
     },
     {
@@ -380,6 +366,16 @@ const editorCommands = [
         description: '上传并插入图片',
         keywords: ['image', 'photo', '图片', '插入图片'],
         run: () => applyInsertImage()
+    },
+    {
+        id: 'insert-image-link',
+        label: '图片链接',
+        description: '通过链接插入外部图片',
+        keywords: ['image', 'link', 'url', '图片', '链接', '外部图片'],
+        run: () => {
+            insertImageByUrl();
+            closeSlashMenu();
+        }
     }
 ];
 
@@ -646,6 +642,21 @@ const insertImageMarkdown = (url, alt = '图片') => {
     editor.value.commands.setImage({ src: url, alt });
 };
 
+const insertImageByUrl = () => {
+    if (!editor.value) {
+        return;
+    }
+    const url = window.prompt('请输入图片链接地址');
+    if (!url) {
+        return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('请输入有效的图片链接（以 http:// 或 https:// 开头）');
+        return;
+    }
+    insertImageMarkdown(url, '外部图片');
+};
+
 const uploadAndInsertImage = async (file) => {
     if (!isLoggedIn.value) {
         uploadError.value = '请先登录后再上传图片';
@@ -786,16 +797,16 @@ const toolbarGroups = computed(() => {
                     disabled: imageUploading.value
                 },
                 {
-                    id: 'code-java',
-                    label: 'Java 代码',
-                    active: Boolean(currentEditor?.isActive('codeBlock', { language: 'java' })),
-                    run: () => insertCodeBlock('java')
+                    id: 'insert-image-link',
+                    label: '图片链接',
+                    active: false,
+                    run: insertImageByUrl
                 },
                 {
-                    id: 'code-html',
-                    label: 'HTML 代码',
-                    active: Boolean(currentEditor?.isActive('codeBlock', { language: 'html' })),
-                    run: () => insertCodeBlock('html')
+                    id: 'code-block',
+                    label: '代码块',
+                    active: Boolean(currentEditor?.isActive('codeBlock')),
+                    run: () => insertCodeBlock('text')
                 }
             ]
         }
@@ -803,7 +814,7 @@ const toolbarGroups = computed(() => {
 });
 
 const contextMenuItems = computed(() => {
-    return toolbarGroups.value.flatMap((group) => group.items);
+    return toolbarGroups.value;
 });
 
 const runToolbarItem = (item) => {
@@ -824,10 +835,40 @@ const adjustContextMenuPosition = () => {
     }
     const container = editorRoot.value.getBoundingClientRect();
     const menu = contextMenuRef.value.getBoundingClientRect();
-    const maxLeft = Math.max(12, container.width - menu.width - 12);
-    const maxTop = Math.max(12, container.height - menu.height - 12);
-    contextMenuState.left = Math.min(contextMenuState.left, maxLeft);
-    contextMenuState.top = Math.min(contextMenuState.top, maxTop);
+
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // 菜单相对于视口的实际位置
+    const menuRight = contextMenuState.left + container.left + menu.width;
+    const menuBottom = contextMenuState.top + container.top + menu.height;
+
+    let left = contextMenuState.left;
+    let top = contextMenuState.top;
+
+    // 水平方向：确保不超出右边界
+    if (menuRight > viewportWidth - 12) {
+        left = Math.max(12, viewportWidth - menu.width - container.left - 12);
+    }
+
+    // 垂直方向：确保不超出底边界，如果下方空间不够则向上展开
+    if (menuBottom > viewportHeight - 12) {
+        // 尝试向上展开
+        const spaceAbove = contextMenuState.top;
+        const spaceBelow = viewportHeight - menuBottom;
+
+        if (spaceAbove > spaceBelow && spaceAbove >= menu.height) {
+            // 上方空间更多且足够
+            top = Math.max(12, contextMenuState.top - menu.height);
+        } else if (spaceAbove < menu.height) {
+            // 上方空间也不够，紧贴顶部
+            top = 12;
+        }
+        // 否则保持原位置，让菜单部分可见
+    }
+
+    contextMenuState.left = left;
+    contextMenuState.top = top;
 };
 
 const handleEditorContextMenu = (event) => {
@@ -968,16 +1009,22 @@ const handleGlobalScroll = () => {
                 :style="{ top: `${contextMenuState.top}px`, left: `${contextMenuState.left}px` }"
                 contenteditable="false"
             >
-                <button
-                    v-for="item in contextMenuItems"
-                    :key="item.id"
-                    type="button"
-                    class="editor-context-item"
-                    :class="{ active: item.active }"
-                    @mousedown.prevent="runContextMenuItem(item)"
-                >
-                    {{ item.label }}
-                </button>
+                <template v-for="(group, groupIndex) in contextMenuItems" :key="group.id">
+                    <div v-if="groupIndex > 0" class="context-menu-divider"></div>
+                    <div class="context-menu-group">
+                        <span class="context-menu-group-label">{{ group.label }}</span>
+                        <button
+                            v-for="item in group.items"
+                            :key="item.id"
+                            type="button"
+                            class="editor-context-item"
+                            :class="{ active: item.active }"
+                            @mousedown.prevent="runContextMenuItem(item)"
+                        >
+                            {{ item.label }}
+                        </button>
+                    </div>
+                </template>
             </div>
             <EditorContent :editor="editor" />
         </div>

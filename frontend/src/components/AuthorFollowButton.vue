@@ -15,6 +15,10 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    detail: {
+        type: Boolean,
+        default: false
+    },
     disabled: {
         type: Boolean,
         default: false
@@ -24,7 +28,7 @@ const props = defineProps({
 const emit = defineEmits(['change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
-const toast = inject('toast', { success: () => {}, error: () => {} });
+const toast = inject('toast', { error: () => {} });
 const submitting = ref(false);
 const localFollowed = ref(Boolean(props.followed));
 
@@ -53,11 +57,10 @@ const toggleFollow = async () => {
         } else {
             await followUserApi(props.userId);
         }
-        toast.success(localFollowed.value ? '已关注' : '已取消关注');
         emit('change', localFollowed.value);
     } catch (error) {
         localFollowed.value = previous;
-        toast.error(error.message || '操作失败');
+        toast.error(error.message || (previous ? '取消关注失败，请稍后再试' : '关注失败，请稍后再试'));
         emit('change', previous, error);
     } finally {
         submitting.value = false;
@@ -69,7 +72,7 @@ const toggleFollow = async () => {
     <button
         type="button"
         class="author-follow-button"
-        :class="{ compact, active: localFollowed }"
+        :class="{ compact, detail, active: localFollowed }"
         :disabled="disabled || submitting"
         data-testid="author-follow-button"
         @click="toggleFollow"
@@ -86,28 +89,36 @@ const toggleFollow = async () => {
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    background: rgba(17, 153, 132, 0.08);
-    border: 1px solid rgba(17, 153, 132, 0.18);
+    background: rgba(31, 122, 224, 0.08);
+    border: 1px solid rgba(31, 122, 224, 0.18);
     border-radius: 8px;
     transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .author-follow-button:hover:not(:disabled) {
-    background: rgba(17, 153, 132, 0.14);
-    border-color: rgba(17, 153, 132, 0.28);
+    background: rgba(31, 122, 224, 0.14);
+    border-color: rgba(31, 122, 224, 0.28);
     transform: translateY(-1px);
 }
 
 .author-follow-button.active {
-    color: var(--muted);
-    background: #f8fbfa;
-    border-color: rgba(219, 227, 223, 0.92);
+    color: var(--brand-strong);
+    background: rgba(31, 122, 224, 0.1);
+    border-color: rgba(31, 122, 224, 0.2);
 }
 
 .author-follow-button.compact {
     min-height: 30px;
     padding: 0 12px;
     font-size: 12px;
+}
+
+.author-follow-button.detail {
+    min-width: 94px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-size: 14px;
+    border-radius: 999px;
 }
 
 .author-follow-button:disabled {

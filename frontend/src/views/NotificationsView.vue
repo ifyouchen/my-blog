@@ -5,7 +5,6 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import {
     getNotificationsApi,
-    markAllNotificationsReadApi,
     markNotificationReadApi
 } from '@/api/notifications';
 
@@ -23,7 +22,6 @@ const loadedFilter = ref(currentFilter.value);
 const loadedPage = ref(currentPage.value);
 const initialLoading = ref(true);
 const refreshing = ref(false);
-const markingAllRead = ref(false);
 const errorMessage = ref('');
 const actionError = ref('');
 let hasLoadedOnce = false;
@@ -88,12 +86,6 @@ const formatTime = (timeStr) => {
 const totalPages = computed(() => (total.value > 0 ? Math.ceil(total.value / pageSize) : 1));
 const hasLoadedCurrentQuery = computed(
     () => loadedFilter.value === currentFilter.value && loadedPage.value === currentPage.value
-);
-const showMarkAllRead = computed(
-    () => currentFilter.value === 'unread'
-        && hasLoadedCurrentQuery.value
-        && !refreshing.value
-        && total.value > 0
 );
 
 const visiblePages = computed(() => {
@@ -166,7 +158,7 @@ const fetchNotifications = async ({ silent = false } = {}) => {
 };
 
 const changeFilter = (filter) => {
-    if (filter === currentFilter.value || refreshing.value || markingAllRead.value) {
+    if (filter === currentFilter.value || refreshing.value) {
         return;
     }
     currentFilter.value = filter;
@@ -180,7 +172,6 @@ const changePage = (page) => {
         || page < 1
         || page > totalPages.value
         || refreshing.value
-        || markingAllRead.value
     ) {
         return;
     }
@@ -230,32 +221,6 @@ const handleNotificationClick = async (notification) => {
     router.push(notification.targetUrl);
 };
 
-const handleMarkAllRead = async () => {
-    if (markingAllRead.value || total.value <= 0) {
-        return;
-    }
-    actionError.value = '';
-    markingAllRead.value = true;
-    try {
-        await markAllNotificationsReadApi();
-        if (currentFilter.value === 'unread') {
-            notifications.value = [];
-            total.value = 0;
-            currentPage.value = 1;
-            if (route.query.page) {
-                syncRoute({ page: 1 });
-            }
-        } else {
-            notifications.value = notifications.value.map((item) => ({ ...item, read: true }));
-        }
-        window.dispatchEvent(new CustomEvent('notifications:refresh'));
-    } catch (error) {
-        actionError.value = error.message || '全部标记为已读失败，请稍后重试';
-    } finally {
-        markingAllRead.value = false;
-    }
-};
-
 watch(
     () => route.query,
     (query) => {
@@ -284,7 +249,7 @@ watch(
                         <button
                             :class="{ active: currentFilter === 'all' }"
                             type="button"
-                            :disabled="refreshing || markingAllRead"
+                            :disabled="refreshing"
                             @click="changeFilter('all')"
                         >
                             全部
@@ -292,7 +257,7 @@ watch(
                         <button
                             :class="{ active: currentFilter === 'unread' }"
                             type="button"
-                            :disabled="refreshing || markingAllRead"
+                            :disabled="refreshing"
                             @click="changeFilter('unread')"
                         >
                             未读
@@ -300,21 +265,12 @@ watch(
                         <button
                             :class="{ active: currentFilter === 'read' }"
                             type="button"
-                            :disabled="refreshing || markingAllRead"
+                            :disabled="refreshing"
                             @click="changeFilter('read')"
                         >
                             已读
                         </button>
                     </div>
-                <button
-                    v-if="showMarkAllRead"
-                    class="mark-all-btn"
-                    type="button"
-                    :disabled="markingAllRead"
-                    @click="handleMarkAllRead"
-                >
-                        {{ markingAllRead ? '处理中...' : '全部标记为已读' }}
-                    </button>
                 </div>
             </header>
 
@@ -551,31 +507,6 @@ watch(
 .filter-tabs button:disabled {
     cursor: not-allowed;
     opacity: 0.56;
-}
-
-.mark-all-btn {
-    min-height: 40px;
-    padding: 0 18px;
-    color: var(--brand-strong);
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 999px;
-    font-weight: 600;
-    box-shadow: 0 10px 22px rgba(31, 78, 168, 0.05);
-    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.mark-all-btn:hover:not(:disabled) {
-    color: var(--brand);
-    background: rgba(40, 118, 255, 0.05);
-    border-color: rgba(40, 118, 255, 0.26);
-    box-shadow: 0 14px 26px rgba(31, 78, 168, 0.08);
-}
-
-.mark-all-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.62;
 }
 
 .notifications-panel {

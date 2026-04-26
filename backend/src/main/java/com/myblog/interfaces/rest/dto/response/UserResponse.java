@@ -15,6 +15,7 @@ public class UserResponse {
     private String avatarUrl;
     private String bio;
     private String role;
+    private Boolean followed;
 
     /**
      * 获取用户 ID。
@@ -140,5 +141,23 @@ public class UserResponse {
      */
     public void setRole(String role) {
         this.role = role;
+    }
+
+    /**
+     * 获取当前用户是否已关注。
+     *
+     * @return 是否已关注
+     */
+    public Boolean getFollowed() {
+        return followed;
+    }
+
+    /**
+     * 设置当前用户是否已关注。
+     *
+     * @param followed 是否已关注
+     */
+    public void setFollowed(Boolean followed) {
+        this.followed = followed;
     }
 }

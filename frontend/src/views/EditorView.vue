@@ -50,6 +50,7 @@ const allowRouteLeave = ref(false);
 const coverUploading = ref(false);
 const coverInputRef = ref(null);
 const coverPreviewFailed = ref(false);
+const showBackToTop = ref(false);
 
 const wordCount = computed(() => draft.content.trim().length);
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
@@ -384,6 +385,14 @@ function togglePreview() {
     previewVisible.value = !previewVisible.value;
 }
 
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function handleScroll() {
+    showBackToTop.value = window.scrollY > 500;
+}
+
 function confirmDiscardChanges() {
     return window.confirm('当前还有未保存改动，确定要离开当前编辑页吗？');
 }
@@ -420,12 +429,14 @@ onBeforeRouteLeave(() => {
 
 onMounted(async () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('scroll', handleScroll);
     await fetchMetadata();
     await fetchArticle();
 });
 
 onUnmounted(() => {
     window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.removeEventListener('scroll', handleScroll);
 });
 </script>
 
@@ -596,6 +607,14 @@ onUnmounted(() => {
                 <p v-if="isUsingDefaultCover" class="cover-help-text">
                     当前会使用系统默认封面，你可以随时上传一张更贴合主题的封面。
                 </p>
+                <label class="cover-path-field">
+                    <span>图片路径</span>
+                    <input
+                        v-model.trim="draft.coverUrl"
+                        type="text"
+                        placeholder="/api/uploads/files/2026/04/cover.jpg 或 https://example.com/cover.jpg"
+                    >
+                </label>
                 <button
                     type="button"
                     class="cover-upload-button"
@@ -607,6 +626,15 @@ onUnmounted(() => {
             </section>
         </aside>
     </main>
+
+    <button
+        v-show="showBackToTop"
+        class="back-to-top"
+        type="button"
+        @click="scrollToTop"
+    >
+        ↑
+    </button>
 </template>
 
 <style scoped>
@@ -778,6 +806,21 @@ onUnmounted(() => {
     background: rgba(31, 122, 224, 0.05);
     border: 1px solid rgba(31, 122, 224, 0.08);
     border-radius: 12px;
+}
+
+.cover-path-field {
+    display: grid;
+    gap: 8px;
+}
+
+.cover-path-field span {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cover-path-field input {
+    width: 100%;
 }
 
 .cover-upload-button {

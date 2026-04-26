@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listArticlesApi } from '@/api/articles';
 import {
@@ -56,8 +56,28 @@ const errorMessage = ref('');
 // Guest recent searches
 const guestRecentSearches = ref([]);
 
+// Expand/collapse state for filters
+const categoriesExpanded = ref(false);
+const tagsExpanded = ref(false);
+
+const MAX_VISIBLE_TAGS = 10; // 大约两行的数量
+
 const categoryOptions = computed(() => ['全部', ...(bootstrap.value?.categories || []).map((item) => item.name)]);
 const tagOptions = computed(() => ['全部', ...(bootstrap.value?.tags || []).map((item) => item.name)]);
+const visibleCategories = computed(() => {
+    if (categoriesExpanded.value) {
+        return categoryOptions.value;
+    }
+    return categoryOptions.value.slice(0, MAX_VISIBLE_TAGS);
+});
+const visibleTags = computed(() => {
+    if (tagsExpanded.value) {
+        return tagOptions.value;
+    }
+    return tagOptions.value.slice(0, MAX_VISIBLE_TAGS);
+});
+const hasMoreCategories = computed(() => categoryOptions.value.length > MAX_VISIBLE_TAGS);
+const hasMoreTags = computed(() => tagOptions.value.length > MAX_VISIBLE_TAGS);
 const hotKeywords = computed(() => bootstrap.value?.hotKeywords || []);
 const recentKeywords = computed(() => bootstrap.value?.recentKeywords || guestRecentSearches.value);
 
@@ -174,6 +194,7 @@ const runSearch = async () => {
 };
 
 const changeTab = (tab) => {
+    const scrollY = window.scrollY;
     activeTab.value = tab;
     currentPage.value = 1;
     // Reset article-only filters when switching tabs
@@ -185,18 +206,23 @@ const changeTab = (tab) => {
     dateTo.value = '';
     followingOnly.value = false;
     syncRoute({ tab, page: 1 });
+    nextTick(() => window.scrollTo(0, scrollY));
 };
 
 const changeCategory = (value) => {
+    const scrollY = window.scrollY;
     activeCategory.value = value === '全部' ? '' : value;
     currentPage.value = 1;
     syncRoute({ page: 1, category: activeCategory.value || undefined });
+    nextTick(() => window.scrollTo(0, scrollY));
 };
 
 const changeTag = (value) => {
+    const scrollY = window.scrollY;
     activeTag.value = value === '全部' ? '' : value;
     currentPage.value = 1;
     syncRoute({ page: 1, tag: activeTag.value || undefined });
+    nextTick(() => window.scrollTo(0, scrollY));
 };
 
 const changeSort = (sort) => {
@@ -419,7 +445,7 @@ onMounted(fetchBootstrap);
                     <span>分类</span>
                     <div class="tag-row">
                         <button
-                            v-for="category in categoryOptions"
+                            v-for="category in visibleCategories"
                             :key="category"
                             type="button"
                             :class="{ active: (activeCategory || '全部') === category }"
@@ -427,19 +453,35 @@ onMounted(fetchBootstrap);
                         >
                             {{ category }}
                         </button>
+                        <button
+                            v-if="hasMoreCategories"
+                            type="button"
+                            class="expand-btn"
+                            @click="categoriesExpanded = !categoriesExpanded"
+                        >
+                            {{ categoriesExpanded ? '收起' : `+${categoryOptions.length - MAX_VISIBLE_TAGS}个` }}
+                        </button>
                     </div>
                 </div>
                 <div class="filter-group">
                     <span>标签</span>
                     <div class="tag-row">
                         <button
-                            v-for="tag in tagOptions"
+                            v-for="tag in visibleTags"
                             :key="tag"
                             type="button"
                             :class="{ active: (activeTag || '全部') === tag }"
                             @click="changeTag(tag)"
                         >
                             {{ tag }}
+                        </button>
+                        <button
+                            v-if="hasMoreTags"
+                            type="button"
+                            class="expand-btn"
+                            @click="tagsExpanded = !tagsExpanded"
+                        >
+                            {{ tagsExpanded ? '收起' : `+${tagOptions.length - MAX_VISIBLE_TAGS}个` }}
                         </button>
                     </div>
                 </div>
@@ -581,7 +623,16 @@ onMounted(fetchBootstrap);
                     <img :src="column.coverUrl || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=300&q=80'" :alt="column.name" class="column-cover">
                     <div class="column-info">
                         <div class="column-name">{{ column.name }}</div>
-                        <div class="column-description">{{ column.description || '' }}</div>
+                        <div class="column-summary">{{ column.summary || column.description || '' }}</div>
+                        <div class="column-author" @click.stop="goToUser(column.author?.id)">
+                            <img
+                                v-if="column.author?.avatar"
+                                :src="column.author.avatar"
+                                :alt="column.author?.name"
+                                class="column-author-avatar"
+                            >
+                            <span>{{ column.author?.name || '' }}</span>
+                        </div>
                         <div class="column-stats">
                             <span>订阅 {{ column.subscriberCount || 0 }}</span>
                             <span>文章 {{ column.articleCount || 0 }}</span>
@@ -589,10 +640,11 @@ onMounted(fetchBootstrap);
                     </div>
                     <button
                         type="button"
-                        class="subscribe-btn"
+                        :class="['subscribe-btn', { subscribed: column.subscribed }]"
+                        :disabled="column.subscribed"
                         @click.stop="handleSubscribe(column)"
                     >
-                        订阅
+                        {{ column.subscribed ? '已订阅' : '订阅' }}
                     </button>
                 </div>
             </div>
@@ -697,6 +749,23 @@ onMounted(fetchBootstrap);
 .keyword-clear:hover {
     color: var(--error);
     border-color: var(--error);
+}
+
+.expand-btn {
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.expand-btn:hover {
+    color: var(--brand-strong);
+    border-color: var(--brand-strong);
+    border-style: solid;
 }
 
 .search-tabs {
@@ -883,13 +952,33 @@ onMounted(fetchBootstrap);
     line-height: 1.25;
 }
 
-.user-bio, .column-description {
+.user-bio, .column-summary {
     font-size: 14px;
     color: var(--muted);
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+}
+
+.column-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.column-author:hover {
+    color: var(--brand-strong);
+}
+
+.column-author-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
 .user-stats, .column-stats {
@@ -926,6 +1015,19 @@ onMounted(fetchBootstrap);
     background: linear-gradient(135deg, #2563eb, #3b82f6);
     border-color: transparent;
     color: white;
+}
+
+.subscribe-btn.subscribed {
+    background: var(--surface-soft);
+    border-color: var(--line);
+    color: var(--muted);
+    cursor: default;
+}
+
+.subscribe-btn.subscribed:hover {
+    background: var(--surface-soft);
+    border-color: var(--line);
+    color: var(--muted);
 }
 
 .pagination {

@@ -403,6 +403,9 @@ public class ArticleAppService {
     }
 
     private void populateUserStatus(ArticleDTO dto, Article article, Long currentUserId) {
+        if (dto.getAuthor() != null) {
+            dto.getAuthor().setFollowed(resolveAuthorFollowed(article, currentUserId));
+        }
         if (currentUserId == null) {
             dto.setLiked(false);
             dto.setFavorited(false);
@@ -411,5 +414,12 @@ public class ArticleAppService {
         UserId currentUser = new UserId(currentUserId);
         dto.setLiked(articleLikeRepository.exists(article.getId(), currentUser));
         dto.setFavorited(articleFavoriteRepository.exists(article.getId(), currentUser));
+    }
+
+    private boolean resolveAuthorFollowed(Article article, Long currentUserId) {
+        if (currentUserId == null || article.getAuthorId().getValue().equals(currentUserId)) {
+            return false;
+        }
+        return userFollowRepository.exists(new UserId(currentUserId), article.getAuthorId());
     }
 }

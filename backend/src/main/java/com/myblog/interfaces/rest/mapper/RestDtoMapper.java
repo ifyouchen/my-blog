@@ -116,6 +116,7 @@ public class RestDtoMapper {
         response.setAvatarUrl(dto.getAvatarUrl());
         response.setBio(dto.getBio());
         response.setRole(dto.getRole());
+        response.setFollowed(dto.getFollowed());
         return response;
     }
 
