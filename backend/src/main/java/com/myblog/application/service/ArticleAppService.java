@@ -198,6 +198,7 @@ public class ArticleAppService {
      * @param articleId 文章 ID
      * @return 文章详情
      */
+    @Transactional(readOnly = true)
     public ArticleDTO getArticleDetail(Long articleId, Long currentUserId, String currentUserRole) {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
