@@ -8,9 +8,14 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import ResizeImage from 'tiptap-extension-resize-image';
 import { createBlogLowlight } from '@/utils/codeLanguages';
-import { editorHtmlToMarkdown, markdownToEditorHtml } from '@/utils/markdown';
+import { editorHtmlToMarkdown, editorJsonToMarkdown, markdownToEditorHtml } from '@/utils/markdown';
 import CodeBlockNodeView from '@/components/CodeBlockNodeView.vue';
+import { uploadImageApi } from '@/api/uploads.js';
+import { useSession } from '@/stores/session';
+
+const { isLoggedIn } = useSession();
 
 const props = defineProps({
     modelValue: {
@@ -25,6 +30,9 @@ const lowlight = createBlogLowlight();
 const editorStateVersion = ref(0);
 const editorRoot = ref(null);
 const contextMenuRef = ref(null);
+const imageInputRef = ref(null);
+const imageUploading = ref(false);
+const uploadError = ref('');
 
 const tableMarkdownPattern = /^\s*\|.+\|\s*\n\s*\|[\s:|-]+\|\s*\n(?:\s*\|.*\|\s*\n?)+/m;
 const markdownBlockPattern = /(^|\n)\s*(#{1,6}\s|[-*]\s|>\s|\|.+\|\s*\n\s*\|[\s:|-]+\||```|---\s*$)/m;
@@ -286,6 +294,15 @@ const applyCodeBlockShortcut = (editorInstance, language = 'text') => {
     return true;
 };
 
+const applyInsertImage = () => {
+    if (!editor.value) {
+        return false;
+    }
+    triggerImageUpload();
+    closeSlashMenu();
+    return true;
+};
+
 const editorCommands = [
     {
         id: 'heading-1',
@@ -356,6 +373,13 @@ const editorCommands = [
         description: '插入普通代码块',
         keywords: ['code', 'text', 'plain', '代码', '代码块'],
         run: (editorInstance) => applyCodeBlockShortcut(editorInstance, 'text')
+    },
+    {
+        id: 'insert-image',
+        label: '插入图片',
+        description: '上传并插入图片',
+        keywords: ['image', 'photo', '图片', '插入图片'],
+        run: () => applyInsertImage()
     }
 ];
 
@@ -432,7 +456,14 @@ const editor = useEditor({
         TableRow,
         TableHeader,
         TableCell,
-        codeBlockExtension
+        codeBlockExtension,
+        ResizeImage.configure({
+            inline: false,
+            allowBase64: true,
+            HTMLAttributes: {
+                class: 'editor-image'
+            }
+        })
     ],
     editorProps: {
         attributes: {
@@ -442,7 +473,27 @@ const editor = useEditor({
             if (editor.value?.isActive('codeBlock')) {
                 return false;
             }
-            const text = event.clipboardData?.getData('text/plain') || '';
+            const clipboardData = event.clipboardData;
+            if (!clipboardData) {
+                return false;
+            }
+            const items = clipboardData.items;
+            if (items) {
+                for (const item of items) {
+                    if (item.kind === 'file') {
+                        const file = item.getAsFile();
+                        if (file) {
+                            const type = file.type;
+                            if (type.startsWith('image/')) {
+                                event.preventDefault();
+                                uploadAndInsertImage(file);
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            const text = clipboardData.getData('text/plain') || '';
             if (tableMarkdownPattern.test(text) || markdownBlockPattern.test(text)) {
                 event.preventDefault();
                 insertMarkdownContent(editor.value, text);
@@ -501,7 +552,10 @@ const editor = useEditor({
     onUpdate({ editor: currentEditor }) {
         refreshEditorState();
         syncSlashMenu(currentEditor);
-        const markdown = editorHtmlToMarkdown(currentEditor.getHTML());
+        const json = currentEditor.getJSON();
+        console.log('Editor JSON:', JSON.stringify(json, null, 2));
+        const markdown = editorJsonToMarkdown(json);
+        console.log('Converted Markdown:', markdown);
         emit('update:modelValue', markdown);
     },
     onSelectionUpdate({ editor: currentEditor }) {
@@ -529,7 +583,7 @@ watch(() => props.modelValue, (value) => {
     if (!editor.value) {
         return;
     }
-    const currentMarkdown = editorHtmlToMarkdown(editor.value.getHTML());
+    const currentMarkdown = editorJsonToMarkdown(editor.value.getJSON());
     if (currentMarkdown === value) {
         return;
     }
@@ -583,6 +637,60 @@ const runEditorCommand = (callback) => {
         return;
     }
     callback(editor.value.chain().focus()).run();
+};
+
+const insertImageMarkdown = (url, alt = '图片') => {
+    if (!editor.value) {
+        return;
+    }
+    editor.value.commands.setImage({ src: url, alt });
+};
+
+const uploadAndInsertImage = async (file) => {
+    if (!isLoggedIn.value) {
+        uploadError.value = '请先登录后再上传图片';
+        return;
+    }
+    imageUploading.value = true;
+    uploadError.value = '';
+    try {
+        const result = await uploadImageApi(file, 'content');
+        if (result?.url) {
+            insertImageMarkdown(result.url, file.name || '图片');
+        }
+    } catch (error) {
+        uploadError.value = error.message || '图片上传失败';
+    } finally {
+        imageUploading.value = false;
+    }
+};
+
+const handleImageSelected = async (event) => {
+    const [file] = event.target?.files || [];
+    if (!file) {
+        return;
+    }
+    if (!isLoggedIn.value) {
+        uploadError.value = '请先登录后再上传图片';
+        return;
+    }
+    event.target.value = '';
+    imageUploading.value = true;
+    uploadError.value = '';
+    try {
+        const result = await uploadImageApi(file, 'content');
+        if (result?.url) {
+            insertImageMarkdown(result.url, file.name || '图片');
+        }
+    } catch (error) {
+        uploadError.value = error.message || '图片上传失败';
+    } finally {
+        imageUploading.value = false;
+    }
+};
+
+const triggerImageUpload = () => {
+    imageInputRef.value?.click();
 };
 
 const toggleBold = () => runEditorCommand((chain) => chain.toggleBold());
@@ -669,6 +777,13 @@ const toolbarGroups = computed(() => {
                     label: '表格',
                     active: false,
                     run: insertTable
+                },
+                {
+                    id: 'insert-image',
+                    label: imageUploading.value ? '上传中...' : '插入图片',
+                    active: false,
+                    run: triggerImageUpload,
+                    disabled: imageUploading.value
                 },
                 {
                     id: 'code-java',
@@ -780,6 +895,13 @@ const handleGlobalScroll = () => {
 
 <template>
     <section class="rich-markdown-editor">
+        <input
+            ref="imageInputRef"
+            type="file"
+            accept="image/*"
+            class="hidden-input"
+            @change="handleImageSelected"
+        >
         <div class="editor-sticky-stack">
             <div
                 v-if="editor"
@@ -797,7 +919,8 @@ const handleGlobalScroll = () => {
                         v-for="item in group.items"
                         :key="item.id"
                         type="button"
-                        :class="{ active: item.active }"
+                        :class="{ active: item.active, disabled: item.disabled }"
+                        :disabled="item.disabled"
                         @mousedown.prevent="keepEditorFocus"
                         @click="runToolbarItem(item)"
                     >
@@ -858,5 +981,34 @@ const handleGlobalScroll = () => {
             </div>
             <EditorContent :editor="editor" />
         </div>
+        <p v-if="uploadError" class="upload-error">{{ uploadError }}</p>
     </section>
 </template>
+
+<style scoped>
+.hidden-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.upload-error {
+    margin: 8px 0;
+    padding: 8px 12px;
+    color: #d14343;
+    font-size: 13px;
+    background: rgba(209, 67, 67, 0.06);
+    border-radius: 4px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>

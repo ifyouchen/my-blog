@@ -196,6 +196,9 @@ public class RestDtoMapper {
         response.setCommentCount(dto.getCommentCount());
         response.setPublishedAt(dto.getPublishedAt());
         response.setUpdatedAt(dto.getUpdatedAt());
+        response.setFavoritedAt(dto.getFavoritedAt());
+        response.setLiked(dto.isLiked());
+        response.setFavorited(dto.isFavorited());
         response.setAuthor(toResponse(dto.getAuthor()));
         return response;
     }

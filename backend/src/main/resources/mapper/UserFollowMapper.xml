@@ -49,6 +49,17 @@
         AND deleted_at IS NULL
     </select>
 
+    <select id="countFollowersBatch" resultType="map">
+        SELECT following_user_id AS userId, COUNT(1) AS cnt
+        FROM blog_user_follow
+        WHERE following_user_id IN
+        <foreach collection="userIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND deleted_at IS NULL
+        GROUP BY following_user_id
+    </select>
+
     <select id="countFollowing" resultType="int">
         SELECT COUNT(1)
         FROM blog_user_follow
@@ -62,6 +73,17 @@
         WHERE follower_user_id = #{followerUserId}
         AND deleted_at IS NULL
         ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="selectFollowingUserIdsIn" resultType="long">
+        SELECT following_user_id
+        FROM blog_user_follow
+        WHERE follower_user_id = #{followerUserId}
+        AND following_user_id IN
+        <foreach collection="candidateUserIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND deleted_at IS NULL
     </select>
 
     <select id="selectNextId" resultType="long">

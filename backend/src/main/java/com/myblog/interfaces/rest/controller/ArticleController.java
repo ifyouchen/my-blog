@@ -58,6 +58,10 @@ public class ArticleController {
      * @param category 分类
      * @param tag 标签
      * @param sort 排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom 起始日期
+     * @param dateTo 结束日期
+     * @param followingOnly 仅看已关注作者
      * @return 文章分页响应
      */
     @GetMapping
@@ -66,10 +70,18 @@ public class ArticleController {
                                                             @RequestParam(required = false) String keyword,
                                                             @RequestParam(required = false) String category,
                                                             @RequestParam(required = false) String tag,
-                                                            @RequestParam(defaultValue = "latest") String sort) {
-        PageResult<ArticleDTO> pageResult = articleAppService.pagePublishedArticles(
-            new ArticlePageQuery(page, pageSize, keyword, category, tag, sort)
-        );
+                                                            @RequestParam(defaultValue = "latest") String sort,
+                                                            @RequestParam(required = false) String authorKeyword,
+                                                            @RequestParam(required = false) String dateFrom,
+                                                            @RequestParam(required = false) String dateTo,
+                                                            @RequestParam(defaultValue = "false") boolean followingOnly) {
+        ArticlePageQuery query = new ArticlePageQuery(page, pageSize, keyword, category, tag, sort);
+        query.setAuthorKeyword(authorKeyword);
+        query.setDateFrom(dateFrom);
+        query.setDateTo(dateTo);
+        query.setFollowingOnly(followingOnly);
+        query.setCurrentUserId(AuthContext.getCurrentUserId());
+        PageResult<ArticleDTO> pageResult = articleAppService.pagePublishedArticles(query);
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO item : pageResult.getItems()) {
             items.add(restDtoMapper.toResponse(item));
@@ -91,7 +103,7 @@ public class ArticleController {
     @GetMapping("/{id}")
     public Result<ArticleResponse> getArticle(@PathVariable Long id) {
         return Result.success(restDtoMapper.toResponse(
-            articleAppService.getArticleDetail(id, AuthContext.getRequiredUserId(), AuthContext.getRole())
+            articleAppService.getArticleDetail(id, AuthContext.getCurrentUserId(), AuthContext.getRole())
         ));
     }
 

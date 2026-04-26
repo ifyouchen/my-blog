@@ -24,6 +24,9 @@ public class ArticleResponse {
     private int commentCount;
     private String publishedAt;
     private String updatedAt;
+    private String favoritedAt;
+    private boolean liked;
+    private boolean favorited;
     private UserResponse author;
 
     /**
@@ -276,6 +279,40 @@ public class ArticleResponse {
      */
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    /**
+     * 获取收藏时间。
+     *
+     * @return 收藏时间
+     */
+    public String getFavoritedAt() {
+        return favoritedAt;
+    }
+
+    /**
+     * 设置收藏时间。
+     *
+     * @param favoritedAt 收藏时间
+     */
+    public void setFavoritedAt(String favoritedAt) {
+        this.favoritedAt = favoritedAt;
+    }
+
+    public boolean isLiked() {
+        return liked;
+    }
+
+    public void setLiked(boolean liked) {
+        this.liked = liked;
+    }
+
+    public boolean isFavorited() {
+        return favorited;
+    }
+
+    public void setFavorited(boolean favorited) {
+        this.favorited = favorited;
     }
 
     /**

@@ -26,7 +26,11 @@ public interface UserFollowRepository {
 
     int countFollowers(UserId userId);
 
+    java.util.Map<Long, Integer> countFollowersBatch(java.util.List<Long> userIds);
+
     int countFollowing(UserId userId);
 
     List<Long> findFollowingUserIds(UserId followerUserId);
+
+    List<Long> findFollowingUserIdsIn(UserId followerUserId, List<Long> candidateUserIds);
 }

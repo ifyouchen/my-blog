@@ -90,7 +90,13 @@ public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
     public ArticleLike save(ArticleLike articleLike) {
         ArticleLikeDO articleLikeDO = ArticleLikePersistenceConverter.toData(articleLike);
         if (articleLikeMapper.countById(articleLike.getId().getValue()) > 0) {
-            articleLikeMapper.update(articleLikeDO);
+            int rows = articleLikeMapper.update(articleLikeDO);
+            if (rows == 0) {
+                throw new com.myblog.shared.exception.ApplicationException(
+                    com.myblog.shared.exception.ErrorCode.CONFLICT,
+                    "点赞记录已被其他操作修改，请重试"
+                );
+            }
         } else {
             articleLikeMapper.insert(articleLikeDO);
         }

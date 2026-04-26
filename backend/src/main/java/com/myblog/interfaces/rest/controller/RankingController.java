@@ -46,7 +46,7 @@ public class RankingController {
     @GetMapping("/authors")
     public Result<List<AuthorRankingResponse>> listAuthorRankings(@RequestParam(defaultValue = "10") int limit) {
         List<AuthorRankingResponse> items = new ArrayList<AuthorRankingResponse>();
-        for (AuthorRankingDTO item : rankingAppService.listAuthorRankings(limit, AuthContext.getRequiredUserId())) {
+        for (AuthorRankingDTO item : rankingAppService.listAuthorRankings(limit, AuthContext.getCurrentUserId())) {
             items.add(restDtoMapper.toResponse(item));
         }
         return Result.success(items);

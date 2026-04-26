@@ -64,19 +64,30 @@ export const useSession = () => {
 
     const initializeSession = async () => {
         if (!state.token) {
-            clearSession();
             return;
         }
         state.ready = false;
-        try {
-            const user = await currentUserApi();
-            saveSession({
-                token: state.token,
-                user
-            });
-        } catch (error) {
-            clearSession();
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const user = await currentUserApi();
+                saveSession({
+                    token: state.token,
+                    user
+                });
+                return;
+            } catch (error) {
+                if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+                    clearSession();
+                    return;
+                }
+                if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
         }
+
+        state.ready = true;
     };
 
     const login = async ({ account, password }) => {

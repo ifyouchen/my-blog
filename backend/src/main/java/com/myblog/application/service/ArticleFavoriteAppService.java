@@ -2,6 +2,8 @@ package com.myblog.application.service;
 
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.event.ArticleFavoritedEvent;
+import com.myblog.application.event.ArticleUnfavoritedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.ArticleFavorite;
 import com.myblog.domain.model.aggregate.User;
@@ -14,42 +16,44 @@ import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * 文章收藏应用服务。
- *
- * @author Codex
- * @since 1.0.0
- */
 @Service
 public class ArticleFavoriteAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(ArticleFavoriteAppService.class);
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ArticleFavoriteRepository articleFavoriteRepository;
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
+    private final ArticleAssembler articleAssembler;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ArticleFavoriteAppService(ArticleFavoriteRepository articleFavoriteRepository,
                                      ArticleRepository articleRepository,
-                                     UserRepository userRepository) {
+                                     UserRepository userRepository,
+                                     ArticleAssembler articleAssembler,
+                                     ApplicationEventPublisher eventPublisher) {
         this.articleFavoriteRepository = articleFavoriteRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
+        this.articleAssembler = articleAssembler;
+        this.eventPublisher = eventPublisher;
     }
 
-    /**
-     * 收藏文章。
-     *
-     * @param articleId 文章 ID
-     * @param userId 用户 ID
-     */
     @Transactional(rollbackFor = Exception.class)
     public void favoriteArticle(Long articleId, Long userId) {
+        log.info("User {} favoriting article {}", userId, articleId);
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -67,8 +71,8 @@ public class ArticleFavoriteAppService {
             }
             favorite.reactivate();
             articleFavoriteRepository.save(favorite);
-            article.increaseFavoriteCount();
-            articleRepository.save(article);
+            eventPublisher.publishEvent(new ArticleFavoritedEvent(articleId, userId));
+            log.info("User {} re-favorited article {}", userId, articleId);
             return;
         }
 
@@ -78,19 +82,13 @@ public class ArticleFavoriteAppService {
             new UserId(userId)
         );
         articleFavoriteRepository.save(favorite);
-
-        article.increaseFavoriteCount();
-        articleRepository.save(article);
+        eventPublisher.publishEvent(new ArticleFavoritedEvent(articleId, userId));
+        log.info("User {} favorited article {} (new)", userId, articleId);
     }
 
-    /**
-     * 取消收藏文章。
-     *
-     * @param articleId 文章 ID
-     * @param userId 用户 ID
-     */
     @Transactional(rollbackFor = Exception.class)
     public void unfavoriteArticle(Long articleId, Long userId) {
+        log.info("User {} unfavoriting article {}", userId, articleId);
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -103,33 +101,23 @@ public class ArticleFavoriteAppService {
 
         favorite.delete();
         articleFavoriteRepository.save(favorite);
-
-        article.decreaseFavoriteCount();
-        articleRepository.save(article);
+        eventPublisher.publishEvent(new ArticleUnfavoritedEvent(articleId, userId));
+        log.info("User {} unfavorited article {}", userId, articleId);
     }
 
-    /**
-     * 查询是否已收藏。
-     *
-     * @param articleId 文章 ID
-     * @param userId 用户 ID
-     * @return 是否已收藏
-     */
     public boolean hasFavorited(Long articleId, Long userId) {
         return articleFavoriteRepository.exists(new ArticleId(articleId), new UserId(userId));
     }
 
-    /**
-     * 获取我的收藏列表。
-     *
-     * @param userId 用户 ID
-     * @param page 页码
-     * @param pageSize 每页数量
-     * @return 收藏的文章列表
-     */
     public PageResult<ArticleDTO> getUserFavorites(Long userId, int page, int pageSize) {
-        List<ArticleFavorite> favorites = articleFavoriteRepository.findByUserId(new UserId(userId), page, pageSize);
-        List<ArticleDTO> result = new ArrayList<>();
+        UserId currentUserId = new UserId(userId);
+        int rawTotal = articleFavoriteRepository.countByUserId(currentUserId);
+        if (rawTotal <= 0) {
+            return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), page, pageSize, 0);
+        }
+
+        List<ArticleFavorite> favorites = articleFavoriteRepository.findByUserId(currentUserId, 1, rawTotal);
+        List<ArticleDTO> visibleFavorites = new ArrayList<ArticleDTO>();
 
         for (ArticleFavorite favorite : favorites) {
             Optional<Article> articleOpt = articleRepository.findById(favorite.getArticleId());
@@ -144,13 +132,23 @@ public class ArticleFavoriteAppService {
             if (!userOpt.isPresent()) {
                 continue;
             }
-            result.add(ArticleAssembler.toDTO(article, userOpt.get()));
+            ArticleDTO articleDTO = articleAssembler.toDTO(article, userOpt.get());
+            if (favorite.getCreatedAt() != null) {
+                articleDTO.setFavoritedAt(FORMATTER.format(favorite.getCreatedAt()));
+            }
+            visibleFavorites.add(articleDTO);
         }
+
+        int safePage = Math.max(page, 1);
+        int safePageSize = Math.max(pageSize, 1);
+        int fromIndex = Math.min((safePage - 1) * safePageSize, visibleFavorites.size());
+        int toIndex = Math.min(fromIndex + safePageSize, visibleFavorites.size());
+        List<ArticleDTO> result = new ArrayList<ArticleDTO>(visibleFavorites.subList(fromIndex, toIndex));
         return new PageResult<ArticleDTO>(
             result,
-            page,
-            pageSize,
-            articleFavoriteRepository.countByUserId(new UserId(userId))
+            safePage,
+            safePageSize,
+            visibleFavorites.size()
         );
     }
 }

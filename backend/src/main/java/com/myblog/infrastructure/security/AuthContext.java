@@ -1,5 +1,8 @@
 package com.myblog.infrastructure.security;
 
+import com.myblog.shared.exception.ApplicationException;
+import com.myblog.shared.exception.ErrorCode;
+
 /**
  * 当前请求认证上下文。
  *
@@ -36,12 +39,26 @@ public final class AuthContext {
      *
      * @return 当前用户 ID，未登录时返回 null
      */
-    public static Long getRequiredUserId() {
+    public static Long getCurrentUserId() {
         JwtPayload payload = HOLDER.get();
         if (payload == null) {
             return null;
         }
         return payload.getUserId();
+    }
+
+    /**
+     * 获取当前登录用户 ID，未登录时抛出异常。
+     *
+     * @return 当前用户 ID
+     * @throws ApplicationException 未登录时
+     */
+    public static Long getRequiredUserId() {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        return userId;
     }
 
     /**

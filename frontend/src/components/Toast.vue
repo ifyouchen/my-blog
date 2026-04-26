@@ -1,0 +1,147 @@
+<script setup>
+import { useToast } from '@/composables/useToast';
+
+const { toasts, removeToast } = useToast();
+
+const icons = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+};
+</script>
+
+<template>
+    <Teleport to="body">
+        <TransitionGroup name="toast" tag="div" class="toast-container">
+            <div
+                v-for="toast in toasts"
+                :key="toast.id"
+                class="toast"
+                :class="toast.type"
+            >
+                <span class="toast-icon">{{ icons[toast.type] || icons.info }}</span>
+                <span class="toast-message">{{ toast.message }}</span>
+                <button
+                    type="button"
+                    class="toast-close"
+                    aria-label="关闭"
+                    @click="removeToast(toast.id)"
+                >
+                    ×
+                </button>
+            </div>
+        </TransitionGroup>
+    </Teleport>
+</template>
+
+<style scoped>
+.toast-container {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 240px;
+    max-width: 420px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    pointer-events: auto;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.toast.success {
+    color: #ffffff;
+    background: #10b981;
+}
+
+.toast.error {
+    color: #ffffff;
+    background: #ef4444;
+}
+
+.toast.warning {
+    color: #ffffff;
+    background: #f59e0b;
+}
+
+.toast.info {
+    color: #ffffff;
+    background: #3b82f6;
+}
+
+.toast-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.toast-message {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-close {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-left: 4px;
+    font-size: 16px;
+    line-height: 1;
+    color: inherit;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.15s;
+}
+
+.toast-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Transition animations */
+.toast-enter-active {
+    animation: toast-in 0.25s ease-out;
+}
+
+.toast-leave-active {
+    animation: toast-out 0.2s ease-in;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.95);
+    }
+}
+</style>

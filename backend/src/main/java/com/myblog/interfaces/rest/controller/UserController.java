@@ -67,7 +67,7 @@ public class UserController {
      */
     @GetMapping("/{id}")
     public Result<UserProfileResponse> getUserProfile(@PathVariable Long id) {
-        return Result.success(restDtoMapper.toResponse(userAppService.getUserProfile(id, AuthContext.getRequiredUserId())));
+        return Result.success(restDtoMapper.toResponse(userAppService.getUserProfile(id, AuthContext.getCurrentUserId())));
     }
 
     /**

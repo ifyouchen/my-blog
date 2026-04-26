@@ -58,6 +58,42 @@ const createMarkdownRenderer = ({ copyableCode = false } = {}) => {
         ].join('');
     };
 
+    const defaultImage = md.renderer.rules.image
+        || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+
+    md.renderer.rules.image = (tokens, idx, options, env, self) => {
+        const token = tokens[idx];
+        const src = token.attrGet('src') || '';
+        const altText = token.content || '';
+        const sizeMatch = altText.match(/^(.+)\|(\d+)x(\d*)$/);
+        let actualAlt = altText;
+        let width = '';
+        let height = '';
+
+        if (sizeMatch) {
+            actualAlt = sizeMatch[1];
+            width = sizeMatch[2];
+            height = sizeMatch[3] || '';
+        }
+
+        let style = '';
+        if (width) {
+            style = `width:${width}px;max-width:100%;`;
+        }
+        if (height) {
+            style += `height:${height}px;`;
+        }
+
+        const imageToken = tokens[idx];
+        const originalStyle = imageToken.attrGet('style') || '';
+        const finalStyle = style + originalStyle;
+
+        if (finalStyle) {
+            return `<img src="${src}" alt="${actualAlt}" style="${finalStyle}">`;
+        }
+        return `<img src="${src}" alt="${actualAlt}">`;
+    };
+
     return md;
 };
 
@@ -136,6 +172,109 @@ turndownService.addRule('strikethrough', {
     }
 });
 
+turndownService.addRule('image', {
+    filter: 'img',
+    replacement(content, node) {
+        const src = node.getAttribute('src') || '';
+        const alt = node.getAttribute('alt') || '';
+        const width = node.getAttribute('width') || '';
+        const height = node.getAttribute('height') || '';
+
+        if (width || height) {
+            if (height) {
+                return `![${alt}|${width}x${height}](${src})`;
+            }
+            return `![${alt}|${width}x](${src})`;
+        }
+        return `![${alt}](${src})`;
+    }
+});
+
 export const editorHtmlToMarkdown = (html = '') => {
     return turndownService.turndown(html || '').trim();
+};
+
+export const editorJsonToMarkdown = (json) => {
+    if (!json || !json.content) return '';
+
+    const processNode = (node) => {
+        if (node.type === 'imageResize') {
+            const src = node.attrs.src || '';
+            const alt = node.attrs.alt || '';
+            let width = '';
+            if (node.attrs.containerStyle) {
+                const match = node.attrs.containerStyle.match(/width:\s*([0-9.]+)px/);
+                if (match) width = match[1];
+            }
+            if (width) {
+                return `![${alt}|${width}x](${src})`;
+            }
+            return `![${alt}](${src})`;
+        }
+        if (node.type === 'image') {
+            const src = node.attrs.src || '';
+            const alt = node.attrs.alt || '';
+            let width = '';
+            if (node.attrs.containerStyle) {
+                const match = node.attrs.containerStyle.match(/width:\s*([0-9.]+)px/);
+                if (match) width = match[1];
+            }
+            if (width) {
+                return `![${alt}|${width}x](${src})`;
+            }
+            return `![${alt}](${src})`;
+        }
+        if (node.type === 'paragraph') {
+            return (node.content || []).map(processNode).join('') + '\n';
+        }
+        if (node.type === 'heading') {
+            const level = node.attrs.level || 1;
+            const text = (node.content || []).map(processNode).join('');
+            return '#'.repeat(level) + ' ' + text + '\n';
+        }
+        if (node.type === 'blockquote') {
+            const text = (node.content || []).map(processNode).join('');
+            return '> ' + text + '\n';
+        }
+        if (node.type === 'codeBlock') {
+            const language = node.attrs.language || '';
+            const text = (node.content || []).map(processNode).join('');
+            return '```' + language + '\n' + text + '\n```\n';
+        }
+        if (node.type === 'horizontalRule') {
+            return '---\n';
+        }
+        if (node.type === 'bulletList') {
+            return (node.content || []).map(processNode).join('');
+        }
+        if (node.type === 'orderedList') {
+            return (node.content || []).map(processNode).join('');
+        }
+        if (node.type === 'listItem') {
+            const text = (node.content || []).map(processNode).join('');
+            return '- ' + text + '\n';
+        }
+        if (node.type === 'hardBreak') {
+            return '\n';
+        }
+        if (node.type === 'text') {
+            let text = node.text || '';
+            if (node.marks) {
+                for (const mark of node.marks) {
+                    if (mark.type === 'bold') text = `**${text}**`;
+                    if (mark.type === 'italic') text = `*${text}*`;
+                    if (mark.type === 'code') text = `\`${text}\``;
+                    if (mark.type === 'strike') text = `~~${text}~~`;
+                    if (mark.type === 'link') text = `[${text}](${mark.attrs.href})`;
+                }
+            }
+            return text;
+        }
+        if (node.content) {
+            return node.content.map(processNode).join('');
+        }
+        return '';
+    };
+
+    return json.content.map(processNode).join('').trim();
 };

@@ -15,8 +15,9 @@ const getToken = () => {
 };
 
 export const request = async (path, options = {}) => {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(options.headers || {})
     };
     const token = getToken();
@@ -44,8 +45,16 @@ export const request = async (path, options = {}) => {
         throw new TypeError('Failed to fetch');
     }
 
-    if (!response.ok || payload.code !== 0) {
-        if (response.status === 401 || payload.code === 401) {
+    if (!response.ok) {
+        if (response.status === 401) {
+            localStorage.removeItem(SESSION_KEY);
+            window.dispatchEvent(new CustomEvent('my-blog-auth-expired'));
+        }
+        throw new Error(payload.message || `请求失败 (${response.status})`);
+    }
+
+    if (payload.code !== 0) {
+        if (payload.code === 401) {
             localStorage.removeItem(SESSION_KEY);
             window.dispatchEvent(new CustomEvent('my-blog-auth-expired'));
         }

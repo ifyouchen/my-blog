@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.NotificationMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.NotificationDO">
+        <id column="id" property="id"/>
+        <result column="receiver_user_id" property="receiverUserId"/>
+        <result column="actor_user_id" property="actorUserId"/>
+        <result column="type" property="type"/>
+        <result column="article_id" property="articleId"/>
+        <result column="comment_id" property="commentId"/>
+        <result column="payload_json" property="payloadJson"/>
+        <result column="read_at" property="readAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, receiver_user_id, actor_user_id, type, article_id, comment_id, payload_json, read_at,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_notification
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByReceiver" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_notification
+        WHERE receiver_user_id = #{receiverUserId}
+        AND deleted_at IS NULL
+        <if test="filter == 'unread'">
+            AND read_at IS NULL
+        </if>
+        <if test="filter == 'read'">
+            AND read_at IS NOT NULL
+        </if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByReceiver" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_notification
+        WHERE receiver_user_id = #{receiverUserId}
+        AND deleted_at IS NULL
+        <if test="filter == 'unread'">
+            AND read_at IS NULL
+        </if>
+        <if test="filter == 'read'">
+            AND read_at IS NOT NULL
+        </if>
+    </select>
+
+    <select id="countUnreadByReceiver" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_notification
+        WHERE receiver_user_id = #{receiverUserId}
+        AND deleted_at IS NULL
+        AND read_at IS NULL
+    </select>
+
+    <select id="selectRecentByReceiver" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_notification
+        WHERE receiver_user_id = #{receiverUserId}
+        AND deleted_at IS NULL
+        <if test="filter == 'unread'">
+            AND read_at IS NULL
+        </if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.NotificationDO">
+        INSERT INTO blog_notification
+        (id, receiver_user_id, actor_user_id, type, article_id, comment_id, payload_json, created_at, updated_at)
+        VALUES
+        (#{id}, #{receiverUserId}, #{actorUserId}, #{type}, #{articleId}, #{commentId}, #{payloadJson}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.NotificationDO">
+        UPDATE blog_notification
+        SET read_at = #{readAt},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="markRead">
+        UPDATE blog_notification
+        SET read_at = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE id = #{notificationId}
+        AND receiver_user_id = #{receiverUserId}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="markAllRead">
+        UPDATE blog_notification
+        SET read_at = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE receiver_user_id = #{receiverUserId}
+        AND deleted_at IS NULL
+        AND read_at IS NULL
+    </update>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_notification
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_notification
+    </select>
+</mapper>

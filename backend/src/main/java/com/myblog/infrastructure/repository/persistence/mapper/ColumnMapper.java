@@ -38,4 +38,9 @@ public interface ColumnMapper {
 
     int insertColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId,
                             @Param("sortOrder") int sortOrder);
+
+    List<ColumnDO> searchPublished(@Param("keyword") String keyword, @Param("sort") String sort,
+                                   @Param("offset") int offset, @Param("limit") int limit);
+
+    long countSearchPublished(@Param("keyword") String keyword);
 }

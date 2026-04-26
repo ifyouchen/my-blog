@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.UserSearchHistoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="keyword" property="keyword"/>
+        <result column="search_count" property="searchCount"/>
+        <result column="last_searched_at" property="lastSearchedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, keyword, search_count, last_searched_at,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user_search_history
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user_search_history
+        WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+        ORDER BY last_searched_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user_search_history
+        WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByUserIdAndKeyword" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user_search_history
+        WHERE user_id = #{userId}
+        AND keyword = #{keyword}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO">
+        INSERT INTO blog_user_search_history (
+            id, user_id, keyword, search_count, last_searched_at,
+            created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{id}, #{userId}, #{keyword}, #{searchCount}, #{lastSearchedAt},
+            #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO">
+        UPDATE blog_user_search_history
+        SET search_count = #{searchCount},
+            last_searched_at = #{lastSearchedAt},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteByUserId">
+        UPDATE blog_user_search_history
+        SET deleted_at = NOW(),
+            version = version + 1
+        WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </update>
+
+    <select id="selectHotKeywords" resultType="java.lang.String">
+        SELECT keyword
+        FROM blog_user_search_history
+        WHERE deleted_at IS NULL
+        GROUP BY keyword
+        ORDER BY SUM(search_count) DESC, MAX(last_searched_at) DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user_search_history
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 0) + 1
+        FROM blog_user_search_history
+    </select>
+</mapper>

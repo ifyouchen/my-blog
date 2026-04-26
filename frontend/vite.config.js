@@ -9,6 +9,26 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('@tiptap') || id.includes('prosemirror')) {
+                            return 'editor';
+                        }
+                        if (id.includes('markdown-it') || id.includes('highlight.js') || id.includes('lowlight')) {
+                            return 'markdown';
+                        }
+                    }
+                    if (id.includes('/src/views/admin/')) {
+                        return 'admin';
+                    }
+                    return undefined;
+                }
+            }
+        }
+    },
     server: {
         port: 5173,
         proxy: {

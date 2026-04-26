@@ -1,5 +1,6 @@
 package com.myblog.application.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.domain.model.aggregate.Category;
 import com.myblog.domain.model.valueobject.CategoryId;
@@ -7,9 +8,11 @@ import com.myblog.domain.repository.CategoryRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,16 +20,25 @@ import java.util.stream.Collectors;
 public class CategoryAppService {
 
     private final CategoryRepository categoryRepository;
+    private final Cache<String, List<CategoryDTO>> categoriesCache;
 
-    public CategoryAppService(CategoryRepository categoryRepository) {
+    public CategoryAppService(CategoryRepository categoryRepository,
+                              @Qualifier("categoriesCache") Cache<String, List<CategoryDTO>> categoriesCache) {
         this.categoryRepository = categoryRepository;
+        this.categoriesCache = categoriesCache;
     }
 
     public List<CategoryDTO> getCategories(Boolean enabled) {
-        List<Category> categories = categoryRepository.findAll(enabled);
-        return categories.stream()
-            .map(this::toDTO)
-            .collect(Collectors.toList());
+        String cacheKey = buildCacheKey(enabled);
+        List<CategoryDTO> cached = categoriesCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return copyCategories(cached);
+        }
+        List<CategoryDTO> items = categoryRepository.findAll(enabled).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        categoriesCache.put(cacheKey, copyCategories(items));
+        return items;
     }
 
     /**
@@ -66,6 +78,7 @@ public class CategoryAppService {
             sortOrder != null ? sortOrder : 0
         );
         categoryRepository.save(category);
+        invalidateCategoryCache();
         return toDTO(category);
     }
 
@@ -80,6 +93,7 @@ public class CategoryAppService {
 
         category.update(name, description, sortOrder, enabled);
         categoryRepository.save(category);
+        invalidateCategoryCache();
         return toDTO(category);
     }
 
@@ -89,6 +103,35 @@ public class CategoryAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "分类不存在"));
         category.delete();
         categoryRepository.save(category);
+        invalidateCategoryCache();
+    }
+
+    private String buildCacheKey(Boolean enabled) {
+        return enabled == null ? "enabled:all" : "enabled:" + enabled;
+    }
+
+    private void invalidateCategoryCache() {
+        categoriesCache.invalidateAll();
+    }
+
+    private List<CategoryDTO> copyCategories(List<CategoryDTO> source) {
+        List<CategoryDTO> copies = new ArrayList<CategoryDTO>(source.size());
+        for (CategoryDTO item : source) {
+            copies.add(copyCategory(item));
+        }
+        return copies;
+    }
+
+    private CategoryDTO copyCategory(CategoryDTO source) {
+        CategoryDTO dto = new CategoryDTO();
+        dto.setId(source.getId());
+        dto.setName(source.getName());
+        dto.setDescription(source.getDescription());
+        dto.setSortOrder(source.getSortOrder());
+        dto.setEnabled(source.getEnabled());
+        dto.setCreatedAt(source.getCreatedAt());
+        dto.setUpdatedAt(source.getUpdatedAt());
+        return dto;
     }
 
     private CategoryDTO toDTO(Category category) {

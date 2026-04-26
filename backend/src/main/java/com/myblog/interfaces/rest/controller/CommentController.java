@@ -70,7 +70,7 @@ public class CommentController {
             page,
             pageSize,
             sort,
-            AuthContext.getRequiredUserId(),
+            AuthContext.getCurrentUserId(),
             AuthContext.getRole()
         );
         return Result.success(toPageResponse(result));
@@ -92,7 +92,7 @@ public class CommentController {
             rootCommentId,
             page,
             pageSize,
-            AuthContext.getRequiredUserId(),
+            AuthContext.getCurrentUserId(),
             AuthContext.getRole()
         );
         return Result.success(toPageResponse(result));

@@ -43,7 +43,7 @@ public class ColumnController {
     @GetMapping
     public Result<PageResult<ColumnResponse>> pageColumns(@RequestParam(defaultValue = "1") int page,
                                                           @RequestParam(defaultValue = "9") int pageSize) {
-        PageResult<ColumnDTO> pageResult = columnAppService.pageColumns(page, pageSize, AuthContext.getRequiredUserId());
+        PageResult<ColumnDTO> pageResult = columnAppService.pageColumns(page, pageSize, AuthContext.getCurrentUserId());
         List<ColumnResponse> items = new ArrayList<ColumnResponse>(pageResult.getItems().size());
         for (ColumnDTO item : pageResult.getItems()) {
             items.add(restDtoMapper.toResponse(item));
@@ -54,7 +54,7 @@ public class ColumnController {
     @GetMapping("/recommended")
     public Result<List<ColumnResponse>> listRecommendedColumns(@RequestParam(defaultValue = "3") int limit) {
         List<ColumnResponse> items = new ArrayList<ColumnResponse>();
-        for (ColumnDTO item : columnAppService.listRecommendedColumns(limit, AuthContext.getRequiredUserId())) {
+        for (ColumnDTO item : columnAppService.listRecommendedColumns(limit, AuthContext.getCurrentUserId())) {
             items.add(restDtoMapper.toResponse(item));
         }
         return Result.success(items);
@@ -62,7 +62,7 @@ public class ColumnController {
 
     @GetMapping("/{id}")
     public Result<ColumnResponse> getColumnDetail(@PathVariable Long id) {
-        return Result.success(restDtoMapper.toResponse(columnAppService.getColumnDetail(id, AuthContext.getRequiredUserId())));
+        return Result.success(restDtoMapper.toResponse(columnAppService.getColumnDetail(id, AuthContext.getCurrentUserId())));
     }
 
     @GetMapping("/{id}/articles")

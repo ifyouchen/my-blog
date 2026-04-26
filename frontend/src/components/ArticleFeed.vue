@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { articles as defaultArticles } from '@/data/home';
 import { ARTICLE_SORT_LATEST } from '@/constants/articleSort';
 
@@ -51,6 +52,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['page-change', 'sort-change']);
+const router = useRouter();
 const jumpPage = ref(String(props.page));
 
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
@@ -116,6 +118,10 @@ const submitJump = () => {
     goToPage(targetPage);
 };
 
+const openArticle = (articleId) => {
+    router.push(`/articles/${articleId}`);
+};
+
 watch(
     () => props.page,
     (page) => {
@@ -131,7 +137,7 @@ watch(
                 <p class="eyebrow">{{ eyebrow }}</p>
                 <h2 id="feed-title">{{ title }}</h2>
             </div>
-            <div v-if="props.sortItems.length" class="sort-tabs" aria-label="排序">
+            <div class="sort-tabs" aria-label="排序" :class="{ invisible: !props.sortItems.length }">
                 <button
                     v-for="item in props.sortItems"
                     :key="item.value"
@@ -145,41 +151,61 @@ watch(
             </div>
         </div>
 
-        <article
-            v-for="article in articles"
-            :key="article.id"
-            class="post-item"
-            :class="{ 'featured-post': article.featured }"
-        >
-            <RouterLink class="post-cover" :to="`/articles/${article.id}`" :aria-label="`查看文章：${article.title}`">
-                <img :src="article.cover" :alt="article.coverAlt">
-            </RouterLink>
-            <div class="post-content">
-                <div class="post-meta">
-                    <span>{{ article.category }}</span>
-                    <span>{{ article.readingTime }}</span>
-                    <span>{{ article.publishedText }}</span>
+        <template v-if="!loading && articles.length === 0" class="empty-state">
+            <div class="empty-state">{{ emptyText }}</div>
+        </template>
+
+        <template v-else-if="!loading">
+            <article
+                v-for="article in articles"
+                :key="article.id"
+                class="post-item"
+                :class="{ 'featured-post': article.featured, 'interactive-post': true }"
+                role="link"
+                tabindex="0"
+                @click="openArticle(article.id)"
+                @keydown.enter="openArticle(article.id)"
+                @keydown.space.prevent="openArticle(article.id)"
+            >
+                <div class="post-cover" :aria-label="`查看文章：${article.title}`">
+                    <img :src="article.cover" :alt="article.coverAlt" loading="lazy">
                 </div>
-                <h3>
-                    <RouterLink :to="`/articles/${article.id}`">
-                        {{ article.title }}
-                    </RouterLink>
-                </h3>
-                <p>{{ article.summary }}</p>
-                <div class="post-footer">
-                    <RouterLink class="author" :to="`/users/${article.author.id}`">
-                        <img :src="article.author.avatar" alt="作者头像">
-                        <span>{{ article.author.name }}</span>
-                    </RouterLink>
-                    <span>{{ article.stats.views }}</span>
-                    <span>{{ article.stats.likes }}</span>
-                    <span>{{ article.stats.comments }}</span>
+                <div class="post-content">
+                    <div class="post-meta">
+                        <span>{{ article.category }}</span>
+                        <span>{{ article.readingTime }}</span>
+                        <span>{{ article.publishedText }}</span>
+                    </div>
+                    <h3 class="post-title">{{ article.title }}</h3>
+                    <p>{{ article.summary }}</p>
+                    <div class="post-footer">
+                        <RouterLink
+                            class="author author-hotspot"
+                            :to="`/users/${article.author.id}`"
+                            @click.stop
+                            @keydown.enter.stop
+                            @keydown.space.stop
+                        >
+                            <img :src="article.author.avatar" alt="作者头像">
+                            <span>{{ article.author.name }}</span>
+                        </RouterLink>
+                        <span>{{ article.stats.views }}</span>
+                        <span>{{ article.stats.likes }}</span>
+                        <span>{{ article.stats.comments }}</span>
+                    </div>
+                </div>
+            </article>
+        </template>
+
+        <div v-if="loading" class="loading-placeholder">
+            <div v-for="i in 3" :key="i" class="skeleton-post">
+                <div class="skeleton-cover"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text short"></div>
                 </div>
             </div>
-        </article>
-
-        <div v-if="articles.length === 0" class="empty-state">
-            {{ emptyText }}
         </div>
 
         <p v-if="errorMessage" class="feed-message">{{ errorMessage }}</p>
@@ -225,3 +251,117 @@ watch(
         </nav>
     </section>
 </template>
+
+<style scoped>
+.invisible {
+    visibility: hidden;
+}
+
+.interactive-post {
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.interactive-post:hover,
+.interactive-post:focus-visible {
+    background: color-mix(in srgb, var(--surface-soft) 36%, white);
+    border-color: rgba(15, 143, 117, 0.18);
+    box-shadow: 0 16px 30px rgba(24, 32, 31, 0.08);
+    transform: translateY(-2px);
+}
+
+.interactive-post:focus-visible {
+    outline: 2px solid rgba(15, 143, 117, 0.22);
+    outline-offset: 4px;
+}
+
+.post-title {
+    transition: color 0.18s ease;
+}
+
+.interactive-post:hover .post-title,
+.interactive-post:focus-visible .post-title,
+.interactive-post:hover .author-hotspot,
+.interactive-post:focus-visible .author-hotspot {
+    color: var(--brand-strong);
+}
+
+.interactive-post:hover .post-cover img,
+.interactive-post:focus-visible .post-cover img {
+    transform: scale(1.04);
+}
+
+.post-cover img {
+    transition: transform 0.22s ease;
+}
+
+.author-hotspot {
+    position: relative;
+    z-index: 1;
+    border-radius: 999px;
+    transition: color 0.18s ease;
+}
+
+.author-hotspot:hover,
+.author-hotspot:focus-visible {
+    color: var(--brand-strong);
+}
+
+/* Loading skeleton */
+.loading-placeholder {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.skeleton-post {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.skeleton-cover {
+    width: 160px;
+    height: 100px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-title {
+    height: 24px;
+    width: 70%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-text {
+    height: 14px;
+    width: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-text.short {
+    width: 40%;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+</style>

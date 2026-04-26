@@ -1,3 +1,27 @@
+<script setup>
+defineProps({
+    totalArticles: {
+        type: Number,
+        default: 0
+    },
+    totalAuthors: {
+        type: Number,
+        default: 0
+    },
+    totalColumns: {
+        type: Number,
+        default: 0
+    }
+});
+
+const formatNumber = (num) => {
+    if (num >= 10000) {
+        return (num / 10000).toFixed(1) + '万';
+    }
+    return num.toLocaleString();
+};
+</script>
+
 <template>
     <section class="quick-panel" aria-labelledby="quick-title">
         <div>
@@ -6,9 +30,9 @@
             <p class="quick-copy">从后端架构、前端体验到数据库调优，把能直接用在项目里的经验放到最前面。</p>
         </div>
         <div class="quick-stats" aria-label="平台数据">
-            <span><strong>2,481</strong> 篇文章</span>
-            <span><strong>128</strong> 位作者</span>
-            <span><strong>36</strong> 个专题</span>
+            <span><strong>{{ formatNumber(totalArticles) }}</strong> 篇文章</span>
+            <span><strong>{{ formatNumber(totalAuthors) }}</strong> 位作者</span>
+            <span><strong>{{ formatNumber(totalColumns) }}</strong> 个专栏</span>
         </div>
     </section>
 </template>

@@ -94,6 +94,22 @@ public class MyBatisColumnRepository implements ColumnRepository {
         }
     }
 
+    @Override
+    public List<Column> searchPublished(String keyword, String sort, int page, int pageSize) {
+        int offset = (Math.max(page, 1) - 1) * Math.max(pageSize, 1);
+        List<ColumnDO> columnDOList = columnMapper.searchPublished(keyword, sort, offset, pageSize);
+        List<Column> columns = new ArrayList<>(columnDOList.size());
+        for (ColumnDO columnDO : columnDOList) {
+            columns.add(toDomain(columnDO));
+        }
+        return columns;
+    }
+
+    @Override
+    public long countSearchPublished(String keyword) {
+        return columnMapper.countSearchPublished(keyword);
+    }
+
     private Column toDomain(ColumnDO columnDO) {
         return Column.restore(
             columnDO.getId(),

@@ -4,6 +4,10 @@ import com.myblog.application.assembler.CommentAssembler;
 import com.myblog.application.command.CreateCommentCommand;
 import com.myblog.application.dto.CommentDTO;
 import com.myblog.application.dto.UserDTO;
+import com.myblog.application.event.CommentCreatedEvent;
+import com.myblog.application.event.CommentDeletedEvent;
+import com.myblog.application.event.CommentLikedEvent;
+import com.myblog.application.event.CommentUnlikedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.aggregate.CommentLike;
@@ -21,6 +25,9 @@ import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,12 +48,14 @@ import java.util.Set;
 @Service
 public class CommentAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(CommentAppService.class);
     private static final int DEFAULT_REPLY_PREVIEW_SIZE = 3;
 
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 创建评论应用服务。
@@ -59,11 +68,13 @@ public class CommentAppService {
     public CommentAppService(CommentRepository commentRepository,
                              CommentLikeRepository commentLikeRepository,
                              ArticleRepository articleRepository,
-                             UserRepository userRepository) {
+                             UserRepository userRepository,
+                             ApplicationEventPublisher eventPublisher) {
         this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -215,9 +226,8 @@ public class CommentAppService {
             command.getContent()
         );
         commentRepository.save(comment);
-
-        article.increaseCommentCount();
-        articleRepository.save(article);
+        eventPublisher.publishEvent(new CommentCreatedEvent(comment.getId().getValue(), article.getId().getValue(), user.getId().getValue()));
+        log.info("Comment {} created for article {}", comment.getId().getValue(), article.getId().getValue());
 
         CommentDTO dto = CommentAssembler.toDTO(comment, user);
         dto.setReplyCount(0);
@@ -244,6 +254,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteComment(Long commentId, Long userId, String currentUserRole) {
+        log.info("Deleting comment {}, userId={}", commentId, userId);
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
         Article article = articleRepository.findById(comment.getArticleId())
@@ -259,14 +270,17 @@ public class CommentAppService {
             commentsToDelete = Collections.singletonList(comment);
         }
 
+        Long articleId = article.getId().getValue();
+        int deleteCount = commentsToDelete.size();
+
         for (Comment item : commentsToDelete) {
             item.delete();
             commentRepository.save(item);
         }
-        for (int index = 0; index < commentsToDelete.size(); index++) {
-            article.decreaseCommentCount();
-        }
-        articleRepository.save(article);
+
+        eventPublisher.publishEvent(new CommentDeletedEvent(commentId, articleId, deleteCount));
+        log.info("Comment {} deleted, {} comments removed from article {}",
+            commentId, deleteCount, articleId);
     }
 
     /**
@@ -277,6 +291,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void likeComment(Long commentId, Long userId) {
+        log.info("User {} liking comment {}", userId, commentId);
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
         UserId targetUserId = new UserId(userId);
@@ -293,8 +308,8 @@ public class CommentAppService {
             commentLikeRepository.save(commentLike);
         }
 
-        comment.increaseLikeCount();
-        commentRepository.save(comment);
+        eventPublisher.publishEvent(new CommentLikedEvent(commentId, userId));
+        log.info("User {} liked comment {}", userId, commentId);
     }
 
     /**
@@ -305,6 +320,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void unlikeComment(Long commentId, Long userId) {
+        log.info("User {} unliking comment {}", userId, commentId);
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
         CommentLike commentLike = commentLikeRepository.findAnyByCommentAndUser(comment.getId(), new UserId(userId))
@@ -315,8 +331,8 @@ public class CommentAppService {
         commentLike.delete();
         commentLikeRepository.save(commentLike);
 
-        comment.decreaseLikeCount();
-        commentRepository.save(comment);
+        eventPublisher.publishEvent(new CommentUnlikedEvent(commentId, userId));
+        log.info("User {} unliked comment {}", userId, commentId);
     }
 
     /**

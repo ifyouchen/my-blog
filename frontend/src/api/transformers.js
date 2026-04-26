@@ -1,3 +1,5 @@
+import { resolveMediaUrl } from '@/utils/media';
+
 export const normalizeUser = (user) => ({
     id: user.id,
     username: user.username,
@@ -7,7 +9,10 @@ export const normalizeUser = (user) => ({
     role: user.role,
     status: user.status,
     bio: user.bio,
-    avatar: user.avatar || user.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80',
+    avatar: resolveMediaUrl(
+        user.avatar || user.avatarUrl,
+        'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'
+    ),
     avatarUrl: user.avatarUrl || user.avatar,
     createdAt: user.createdAt
 });
@@ -62,7 +67,7 @@ export const normalizeArticle = (article) => {
         publishedText: article.publishedAt || '刚刚更新',
         updatedAt: article.updatedAt || article.publishedAt || '',
         updatedText: article.updatedAt || article.publishedAt || '刚刚更新',
-        cover: article.cover || article.coverUrl,
+        cover: resolveMediaUrl(article.cover || article.coverUrl),
         coverUrl: article.coverUrl || article.cover,
         coverAlt: `${article.title} 封面图`,
         author: normalizeUser(article.author || {}),
@@ -72,6 +77,9 @@ export const normalizeArticle = (article) => {
         likeCount: article.likeCount || 0,
         favoriteCount: article.favoriteCount || 0,
         commentCount: article.commentCount || 0,
+        favoritedAt: article.favoritedAt || '',
+        liked: Boolean(article.liked),
+        favorited: Boolean(article.favorited),
         stats: {
             views: `${article.viewCount || 0} 阅读`,
             likes: `${article.likeCount || 0} 赞`,
@@ -84,8 +92,10 @@ export const normalizeColumn = (column) => ({
     id: column.id,
     title: column.title,
     summary: column.summary,
-    coverUrl: column.coverUrl
-        || 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=900&q=80',
+    coverUrl: resolveMediaUrl(
+        column.coverUrl,
+        'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=900&q=80'
+    ),
     subscriberCount: column.subscriberCount || 0,
     articleCount: column.articleCount || 0,
     subscribed: Boolean(column.subscribed),

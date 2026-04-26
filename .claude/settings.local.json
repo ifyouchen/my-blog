@@ -14,7 +14,27 @@
       "Bash(mvn spring-boot:run -q -DskipTests)",
       "Bash(curl -s http://localhost:8080/api/articles/1 -o /dev/null -w \"%{http_code}\")",
       "Bash(java -jar target/*.jar --server.port=8080)",
-      "Bash(mvn spring-boot:run -Dmaven.test.skip=true -q)"
+      "Bash(mvn spring-boot:run -Dmaven.test.skip=true -q)",
+      "Bash(npm install *)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm search *)",
+      "Bash(node *)",
+      "Bash(curl -s http://localhost:8080/api/health)",
+      "Bash(curl *)",
+      "Bash(taskkill /F /IM java.exe)",
+      "Bash(mysql *)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(xargs grep *)",
+      "Bash(cat)",
+      "Bash(chmod +x /tmp/concurrent_test.sh)",
+      "Bash(bash /tmp/concurrent_test.sh)",
+      "Bash(chmod +x /tmp/concurrent_test2.sh)",
+      "Bash(bash /tmp/concurrent_test2.sh)",
+      "Bash(chmod +x /tmp/write_loadtest.sh)",
+      "Bash(bash /tmp/write_loadtest.sh)",
+      "Bash(mvn -q -DskipTests compile)",
+      "Bash(dir \"F:\\\\software\\\\IdeaProject\\\\my-blog\")"
     ]
   }
 }

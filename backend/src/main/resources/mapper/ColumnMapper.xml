@@ -134,4 +134,40 @@
         INSERT INTO blog_column_article (column_id, article_id, sort_order)
         VALUES (#{columnId}, #{articleId}, #{sortOrder})
     </insert>
+
+    <select id="searchPublished" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column c
+        WHERE c.deleted_at IS NULL
+        AND c.status = 'PUBLISHED'
+        <if test="keyword != null and keyword != ''">
+            AND (
+                c.title LIKE CONCAT('%', #{keyword}, '%')
+                OR c.summary LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY
+        <choose>
+            <when test="sort == 'subscribers'">
+                c.subscriber_count DESC, c.id DESC
+            </when>
+            <otherwise>
+                c.id DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countSearchPublished" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_column c
+        WHERE c.deleted_at IS NULL
+        AND c.status = 'PUBLISHED'
+        <if test="keyword != null and keyword != ''">
+            AND (
+                c.title LIKE CONCAT('%', #{keyword}, '%')
+                OR c.summary LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </select>
 </mapper>

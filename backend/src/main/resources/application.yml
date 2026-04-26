@@ -39,10 +39,16 @@ my-blog:
   jwt:
     secret: "replace-with-a-long-random-secret-for-local-development"
     expire-seconds: 86400
+  upload-dir: uploads
+  default-article-cover-url: /api/uploads/files/default/article-cover.svg
 
 logging:
   level:
     root: INFO
-    com.myblog: DEBUG
+    com.myblog: INFO
+    com.myblog.interfaces: INFO
+    org.mybatis: ERROR
+    com.zaxxer.hikari: WARN
+    org.springframework.jdbc: ERROR
   file:
     name: logs/application.log

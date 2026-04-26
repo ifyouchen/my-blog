@@ -1,7 +1,13 @@
 <script setup>
 import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { topics } from '@/data/home';
+
+const props = defineProps({
+    topics: {
+        type: Array,
+        default: () => []
+    }
+});
 
 const route = useRoute();
 const activeTopic = computed(() => String(route.query.category || '全部'));
@@ -10,7 +16,7 @@ const activeTopic = computed(() => String(route.query.category || '全部'));
 <template>
     <section class="topic-strip" aria-label="技术分类">
         <RouterLink
-            v-for="topic in topics"
+            v-for="topic in props.topics"
             :key="topic"
             class="topic"
             :class="{ active: activeTopic === topic }"

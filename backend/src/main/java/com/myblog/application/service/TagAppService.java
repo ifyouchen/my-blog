@@ -1,5 +1,6 @@
 package com.myblog.application.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.dto.TagDTO;
 import com.myblog.domain.model.aggregate.Tag;
 import com.myblog.domain.model.valueobject.TagId;
@@ -7,9 +8,11 @@ import com.myblog.domain.repository.TagRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,16 +20,25 @@ import java.util.stream.Collectors;
 public class TagAppService {
 
     private final TagRepository tagRepository;
+    private final Cache<String, List<TagDTO>> tagsCache;
 
-    public TagAppService(TagRepository tagRepository) {
+    public TagAppService(TagRepository tagRepository,
+                         @Qualifier("tagsCache") Cache<String, List<TagDTO>> tagsCache) {
         this.tagRepository = tagRepository;
+        this.tagsCache = tagsCache;
     }
 
     public List<TagDTO> getTags(Boolean enabled) {
-        List<Tag> tags = tagRepository.findAll(enabled);
-        return tags.stream()
-            .map(this::toDTO)
-            .collect(Collectors.toList());
+        String cacheKey = buildCacheKey(enabled);
+        List<TagDTO> cached = tagsCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return copyTags(cached);
+        }
+        List<TagDTO> items = tagRepository.findAll(enabled).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        tagsCache.put(cacheKey, copyTags(items));
+        return items;
     }
 
     /**
@@ -65,6 +77,7 @@ public class TagAppService {
             description
         );
         tagRepository.save(tag);
+        invalidateTagCache();
         return toDTO(tag);
     }
 
@@ -79,6 +92,7 @@ public class TagAppService {
 
         tag.update(name, description, enabled);
         tagRepository.save(tag);
+        invalidateTagCache();
         return toDTO(tag);
     }
 
@@ -88,6 +102,34 @@ public class TagAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "标签不存在"));
         tag.delete();
         tagRepository.save(tag);
+        invalidateTagCache();
+    }
+
+    private String buildCacheKey(Boolean enabled) {
+        return enabled == null ? "enabled:all" : "enabled:" + enabled;
+    }
+
+    private void invalidateTagCache() {
+        tagsCache.invalidateAll();
+    }
+
+    private List<TagDTO> copyTags(List<TagDTO> source) {
+        List<TagDTO> copies = new ArrayList<TagDTO>(source.size());
+        for (TagDTO item : source) {
+            copies.add(copyTag(item));
+        }
+        return copies;
+    }
+
+    private TagDTO copyTag(TagDTO source) {
+        TagDTO dto = new TagDTO();
+        dto.setId(source.getId());
+        dto.setName(source.getName());
+        dto.setDescription(source.getDescription());
+        dto.setEnabled(source.getEnabled());
+        dto.setCreatedAt(source.getCreatedAt());
+        dto.setUpdatedAt(source.getUpdatedAt());
+        return dto;
     }
 
     private TagDTO toDTO(Tag tag) {

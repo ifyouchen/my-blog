@@ -68,16 +68,29 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         if (!"GET".equalsIgnoreCase(method)) {
             return false;
         }
-        return "/api/articles".equals(path)
+        if ("/api/articles".equals(path)
             || "/api/categories".equals(path)
             || "/api/tags".equals(path)
+            || "/api/home/stats".equals(path)
+            || "/api/home/bootstrap".equals(path)
+            || "/api/rankings/articles".equals(path)
+            || "/api/rankings/authors".equals(path)
+            || "/api/columns".equals(path)
+            || "/api/columns/recommended".equals(path)
+            || "/api/search/bootstrap".equals(path)
+            || "/api/search/users".equals(path)
+            || "/api/search/columns".equals(path)
+            || "/api/search/hot-keywords".equals(path)
             || path.matches("^/api/articles/\\d+$")
             || path.matches("^/api/articles/\\d+/comments$")
             || path.matches("^/api/comments/\\d+/replies$")
             || path.matches("^/api/articles/\\d+/like/status$")
             || path.matches("^/api/articles/\\d+/favorite/status$")
             || path.matches("^/api/users/\\d+$")
-            || path.matches("^/api/users/\\d+/articles$");
+            || path.matches("^/api/users/\\d+/articles$")) {
+            return true;
+        }
+        return false;
     }
 
     /**

@@ -38,15 +38,18 @@ public class ColumnAppService {
     private final ColumnSubscriptionRepository columnSubscriptionRepository;
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
+    private final ArticleAssembler articleAssembler;
 
     public ColumnAppService(ColumnRepository columnRepository,
                             ColumnSubscriptionRepository columnSubscriptionRepository,
                             UserRepository userRepository,
-                            ArticleRepository articleRepository) {
+                            ArticleRepository articleRepository,
+                            ArticleAssembler articleAssembler) {
         this.columnRepository = columnRepository;
         this.columnSubscriptionRepository = columnSubscriptionRepository;
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
+        this.articleAssembler = articleAssembler;
     }
 
     /**
@@ -122,7 +125,7 @@ public class ColumnAppService {
         for (Article article : visibleArticles.subList(fromIndex, toIndex)) {
             User author = userRepository.findById(article.getAuthorId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
-            items.add(ArticleAssembler.toDTO(article, author));
+            items.add(articleAssembler.toDTO(article, author));
         }
         return new PageResult<ArticleDTO>(items, currentPage, currentPageSize, visibleArticles.size());
     }
@@ -177,6 +180,26 @@ public class ColumnAppService {
         columnSubscriptionRepository.save(subscription);
         column.decreaseSubscriberCount();
         columnRepository.save(column);
+    }
+
+    /**
+     * 搜索专栏。
+     *
+     * @param keyword 关键字
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param currentUserId 当前用户 ID
+     * @return 专栏分页结果
+     */
+    public PageResult<ColumnDTO> searchColumns(String keyword, int page, int pageSize, Long currentUserId) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        List<Column> columns = columnRepository.searchPublished(keyword, "subscribers", currentPage, currentPageSize);
+        List<ColumnDTO> items = new ArrayList<>(columns.size());
+        for (Column column : columns) {
+            items.add(toDTO(column, currentUserId));
+        }
+        return new PageResult<>(items, currentPage, currentPageSize, columnRepository.countSearchPublished(keyword));
     }
 
     private Column loadPublishedColumn(Long columnId) {

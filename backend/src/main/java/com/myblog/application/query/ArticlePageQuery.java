@@ -18,6 +18,11 @@ public class ArticlePageQuery {
     private String category;
     private String tag;
     private String sort;
+    private String authorKeyword;
+    private String dateFrom;
+    private String dateTo;
+    private boolean followingOnly;
+    private Long currentUserId;
 
     /**
      * 创建文章分页查询。
@@ -90,6 +95,96 @@ public class ArticlePageQuery {
      */
     public String getSort() {
         return sort;
+    }
+
+    /**
+     * 获取作者关键字筛选条件。
+     *
+     * @return 作者关键字
+     */
+    public String getAuthorKeyword() {
+        return authorKeyword;
+    }
+
+    /**
+     * 设置作者关键字筛选条件。
+     *
+     * @param authorKeyword 作者关键字
+     */
+    public void setAuthorKeyword(String authorKeyword) {
+        this.authorKeyword = authorKeyword;
+    }
+
+    /**
+     * 获取起始日期筛选条件。
+     *
+     * @return 起始日期
+     */
+    public String getDateFrom() {
+        return dateFrom;
+    }
+
+    /**
+     * 设置起始日期筛选条件。
+     *
+     * @param dateFrom 起始日期
+     */
+    public void setDateFrom(String dateFrom) {
+        this.dateFrom = dateFrom;
+    }
+
+    /**
+     * 获取结束日期筛选条件。
+     *
+     * @return 结束日期
+     */
+    public String getDateTo() {
+        return dateTo;
+    }
+
+    /**
+     * 设置结束日期筛选条件。
+     *
+     * @param dateTo 结束日期
+     */
+    public void setDateTo(String dateTo) {
+        this.dateTo = dateTo;
+    }
+
+    /**
+     * 是否仅看已关注作者。
+     *
+     * @return 是否仅看已关注作者
+     */
+    public boolean isFollowingOnly() {
+        return followingOnly;
+    }
+
+    /**
+     * 设置是否仅看已关注作者。
+     *
+     * @param followingOnly 是否仅看已关注作者
+     */
+    public void setFollowingOnly(boolean followingOnly) {
+        this.followingOnly = followingOnly;
+    }
+
+    /**
+     * 获取当前用户ID。
+     *
+     * @return 当前用户ID
+     */
+    public Long getCurrentUserId() {
+        return currentUserId;
+    }
+
+    /**
+     * 设置当前用户ID。
+     *
+     * @param currentUserId 当前用户ID
+     */
+    public void setCurrentUserId(Long currentUserId) {
+        this.currentUserId = currentUserId;
     }
 
     /**

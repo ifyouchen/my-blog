@@ -1,0 +1,115 @@
+import { expect, test } from '@playwright/test';
+
+const USER_ACCOUNT = process.env.E2E_USER_ACCOUNT || 'demo';
+const USER_PASSWORD = process.env.E2E_USER_PASSWORD || '123456';
+const ADMIN_ACCOUNT = process.env.E2E_ADMIN_ACCOUNT || '';
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || '';
+
+async function login(page, account, password) {
+    await page.goto('/login');
+    await expect(page.getByTestId('login-form')).toBeVisible();
+    await page.getByTestId('login-account-input').fill(account);
+    await page.getByTestId('login-password-input').fill(password);
+    await page.getByTestId('login-submit').click();
+    await page.waitForURL('**/dashboard/articles');
+}
+
+test.describe('guest smoke', () => {
+    test('home page renders with live content containers', async ({ page }) => {
+        await page.goto('/');
+        await expect(page.getByTestId('home-page')).toBeVisible();
+        await expect(page.locator('[data-feed-root]')).toBeVisible();
+        await expect(page.getByTestId('home-specials')).toBeVisible();
+        await expect(page.getByTestId('home-authors')).toBeVisible();
+    });
+
+    test('following page shows login guide for guests', async ({ page }) => {
+        await page.goto('/following');
+        await expect(page.getByTestId('following-page')).toBeVisible();
+        await expect(page.getByTestId('following-login-empty')).toBeVisible();
+    });
+
+    test('columns page renders list and detail entry', async ({ page }) => {
+        await page.goto('/columns');
+        await expect(page.getByTestId('columns-page')).toBeVisible();
+        await expect(page.getByTestId('columns-grid')).toBeVisible();
+        const firstColumn = page.getByTestId('column-card').first();
+        await expect(firstColumn).toBeVisible();
+        await firstColumn.getByRole('link').first().click();
+        await expect(page).toHaveURL(/\/columns\/\d+/);
+    });
+
+    test('ranking page renders article and author boards', async ({ page }) => {
+        await page.goto('/ranking');
+        await expect(page.getByTestId('ranking-page')).toBeVisible();
+        await expect(page.getByTestId('ranking-articles')).toBeVisible();
+        await expect(page.getByTestId('ranking-authors')).toBeVisible();
+    });
+
+    test('article detail renders comments and guest write action redirects to login', async ({ page }) => {
+        await page.goto('/');
+        await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
+        await expect(page.getByTestId('article-detail-page')).toBeVisible();
+        await expect(page.getByTestId('comment-panel')).toBeVisible();
+        await page.getByTestId('header-write-article').click();
+        await expect(page.getByTestId('login-modal')).toBeVisible();
+    });
+});
+
+test.describe('authenticated smoke', () => {
+    test('logged-in user can open core creator pages', async ({ page }) => {
+        await login(page, USER_ACCOUNT, USER_PASSWORD);
+        await expect(page.getByTestId('dashboard-articles-page')).toBeVisible();
+
+        await page.goto('/');
+        await expect(page.getByTestId('home-page')).toBeVisible();
+
+        await page.goto('/editor/new');
+        await expect(page.getByTestId('editor-page')).toBeVisible();
+        await expect(page.getByTestId('editor-title-input')).toBeVisible();
+    });
+
+    test('logged-in user can follow author, subscribe column, and manage own comment', async ({ page }) => {
+        await login(page, USER_ACCOUNT, USER_PASSWORD);
+
+        await page.goto('/ranking');
+        const followButton = page.getByTestId('author-follow-button').first();
+        await expect(followButton).toBeVisible();
+        const followLabel = await followButton.textContent();
+        await followButton.click();
+        await expect(followButton).not.toHaveText(followLabel || '');
+
+        await page.goto('/columns');
+        const subscribeButton = page.getByTestId('column-subscribe-button').first();
+        await expect(subscribeButton).toBeVisible();
+        const subscribeLabel = await subscribeButton.textContent();
+        await subscribeButton.click();
+        await expect(subscribeButton).not.toHaveText(subscribeLabel || '');
+
+        await page.goto('/');
+        await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
+        await expect(page.getByTestId('comment-panel')).toBeVisible();
+
+        const uniqueComment = `smoke-comment-${Date.now()}`;
+        const commentPanel = page.getByTestId('comment-panel');
+        await commentPanel.getByTestId('comment-composer-input').first().fill(uniqueComment);
+        await commentPanel.getByTestId('comment-composer-submit').first().click();
+
+        const createdComment = commentPanel.getByTestId('comment-root-item').filter({ hasText: uniqueComment }).first();
+        await expect(createdComment).toBeVisible();
+        await createdComment.getByTestId('comment-like-button').click();
+        page.once('dialog', (dialog) => dialog.accept());
+        await createdComment.getByTestId('comment-delete-button').click();
+        await expect(createdComment).toHaveCount(0);
+    });
+
+    test('admin workspace smoke', async ({ page }) => {
+        test.skip(!ADMIN_ACCOUNT || !ADMIN_PASSWORD, 'Set E2E_ADMIN_ACCOUNT and E2E_ADMIN_PASSWORD to run admin smoke.');
+        await login(page, ADMIN_ACCOUNT, ADMIN_PASSWORD);
+        await page.goto('/admin/overview');
+        await expect(page.getByTestId('admin-layout')).toBeVisible();
+        await expect(page.getByTestId('admin-overview-stats')).toBeVisible();
+        await page.goto('/admin/users');
+        await expect(page.getByTestId('admin-users-table')).toBeVisible();
+    });
+});

@@ -1,15 +1,18 @@
 <script setup>
-import { ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, inject, ref, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
+import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import { getUserArticlesApi } from '@/api/articles';
 import { getUserProfileApi } from '@/api/auth';
 import { useSession } from '@/stores/session';
+import { buildProfileSummaryStats } from '@/utils/profileSummary';
 
 const route = useRoute();
 const { state } = useSession();
+const toast = inject('toast', { error: () => {} });
 const profile = ref(null);
 const articles = ref([]);
 const page = ref(1);
@@ -17,15 +20,22 @@ const pageSize = 10;
 const total = ref(0);
 const loading = ref(false);
 const errorMessage = ref('');
+const userId = computed(() => Number(route.params.id));
+const isOwnProfile = computed(() => profile.value?.user?.id === state.user?.id);
+const summaryStats = computed(() => buildProfileSummaryStats(profile.value || {}, {
+    includeSocial: true
+}));
+const summarySubtitle = computed(() => (
+    profile.value?.user?.username ? `@${profile.value.user.username}` : ''
+));
 
 const loadProfile = async () => {
     loading.value = true;
     errorMessage.value = '';
     try {
-        const userId = Number(route.params.id);
         const [profileData, articlePage] = await Promise.all([
-            getUserProfileApi(userId),
-            getUserArticlesApi(userId, { page: page.value, pageSize })
+            getUserProfileApi(userId.value),
+            getUserArticlesApi(userId.value, { page: page.value, pageSize })
         ]);
         profile.value = profileData;
         articles.value = articlePage.items || [];
@@ -45,8 +55,12 @@ const changePage = async (nextPage) => {
     await loadProfile();
 };
 
-const handleFollowChange = (followed) => {
+const handleFollowChange = (followed, error) => {
     if (!profile.value) {
+        return;
+    }
+    if (error) {
+        toast.error(error.message || '关注操作失败');
         return;
     }
     profile.value.following = followed;
@@ -62,27 +76,32 @@ watch(() => route.params.id, () => {
 <template>
     <SiteHeader />
     <main class="page-shell">
-        <section v-if="profile" class="profile-head">
-            <img :src="profile.user.avatar" alt="用户头像">
-            <div>
-                <p class="eyebrow">技术作者</p>
-                <h1>{{ profile.user.nickname }}</h1>
-                <p>{{ profile.user.bio || '持续分享项目实践与工程经验。' }}</p>
-                <div class="profile-stats">
-                    <span><strong>{{ profile.articleCount }}</strong> 文章</span>
-                    <span><strong>{{ profile.totalViewCount }}</strong> 阅读</span>
-                    <span><strong>{{ profile.totalLikeCount }}</strong> 获赞</span>
-                    <span><strong>{{ profile.followerCount }}</strong> 粉丝</span>
-                    <span><strong>{{ profile.followingCount }}</strong> 关注</span>
-                </div>
+        <UserProfileSummary
+            v-if="profile"
+            :mode="isOwnProfile ? 'owner' : 'public'"
+            eyebrow="个人主页"
+            :avatar-src="profile.user.avatar"
+            :title="profile.user.nickname"
+            :subtitle="summarySubtitle"
+            :bio="profile.user.bio"
+            :stats="summaryStats"
+        >
+            <template #actions>
+                <RouterLink
+                    v-if="isOwnProfile"
+                    class="profile-owner-action"
+                    to="/settings/profile"
+                >
+                    编辑资料
+                </RouterLink>
                 <AuthorFollowButton
-                    v-if="profile.user.id !== state.user?.id"
+                    v-else
                     :user-id="profile.user.id"
                     :followed="profile.following"
                     @change="handleFollowChange"
                 />
-            </div>
-        </section>
+            </template>
+        </UserProfileSummary>
 
         <section v-else class="collection-head">
             <p class="eyebrow">作者主页</p>
@@ -105,3 +124,23 @@ watch(() => route.params.id, () => {
         />
     </main>
 </template>
+
+<style scoped>
+.profile-owner-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 16px;
+    color: var(--text);
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.profile-owner-action:hover {
+    color: var(--brand-strong);
+    border-color: rgba(15, 143, 117, 0.18);
+    background: rgba(15, 143, 117, 0.03);
+}
+</style>

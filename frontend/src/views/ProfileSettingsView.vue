@@ -1,11 +1,16 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { uploadImageApi } from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
+import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import { getUserHotArticlesApi, getUserProfileApi, updateProfileApi } from '@/api/auth';
 import { useSession } from '@/stores/session';
+import { buildProfileSummaryStats } from '@/utils/profileSummary';
+import { resolveMediaUrl } from '@/utils/media';
 
 const { state, updateCurrentUser } = useSession();
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=240&q=80';
 
 const loading = ref(false);
 const statsLoading = ref(false);
@@ -16,10 +21,15 @@ const feedbackType = ref('info');
 const activeField = ref('');
 const fieldFeedback = ref('');
 const fieldFeedbackType = ref('info');
+const avatarUploading = ref(false);
+const avatarInputRef = ref(null);
+const avatarPreviewFailed = ref(false);
 const profileStats = reactive({
     articleCount: 0,
     totalViewCount: 0,
-    totalLikeCount: 0
+    totalLikeCount: 0,
+    followerCount: 0,
+    followingCount: 0
 });
 const draft = reactive({
     nickname: '',
@@ -35,20 +45,26 @@ const hotArticles = ref([]);
 
 const FIELD_LABELS = {
     nickname: '昵称',
-    avatarUrl: '头像地址',
+    avatarUrl: '头像',
     bio: '个人简介'
 };
 
 const roleLabel = computed(() => (state.user?.role === 'ADMIN' ? '管理员' : '普通用户'));
+const rawAvatar = computed(() => draft.avatarUrl || state.user?.avatarUrl || state.user?.avatar || '');
 const displayAvatar = computed(() => (
-    draft.avatarUrl
-    || state.user?.avatarUrl
-    || state.user?.avatar
-    || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=240&q=80'
+    avatarPreviewFailed.value ? DEFAULT_AVATAR : resolveMediaUrl(rawAvatar.value, DEFAULT_AVATAR)
 ));
 const displayNickname = computed(() => draft.nickname || state.user?.nickname || state.user?.username || '未设置昵称');
 const displayUsername = computed(() => state.user?.username || 'my-blog 用户');
 const displayBio = computed(() => draft.bio || '这里会展示你的个人简介与创作方向。');
+const summaryStats = computed(() => buildProfileSummaryStats(profileStats, {
+    includeSocial: true,
+    loading: statsLoading.value
+}));
+
+watch(rawAvatar, () => {
+    avatarPreviewFailed.value = false;
+});
 
 /**
  * 同步当前会话用户资料到页面草稿。
@@ -57,6 +73,7 @@ const syncFromSession = () => {
     draft.nickname = state.user?.nickname || '';
     draft.avatarUrl = state.user?.avatarUrl || state.user?.avatar || '';
     draft.bio = state.user?.bio || '';
+    avatarPreviewFailed.value = false;
     originalProfile.nickname = draft.nickname;
     originalProfile.avatarUrl = draft.avatarUrl;
     originalProfile.bio = draft.bio;
@@ -78,10 +95,14 @@ const loadProfileStats = async () => {
         profileStats.articleCount = profile.articleCount || 0;
         profileStats.totalViewCount = profile.totalViewCount || 0;
         profileStats.totalLikeCount = profile.totalLikeCount || 0;
+        profileStats.followerCount = profile.followerCount || 0;
+        profileStats.followingCount = profile.followingCount || 0;
     } catch (error) {
         profileStats.articleCount = 0;
         profileStats.totalViewCount = 0;
         profileStats.totalLikeCount = 0;
+        profileStats.followerCount = 0;
+        profileStats.followingCount = 0;
     } finally {
         statsLoading.value = false;
     }
@@ -207,6 +228,53 @@ const saveField = async (field) => {
     }
 };
 
+const triggerAvatarPicker = () => {
+    if (loading.value || avatarUploading.value) {
+        return;
+    }
+    avatarInputRef.value?.click();
+};
+
+const handleAvatarSelected = async (event) => {
+    const [file] = event.target?.files || [];
+    event.target.value = '';
+    if (!file) {
+        return;
+    }
+    avatarUploading.value = true;
+    fieldFeedback.value = '';
+    try {
+        const result = await uploadImageApi(file, 'avatar');
+        draft.avatarUrl = result.url || '';
+        avatarPreviewFailed.value = false;
+        fieldFeedback.value = '图片已上传，保存资料后永久生效';
+        fieldFeedbackType.value = 'success';
+        if (!isEditingField('avatarUrl')) {
+            activeField.value = 'avatarUrl';
+        }
+    } catch (error) {
+        fieldFeedback.value = error.message || '头像上传失败';
+        fieldFeedbackType.value = 'error';
+    } finally {
+        avatarUploading.value = false;
+    }
+};
+
+const handleAvatarPreviewLoad = () => {
+    avatarPreviewFailed.value = false;
+};
+
+const handleAvatarPreviewError = () => {
+    if (!rawAvatar.value) {
+        return;
+    }
+    avatarPreviewFailed.value = true;
+    if (isEditingField('avatarUrl')) {
+        fieldFeedback.value = '头像图片暂时无法访问，请检查链接或稍后重试';
+        fieldFeedbackType.value = 'error';
+    }
+};
+
 onMounted(async () => {
     syncFromSession();
     await Promise.all([loadProfileStats(), loadHotArticles()]);
@@ -216,36 +284,22 @@ onMounted(async () => {
 <template>
     <SiteHeader />
     <main class="page-shell profile-settings-page">
-        <section class="profile-settings-hero">
-            <div class="profile-settings-hero-main">
-                <img :src="displayAvatar" alt="当前用户头像">
-                <div class="profile-settings-copy">
-                    <p class="eyebrow">账户中心</p>
-                    <div class="profile-settings-title-row">
-                        <h1>{{ displayNickname }}</h1>
-                        <span class="profile-role-pill">{{ roleLabel }}</span>
-                    </div>
-                    <p class="profile-settings-username">@{{ displayUsername }}</p>
-                    <p class="profile-settings-bio">{{ displayBio }}</p>
-                    <p class="profile-settings-tip">这里的资料会同步显示在文章作者信息和个人主页。</p>
-                </div>
-            </div>
-
-            <div class="profile-settings-hero-footer">
-                <div class="profile-settings-stats">
-                    <span>
-                        <strong>{{ statsLoading ? '--' : profileStats.articleCount }}</strong>
-                        文章
-                    </span>
-                    <span>
-                        <strong>{{ statsLoading ? '--' : profileStats.totalViewCount }}</strong>
-                        阅读
-                    </span>
-                    <span>
-                        <strong>{{ statsLoading ? '--' : profileStats.totalLikeCount }}</strong>
-                        获赞
-                    </span>
-                </div>
+        <UserProfileSummary
+            mode="settings"
+            eyebrow="账户中心"
+            :avatar-src="displayAvatar"
+            avatar-alt="当前用户头像"
+            :title="displayNickname"
+            :subtitle="`@${displayUsername}`"
+            :bio="displayBio"
+            bio-fallback="这里会展示你的个人简介与创作方向。"
+            :helper-text="'这里的资料会同步显示在文章作者信息和个人主页。'"
+            :badge-text="roleLabel"
+            :stats="summaryStats"
+            @avatar-load="handleAvatarPreviewLoad"
+            @avatar-error="handleAvatarPreviewError"
+        >
+            <template #actions>
                 <RouterLink
                     v-if="state.user?.id"
                     class="profile-secondary-action"
@@ -253,8 +307,8 @@ onMounted(async () => {
                 >
                     查看个人主页
                 </RouterLink>
-            </div>
-        </section>
+            </template>
+        </UserProfileSummary>
 
         <section class="profile-settings-grid">
             <section class="profile-settings-panel">
@@ -316,8 +370,8 @@ onMounted(async () => {
                     <article class="profile-field-card">
                         <div class="profile-field-head">
                             <div>
-                                <h3>头像地址</h3>
-                                <p>建议使用稳定可访问的图片链接，避免头像失效。</p>
+                                <h3>头像</h3>
+                                <p>可以上传头像图片，也可以继续保留图片链接形式。</p>
                             </div>
                             <button
                                 v-if="!isEditingField('avatarUrl')"
@@ -336,12 +390,35 @@ onMounted(async () => {
                         <template v-if="isEditingField('avatarUrl')">
                             <div class="profile-field-editor">
                                 <input
+                                    ref="avatarInputRef"
+                                    type="file"
+                                    accept="image/*"
+                                    class="sr-only"
+                                    @change="handleAvatarSelected"
+                                >
+                                <div class="profile-upload-row">
+                                    <button
+                                        type="button"
+                                        class="profile-action-with-icon secondary"
+                                        :disabled="loading || avatarUploading"
+                                        @click="triggerAvatarPicker"
+                                    >
+                                        <span class="profile-action-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 20 20" fill="none">
+                                                <path d="M10 4v8m-4-4h8m-7 7h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </span>
+                                        {{ avatarUploading ? '上传中...' : '上传图片' }}
+                                    </button>
+                                    <span class="profile-upload-tip">支持 jpg、png、gif、webp，头像建议不超过 2MB。</span>
+                                </div>
+                                <input
                                     v-model.trim="draft.avatarUrl"
                                     type="url"
-                                    placeholder="https://example.com/avatar.png"
+                                    placeholder="/api/uploads/files/2026/04/avatar.png 或 https://example.com/avatar.png"
                                 >
                                 <div class="profile-field-actions">
-                                    <button class="primary-action profile-action-with-icon" type="button" :disabled="loading" @click="saveField('avatarUrl')">
+                                    <button class="primary-action profile-action-with-icon" type="button" :disabled="loading || avatarUploading" @click="saveField('avatarUrl')">
                                         <span class="profile-action-icon" aria-hidden="true">
                                             <svg viewBox="0 0 20 20" fill="none">
                                                 <path d="m4.5 10 3.5 3.5 7.5-7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -349,7 +426,7 @@ onMounted(async () => {
                                         </span>
                                         {{ loading ? '保存中...' : '保存' }}
                                     </button>
-                                    <button type="button" class="profile-action-with-icon secondary" :disabled="loading" @click="cancelEditField('avatarUrl')">
+                                    <button type="button" class="profile-action-with-icon secondary" :disabled="loading || avatarUploading" @click="cancelEditField('avatarUrl')">
                                         <span class="profile-action-icon" aria-hidden="true">
                                             <svg viewBox="0 0 20 20" fill="none">
                                                 <path d="m6 6 8 8m0-8-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -361,7 +438,7 @@ onMounted(async () => {
                             </div>
                         </template>
                         <p v-else class="profile-field-value profile-field-value-link">
-                            {{ getFieldValue('avatarUrl') || '暂未设置头像地址' }}
+                            {{ getFieldValue('avatarUrl') || '暂未设置头像' }}
                         </p>
                     </article>
 
@@ -446,7 +523,9 @@ onMounted(async () => {
                     >
                         <div
                             class="profile-hot-cover"
-                            :style="article.coverUrl ? { backgroundImage: `linear-gradient(180deg, rgba(15, 143, 117, 0.08), rgba(18, 23, 26, 0.58)), url(${article.coverUrl})` } : undefined"
+                            :style="article.coverUrl
+                                ? { backgroundImage: `linear-gradient(180deg, rgba(15, 143, 117, 0.08), rgba(18, 23, 26, 0.58)), url(${resolveMediaUrl(article.coverUrl, article.cover)})` }
+                                : undefined"
                         >
                             <span class="profile-hot-category">{{ article.category || '未分类' }}</span>
                             <span class="profile-hot-rank">TOP {{ hotArticles.findIndex((item) => item.id === article.id) + 1 }}</span>
@@ -488,112 +567,11 @@ onMounted(async () => {
     gap: 24px;
 }
 
-.profile-settings-hero,
 .profile-settings-panel {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 8px;
     box-shadow: var(--shadow);
-}
-
-.profile-settings-hero {
-    display: grid;
-    gap: 22px;
-    padding: 28px;
-}
-
-.profile-settings-hero-main {
-    display: grid;
-    grid-template-columns: 116px minmax(0, 1fr);
-    gap: 20px;
-    align-items: center;
-}
-
-.profile-settings-hero-main img {
-    width: 116px;
-    height: 116px;
-    object-fit: cover;
-    border-radius: 50%;
-    border: 4px solid rgba(15, 143, 117, 0.12);
-}
-
-.profile-settings-copy {
-    display: grid;
-    gap: 8px;
-    min-width: 0;
-}
-
-.profile-settings-title-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.profile-settings-title-row h1 {
-    margin: 0;
-    font-size: 34px;
-    line-height: 1.2;
-}
-
-.profile-role-pill {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.08);
-    border: 1px solid rgba(15, 143, 117, 0.14);
-    border-radius: 999px;
-}
-
-.profile-settings-username {
-    margin: 0;
-    color: var(--muted);
-    font-size: 14px;
-}
-
-.profile-settings-bio,
-.profile-settings-tip {
-    margin: 0;
-    color: var(--muted);
-    line-height: 1.8;
-}
-
-.profile-settings-hero-footer {
-    display: flex;
-    gap: 18px;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    padding-top: 2px;
-    border-top: 1px solid rgba(15, 143, 117, 0.08);
-}
-
-.profile-settings-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    flex: 1 1 520px;
-}
-
-.profile-settings-stats span {
-    display: inline-grid;
-    gap: 6px;
-    min-width: 120px;
-    padding: 14px 18px;
-    text-align: center;
-    background: rgba(15, 143, 117, 0.05);
-    border: 1px solid rgba(15, 143, 117, 0.08);
-    border-radius: 8px;
-    color: var(--muted);
-}
-
-.profile-settings-stats strong {
-    color: var(--text);
-    font-size: 22px;
 }
 
 .profile-secondary-action {
@@ -888,6 +866,18 @@ onMounted(async () => {
     height: 14px;
 }
 
+.profile-upload-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.profile-upload-tip {
+    color: var(--muted);
+    font-size: 13px;
+}
+
 @keyframes fade-slide-up {
     from {
         opacity: 0;
@@ -903,40 +893,11 @@ onMounted(async () => {
     .profile-settings-grid {
         grid-template-columns: 1fr;
     }
-
-    .profile-settings-hero-main {
-        grid-template-columns: 96px minmax(0, 1fr);
-    }
 }
 
 @media (max-width: 760px) {
-    .profile-settings-hero,
     .profile-settings-panel {
         padding: 18px;
-    }
-
-    .profile-settings-hero-main {
-        grid-template-columns: 1fr;
-    }
-
-    .profile-settings-hero-main img {
-        width: 92px;
-        height: 92px;
-    }
-
-    .profile-settings-title-row h1 {
-        font-size: 28px;
-    }
-
-    .profile-settings-stats {
-        flex-direction: column;
-        flex-basis: 100%;
-    }
-
-    .profile-settings-stats span,
-    .profile-secondary-action {
-        width: 100%;
-        min-width: 0;
     }
 
     .profile-field-head {

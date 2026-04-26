@@ -4,6 +4,8 @@ import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.assembler.UserAssembler;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.UserDTO;
+import com.myblog.application.event.UserFollowedEvent;
+import com.myblog.application.event.UserUnfollowedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.aggregate.UserFollow;
@@ -15,43 +17,43 @@ import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-/**
- * 关注应用服务。
- *
- * @author Codex
- * @since 1.0.0
- */
 @Service
 public class FollowAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(FollowAppService.class);
 
     private final UserFollowRepository userFollowRepository;
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
+    private final ArticleAssembler articleAssembler;
+    private final ApplicationEventPublisher eventPublisher;
 
     public FollowAppService(UserFollowRepository userFollowRepository,
                             UserRepository userRepository,
-                            ArticleRepository articleRepository) {
+                            ArticleRepository articleRepository,
+                            ArticleAssembler articleAssembler,
+                            ApplicationEventPublisher eventPublisher) {
         this.userFollowRepository = userFollowRepository;
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
+        this.articleAssembler = articleAssembler;
+        this.eventPublisher = eventPublisher;
     }
 
-    /**
-     * 关注用户。
-     *
-     * @param targetUserId 目标用户 ID
-     * @param currentUserId 当前用户 ID
-     */
     @Transactional(rollbackFor = Exception.class)
     public void followUser(Long targetUserId, Long currentUserId) {
+        log.info("User {} following user {}", currentUserId, targetUserId);
         validateFollowTarget(targetUserId, currentUserId);
         UserFollow existing = userFollowRepository.findByUsersIncludingDeleted(
             new UserId(currentUserId),
@@ -63,6 +65,7 @@ public class FollowAppService {
             }
             existing.reactivate();
             userFollowRepository.save(existing);
+            eventPublisher.publishEvent(new UserFollowedEvent(currentUserId, targetUserId));
             return;
         }
         userFollowRepository.save(UserFollow.create(
@@ -70,16 +73,12 @@ public class FollowAppService {
             new UserId(currentUserId),
             new UserId(targetUserId)
         ));
+        eventPublisher.publishEvent(new UserFollowedEvent(currentUserId, targetUserId));
     }
 
-    /**
-     * 取消关注用户。
-     *
-     * @param targetUserId 目标用户 ID
-     * @param currentUserId 当前用户 ID
-     */
     @Transactional(rollbackFor = Exception.class)
     public void unfollowUser(Long targetUserId, Long currentUserId) {
+        log.info("User {} un-following user {}", currentUserId, targetUserId);
         UserFollow follow = userFollowRepository.findByUsersIncludingDeleted(
             new UserId(currentUserId),
             new UserId(targetUserId)
@@ -89,19 +88,19 @@ public class FollowAppService {
         }
         follow.delete();
         userFollowRepository.save(follow);
+        eventPublisher.publishEvent(new UserUnfollowedEvent(currentUserId, targetUserId));
     }
 
-    /**
-     * 查询当前用户关注作者列表。
-     *
-     * @param currentUserId 当前用户 ID
-     * @return 作者列表
-     */
     public List<UserDTO> listFollowingUsers(Long currentUserId) {
         List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(currentUserId));
+        if (followingUserIds.isEmpty()) {
+            return new ArrayList<UserDTO>();
+        }
+        Map<Long, User> userMap = userRepository.findByIds(followingUserIds).stream()
+            .collect(Collectors.toMap(user -> user.getId().getValue(), user -> user));
         List<UserDTO> items = new ArrayList<UserDTO>(followingUserIds.size());
         for (Long userId : followingUserIds) {
-            User user = userRepository.findById(new UserId(userId)).orElse(null);
+            User user = userMap.get(userId);
             if (user != null) {
                 items.add(UserAssembler.toDTO(user));
             }
@@ -109,39 +108,29 @@ public class FollowAppService {
         return items;
     }
 
-    /**
-     * 查询关注流。
-     *
-     * @param currentUserId 当前用户 ID
-     * @param page 页码
-     * @param pageSize 每页数量
-     * @param sort 排序方式
-     * @return 关注流分页
-     */
     public PageResult<ArticleDTO> pageFollowingFeed(Long currentUserId, int page, int pageSize, String sort) {
         List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(currentUserId));
         if (followingUserIds.isEmpty()) {
             return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), page, pageSize, 0);
         }
-        Set<Long> authorIdSet = new HashSet<Long>(followingUserIds);
-        List<Article> publishedArticles = articleRepository.findPublished(null, null, null, sort);
-        List<Article> filteredArticles = new ArrayList<Article>();
+
+        List<Article> publishedArticles = articleRepository.findPublishedByAuthorIds(followingUserIds, sort, page, pageSize);
+        long total = articleRepository.countPublishedByAuthorIds(followingUserIds);
+        List<Long> authorIds = publishedArticles.stream()
+            .map(article -> article.getAuthorId().getValue())
+            .distinct()
+            .collect(Collectors.toList());
+        Map<Long, User> authorMap = userRepository.findByIds(authorIds).stream()
+            .collect(Collectors.toMap(user -> user.getId().getValue(), user -> user));
+
+        List<ArticleDTO> items = new ArrayList<ArticleDTO>(publishedArticles.size());
         for (Article article : publishedArticles) {
-            if (authorIdSet.contains(article.getAuthorId().getValue())) {
-                filteredArticles.add(article);
+            User author = authorMap.get(article.getAuthorId().getValue());
+            if (author != null) {
+                items.add(articleAssembler.toDTO(article, author));
             }
         }
-        int currentPage = Math.max(page, 1);
-        int currentPageSize = Math.max(pageSize, 1);
-        int fromIndex = Math.min((currentPage - 1) * currentPageSize, filteredArticles.size());
-        int toIndex = Math.min(fromIndex + currentPageSize, filteredArticles.size());
-        List<ArticleDTO> items = new ArrayList<ArticleDTO>();
-        for (Article article : filteredArticles.subList(fromIndex, toIndex)) {
-            User author = userRepository.findById(article.getAuthorId())
-                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
-            items.add(ArticleAssembler.toDTO(article, author));
-        }
-        return new PageResult<ArticleDTO>(items, currentPage, currentPageSize, filteredArticles.size());
+        return new PageResult<ArticleDTO>(items, Math.max(page, 1), Math.max(pageSize, 1), total);
     }
 
     private void validateFollowTarget(Long targetUserId, Long currentUserId) {

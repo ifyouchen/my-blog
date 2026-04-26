@@ -4,6 +4,7 @@ import com.myblog.infrastructure.repository.persistence.entity.UserFollowDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户关注 Mapper。
@@ -24,9 +25,14 @@ public interface UserFollowMapper {
 
     int countFollowers(@Param("userId") Long userId);
 
+    List<Map<String, Object>> countFollowersBatch(@Param("userIds") List<Long> userIds);
+
     int countFollowing(@Param("userId") Long userId);
 
     List<Long> selectFollowingUserIds(@Param("followerUserId") Long followerUserId);
+
+    List<Long> selectFollowingUserIdsIn(@Param("followerUserId") Long followerUserId,
+                                        @Param("candidateUserIds") List<Long> candidateUserIds);
 
     Long selectNextId();
 

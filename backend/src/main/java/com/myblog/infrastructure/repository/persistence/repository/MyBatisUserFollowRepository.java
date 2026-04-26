@@ -8,7 +8,9 @@ import com.myblog.infrastructure.repository.persistence.mapper.UserFollowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -49,7 +51,13 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
             userFollow.getFollowerUserId().getValue(),
             userFollow.getFollowingUserId().getValue()
         ) != null) {
-            userFollowMapper.update(userFollowDO);
+            int rows = userFollowMapper.update(userFollowDO);
+            if (rows == 0) {
+                throw new com.myblog.shared.exception.ApplicationException(
+                    com.myblog.shared.exception.ErrorCode.CONFLICT,
+                    "关注关系已被其他操作修改，请重试"
+                );
+            }
         } else {
             userFollowMapper.insert(userFollowDO);
         }
@@ -73,6 +81,25 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
     }
 
     @Override
+    public Map<Long, Integer> countFollowersBatch(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<Map<String, Object>> results = userFollowMapper.countFollowersBatch(userIds);
+        Map<Long, Integer> map = new HashMap<>();
+        for (Map<String, Object> row : results) {
+            Object userIdObj = row.get("userId");
+            Object cntObj = row.get("cnt");
+            if (userIdObj != null && cntObj != null) {
+                Long userId = ((Number) userIdObj).longValue();
+                Integer cnt = ((Number) cntObj).intValue();
+                map.put(userId, cnt);
+            }
+        }
+        return map;
+    }
+
+    @Override
     public int countFollowing(UserId userId) {
         return userFollowMapper.countFollowing(userId.getValue());
     }
@@ -80,6 +107,14 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
     @Override
     public List<Long> findFollowingUserIds(UserId followerUserId) {
         return userFollowMapper.selectFollowingUserIds(followerUserId.getValue());
+    }
+
+    @Override
+    public List<Long> findFollowingUserIdsIn(UserId followerUserId, List<Long> candidateUserIds) {
+        if (candidateUserIds == null || candidateUserIds.isEmpty()) {
+            return new java.util.ArrayList<Long>();
+        }
+        return userFollowMapper.selectFollowingUserIdsIn(followerUserId.getValue(), candidateUserIds);
     }
 
     private UserFollow toDomain(UserFollowDO userFollowDO) {

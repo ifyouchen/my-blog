@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS blog_article (
     KEY idx_blog_article_author (author_id),
     KEY idx_blog_article_status_created (status, created_at),
     KEY idx_blog_article_category_created (category, created_at),
+    KEY idx_blog_article_author_status_updated (author_id, status, updated_at),
+    KEY idx_blog_article_status_published_hot (status, view_count, published_at, id),
+    KEY idx_blog_article_status_published_featured (status, like_count, published_at, id),
     CONSTRAINT fk_blog_article_author FOREIGN KEY (author_id) REFERENCES blog_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客文章表';
 
@@ -109,6 +112,7 @@ CREATE TABLE IF NOT EXISTS blog_comment (
     KEY idx_blog_comment_user (user_id),
     KEY idx_blog_comment_root (root_comment_id),
     KEY idx_blog_comment_parent (parent_id),
+    KEY idx_blog_comment_root_sort (article_id, parent_id, status, pinned, pinned_at, like_count, created_at, id),
     CONSTRAINT fk_blog_comment_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
     CONSTRAINT fk_blog_comment_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客评论表';
@@ -278,6 +282,7 @@ CREATE TABLE IF NOT EXISTS blog_user_follow (
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_user_follow_pair (follower_user_id, following_user_id),
     KEY idx_blog_user_follow_following (following_user_id),
+    KEY idx_blog_user_follow_follower_created (follower_user_id, created_at),
     CONSTRAINT fk_blog_user_follow_follower FOREIGN KEY (follower_user_id) REFERENCES blog_user (id),
     CONSTRAINT fk_blog_user_follow_following FOREIGN KEY (following_user_id) REFERENCES blog_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客用户关注表';
@@ -534,3 +539,37 @@ SET enabled = CASE
     ELSE 1
 END
 WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS blog_notification (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    receiver_user_id BIGINT UNSIGNED NOT NULL COMMENT '接收者用户ID',
+    actor_user_id BIGINT UNSIGNED NOT NULL COMMENT '触发者用户ID',
+    type VARCHAR(32) NOT NULL COMMENT '通知类型：ARTICLE_LIKE, ARTICLE_FAVORITE, ARTICLE_COMMENT, COMMENT_REPLY, COMMENT_LIKE, USER_FOLLOW',
+    article_id BIGINT UNSIGNED DEFAULT NULL COMMENT '文章ID',
+    comment_id BIGINT UNSIGNED DEFAULT NULL COMMENT '评论ID',
+    payload_json TEXT COMMENT '展示快照JSON',
+    read_at DATETIME DEFAULT NULL COMMENT '已读时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    KEY idx_blog_notification_receiver_read_created (receiver_user_id, read_at, created_at DESC),
+    KEY idx_blog_notification_receiver_created (receiver_user_id, created_at DESC),
+    KEY idx_blog_notification_actor (actor_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客通知表';
+
+CREATE TABLE IF NOT EXISTS blog_user_search_history (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    keyword VARCHAR(100) NOT NULL COMMENT '搜索关键字',
+    search_count INT NOT NULL DEFAULT 1 COMMENT '搜索次数',
+    last_searched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后搜索时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (id),
+    KEY idx_search_history_user_keyword (user_id, keyword),
+    KEY idx_search_history_last_searched (last_searched_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户搜索历史表';

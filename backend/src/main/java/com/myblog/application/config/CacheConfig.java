@@ -1,0 +1,104 @@
+package com.myblog.application.config;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.AuthorRankingDTO;
+import com.myblog.application.dto.CategoryDTO;
+import com.myblog.application.dto.HomeBootstrapDTO;
+import com.myblog.application.dto.TagDTO;
+import com.myblog.application.service.HomeStatsAppService.HomeStats;
+import com.myblog.application.dto.NotificationDTO;
+import com.myblog.application.dto.SearchBootstrapDTO;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+
+@Configuration
+public class CacheConfig {
+
+    @Bean
+    public Cache<Long, HomeStats> homeStatsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(4, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, HomeBootstrapDTO> homeBootstrapCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<CategoryDTO>> categoriesCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(3, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<TagDTO>> tagsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(3, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean
+    public Cache<Integer, List<ArticleDTO>> articleRankingsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<Integer, List<AuthorRankingDTO>> authorRankingsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<Long, Long> notificationUnreadCountCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(30, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<NotificationDTO>> recentNotificationsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(30, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, SearchBootstrapDTO> searchBootstrapCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(3, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean
+    public Cache<Integer, List<String>> hotKeywordsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("async-");
+        executor.initialize();
+        return executor;
+    }
+}
