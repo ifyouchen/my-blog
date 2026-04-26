@@ -224,7 +224,6 @@ public class Article {
         if (ArticleStatus.DELETED.equals(status)) {
             throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能下架");
         }
-        validatePublishable();
         this.status = ArticleStatus.OFFLINE;
         this.updatedAt = LocalDateTime.now();
     }

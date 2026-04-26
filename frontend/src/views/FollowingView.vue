@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import SidebarBlock from '@/components/SidebarBlock.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { getFollowingFeedApi, getMyFollowingApi } from '@/api/following';
 import { getAuthorRankingsApi } from '@/api/rankings';
@@ -132,11 +134,13 @@ watch(() => route.query, async (query) => {
 
         <div class="content-grid">
             <section class="following-main">
-                <div v-if="!isLoggedIn" class="placeholder-panel" data-testid="following-login-empty">
-                    <p class="eyebrow">登录后查看</p>
-                    <h1>先登录，再建立自己的关注流</h1>
-                    <p>关注作者后，这里会变成你的私人内容更新入口。</p>
-                </div>
+                <EmptyState
+                    v-if="!isLoggedIn"
+                    eyebrow="登录后查看"
+                    title="先登录，再建立自己的关注流"
+                    description="关注作者后，这里会变成你的私人内容更新入口。"
+                    data-testid="following-login-empty"
+                />
                 <template v-else>
                     <ArticleFeed
                         :articles="articles"
@@ -157,16 +161,22 @@ watch(() => route.query, async (query) => {
             </section>
 
             <aside class="sidebar" aria-label="关注侧栏">
-                <section class="side-section">
-                    <div class="section-heading compact">
-                        <div>
-                            <p class="eyebrow">我的关注</p>
-                            <h2>作者列表</h2>
-                        </div>
-                    </div>
+                <SidebarBlock eyebrow="我的关注" title="作者列表" compact>
                     <div v-if="sidebarLoading" class="sidebar-state">加载中...</div>
-                    <div v-else-if="!isLoggedIn" class="sidebar-state">登录后查看关注作者</div>
-                    <div v-else-if="!followingUsers.length" class="sidebar-state">你还没有关注任何作者</div>
+                    <EmptyState
+                        v-else-if="!isLoggedIn"
+                        eyebrow="我的关注"
+                        title="登录后查看关注作者"
+                        description="登录后可以把你在意的作者集中到这里持续追踪。"
+                        compact
+                    />
+                    <EmptyState
+                        v-else-if="!followingUsers.length"
+                        eyebrow="我的关注"
+                        title="你还没有关注任何作者"
+                        description="先去首页或排行榜关注几位作者，关注流就会热闹起来。"
+                        compact
+                    />
                     <div v-else class="following-author-list" data-testid="following-author-list">
                         <RouterLink
                             v-for="author in followingUsers"
@@ -181,16 +191,17 @@ watch(() => route.query, async (query) => {
                             </div>
                         </RouterLink>
                     </div>
-                </section>
+                </SidebarBlock>
 
-                <section class="side-section">
-                    <div class="section-heading compact">
-                        <div>
-                            <p class="eyebrow">推荐关注</p>
-                            <h2>值得追踪的作者</h2>
-                        </div>
-                    </div>
+                <SidebarBlock eyebrow="推荐关注" title="值得追踪的作者" compact>
                     <div v-if="sidebarLoading" class="sidebar-state">加载中...</div>
+                    <EmptyState
+                        v-else-if="!recommendedAuthors.length"
+                        eyebrow="推荐关注"
+                        title="推荐作者正在整理"
+                        description="稍后再来看看，我们会把活跃创作者放到这里。"
+                        compact
+                    />
                     <div v-else class="rank-author-list" data-testid="following-recommended-authors">
                         <div
                             v-for="item in recommendedAuthors"
@@ -214,7 +225,7 @@ watch(() => route.query, async (query) => {
                             />
                         </div>
                     </div>
-                </section>
+                </SidebarBlock>
             </aside>
         </div>
     </main>
@@ -252,9 +263,9 @@ watch(() => route.query, async (query) => {
     display: grid;
     gap: 12px;
     padding: 12px;
-    background: #f8fbfa;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
+    border: 1px solid rgba(208, 219, 236, 0.92);
+    border-radius: 18px;
     transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -268,7 +279,7 @@ watch(() => route.query, async (query) => {
     width: 48px;
     height: 48px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 14px;
 }
 
 .following-author-item strong,
@@ -298,9 +309,9 @@ watch(() => route.query, async (query) => {
 .following-author-item:hover,
 .following-author-item:focus-visible,
 .rank-author-item:hover {
-    background: rgba(15, 143, 117, 0.04);
-    border-color: rgba(15, 143, 117, 0.14);
-    box-shadow: 0 12px 20px rgba(24, 32, 31, 0.05);
+    background: rgba(40, 118, 255, 0.05);
+    border-color: rgba(40, 118, 255, 0.14);
+    box-shadow: 0 16px 28px rgba(31, 78, 168, 0.08);
     transform: translateY(-1px);
 }
 

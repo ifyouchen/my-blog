@@ -5,6 +5,7 @@ import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.service.ArticleAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.CreateArticleRequest;
+import com.myblog.interfaces.rest.dto.request.UpdateArticleStatusRequest;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
 import com.myblog.interfaces.rest.mapper.RestDtoMapper;
 import com.myblog.shared.result.PageResult;
@@ -147,6 +148,26 @@ public class ArticleController {
             articleAppService.updateArticle(
                 id,
                 restDtoMapper.toCommand(request, AuthContext.getRequiredUserId()),
+                AuthContext.getRequiredUserId(),
+                AuthContext.getRole()
+            )
+        ));
+    }
+
+    /**
+     * 更新文章状态。
+     *
+     * @param id 文章 ID
+     * @param request 状态更新请求
+     * @return 更新后的文章详情
+     */
+    @PutMapping("/{id}/status")
+    public Result<ArticleResponse> updateArticleStatus(@PathVariable Long id,
+                                                       @RequestBody UpdateArticleStatusRequest request) {
+        return Result.success(restDtoMapper.toResponse(
+            articleAppService.updateArticleStatus(
+                id,
+                request.getStatus(),
                 AuthContext.getRequiredUserId(),
                 AuthContext.getRole()
             )

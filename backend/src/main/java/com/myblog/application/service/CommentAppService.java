@@ -581,10 +581,7 @@ public class CommentAppService {
         if (currentUserId == null || !comment.isRootComment()) {
             return false;
         }
-        if (article.getAuthorId().getValue().equals(currentUserId)) {
-            return true;
-        }
-        return UserRole.ADMIN.name().equals(currentUserRole);
+        return article.getAuthorId().getValue().equals(currentUserId);
     }
 
     private UserDTO toUserDTO(User user) {

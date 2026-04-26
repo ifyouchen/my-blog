@@ -95,18 +95,20 @@ const hasActions = computed(() => Boolean(slots.actions));
 <style scoped>
 .profile-summary {
     display: grid;
-    gap: 22px;
-    padding: 28px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: var(--shadow);
+    gap: 28px;
+    padding: 32px;
+    background:
+        radial-gradient(circle at top right, rgba(40, 118, 255, 0.14), transparent 26%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
+    border: 1px solid rgba(196, 211, 232, 0.92);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(31, 78, 168, 0.08);
 }
 
 .profile-summary-main {
     display: grid;
     grid-template-columns: 116px minmax(0, 1fr);
-    gap: 20px;
+    gap: 24px;
     align-items: center;
 }
 
@@ -114,39 +116,42 @@ const hasActions = computed(() => Boolean(slots.actions));
     width: 116px;
     height: 116px;
     object-fit: cover;
-    border-radius: 50%;
-    border: 4px solid rgba(15, 143, 117, 0.12);
+    border-radius: 28px;
+    border: 4px solid rgba(40, 118, 255, 0.12);
+    box-shadow: 0 20px 44px rgba(40, 118, 255, 0.14);
 }
 
 .profile-summary-copy {
     display: grid;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
 }
 
 .profile-summary-title-row {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
     flex-wrap: wrap;
 }
 
 .profile-summary-title-row h1 {
     margin: 0;
-    font-size: 34px;
-    line-height: 1.2;
+    font-size: clamp(32px, 4vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
 }
 
 .profile-summary-badge {
     display: inline-flex;
     align-items: center;
-    min-height: 28px;
-    padding: 0 12px;
-    font-size: 13px;
+    min-height: 30px;
+    padding: 0 14px;
+    font-size: 12px;
     font-weight: 700;
+    letter-spacing: 0.04em;
     color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.08);
-    border: 1px solid rgba(15, 143, 117, 0.14);
+    background: rgba(40, 118, 255, 0.1);
+    border: 1px solid rgba(40, 118, 255, 0.16);
     border-radius: 999px;
 }
 
@@ -160,41 +165,44 @@ const hasActions = computed(() => Boolean(slots.actions));
 .profile-summary-helper {
     margin: 0;
     color: var(--muted);
-    line-height: 1.8;
+    line-height: 1.85;
+    max-width: 72ch;
 }
 
 .profile-summary-footer {
     display: flex;
-    gap: 18px;
+    gap: 20px;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    padding-top: 2px;
-    border-top: 1px solid rgba(15, 143, 117, 0.08);
+    padding-top: 22px;
+    border-top: 1px solid rgba(196, 211, 232, 0.86);
 }
 
 .profile-summary-stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 14px;
     flex: 1 1 520px;
 }
 
 .profile-summary-stats span {
     display: inline-grid;
-    gap: 6px;
-    min-width: 112px;
-    padding: 14px 18px;
+    gap: 8px;
+    min-width: 128px;
+    padding: 16px 18px;
     text-align: center;
-    background: rgba(15, 143, 117, 0.05);
-    border: 1px solid rgba(15, 143, 117, 0.08);
-    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(240, 247, 255, 0.84));
+    border: 1px solid rgba(196, 211, 232, 0.9);
+    border-radius: 18px;
     color: var(--muted);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .profile-summary-stats strong {
     color: var(--text);
-    font-size: 22px;
+    font-size: 24px;
+    line-height: 1;
 }
 
 .profile-summary-actions {
@@ -213,7 +221,7 @@ const hasActions = computed(() => Boolean(slots.actions));
 
 @media (max-width: 760px) {
     .profile-summary {
-        padding: 18px;
+        padding: 22px 18px;
     }
 
     .profile-summary-main {
@@ -223,6 +231,7 @@ const hasActions = computed(() => Boolean(slots.actions));
     .profile-summary-avatar {
         width: 92px;
         height: 92px;
+        border-radius: 24px;
     }
 
     .profile-summary-title-row h1 {

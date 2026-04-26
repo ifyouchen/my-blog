@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import { getColumnArticlesApi, getColumnDetailApi } from '@/api/columns';
 
@@ -80,11 +81,13 @@ watch(() => route.params.id, async () => {
             </div>
         </section>
 
-        <section v-else class="collection-head">
-            <p class="eyebrow">专栏</p>
-            <h1>暂时无法加载这个专栏</h1>
-            <p>{{ errorMessage || '请稍后重试。' }}</p>
-        </section>
+        <EmptyState
+            v-else
+            eyebrow="专栏"
+            title="暂时无法加载这个专栏"
+            :description="errorMessage || '请稍后重试。'"
+            tone="error"
+        />
 
         <ArticleFeed
             :articles="articles"
@@ -106,12 +109,14 @@ watch(() => route.params.id, async () => {
 .column-detail-hero {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-    gap: 20px;
-    padding: 20px;
-    background: #ffffff;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+    gap: 24px;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top right, rgba(40, 118, 255, 0.12), transparent 28%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
+    border: 1px solid rgba(208, 219, 236, 0.92);
+    border-radius: 24px;
+    box-shadow: 0 22px 50px rgba(31, 78, 168, 0.08);
 }
 
 .column-detail-hero img {
@@ -119,13 +124,14 @@ watch(() => route.params.id, async () => {
     height: 100%;
     min-height: 280px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 20px;
+    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.12);
 }
 
 .column-detail-content {
     display: grid;
     align-content: start;
-    gap: 12px;
+    gap: 14px;
 }
 
 .column-detail-content h1,
@@ -144,6 +150,12 @@ watch(() => route.params.id, async () => {
 .column-detail-meta a {
     color: var(--text);
     text-decoration: none;
+    font-weight: 700;
+}
+
+.column-detail-meta a:hover,
+.column-detail-meta a:focus-visible {
+    color: var(--brand-strong);
 }
 
 @media (max-width: 960px) {

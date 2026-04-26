@@ -226,7 +226,7 @@ const handleNotificationsRefresh = () => {
         <div class="header-inner">
             <RouterLink class="brand" to="/" aria-label="my-blog 首页" data-testid="site-brand">
                 <span class="brand-mark">M</span>
-                <span class="brand-name">my-blog</span>
+                <span class="brand-name">my-blog 社区</span>
             </RouterLink>
 
             <nav class="main-nav" aria-label="主导航">
@@ -248,7 +248,7 @@ const handleNotificationsRefresh = () => {
                     id="site-search"
                     v-model="keyword"
                     type="search"
-                    placeholder="搜索 Java、Spring Boot、Vue、MySQL"
+                    placeholder="搜文章、作者、专栏、技术问题"
                     data-testid="site-search-input"
                 >
                 <button type="submit" data-testid="site-search-submit">搜索</button>

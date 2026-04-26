@@ -281,6 +281,26 @@ public class ArticleAppService {
     }
 
     /**
+     * 更新文章状态。
+     *
+     * @param articleId 文章 ID
+     * @param status 目标状态
+     * @param userId 当前用户 ID
+     * @param currentUserRole 当前用户角色
+     * @return 更新后的文章
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ArticleDTO updateArticleStatus(Long articleId, String status, Long userId, String currentUserRole) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        ensureCanManage(article, userId, currentUserRole);
+        applyStatus(article, status);
+        articleRepository.save(article);
+        return buildDetailDto(article, userRepository.findById(article.getAuthorId())
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
+    }
+
+    /**
      * 删除文章。
      *
      * @param articleId 文章 ID
@@ -344,6 +364,10 @@ public class ArticleAppService {
     }
 
     private void applyStatus(Article article, String status) {
+        if (!StringUtils.hasText(status)) {
+            article.saveDraft();
+            return;
+        }
         if (ArticleStatus.PUBLISHED.name().equals(status)) {
             article.publish();
             return;
@@ -351,6 +375,9 @@ public class ArticleAppService {
         if (ArticleStatus.OFFLINE.name().equals(status)) {
             article.offline();
             return;
+        }
+        if (!ArticleStatus.DRAFT.name().equals(status)) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "不支持的文章状态");
         }
         article.saveDraft();
     }

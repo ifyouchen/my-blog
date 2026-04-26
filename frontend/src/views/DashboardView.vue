@@ -1,10 +1,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
+import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import { getMyFavoritesApi, unfavoriteArticleApi } from '@/api/favorites';
-import { deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleApi } from '@/api/articles';
+import { deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleStatusApi } from '@/api/articles';
 import { useSession } from '@/stores/session';
 
 const route = useRoute();
@@ -51,6 +52,23 @@ const articleStatusLabels = {
     PUBLISHED: '已发布',
     OFFLINE: '已下架',
     DELETED: '已删除'
+};
+
+const resolveArticleActionError = (nextStatus, message) => {
+    const source = String(message || '').trim();
+    if (nextStatus === 'PUBLISHED') {
+        if (source.includes('文章正文不能为空')) {
+            return '发布前请先补全文章正文。';
+        }
+        if (source.includes('文章分类不能为空')) {
+            return '发布前请先选择文章分类。';
+        }
+        if (source.includes('文章标题不能为空')) {
+            return '发布前请先填写文章标题。';
+        }
+        return source || '发布失败，请稍后再试。';
+    }
+    return source || '下架失败，请稍后再试。';
 };
 
 const syncRoute = (overrides = {}) => {
@@ -205,17 +223,10 @@ const publishOrOfflineArticle = async (article, nextStatus) => {
         feedback.value = '';
     }
     try {
-        await updateArticleApi(article.id, {
-            title: article.title,
-            summary: article.summary,
-            content: article.rawContent,
-            coverUrl: article.coverUrl,
-            category: article.category,
-            tags: article.tags
-        }, nextStatus);
+        await updateArticleStatusApi(article.id, nextStatus);
         await Promise.all([fetchArticles({ silent: true }), fetchOverview()]);
     } catch (error) {
-        feedback.value = error.message || (nextStatus === 'PUBLISHED' ? '发布失败' : '下架失败');
+        feedback.value = resolveArticleActionError(nextStatus, error.message);
         feedbackType.value = 'error';
     } finally {
         actionLoadingId.value = null;
@@ -396,7 +407,10 @@ watch(isLoggedIn, () => {
                         {{ option.label }}
                     </button>
                 </div>
-                <p v-if="feedback && feedbackType === 'error'" :class="['dashboard-feedback', feedbackType]">{{ feedback }}</p>
+                <div v-if="feedback && feedbackType === 'error'" :class="['dashboard-feedback', feedbackType]" role="alert">
+                    <strong>操作提醒</strong>
+                    <span>{{ feedback }}</span>
+                </div>
             </div>
 
             <section v-if="isFavorites" class="dashboard-content-panel" data-testid="dashboard-favorites-panel">
@@ -428,7 +442,13 @@ watch(isLoggedIn, () => {
                         </div>
                     </article>
                 </div>
-                <p v-else class="empty-text">暂无收藏，去发现感兴趣的文章吧</p>
+                <EmptyState
+                    v-else
+                    eyebrow="收藏夹"
+                    title="暂无收藏"
+                    description="去首页、搜索或排行榜逛逛，把感兴趣的文章先收藏起来。"
+                    compact
+                />
             </section>
 
             <section v-else class="dashboard-content-panel table-panel" data-testid="dashboard-articles-panel">
@@ -514,7 +534,13 @@ watch(isLoggedIn, () => {
                         </tr>
                     </tbody>
                 </table>
-                <p v-if="!isLoading && !loadError && !articles.length" class="empty-text">还没有文章，先去写下第一篇吧</p>
+                <EmptyState
+                    v-if="!isLoading && !loadError && !articles.length"
+                    eyebrow="内容管理"
+                    title="还没有文章"
+                    description="先去写下第一篇内容，把你的项目经验或技术笔记发布出来。"
+                    compact
+                />
             </section>
 
             <nav v-if="totalPages > 1" class="dashboard-pagination" aria-label="后台分页">
@@ -562,24 +588,24 @@ watch(isLoggedIn, () => {
 <style scoped>
 .creator-overview {
     display: grid;
-    gap: 14px;
-    margin-bottom: 22px;
+    gap: 16px;
+    margin-bottom: 26px;
 }
 
 .creator-overview-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+    gap: 14px;
 }
 
 .creator-overview-card,
 .creator-overview-latest {
     display: grid;
-    gap: 6px;
-    padding: 16px 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    gap: 8px;
+    padding: 18px 20px;
+    background: linear-gradient(180deg, rgba(31, 122, 224, 0.03), rgba(31, 122, 224, 0));
+    border: 1px solid rgba(31, 122, 224, 0.08);
+    border-radius: 18px;
     box-shadow: var(--shadow);
 }
 
@@ -621,9 +647,9 @@ watch(isLoggedIn, () => {
     min-height: 36px;
     padding: 0 14px;
     color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.08);
-    border: 1px solid rgba(15, 143, 117, 0.16);
-    border-radius: 8px;
+    background: rgba(31, 122, 224, 0.08);
+    border: 1px solid rgba(31, 122, 224, 0.14);
+    border-radius: 999px;
 }
 
 .dashboard-toolbar {
@@ -641,8 +667,8 @@ watch(isLoggedIn, () => {
 .status-tabs button {
     min-height: 34px;
     padding: 0 14px;
-    border: 1px solid rgba(101, 115, 111, 0.16);
-    border-radius: 10px;
+    border: 1px solid rgba(107, 114, 128, 0.16);
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.92);
     color: var(--muted);
     transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
@@ -650,22 +676,36 @@ watch(isLoggedIn, () => {
 
 .status-tabs button:hover {
     color: var(--text);
-    border-color: rgba(15, 143, 117, 0.18);
-    background: rgba(15, 143, 117, 0.04);
+    border-color: rgba(31, 122, 224, 0.18);
+    background: rgba(31, 122, 224, 0.05);
 }
 
 .status-tabs button.active {
     color: var(--brand-strong);
-    border-color: rgba(15, 143, 117, 0.22);
-    background: rgba(15, 143, 117, 0.08);
+    border-color: rgba(31, 122, 224, 0.2);
+    background: rgba(31, 122, 224, 0.08);
 }
 
 .dashboard-feedback {
-    padding: 11px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 14px;
     margin: 0;
     border: 1px solid transparent;
     border-radius: 10px;
     line-height: 1.6;
+}
+
+.dashboard-feedback strong {
+    flex: none;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.dashboard-feedback span {
+    min-width: 0;
 }
 
 .dashboard-feedback.error {
@@ -675,7 +715,7 @@ watch(isLoggedIn, () => {
 }
 
 .table-panel :deep(tbody tr:hover td) {
-    background: rgba(15, 143, 117, 0.025);
+    background: rgba(31, 122, 224, 0.035);
 }
 
 .article-action-cell {
@@ -748,7 +788,7 @@ watch(isLoggedIn, () => {
     min-height: 30px;
     padding: 0 12px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 999px;
     font-size: 13px;
     font-weight: 700;
     line-height: 1;
@@ -763,14 +803,14 @@ watch(isLoggedIn, () => {
 
 .action-link-primary {
     color: var(--brand);
-    background: rgba(15, 143, 117, 0.07);
-    border-color: rgba(15, 143, 117, 0.14);
+    background: rgba(31, 122, 224, 0.08);
+    border-color: rgba(31, 122, 224, 0.14);
 }
 
 .action-link-primary:hover:not(:disabled) {
     color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.1);
-    border-color: rgba(15, 143, 117, 0.18);
+    background: rgba(31, 122, 224, 0.12);
+    border-color: rgba(31, 122, 224, 0.18);
 }
 
 .action-link-secondary {
@@ -781,8 +821,8 @@ watch(isLoggedIn, () => {
 
 .action-link-secondary:hover:not(:disabled) {
     color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.04);
-    border-color: rgba(15, 143, 117, 0.14);
+    background: rgba(31, 122, 224, 0.04);
+    border-color: rgba(31, 122, 224, 0.14);
 }
 
 .action-link-danger {
@@ -814,7 +854,7 @@ watch(isLoggedIn, () => {
     color: #d14343;
     background: rgba(209, 67, 67, 0.06);
     border: 1px solid rgba(209, 67, 67, 0.24);
-    border-radius: 8px;
+    border-radius: 999px;
     font-size: 14px;
     cursor: pointer;
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
@@ -857,7 +897,7 @@ watch(isLoggedIn, () => {
     padding: 16px 18px;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 18px;
 }
 
 .dashboard-pagination p {
@@ -881,7 +921,7 @@ watch(isLoggedIn, () => {
     color: var(--text);
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 999px;
 }
 
 .dashboard-pagination-actions button:hover:not(:disabled),
@@ -912,7 +952,7 @@ watch(isLoggedIn, () => {
     color: var(--text);
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 999px;
     outline: 0;
 }
 

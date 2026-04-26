@@ -616,8 +616,8 @@ onUnmounted(() => {
     gap: 14px;
     padding: 18px 20px;
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    border: 1px solid rgba(31, 122, 224, 0.08);
+    border-radius: 18px;
     box-shadow: var(--shadow);
 }
 
@@ -668,7 +668,7 @@ onUnmounted(() => {
     padding: 0 10px;
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 999px;
     font-size: 13px;
 }
 
@@ -681,25 +681,25 @@ onUnmounted(() => {
     width: 100%;
     max-height: 280px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 18px;
 }
 
 .editor-preview-empty {
     padding: 22px 18px;
     background: var(--surface-soft);
     border: 1px dashed var(--line);
-    border-radius: 8px;
+    border-radius: 16px;
 }
 
 .upload-box {
     display: grid;
     gap: 14px;
     padding: 18px;
-    border: 1px solid color-mix(in srgb, var(--brand, #0f8f75) 18%, var(--line));
+    border: 1px solid color-mix(in srgb, var(--brand, #1f7ae0) 18%, var(--line));
     border-radius: 18px;
     background:
-        radial-gradient(circle at top right, rgba(15, 143, 117, 0.14), transparent 42%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 249, 0.96));
+        radial-gradient(circle at top right, rgba(31, 122, 224, 0.14), transparent 42%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
     box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
 }
 
@@ -735,9 +735,9 @@ onUnmounted(() => {
 }
 
 .cover-status-pill.custom {
-    color: #0f6b5a;
-    background: rgba(15, 143, 117, 0.16);
-    border: 1px solid rgba(15, 143, 117, 0.18);
+    color: var(--brand-strong);
+    background: rgba(31, 122, 224, 0.12);
+    border: 1px solid rgba(31, 122, 224, 0.16);
 }
 
 .cover-card-preview {
@@ -775,8 +775,8 @@ onUnmounted(() => {
     color: var(--muted);
     font-size: 13px;
     line-height: 1.7;
-    background: rgba(255, 248, 225, 0.76);
-    border: 1px solid rgba(201, 141, 0, 0.16);
+    background: rgba(31, 122, 224, 0.05);
+    border: 1px solid rgba(31, 122, 224, 0.08);
     border-radius: 12px;
 }
 
@@ -787,14 +787,14 @@ onUnmounted(() => {
     min-height: 44px;
     padding: 0 16px;
     border: 0;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--brand, #0f8f75), #13a786);
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--brand, #1f7ae0), var(--brand-strong, #1664c4));
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
-    box-shadow: 0 14px 28px rgba(15, 143, 117, 0.22);
+    box-shadow: 0 14px 28px rgba(31, 122, 224, 0.2);
 }
 
 .cover-upload-button:hover {

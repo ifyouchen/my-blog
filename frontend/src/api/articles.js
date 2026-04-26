@@ -35,6 +35,13 @@ export const updateArticleApi = async (articleId, draft, status) => {
     }));
 };
 
+export const updateArticleStatusApi = async (articleId, status) => {
+    return normalizeArticle(await request(`/articles/${articleId}/status`, {
+        method: 'PUT',
+        body: { status }
+    }));
+};
+
 export const deleteArticleApi = async (articleId) => {
     return await request(`/articles/${articleId}`, {
         method: 'DELETE'

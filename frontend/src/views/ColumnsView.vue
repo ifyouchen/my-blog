@@ -145,9 +145,9 @@ onMounted(fetchColumns);
 .column-card {
     overflow: hidden;
     background: #ffffff;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+    border: 1px solid rgba(208, 219, 236, 0.92);
+    border-radius: 22px;
+    box-shadow: 0 18px 38px rgba(31, 78, 168, 0.07);
     cursor: pointer;
     transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -155,13 +155,13 @@ onMounted(fetchColumns);
 .column-card:hover,
 .column-card:focus-visible {
     background: color-mix(in srgb, var(--surface-soft) 34%, white);
-    border-color: rgba(15, 143, 117, 0.18);
-    box-shadow: 0 18px 32px rgba(24, 32, 31, 0.08);
+    border-color: rgba(40, 118, 255, 0.18);
+    box-shadow: 0 22px 40px rgba(31, 78, 168, 0.11);
     transform: translateY(-2px);
 }
 
 .column-card:focus-visible {
-    outline: 2px solid rgba(15, 143, 117, 0.22);
+    outline: 2px solid rgba(40, 118, 255, 0.24);
     outline-offset: 4px;
 }
 
@@ -186,7 +186,7 @@ onMounted(fetchColumns);
 .column-card-body {
     display: grid;
     gap: 12px;
-    padding: 16px;
+    padding: 18px;
 }
 
 .column-card-meta {
@@ -233,7 +233,7 @@ onMounted(fetchColumns);
 .column-author img {
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: 12px;
     object-fit: cover;
 }
 

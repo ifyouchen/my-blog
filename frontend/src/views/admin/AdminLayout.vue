@@ -77,3 +77,43 @@ const requestRefresh = () => {
         </section>
     </main>
 </template>
+
+<style scoped>
+.admin-sidebar-head h2 {
+    color: var(--text-strong);
+    font-size: 28px;
+    line-height: 1.16;
+}
+
+.admin-sidebar-head p:not(.eyebrow),
+.admin-workspace-head p:not(.eyebrow) {
+    max-width: 620px;
+}
+
+.admin-workspace-head {
+    background:
+        linear-gradient(180deg, rgba(31, 122, 224, 0.04), rgba(31, 122, 224, 0)),
+        #ffffff;
+}
+
+.admin-refresh-button {
+    border-radius: 999px;
+}
+
+.admin-empty-panel {
+    background:
+        linear-gradient(180deg, rgba(31, 122, 224, 0.03), rgba(31, 122, 224, 0)),
+        #ffffff;
+}
+
+@media (max-width: 760px) {
+    .admin-workspace-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-refresh-button {
+        width: fit-content;
+    }
+}
+</style>

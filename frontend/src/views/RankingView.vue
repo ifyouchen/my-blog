@@ -208,10 +208,11 @@ onMounted(fetchRankings);
     top: 96px;
     display: grid;
     gap: 14px;
-    padding: 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    padding: 22px;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
+    border: 1px solid rgba(208, 219, 236, 0.92);
+    border-radius: 22px;
+    box-shadow: 0 18px 42px rgba(31, 78, 168, 0.07);
 }
 
 .ranking-post-list,
@@ -233,23 +234,24 @@ onMounted(fetchRankings);
     gap: 18px;
     align-items: center;
     padding: 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
+    border: 1px solid rgba(208, 219, 236, 0.92);
+    border-radius: 22px;
+    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.06);
     transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
     cursor: pointer;
 }
 
 .ranking-post-item:hover,
 .ranking-post-item:focus-visible {
-    background: color-mix(in srgb, var(--surface-soft) 42%, white);
-    border-color: rgba(15, 143, 117, 0.22);
-    box-shadow: 0 14px 30px rgba(24, 32, 31, 0.08);
+    background: color-mix(in srgb, rgba(40, 118, 255, 0.04) 56%, white);
+    border-color: rgba(40, 118, 255, 0.18);
+    box-shadow: 0 24px 44px rgba(31, 78, 168, 0.12);
     transform: translateY(-2px);
 }
 
 .ranking-post-item:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--brand) 56%, white);
+    outline: 2px solid rgba(40, 118, 255, 0.24);
     outline-offset: 4px;
 }
 
@@ -260,14 +262,14 @@ onMounted(fetchRankings);
     width: 52px;
     min-height: 72px;
     color: var(--brand-strong);
-    background: linear-gradient(180deg, rgba(15, 143, 117, 0.13), rgba(15, 143, 117, 0.04));
-    border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--line));
-    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(40, 118, 255, 0.18), rgba(40, 118, 255, 0.05));
+    border: 1px solid rgba(40, 118, 255, 0.18);
+    border-radius: 16px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .ranking-post-rank.top {
-    background: linear-gradient(180deg, rgba(15, 143, 117, 0.18), rgba(19, 167, 134, 0.06));
+    background: linear-gradient(180deg, rgba(40, 118, 255, 0.24), rgba(91, 152, 255, 0.08));
 }
 
 .ranking-post-rank span {
@@ -285,7 +287,7 @@ onMounted(fetchRankings);
     min-height: 140px;
     overflow: hidden;
     background: var(--surface-soft);
-    border-radius: 8px;
+    border-radius: 18px;
 }
 
 .ranking-post-cover img {
@@ -390,7 +392,7 @@ onMounted(fetchRankings);
 }
 
 .ranking-author-card:hover {
-    background: color-mix(in srgb, var(--surface-soft) 38%, white);
+    background: rgba(40, 118, 255, 0.04);
     transform: translateY(-1px);
 }
 
@@ -410,14 +412,14 @@ onMounted(fetchRankings);
 
 .ranking-author-avatar {
     display: inline-flex;
-    border-radius: 14px;
+    border-radius: 16px;
 }
 
 .ranking-author-avatar img {
     width: 42px;
     height: 42px;
     object-fit: cover;
-    border-radius: 14px;
+    border-radius: 16px;
 }
 
 .ranking-side-rank {
@@ -429,7 +431,7 @@ onMounted(fetchRankings);
     color: var(--brand-strong);
     font-size: 12px;
     font-weight: 700;
-    background: color-mix(in srgb, var(--surface-soft) 82%, white);
+    background: rgba(40, 118, 255, 0.08);
     border-radius: 999px;
 }
 
@@ -464,7 +466,7 @@ onMounted(fetchRankings);
     padding: 0 8px;
     color: var(--muted);
     font-size: 12px;
-    background: color-mix(in srgb, var(--surface-soft) 74%, white);
+    background: rgba(40, 118, 255, 0.07);
     border-radius: 999px;
 }
 
@@ -475,7 +477,7 @@ onMounted(fetchRankings);
     padding: 0 10px;
     color: var(--muted);
     font-size: 12px;
-    background: color-mix(in srgb, var(--surface-soft) 74%, white);
+    background: rgba(40, 118, 255, 0.07);
     border-radius: 999px;
 }
 
@@ -510,7 +512,7 @@ onMounted(fetchRankings);
     .ranking-post-rank {
         width: 40px;
         min-height: 56px;
-        border-radius: 8px;
+        border-radius: 14px;
     }
 
     .ranking-post-rank span {
@@ -528,7 +530,7 @@ onMounted(fetchRankings);
     }
 
     .ranking-sidebar-card {
-        padding: 16px;
+        padding: 18px;
     }
 
     .ranking-post-title {

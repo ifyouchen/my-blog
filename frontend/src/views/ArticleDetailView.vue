@@ -180,27 +180,42 @@ onUnmounted(() => {
         <article class="article-main" data-testid="article-detail-main">
             <img class="article-hero" :src="article.cover" :alt="article.coverAlt">
             <div class="article-body">
-                <div class="post-meta">
-                    <span>{{ article.category }}</span>
-                    <span>{{ article.readingTime }}</span>
-                    <span>{{ article.publishedText }}</span>
-                </div>
-                <h1>{{ article.title }}</h1>
-                <p class="article-summary">{{ article.summary }}</p>
-
-                <RouterLink class="article-author" :to="`/users/${article.author.id}`">
-                    <img :src="article.author.avatar" alt="作者头像">
-                    <div>
-                        <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
-                        <span>{{ article.viewCount }} 阅读 · {{ likeCount }} 赞 · {{ commentCount }} 评论</span>
+                <section class="article-heading-panel">
+                    <div class="article-heading-top">
+                        <div class="post-meta article-meta-row">
+                            <span>{{ article.category }}</span>
+                            <span>{{ article.readingTime }}</span>
+                            <span>{{ article.publishedText }}</span>
+                        </div>
+                        <div class="article-tag-list">
+                            <span v-for="tag in article.tags" :key="tag" class="article-tag-chip">
+                                {{ tag }}
+                            </span>
+                        </div>
                     </div>
-                </RouterLink>
+                    <h1>{{ article.title }}</h1>
+                    <p class="article-summary">{{ article.summary }}</p>
 
-                <div class="article-tag-list">
-                    <span v-for="tag in article.tags" :key="tag" class="article-tag-chip">
-                        {{ tag }}
-                    </span>
-                </div>
+                    <div class="article-heading-bottom">
+                        <RouterLink class="article-author" :to="`/users/${article.author.id}`">
+                            <img :src="article.author.avatar" alt="作者头像">
+                            <div>
+                                <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
+                                <span>{{ article.viewCount }} 阅读 · {{ likeCount }} 赞 · {{ commentCount }} 评论</span>
+                            </div>
+                        </RouterLink>
+
+                        <div class="article-quick-actions">
+                            <button type="button" :class="['article-quick-button', { active: liked }]" @click="toggleLike">
+                                {{ liked ? '已点赞' : '点赞' }} {{ likeCount }}
+                            </button>
+                            <button type="button" :class="['article-quick-button', { active: favorited }]" @click="toggleFavorite">
+                                {{ favorited ? '已收藏' : '收藏' }} {{ favoriteCount }}
+                            </button>
+                        </div>
+                    </div>
+                    <p v-if="feedback" class="form-message article-feedback">{{ feedback }}</p>
+                </section>
 
                 <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
                 <section v-else class="article-content-empty">
@@ -222,14 +237,41 @@ onUnmounted(() => {
         </article>
 
         <aside class="detail-side">
+            <section class="side-section article-data-panel">
+                <div class="side-section-head">
+                    <p class="eyebrow">文章数据</p>
+                    <h2>阅读表现</h2>
+                </div>
+                <div class="article-data-grid">
+                    <div>
+                        <strong>{{ article.viewCount }}</strong>
+                        <span>阅读</span>
+                    </div>
+                    <div>
+                        <strong>{{ likeCount }}</strong>
+                        <span>点赞</span>
+                    </div>
+                    <div>
+                        <strong>{{ favoriteCount }}</strong>
+                        <span>收藏</span>
+                    </div>
+                    <div>
+                        <strong>{{ commentCount }}</strong>
+                        <span>评论</span>
+                    </div>
+                </div>
+            </section>
             <section class="side-section action-panel">
+                <div class="side-section-head">
+                    <p class="eyebrow">互动</p>
+                    <h2>快速操作</h2>
+                </div>
                 <button type="button" :class="{ active: liked }" @click="toggleLike">
-                    {{ liked ? '已点赞' : '点赞' }} {{ likeCount }}
+                    {{ liked ? '已点赞' : '点赞文章' }}
                 </button>
                 <button type="button" :class="{ active: favorited }" @click="toggleFavorite">
-                    {{ favorited ? '已收藏' : '收藏' }} {{ favoriteCount }}
+                    {{ favorited ? '已收藏' : '收藏文章' }}
                 </button>
-                <p v-if="feedback" class="form-message">{{ feedback }}</p>
             </section>
             <ArticleToc
                 v-if="remoteArticle"
@@ -258,6 +300,64 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.article-heading-panel {
+    display: grid;
+    gap: 18px;
+    margin-bottom: 28px;
+    padding: 22px 24px 24px;
+    background: linear-gradient(180deg, rgba(31, 122, 224, 0.04), rgba(31, 122, 224, 0));
+    border: 1px solid rgba(31, 122, 224, 0.08);
+    border-radius: 20px;
+}
+
+.article-heading-top,
+.article-heading-bottom {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.article-meta-row {
+    margin: 0;
+}
+
+.article-quick-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.article-quick-button {
+    min-height: 40px;
+    padding: 0 16px;
+    color: var(--text);
+    font-weight: 700;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.article-quick-button:hover {
+    color: var(--brand-strong);
+    border-color: rgba(31, 122, 224, 0.18);
+    background: var(--brand-soft);
+    box-shadow: 0 10px 20px rgba(31, 122, 224, 0.08);
+}
+
+.article-quick-button.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+    border-color: transparent;
+}
+
+.article-feedback {
+    margin-top: -2px;
+}
+
 .article-comment {
     margin-top: 40px;
     padding-top: 24px;
@@ -280,7 +380,6 @@ onUnmounted(() => {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin: 10px 0 18px;
 }
 
 .article-tag-chip {
@@ -293,7 +392,7 @@ onUnmounted(() => {
     color: var(--brand-strong);
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 999px;
 }
 
 .comment-placeholder {
@@ -302,5 +401,51 @@ onUnmounted(() => {
     color: var(--muted);
     background: var(--surface);
     border-radius: 8px;
+}
+
+.article-data-panel {
+    display: grid;
+    gap: 18px;
+}
+
+.side-section-head {
+    display: grid;
+    gap: 4px;
+}
+
+.side-section-head h2 {
+    margin: 0;
+}
+
+.article-data-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.article-data-grid div {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+}
+
+.article-data-grid strong {
+    color: var(--text-strong);
+    font-size: 22px;
+    line-height: 1.1;
+}
+
+.article-data-grid span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+@media (max-width: 760px) {
+    .article-heading-panel {
+        padding: 18px;
+    }
 }
 </style>

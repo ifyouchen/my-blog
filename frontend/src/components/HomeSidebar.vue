@@ -2,6 +2,7 @@
 import { computed, inject } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useRouter } from 'vue-router';
+import SidebarBlock from '@/components/SidebarBlock.vue';
 
 const router = useRouter();
 const loginModal = inject('loginModal', { requireLogin: () => false });
@@ -32,13 +33,7 @@ const writeArticle = () => {
 
 <template>
     <aside class="sidebar" aria-label="侧边栏" data-testid="home-sidebar">
-        <section class="side-section" data-testid="home-specials">
-            <div class="section-heading compact">
-                <div>
-                    <p class="eyebrow">本周</p>
-                    <h2>热门专题</h2>
-                </div>
-            </div>
+        <SidebarBlock eyebrow="本周" title="热门专题" compact data-testid="home-specials">
             <div class="special-list">
                 <RouterLink
                     v-for="special in props.specials"
@@ -51,15 +46,9 @@ const writeArticle = () => {
                 </RouterLink>
                 <p v-if="!loading && !props.specials.length" class="sidebar-empty">专栏内容正在整理中。</p>
             </div>
-        </section>
+        </SidebarBlock>
 
-        <section class="side-section" data-testid="home-authors">
-            <div class="section-heading compact">
-                <div>
-                    <p class="eyebrow">创作者</p>
-                    <h2>活跃作者</h2>
-                </div>
-            </div>
+        <SidebarBlock eyebrow="创作者" title="活跃作者" compact data-testid="home-authors">
             <ol class="author-rank">
                 <li v-for="(author, index) in props.authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
@@ -75,14 +64,12 @@ const writeArticle = () => {
                     作者榜正在生成中。
                 </li>
             </ol>
-        </section>
+        </SidebarBlock>
 
-        <section class="side-section write-box" data-testid="home-write-box">
-            <p class="eyebrow">开始创作</p>
-            <h2>把项目经验写成下一篇文章</h2>
+        <SidebarBlock eyebrow="开始创作" title="把项目经验写成下一篇文章" compact class="write-box" data-testid="home-write-box">
             <p>标题、Markdown、分类、标签、封面图，第一版先把写作路径做顺。</p>
             <button class="primary-action block" type="button" data-testid="home-write-button" @click="writeArticle">发布文章</button>
-        </section>
+        </SidebarBlock>
     </aside>
 </template>
 
@@ -91,6 +78,10 @@ const writeArticle = () => {
     color: var(--muted);
     font-size: 13px;
     line-height: 1.6;
+    padding: 16px 14px;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), #ffffff);
+    border: 1px dashed rgba(208, 219, 236, 0.92);
+    border-radius: 16px;
 }
 
 .special-item,
@@ -101,6 +92,8 @@ const writeArticle = () => {
 .special-item:hover,
 .special-item:focus-visible,
 .author-rank li:hover {
+    background: color-mix(in srgb, var(--brand-soft) 34%, #ffffff);
+    box-shadow: 0 14px 24px rgba(31, 78, 168, 0.08);
     transform: translateY(-1px);
 }
 
@@ -111,6 +104,6 @@ const writeArticle = () => {
 
 .home-author-avatar {
     display: inline-flex;
-    border-radius: 50%;
+    border-radius: 14px;
 }
 </style>

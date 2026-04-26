@@ -3,6 +3,7 @@ import { computed, inject, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import { getUserArticlesApi } from '@/api/articles';
@@ -103,11 +104,13 @@ watch(() => route.params.id, () => {
             </template>
         </UserProfileSummary>
 
-        <section v-else class="collection-head">
-            <p class="eyebrow">作者主页</p>
-            <h1>暂时无法加载作者信息</h1>
-            <p>{{ errorMessage || '请稍后重试。' }}</p>
-        </section>
+        <EmptyState
+            v-else
+            eyebrow="作者主页"
+            title="暂时无法加载作者信息"
+            :description="errorMessage || '请稍后重试。'"
+            tone="error"
+        />
 
         <ArticleFeed
             :articles="articles"
@@ -135,12 +138,13 @@ watch(() => route.params.id, () => {
     color: var(--text);
     background: #ffffff;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(31, 78, 168, 0.05);
 }
 
 .profile-owner-action:hover {
     color: var(--brand-strong);
-    border-color: rgba(15, 143, 117, 0.18);
-    background: rgba(15, 143, 117, 0.03);
+    border-color: rgba(40, 118, 255, 0.18);
+    background: rgba(40, 118, 255, 0.05);
 }
 </style>

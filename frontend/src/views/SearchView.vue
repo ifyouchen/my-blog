@@ -620,7 +620,10 @@ onMounted(fetchBootstrap);
 <style scoped>
 .search-panel {
     display: grid;
-    gap: 14px;
+    gap: 18px;
+    background:
+        linear-gradient(180deg, rgba(31, 122, 224, 0.04) 0%, rgba(31, 122, 224, 0) 55%),
+        #ffffff;
 }
 
 .search-panel .eyebrow {
@@ -633,7 +636,11 @@ onMounted(fetchBootstrap);
 
 .keyword-section {
     display: grid;
-    gap: 10px;
+    gap: 14px;
+    padding: 18px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
 }
 
 .keyword-group {
@@ -654,16 +661,20 @@ onMounted(fetchBootstrap);
 }
 
 .keyword-chip {
-    padding: 4px 10px;
-    border-radius: 14px;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     font-size: 13px;
     cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }
 
 .keyword-chip:hover {
-    background: var(--bg-tertiary);
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: rgba(31, 122, 224, 0.16);
 }
 
 .keyword-chip.hot {
@@ -673,8 +684,9 @@ onMounted(fetchBootstrap);
 }
 
 .keyword-clear {
-    padding: 4px 10px;
-    border-radius: 14px;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
     background: transparent;
     border: 1px solid var(--border);
     font-size: 13px;
@@ -689,29 +701,47 @@ onMounted(fetchBootstrap);
 
 .search-tabs {
     display: flex;
-    gap: 4px;
+    gap: 8px;
+    margin-top: 4px;
+    padding-bottom: 4px;
     border-bottom: 1px solid var(--border);
-    margin-top: 8px;
 }
 
 .search-tabs button {
-    padding: 8px 16px;
+    position: relative;
+    padding: 10px 4px;
     border: none;
     background: transparent;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
+    margin-right: 20px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 600;
 }
 
 .search-tabs button.active {
-    border-bottom-color: var(--primary);
-    color: var(--primary);
+    color: var(--brand-strong);
+}
+
+.search-tabs button.active::after {
+    position: absolute;
+    right: 0;
+    bottom: -5px;
+    left: 0;
+    height: 3px;
+    content: "";
+    background: var(--brand);
+    border-radius: 999px;
 }
 
 .search-filters {
     display: grid;
-    gap: 14px;
-    margin-top: 6px;
+    gap: 16px;
+    padding: 22px;
+    margin-top: 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
 }
 
 .filter-group {
@@ -729,12 +759,14 @@ onMounted(fetchBootstrap);
 }
 
 .filter-input {
-    padding: 6px 10px;
+    min-height: 40px;
+    padding: 0 14px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 12px;
     font-size: 13px;
     width: 100%;
-    max-width: 200px;
+    max-width: 240px;
+    background: #ffffff;
 }
 
 .filter-input:focus {
@@ -775,7 +807,7 @@ onMounted(fetchBootstrap);
 }
 
 .search-panel :deep(.search-large) {
-    margin-top: 4px;
+    margin-top: 6px;
 }
 
 .search-panel :deep(.result-note) {
@@ -786,84 +818,113 @@ onMounted(fetchBootstrap);
     margin-top: 20px;
 }
 
-.loading-state, .error-state, .empty-state {
+.loading-state {
     text-align: center;
     padding: 40px;
     color: var(--muted);
 }
 
+.search-state-panel {
+    margin-top: 8px;
+}
+
 .user-list, .column-list {
     display: grid;
-    gap: 12px;
+    gap: 16px;
 }
 
 .user-card, .column-card {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    gap: 18px;
+    padding: 20px;
+    border: 1px solid rgba(208, 219, 236, 0.92);
+    border-radius: 22px;
     cursor: pointer;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
+    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.06);
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .user-card:hover, .column-card:hover {
-    border-color: var(--primary);
+    border-color: rgba(31, 122, 224, 0.18);
+    background: color-mix(in srgb, var(--brand-soft) 38%, #ffffff);
+    box-shadow: 0 22px 44px rgba(31, 78, 168, 0.11);
+    transform: translateY(-2px);
 }
 
 .user-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
     object-fit: cover;
+    box-shadow: 0 12px 24px rgba(31, 78, 168, 0.08);
 }
 
 .column-cover {
-    width: 80px;
-    height: 60px;
-    border-radius: 6px;
+    width: 112px;
+    height: 78px;
+    border-radius: 16px;
     object-fit: cover;
+    box-shadow: 0 12px 24px rgba(31, 78, 168, 0.08);
 }
 
 .user-info, .column-info {
-    flex: 1;
+    display: grid;
+    gap: 6px;
     min-width: 0;
 }
 
 .user-name, .column-name {
-    font-weight: 600;
-    font-size: 15px;
+    color: var(--text-strong);
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1.25;
 }
 
 .user-bio, .column-description {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--muted);
-    margin-top: 2px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .user-stats, .column-stats {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
     font-size: 12px;
     color: var(--muted);
-    margin-top: 4px;
+}
+
+.user-stats span, .column-stats span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    background: rgba(40, 118, 255, 0.07);
+    border-radius: 999px;
 }
 
 .follow-btn, .subscribe-btn {
-    padding: 6px 16px;
-    border-radius: 18px;
-    border: 1px solid var(--primary);
-    background: transparent;
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(40, 118, 255, 0.18);
+    background: rgba(255, 255, 255, 0.92);
     color: var(--primary);
     cursor: pointer;
     font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 10px 22px rgba(31, 78, 168, 0.05);
 }
 
 .follow-btn:hover, .subscribe-btn:hover {
-    background: var(--primary);
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    border-color: transparent;
     color: white;
 }
 
@@ -876,9 +937,10 @@ onMounted(fetchBootstrap);
 }
 
 .pagination button {
-    padding: 6px 14px;
+    min-height: 36px;
+    padding: 0 16px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 999px;
     background: var(--bg-secondary);
     cursor: pointer;
 }
@@ -890,5 +952,16 @@ onMounted(fetchBootstrap);
 .page-info {
     font-size: 13px;
     color: var(--muted);
+}
+
+@media (max-width: 720px) {
+    .user-card, .column-card {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .follow-btn, .subscribe-btn {
+        grid-column: 1 / -1;
+        width: fit-content;
+    }
 }
 </style>
