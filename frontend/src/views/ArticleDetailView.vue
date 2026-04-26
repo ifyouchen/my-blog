@@ -261,18 +261,6 @@ onUnmounted(() => {
                     </div>
                 </div>
             </section>
-            <section class="side-section action-panel">
-                <div class="side-section-head">
-                    <p class="eyebrow">互动</p>
-                    <h2>快速操作</h2>
-                </div>
-                <button type="button" :class="{ active: liked }" @click="toggleLike">
-                    {{ liked ? '已点赞' : '点赞文章' }}
-                </button>
-                <button type="button" :class="{ active: favorited }" @click="toggleFavorite">
-                    {{ favorited ? '已收藏' : '收藏文章' }}
-                </button>
-            </section>
             <ArticleToc
                 v-if="remoteArticle"
                 :content="articleMarkdown"
