@@ -34,7 +34,9 @@
       "Bash(chmod +x /tmp/write_loadtest.sh)",
       "Bash(bash /tmp/write_loadtest.sh)",
       "Bash(mvn -q -DskipTests compile)",
-      "Bash(dir \"F:\\\\software\\\\IdeaProject\\\\my-blog\")"
+      "Bash(dir \"F:\\\\software\\\\IdeaProject\\\\my-blog\")",
+      "Bash(python3)",
+      "Bash(powershell *)"
     ]
   }
 }

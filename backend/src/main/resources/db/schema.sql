@@ -42,8 +42,7 @@ CREATE TABLE IF NOT EXISTS blog_article (
     KEY idx_blog_article_category_created (category, created_at),
     KEY idx_blog_article_author_status_updated (author_id, status, updated_at),
     KEY idx_blog_article_status_published_hot (status, view_count, published_at, id),
-    KEY idx_blog_article_status_published_featured (status, like_count, published_at, id),
-    CONSTRAINT fk_blog_article_author FOREIGN KEY (author_id) REFERENCES blog_user (id)
+    KEY idx_blog_article_status_published_featured (status, like_count, published_at, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客文章表';
 
 CREATE TABLE IF NOT EXISTS blog_article_tag (
@@ -56,8 +55,7 @@ CREATE TABLE IF NOT EXISTS blog_article_tag (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_article_tag_article_name (article_id, tag_name),
-    KEY idx_blog_article_tag_name (tag_name),
-    CONSTRAINT fk_blog_article_tag_article FOREIGN KEY (article_id) REFERENCES blog_article (id)
+    KEY idx_blog_article_tag_name (tag_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客文章标签表';
 
 CREATE TABLE IF NOT EXISTS blog_category (
@@ -112,9 +110,7 @@ CREATE TABLE IF NOT EXISTS blog_comment (
     KEY idx_blog_comment_user (user_id),
     KEY idx_blog_comment_root (root_comment_id),
     KEY idx_blog_comment_parent (parent_id),
-    KEY idx_blog_comment_root_sort (article_id, parent_id, status, pinned, pinned_at, like_count, created_at, id),
-    CONSTRAINT fk_blog_comment_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
-    CONSTRAINT fk_blog_comment_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+    KEY idx_blog_comment_root_sort (article_id, parent_id, status, pinned, pinned_at, like_count, created_at, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客评论表';
 
 CREATE TABLE IF NOT EXISTS blog_comment_like (
@@ -127,9 +123,7 @@ CREATE TABLE IF NOT EXISTS blog_comment_like (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_comment_like_comment_user (comment_id, user_id),
-    KEY idx_blog_comment_like_user (user_id),
-    CONSTRAINT fk_blog_comment_like_comment FOREIGN KEY (comment_id) REFERENCES blog_comment (id),
-    CONSTRAINT fk_blog_comment_like_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+    KEY idx_blog_comment_like_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客评论点赞表';
 
 SET @blog_comment_add_root_comment_id = (
@@ -234,9 +228,7 @@ CREATE TABLE IF NOT EXISTS blog_article_like (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_article_like_article_user (article_id, user_id),
-    KEY idx_blog_article_like_user (user_id),
-    CONSTRAINT fk_blog_article_like_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
-    CONSTRAINT fk_blog_article_like_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+    KEY idx_blog_article_like_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客文章点赞表';
 
 CREATE TABLE IF NOT EXISTS blog_article_favorite (
@@ -249,9 +241,7 @@ CREATE TABLE IF NOT EXISTS blog_article_favorite (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_article_favorite_article_user (article_id, user_id),
-    KEY idx_blog_article_favorite_user (user_id),
-    CONSTRAINT fk_blog_article_favorite_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
-    CONSTRAINT fk_blog_article_favorite_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+    KEY idx_blog_article_favorite_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客文章收藏表';
 
 CREATE TABLE IF NOT EXISTS blog_article_view (
@@ -266,9 +256,7 @@ CREATE TABLE IF NOT EXISTS blog_article_view (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     KEY idx_blog_article_view_article_created (article_id, created_at),
-    KEY idx_blog_article_view_user (user_id),
-    CONSTRAINT fk_blog_article_view_article FOREIGN KEY (article_id) REFERENCES blog_article (id),
-    CONSTRAINT fk_blog_article_view_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+    KEY idx_blog_article_view_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客阅读记录表';
 
 CREATE TABLE IF NOT EXISTS blog_user_follow (
@@ -282,9 +270,7 @@ CREATE TABLE IF NOT EXISTS blog_user_follow (
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_user_follow_pair (follower_user_id, following_user_id),
     KEY idx_blog_user_follow_following (following_user_id),
-    KEY idx_blog_user_follow_follower_created (follower_user_id, created_at),
-    CONSTRAINT fk_blog_user_follow_follower FOREIGN KEY (follower_user_id) REFERENCES blog_user (id),
-    CONSTRAINT fk_blog_user_follow_following FOREIGN KEY (following_user_id) REFERENCES blog_user (id)
+    KEY idx_blog_user_follow_follower_created (follower_user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客用户关注表';
 
 CREATE TABLE IF NOT EXISTS blog_column (
@@ -302,8 +288,7 @@ CREATE TABLE IF NOT EXISTS blog_column (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     KEY idx_blog_column_author (author_id),
-    KEY idx_blog_column_status_sort (status, sort_order),
-    CONSTRAINT fk_blog_column_author FOREIGN KEY (author_id) REFERENCES blog_user (id)
+    KEY idx_blog_column_status_sort (status, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客专栏表';
 
 CREATE TABLE IF NOT EXISTS blog_column_article (
@@ -317,9 +302,7 @@ CREATE TABLE IF NOT EXISTS blog_column_article (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_column_article_pair (column_id, article_id),
-    KEY idx_blog_column_article_article (article_id),
-    CONSTRAINT fk_blog_column_article_column FOREIGN KEY (column_id) REFERENCES blog_column (id),
-    CONSTRAINT fk_blog_column_article_article FOREIGN KEY (article_id) REFERENCES blog_article (id)
+    KEY idx_blog_column_article_article (article_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客专栏文章关联表';
 
 CREATE TABLE IF NOT EXISTS blog_column_subscription (
@@ -332,9 +315,7 @@ CREATE TABLE IF NOT EXISTS blog_column_subscription (
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_blog_column_subscription_pair (column_id, user_id),
-    KEY idx_blog_column_subscription_user (user_id),
-    CONSTRAINT fk_blog_column_subscription_column FOREIGN KEY (column_id) REFERENCES blog_column (id),
-    CONSTRAINT fk_blog_column_subscription_user FOREIGN KEY (user_id) REFERENCES blog_user (id)
+    KEY idx_blog_column_subscription_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客专栏订阅表';
 
 CREATE TABLE IF NOT EXISTS blog_admin_log (
@@ -357,8 +338,7 @@ CREATE TABLE IF NOT EXISTS blog_admin_log (
     deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
     version INT NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (id),
-    KEY idx_blog_admin_log_admin_created (admin_user_id, created_at),
-    CONSTRAINT fk_blog_admin_log_admin FOREIGN KEY (admin_user_id) REFERENCES blog_user (id)
+    KEY idx_blog_admin_log_admin_created (admin_user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客管理员操作日志表';
 
 SET @blog_admin_log_add_admin_username = (
