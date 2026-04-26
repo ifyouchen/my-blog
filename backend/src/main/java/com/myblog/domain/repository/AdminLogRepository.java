@@ -2,6 +2,7 @@ package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.AdminLog;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -27,14 +28,15 @@ public interface AdminLogRepository {
      * @param pageSize 每页数量
      * @return 日志列表
      */
-    List<AdminLog> findPage(int page, int pageSize);
+    List<AdminLog> findPage(int page, int pageSize, String operation,
+                            String resultStatus, LocalDateTime dateFrom, LocalDateTime dateTo);
 
     /**
      * 统计管理员操作日志数量。
      *
      * @return 日志数量
      */
-    int countAll();
+    int countAll(String operation, String resultStatus, LocalDateTime dateFrom, LocalDateTime dateTo);
 
     /**
      * 获取下一个日志 ID。

@@ -3,6 +3,7 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 import com.myblog.infrastructure.repository.persistence.entity.AdminLogDO;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -28,14 +29,22 @@ public interface AdminLogMapper {
      * @param limit 限制数量
      * @return 日志列表
      */
-    List<AdminLogDO> selectPage(@Param("offset") int offset, @Param("limit") int limit);
+    List<AdminLogDO> selectPage(@Param("offset") int offset,
+                                @Param("limit") int limit,
+                                @Param("operation") String operation,
+                                @Param("resultStatus") String resultStatus,
+                                @Param("dateFrom") LocalDateTime dateFrom,
+                                @Param("dateTo") LocalDateTime dateTo);
 
     /**
      * 统计日志数量。
      *
      * @return 日志数量
      */
-    int countAll();
+    int countAll(@Param("operation") String operation,
+                 @Param("resultStatus") String resultStatus,
+                 @Param("dateFrom") LocalDateTime dateFrom,
+                 @Param("dateTo") LocalDateTime dateTo);
 
     /**
      * 获取下一个日志 ID。

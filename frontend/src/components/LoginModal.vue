@@ -61,7 +61,7 @@ const goToRegister = () => {
 
 <template>
     <Teleport to="body">
-        <div v-if="visible" class="modal-overlay" @click.self="close" @keydown.esc="close">
+        <div v-if="visible" class="modal-overlay" data-testid="login-modal" @click.self="close" @keydown.esc="close">
             <div class="modal-content">
                 <button class="modal-close" type="button" aria-label="关闭登录弹窗" @click="close">×</button>
                 <p class="modal-eyebrow">需要登录</p>
@@ -74,6 +74,7 @@ const goToRegister = () => {
                             type="text"
                             placeholder="用户名或邮箱"
                             autocomplete="username"
+                            data-testid="login-modal-account-input"
                         >
                     </div>
                     <div class="form-group">
@@ -82,10 +83,11 @@ const goToRegister = () => {
                             type="password"
                             placeholder="密码"
                             autocomplete="current-password"
+                            data-testid="login-modal-password-input"
                         >
                     </div>
                     <p v-if="error" class="form-error">{{ error }}</p>
-                    <button type="submit" class="submit-btn" :disabled="loading">
+                    <button type="submit" class="submit-btn" data-testid="login-modal-submit" :disabled="loading">
                         {{ loading ? '登录中...' : prompt.actionText }}
                     </button>
                 </form>

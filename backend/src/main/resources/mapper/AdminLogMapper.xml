@@ -41,10 +41,26 @@
         #{createdAt}, #{updatedAt})
     </insert>
 
+    <sql id="Admin_Log_Filter">
+        deleted_at IS NULL
+        <if test="operation != null and operation != ''">
+            AND operation = #{operation}
+        </if>
+        <if test="resultStatus != null and resultStatus != ''">
+            AND result_status = #{resultStatus}
+        </if>
+        <if test="dateFrom != null">
+            AND created_at <![CDATA[>=]]> #{dateFrom}
+        </if>
+        <if test="dateTo != null">
+            AND created_at <![CDATA[<=]]> #{dateTo}
+        </if>
+    </sql>
+
     <select id="selectPage" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_admin_log
-        WHERE deleted_at IS NULL
+        WHERE <include refid="Admin_Log_Filter"/>
         ORDER BY created_at DESC, id DESC
         LIMIT #{offset}, #{limit}
     </select>
@@ -52,7 +68,7 @@
     <select id="countAll" resultType="int">
         SELECT COUNT(1)
         FROM blog_admin_log
-        WHERE deleted_at IS NULL
+        WHERE <include refid="Admin_Log_Filter"/>
     </select>
 
     <select id="selectNextId" resultType="long">

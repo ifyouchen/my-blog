@@ -4,9 +4,10 @@ export const getAdminStatsApi = async () => {
     return await request(`/admin/stats`);
 };
 
-export const getAdminUsersApi = async (page = 1, pageSize = 10, status = null) => {
+export const getAdminUsersApi = async (page = 1, pageSize = 10, status = null, keyword = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (status) params.append('status', status);
+    if (keyword) params.append('keyword', keyword);
     return await request(`/admin/users?${params}`);
 };
 
@@ -20,10 +21,11 @@ export const updateAdminUserStatusApi = async (userId, status) => {
     });
 };
 
-export const getAdminArticlesApi = async (page = 1, pageSize = 10, status = null, keyword = null) => {
+export const getAdminArticlesApi = async (page = 1, pageSize = 10, status = null, keyword = null, category = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (status) params.append('status', status);
     if (keyword) params.append('keyword', keyword);
+    if (category) params.append('category', category);
     return await request(`/admin/articles?${params}`);
 };
 
@@ -37,14 +39,25 @@ export const updateAdminArticleStatusApi = async (articleId, status) => {
     });
 };
 
-export const getAdminCommentsApi = async (page = 1, pageSize = 10, articleId = null) => {
+export const deleteAdminArticleApi = async (articleId) => {
+    return await request(`/admin/articles/${articleId}`, {
+        method: 'DELETE'
+    });
+};
+
+export const getAdminCommentsApi = async (page = 1, pageSize = 10, articleId = null, keyword = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (articleId) params.append('articleId', articleId);
+    if (keyword) params.append('keyword', keyword);
     return await request(`/admin/comments?${params}`);
 };
 
-export const getAdminLogsApi = async (page = 1, pageSize = 10) => {
+export const getAdminLogsApi = async (page = 1, pageSize = 10, filters = {}) => {
     const params = new URLSearchParams({ page, pageSize });
+    if (filters.actionType) params.append('actionType', filters.actionType);
+    if (filters.resultStatus) params.append('resultStatus', filters.resultStatus);
+    if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.append('dateTo', filters.dateTo);
     return await request(`/admin/logs?${params}`);
 };
 
@@ -66,21 +79,21 @@ export const getAdminCategoriesApi = async (page = 1, pageSize = 10, enabled = n
 };
 
 export const createCategoryApi = async (payload) => {
-    return await request('/categories', {
+    return await request('/admin/categories', {
         method: 'POST',
         body: payload
     });
 };
 
 export const updateCategoryApi = async (categoryId, payload) => {
-    return await request(`/categories/${categoryId}`, {
+    return await request(`/admin/categories/${categoryId}`, {
         method: 'PUT',
         body: payload
     });
 };
 
 export const deleteCategoryApi = async (categoryId) => {
-    return await request(`/categories/${categoryId}`, {
+    return await request(`/admin/categories/${categoryId}`, {
         method: 'DELETE'
     });
 };
@@ -97,21 +110,21 @@ export const getAdminTagsApi = async (page = 1, pageSize = 10, enabled = null) =
 };
 
 export const createTagApi = async (payload) => {
-    return await request('/tags', {
+    return await request('/admin/tags', {
         method: 'POST',
         body: payload
     });
 };
 
 export const updateTagApi = async (tagId, payload) => {
-    return await request(`/tags/${tagId}`, {
+    return await request(`/admin/tags/${tagId}`, {
         method: 'PUT',
         body: payload
     });
 };
 
 export const deleteTagApi = async (tagId) => {
-    return await request(`/tags/${tagId}`, {
+    return await request(`/admin/tags/${tagId}`, {
         method: 'DELETE'
     });
 };

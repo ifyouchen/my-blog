@@ -2,7 +2,9 @@ package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
+import com.myblog.shared.enums.UserStatus;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,6 +57,65 @@ public interface UserRepository {
     User save(User user);
 
     /**
+     * 分页查询后台用户列表。
+     *
+     * @param status 状态筛选
+     * @param keyword 关键字
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 用户列表
+     */
+    List<User> findAdminPage(String status, String keyword, int page, int pageSize);
+
+    /**
+     * 统计后台用户数量。
+     *
+     * @param status 状态筛选
+     * @param keyword 关键字
+     * @return 用户数量
+     */
+    long countAdminPage(String status, String keyword);
+
+    /**
+     * 根据用户 ID 批量查询用户。
+     *
+     * @param userIds 用户 ID 列表
+     * @return 用户列表
+     */
+    List<User> findByIds(List<Long> userIds);
+
+    /**
+     * 统计用户数量。
+     *
+     * @return 用户数量
+     */
+    long countAll();
+
+    /**
+     * 按状态统计用户数量。
+     *
+     * @param status 用户状态
+     * @return 用户数量
+     */
+    long countByStatus(UserStatus status);
+
+    /**
+     * 统计指定日期创建的用户数量。
+     *
+     * @param date 日期
+     * @return 用户数量
+     */
+    long countCreatedOn(LocalDate date);
+
+    /**
+     * 统计指定日期之后创建的用户数量。
+     *
+     * @param date 起始日期
+     * @return 用户数量
+     */
+    long countCreatedSince(LocalDate date);
+
+    /**
      * 查询所有用户。
      *
      * @return 用户列表
@@ -67,4 +128,39 @@ public interface UserRepository {
      * @return 用户 ID
      */
     Long nextId();
+
+    /**
+     * 搜索用户。
+     *
+     * @param keyword 关键字
+     * @param sort 排序方式
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 用户列表
+     */
+    List<User> searchUsers(String keyword, String sort, int page, int pageSize);
+
+    /**
+     * 统计搜索用户数量。
+     *
+     * @param keyword 关键字
+     * @return 用户数量
+     */
+    long countSearchUsers(String keyword);
+
+    /**
+     * 统计用户粉丝数。
+     *
+     * @param userId 用户ID
+     * @return 粉丝数
+     */
+    int countFollowers(Long userId);
+
+    /**
+     * 统计用户已发布文章数。
+     *
+     * @param userId 用户ID
+     * @return 已发布文章数
+     */
+    int countPublishedArticles(Long userId);
 }

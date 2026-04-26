@@ -1,17 +1,26 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import AdminView from '@/views/AdminView.vue';
-import ArticleDetailView from '@/views/ArticleDetailView.vue';
-import AuthView from '@/views/AuthView.vue';
-import ColumnDetailView from '@/views/ColumnDetailView.vue';
-import ColumnsView from '@/views/ColumnsView.vue';
-import DashboardView from '@/views/DashboardView.vue';
-import EditorView from '@/views/EditorView.vue';
-import FollowingView from '@/views/FollowingView.vue';
-import HomeView from '@/views/HomeView.vue';
-import ProfileSettingsView from '@/views/ProfileSettingsView.vue';
-import RankingView from '@/views/RankingView.vue';
-import SearchView from '@/views/SearchView.vue';
-import UserProfileView from '@/views/UserProfileView.vue';
+
+const HomeView = () => import('@/views/HomeView.vue');
+const AuthView = () => import('@/views/AuthView.vue');
+const EditorView = () => import('@/views/EditorView.vue');
+const FollowingView = () => import('@/views/FollowingView.vue');
+const ColumnsView = () => import('@/views/ColumnsView.vue');
+const ColumnDetailView = () => import('@/views/ColumnDetailView.vue');
+const RankingView = () => import('@/views/RankingView.vue');
+const SearchView = () => import('@/views/SearchView.vue');
+const NotificationsView = () => import('@/views/NotificationsView.vue');
+const ArticleDetailView = () => import('@/views/ArticleDetailView.vue');
+const UserProfileView = () => import('@/views/UserProfileView.vue');
+const DashboardView = () => import('@/views/DashboardView.vue');
+const ProfileSettingsView = () => import('@/views/ProfileSettingsView.vue');
+const AdminLayout = () => import('@/views/admin/AdminLayout.vue');
+const AdminOverviewView = () => import('@/views/admin/AdminOverviewView.vue');
+const AdminUsersView = () => import('@/views/admin/AdminUsersView.vue');
+const AdminArticlesView = () => import('@/views/admin/AdminArticlesView.vue');
+const AdminCommentsView = () => import('@/views/admin/AdminCommentsView.vue');
+const AdminCategoriesView = () => import('@/views/admin/AdminCategoriesView.vue');
+const AdminTagsView = () => import('@/views/admin/AdminTagsView.vue');
+const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 
 const routes = [
     {
@@ -95,6 +104,14 @@ const routes = [
         }
     },
     {
+        path: '/notifications',
+        name: 'notifications',
+        component: NotificationsView,
+        meta: {
+            title: '通知中心'
+        }
+    },
+    {
         path: '/articles/:id',
         name: 'articleDetail',
         component: ArticleDetailView,
@@ -136,18 +153,104 @@ const routes = [
     },
     {
         path: '/admin',
-        name: 'admin',
-        component: AdminView,
+        component: AdminLayout,
         meta: {
             title: '管理后台'
-        }
+        },
+        children: [
+            {
+                path: '',
+                redirect: '/admin/overview'
+            },
+            {
+                path: 'overview',
+                name: 'adminOverview',
+                component: AdminOverviewView,
+                meta: {
+                    title: '后台概览',
+                    adminTitle: '后台概览',
+                    adminDescription: '查看站点核心数据、处理重点和最近管理员操作。'
+                }
+            },
+            {
+                path: 'users',
+                name: 'adminUsers',
+                component: AdminUsersView,
+                meta: {
+                    title: '用户管理',
+                    adminTitle: '用户管理',
+                    adminDescription: '筛选用户状态、检索账号信息，并快速处理启用与禁用。'
+                }
+            },
+            {
+                path: 'articles',
+                name: 'adminArticles',
+                component: AdminArticlesView,
+                meta: {
+                    title: '文章管理',
+                    adminTitle: '文章管理',
+                    adminDescription: '统一管理文章状态、分类归属和基础数据表现。'
+                }
+            },
+            {
+                path: 'comments',
+                name: 'adminComments',
+                component: AdminCommentsView,
+                meta: {
+                    title: '评论管理',
+                    adminTitle: '评论管理',
+                    adminDescription: '定位问题评论，按文章或关键词筛查并执行删除。'
+                }
+            },
+            {
+                path: 'categories',
+                name: 'adminCategories',
+                component: AdminCategoriesView,
+                meta: {
+                    title: '分类管理',
+                    adminTitle: '分类管理',
+                    adminDescription: '维护内容分类体系，统一处理启用状态和排序。'
+                }
+            },
+            {
+                path: 'taxonomy',
+                redirect: '/admin/categories'
+            },
+            {
+                path: 'tags',
+                name: 'adminTags',
+                component: AdminTagsView,
+                meta: {
+                    title: '标签管理',
+                    adminTitle: '标签管理',
+                    adminDescription: '维护标签体系，保证搜索、编辑器和后台数据一致。'
+                }
+            },
+            {
+                path: 'logs',
+                name: 'adminLogs',
+                component: AdminLogsView,
+                meta: {
+                    title: '管理员日志',
+                    adminTitle: '管理员日志',
+                    adminDescription: '按操作类型、结果状态和时间范围追踪后台审计记录。'
+                }
+            }
+        ]
     }
 ];
 
 const router = createRouter({
     history: createWebHistory(),
     routes,
-    scrollBehavior() {
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition;
+        }
+        const dashboardPaths = ['/dashboard/articles', '/dashboard/favorites'];
+        if (to.path === from.path && dashboardPaths.includes(to.path)) {
+            return false;
+        }
         return { top: 0 };
     }
 });

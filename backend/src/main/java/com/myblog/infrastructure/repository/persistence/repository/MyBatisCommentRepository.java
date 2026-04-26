@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -65,6 +66,24 @@ public class MyBatisCommentRepository implements CommentRepository {
             comments.add(CommentPersistenceConverter.toDomain(commentDO));
         }
         return comments;
+    }
+
+    @Override
+    public List<Comment> findAdminPage(Long articleId, String keyword, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<CommentDO> commentDOList = commentMapper.selectAdminPage(articleId, keyword, offset, currentPageSize);
+        List<Comment> comments = new ArrayList<Comment>(commentDOList.size());
+        for (CommentDO commentDO : commentDOList) {
+            comments.add(CommentPersistenceConverter.toDomain(commentDO));
+        }
+        return comments;
+    }
+
+    @Override
+    public long countAdminPage(Long articleId, String keyword) {
+        return commentMapper.countAdminPage(articleId, keyword);
     }
 
     @Override
@@ -178,6 +197,21 @@ public class MyBatisCommentRepository implements CommentRepository {
             comments.add(CommentPersistenceConverter.toDomain(commentDO));
         }
         return comments;
+    }
+
+    @Override
+    public long countAll() {
+        return commentMapper.countAll();
+    }
+
+    @Override
+    public long countCreatedOn(LocalDate date) {
+        return commentMapper.countCreatedOn(date);
+    }
+
+    @Override
+    public long countCreatedSince(LocalDate date) {
+        return commentMapper.countCreatedSince(date);
     }
 
     /**

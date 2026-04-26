@@ -92,7 +92,7 @@ watch(isRegister, () => {
 
 <template>
     <SiteHeader />
-    <main class="auth-layout">
+    <main class="auth-layout" :data-testid="isRegister ? 'register-page' : 'login-page'">
         <section class="auth-visual">
             <p class="eyebrow">my-blog</p>
             <h1>把工程经验沉淀成作品</h1>
@@ -105,10 +105,10 @@ watch(isRegister, () => {
                 {{ isRegister ? '注册 my-blog' : '登录 my-blog' }}
             </h2>
 
-            <form class="form-stack" @submit.prevent="submit">
+            <form class="form-stack" :data-testid="isRegister ? 'register-form' : 'login-form'" @submit.prevent="submit">
                 <label v-if="isRegister">
                     <span>用户名</span>
-                    <input v-model.trim="form.username" type="text" placeholder="请输入用户名">
+                    <input v-model.trim="form.username" type="text" placeholder="请输入用户名" data-testid="register-username-input">
                     <small v-if="errors.username">{{ errors.username }}</small>
                 </label>
                 <label>
@@ -118,27 +118,29 @@ watch(isRegister, () => {
                         v-model.trim="form.email"
                         type="email"
                         placeholder="请输入邮箱"
+                        data-testid="register-email-input"
                     >
                     <input
                         v-else
                         v-model.trim="form.account"
                         type="text"
                         placeholder="用户名或邮箱"
+                        data-testid="login-account-input"
                     >
                     <small v-if="isRegister && errors.email">{{ errors.email }}</small>
                     <small v-if="!isRegister && errors.account">{{ errors.account }}</small>
                 </label>
                 <label>
                     <span>密码</span>
-                    <input v-model="form.password" type="password" placeholder="请输入密码">
+                    <input v-model="form.password" type="password" placeholder="请输入密码" :data-testid="isRegister ? 'register-password-input' : 'login-password-input'">
                     <small v-if="errors.password">{{ errors.password }}</small>
                 </label>
                 <label v-if="isRegister">
                     <span>确认密码</span>
-                    <input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码">
+                    <input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" data-testid="register-confirm-password-input">
                     <small v-if="errors.confirmPassword">{{ errors.confirmPassword }}</small>
                 </label>
-                <button class="primary-action form-submit" type="submit">
+                <button class="primary-action form-submit" type="submit" :data-testid="isRegister ? 'register-submit' : 'login-submit'">
                     {{ isRegister ? '注册' : '登录' }}
                 </button>
                 <small v-if="errors.submit">{{ errors.submit }}</small>

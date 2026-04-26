@@ -20,6 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const toast = inject('toast', { success: () => {}, error: () => {} });
 const submitting = ref(false);
 const localSubscribed = ref(Boolean(props.subscribed));
 
@@ -48,9 +49,11 @@ const toggleSubscribe = async () => {
         } else {
             await subscribeColumnApi(props.columnId);
         }
+        toast.success(localSubscribed.value ? '已订阅专栏' : '已取消订阅');
         emit('change', localSubscribed.value);
     } catch (error) {
         localSubscribed.value = previous;
+        toast.error(error.message || '操作失败');
         emit('change', previous, error);
     } finally {
         submitting.value = false;
@@ -64,6 +67,7 @@ const toggleSubscribe = async () => {
         class="column-subscribe-button"
         :class="{ compact, active: localSubscribed }"
         :disabled="submitting"
+        data-testid="column-subscribe-button"
         @click="toggleSubscribe"
     >
         {{ localSubscribed ? '已订阅' : '订阅专栏' }}

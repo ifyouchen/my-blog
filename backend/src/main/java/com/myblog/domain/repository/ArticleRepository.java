@@ -2,7 +2,9 @@ package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.valueobject.ArticleId;
+import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,12 +36,55 @@ public interface ArticleRepository {
     List<Article> findPublished(String keyword, String category, String tag, String sort);
 
     /**
+     * 分页查询已发布文章。
+     *
+     * @param keyword 关键字
+     * @param category 分类
+     * @param tag 标签
+     * @param sort 排序方式
+     * @param limit 返回数量限制
+     * @param offset 偏移量
+     * @return 已发布文章列表
+     */
+    List<Article> findPublishedWithLimit(String keyword, String category, String tag, String sort, Integer limit, Integer offset);
+
+    /**
+     * 统计已发布文章数量。
+     *
+     * @param keyword 关键字
+     * @param category 分类
+     * @param tag 标签
+     * @return 已发布文章数量
+     */
+    long countPublished(String keyword, String category, String tag);
+
+    /**
      * 查询作者自己的文章列表。
      *
      * @param authorId 作者 ID
      * @return 作者文章列表
      */
     List<Article> findByAuthorId(Long authorId);
+
+    /**
+     * 分页查询作者文章列表。
+     *
+     * @param authorId 作者 ID
+     * @param status 状态筛选
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 作者文章列表
+     */
+    List<Article> findByAuthorId(Long authorId, String status, int page, int pageSize);
+
+    /**
+     * 统计作者文章数量。
+     *
+     * @param authorId 作者 ID
+     * @param status 状态筛选
+     * @return 文章数量
+     */
+    long countByAuthorId(Long authorId, String status);
 
     /**
      * 查询作者已发布文章列表。
@@ -50,6 +95,23 @@ public interface ArticleRepository {
     List<Article> findPublishedByAuthorId(Long authorId);
 
     /**
+     * 查询作者最新文章。
+     *
+     * @param authorId 作者 ID
+     * @return 最新文章
+     */
+    Optional<Article> findLatestByAuthorId(Long authorId);
+
+    /**
+     * 查询作者文章聚合数据。
+     *
+     * @param authorId 作者 ID
+     * @param status 状态筛选
+     * @return 聚合数据
+     */
+    AuthorArticleMetricsDO summarizeByAuthor(Long authorId, String status);
+
+    /**
      * 查询作者热门文章列表。
      *
      * @param authorId 作者 ID
@@ -57,6 +119,120 @@ public interface ArticleRepository {
      * @return 热门文章列表
      */
     List<Article> findHotPublishedByAuthorId(Long authorId, int limit);
+
+    /**
+     * 分页查询关注作者的已发布文章。
+     *
+     * @param authorIds 作者 ID 列表
+     * @param sort 排序方式
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 文章列表
+     */
+    List<Article> findPublishedByAuthorIds(List<Long> authorIds, String sort, int page, int pageSize);
+
+    /**
+     * 统计关注作者的已发布文章数量。
+     *
+     * @param authorIds 作者 ID 列表
+     * @return 文章数量
+     */
+    long countPublishedByAuthorIds(List<Long> authorIds);
+
+    /**
+     * 增强分页查询已发布文章。
+     *
+     * @param keyword 关键字
+     * @param category 分类
+     * @param tag 标签
+     * @param sort 排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom 起始日期
+     * @param dateTo 结束日期
+     * @param limit 返回数量限制
+     * @param offset 偏移量
+     * @return 已发布文章列表
+     */
+    List<Article> findPublishedEnhanced(String keyword, String category, String tag, String sort,
+                                       String authorKeyword, String dateFrom, String dateTo,
+                                       Integer limit, Integer offset);
+
+    /**
+     * 统计增强查询已发布文章数量。
+     *
+     * @param keyword 关键字
+     * @param category 分类
+     * @param tag 标签
+     * @param authorKeyword 作者关键字
+     * @param dateFrom 起始日期
+     * @param dateTo 结束日期
+     * @return 已发布文章数量
+     */
+    long countPublishedEnhanced(String keyword, String category, String tag,
+                               String authorKeyword, String dateFrom, String dateTo);
+
+    /**
+     * 增强分页查询关注作者的已发布文章。
+     *
+     * @param authorIds 作者 ID 列表
+     * @param keyword 关键字
+     * @param category 分类
+     * @param tag 标签
+     * @param sort 排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom 起始日期
+     * @param dateTo 结束日期
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 文章列表
+     */
+    List<Article> findPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
+                                                   String tag, String sort, String authorKeyword,
+                                                   String dateFrom, String dateTo,
+                                                   int page, int pageSize);
+
+    /**
+     * 统计增强查询关注作者的已发布文章数量。
+     *
+     * @param authorIds 作者 ID 列表
+     * @param keyword 关键字
+     * @param category 分类
+     * @param tag 标签
+     * @param authorKeyword 作者关键字
+     * @param dateFrom 起始日期
+     * @param dateTo 结束日期
+     * @return 文章数量
+     */
+    long countPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
+                                           String tag, String authorKeyword, String dateFrom, String dateTo);
+
+    /**
+     * 分页查询后台文章列表。
+     *
+     * @param status 状态筛选
+     * @param keyword 关键字
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 文章列表
+     */
+    List<Article> findAdminPage(String status, String keyword, String category, int page, int pageSize);
+
+    /**
+     * 统计后台文章数量。
+     *
+     * @param status 状态筛选
+     * @param keyword 关键字
+     * @return 文章数量
+     */
+    long countAdminPage(String status, String keyword, String category);
+
+    /**
+     * 根据文章 ID 批量查询文章。
+     *
+     * @param articleIds 文章 ID 列表
+     * @return 文章列表
+     */
+    List<Article> findByIds(List<Long> articleIds);
 
     /**
      * 保存文章。
@@ -79,4 +255,57 @@ public interface ArticleRepository {
      * @return 文章 ID
      */
     Long nextId();
+
+    /**
+     * 统计已发布文章数量。
+     *
+     * @return 已发布文章数量
+     */
+    long countPublished();
+
+    /**
+     * 统计有至少一篇已发布文章的作者数量。
+     *
+     * @return 作者去重数量
+     */
+    long countPublishedAuthors();
+
+    /**
+     * 统计未删除文章数量。
+     *
+     * @return 文章数量
+     */
+    long countVisible();
+
+    /**
+     * 按状态统计文章数量。
+     *
+     * @param status 状态
+     * @return 文章数量
+     */
+    long countByStatus(String status);
+
+    /**
+     * 统计指定日期创建的文章数量。
+     *
+     * @param date 日期
+     * @return 文章数量
+     */
+    long countCreatedOn(LocalDate date);
+
+    /**
+     * 统计指定日期之后创建的文章数量。
+     *
+     * @param date 起始日期
+     * @return 文章数量
+     */
+    long countCreatedSince(LocalDate date);
+
+    /**
+     * 查询作者文章统计聚合。
+     *
+     * @param limit 返回数量限制
+     * @return 作者文章统计列表
+     */
+    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(int limit);
 }

@@ -11,7 +11,7 @@ import { useSession } from '@/stores/session';
 
 const route = useRoute();
 const router = useRouter();
-const { isLoggedIn } = useSession();
+const { isLoggedIn, state } = useSession();
 
 const articles = ref([]);
 const followingUsers = ref([]);
@@ -50,6 +50,7 @@ const fetchMeta = async () => {
         ]);
         followingUsers.value = followingList || [];
         recommendedAuthors.value = (authorRanks || [])
+            .filter((item) => item.user.id !== state.user?.id)
             .filter((item) => !followingUsers.value.some((author) => author.id === item.user.id));
     } finally {
         sidebarLoading.value = false;
@@ -82,7 +83,7 @@ const fetchFeed = async () => {
 };
 
 const refreshAll = async () => {
-    await fetchMeta();
+    await Promise.all([fetchMeta(), fetchFeed()]);
 };
 
 const changePage = async (page) => {
@@ -98,14 +99,14 @@ const changeSort = async (sort) => {
 
 const handleFollowChange = async () => {
     currentPage.value = 1;
-    await Promise.all([fetchMeta(), fetchFeed()]);
+    await refreshAll();
 };
 
-onMounted(refreshAll);
+onMounted(fetchMeta);
 
 watch(isLoggedIn, async () => {
     currentPage.value = 1;
-    await Promise.all([fetchMeta(), fetchFeed()]);
+    await refreshAll();
 });
 
 watch(() => route.query, async (query) => {
@@ -117,7 +118,7 @@ watch(() => route.query, async (query) => {
 
 <template>
     <SiteHeader />
-    <main class="page-shell">
+    <main class="page-shell" data-testid="following-page">
         <section class="following-hero">
             <p class="eyebrow">关注</p>
             <h1>追踪你在意的作者更新</h1>
@@ -131,7 +132,7 @@ watch(() => route.query, async (query) => {
 
         <div class="content-grid">
             <section class="following-main">
-                <div v-if="!isLoggedIn" class="placeholder-panel">
+                <div v-if="!isLoggedIn" class="placeholder-panel" data-testid="following-login-empty">
                     <p class="eyebrow">登录后查看</p>
                     <h1>先登录，再建立自己的关注流</h1>
                     <p>关注作者后，这里会变成你的私人内容更新入口。</p>
@@ -166,14 +167,14 @@ watch(() => route.query, async (query) => {
                     <div v-if="sidebarLoading" class="sidebar-state">加载中...</div>
                     <div v-else-if="!isLoggedIn" class="sidebar-state">登录后查看关注作者</div>
                     <div v-else-if="!followingUsers.length" class="sidebar-state">你还没有关注任何作者</div>
-                    <div v-else class="following-author-list">
+                    <div v-else class="following-author-list" data-testid="following-author-list">
                         <RouterLink
                             v-for="author in followingUsers"
                             :key="author.id"
                             class="following-author-item"
                             :to="`/users/${author.id}`"
                         >
-                            <img :src="author.avatar" alt="作者头像">
+                            <img :src="author.avatar" alt="作者头像" loading="lazy">
                             <div>
                                 <strong>{{ author.name }}</strong>
                                 <span>{{ author.bio || '持续分享工程实践与技术经验。' }}</span>
@@ -190,14 +191,14 @@ watch(() => route.query, async (query) => {
                         </div>
                     </div>
                     <div v-if="sidebarLoading" class="sidebar-state">加载中...</div>
-                    <div v-else class="rank-author-list">
+                    <div v-else class="rank-author-list" data-testid="following-recommended-authors">
                         <div
                             v-for="item in recommendedAuthors"
                             :key="item.user.id"
                             class="rank-author-item"
                         >
                             <div class="rank-author-info">
-                                <img :src="item.user.avatar" alt="作者头像">
+                                <img :src="item.user.avatar" alt="作者头像" loading="lazy">
                                 <div>
                                     <RouterLink :to="`/users/${item.user.id}`">
                                         {{ item.user.name }}
@@ -254,6 +255,7 @@ watch(() => route.query, async (query) => {
     background: #f8fbfa;
     border: 1px solid rgba(219, 227, 223, 0.92);
     border-radius: 8px;
+    transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .following-author-item {
@@ -291,6 +293,15 @@ watch(() => route.query, async (query) => {
     grid-template-columns: 48px minmax(0, 1fr);
     gap: 12px;
     align-items: center;
+}
+
+.following-author-item:hover,
+.following-author-item:focus-visible,
+.rank-author-item:hover {
+    background: rgba(15, 143, 117, 0.04);
+    border-color: rgba(15, 143, 117, 0.14);
+    box-shadow: 0 12px 20px rgba(24, 32, 31, 0.05);
+    transform: translateY(-1px);
 }
 
 @media (max-width: 960px) {

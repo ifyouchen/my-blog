@@ -3,6 +3,7 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 import com.myblog.infrastructure.repository.persistence.entity.CommentDO;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -16,6 +17,19 @@ public interface CommentMapper {
     CommentDO selectById(@Param("id") Long id);
 
     List<CommentDO> selectAll();
+
+    long countAll();
+
+    long countCreatedOn(@Param("date") LocalDate date);
+
+    long countCreatedSince(@Param("date") LocalDate date);
+
+    List<CommentDO> selectAdminPage(@Param("articleId") Long articleId,
+                                    @Param("keyword") String keyword,
+                                    @Param("offset") int offset,
+                                    @Param("limit") int limit);
+
+    long countAdminPage(@Param("articleId") Long articleId, @Param("keyword") String keyword);
 
     List<CommentDO> selectByArticleId(@Param("articleId") Long articleId);
 

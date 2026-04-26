@@ -10,10 +10,16 @@ import com.myblog.shared.result.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.myblog.shared.exception.ApplicationException;
+import com.myblog.shared.exception.ErrorCode;
 
 /**
  * 管理员操作日志应用服务。
@@ -69,15 +75,40 @@ public class AdminLogAppService {
      *
      * @param page 页码
      * @param pageSize 每页数量
+     * @param operation 操作类型
+     * @param resultStatus 结果状态
+     * @param dateFrom 开始日期
+     * @param dateTo 结束日期
      * @return 日志分页结果
      */
-    public PageResult<Map<String, Object>> getLogs(int page, int pageSize) {
-        List<AdminLog> adminLogs = adminLogRepository.findPage(page, pageSize);
+    public PageResult<Map<String, Object>> getLogs(int page, int pageSize, String operation,
+                                                   String resultStatus, String dateFrom, String dateTo) {
+        LocalDateTime normalizedDateFrom = parseDateStart(dateFrom);
+        LocalDateTime normalizedDateTo = parseDateEnd(dateTo);
+        validateDateRange(normalizedDateFrom, normalizedDateTo);
+        List<AdminLog> adminLogs = adminLogRepository.findPage(
+            page,
+            pageSize,
+            normalizeFilter(operation),
+            normalizeFilter(resultStatus),
+            normalizedDateFrom,
+            normalizedDateTo
+        );
         List<Map<String, Object>> items = new ArrayList<Map<String, Object>>(adminLogs.size());
         for (AdminLog adminLog : adminLogs) {
             items.add(toMap(adminLog));
         }
-        return new PageResult<Map<String, Object>>(items, page, pageSize, adminLogRepository.countAll());
+        return new PageResult<Map<String, Object>>(
+            items,
+            page,
+            pageSize,
+            adminLogRepository.countAll(
+                normalizeFilter(operation),
+                normalizeFilter(resultStatus),
+                normalizedDateFrom,
+                normalizedDateTo
+            )
+        );
     }
 
     /**
@@ -120,6 +151,65 @@ public class AdminLogAppService {
             return objectMapper.writeValueAsString(snapshot);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("管理员日志快照序列化失败", exception);
+        }
+    }
+
+    /**
+     * 规范化筛选值。
+     *
+     * @param value 原始值
+     * @return 规范化结果
+     */
+    private String normalizeFilter(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    /**
+     * 校验日期区间。
+     *
+     * @param dateFrom 开始时间
+     * @param dateTo 结束时间
+     */
+    private void validateDateRange(LocalDateTime dateFrom, LocalDateTime dateTo) {
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "开始日期不能晚于结束日期");
+        }
+    }
+
+    /**
+     * 解析开始日期。
+     *
+     * @param value 日期字符串
+     * @return 开始时间
+     */
+    private LocalDateTime parseDateStart(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim()).atStartOfDay();
+        } catch (DateTimeParseException exception) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "开始日期格式不正确，应为 yyyy-MM-dd");
+        }
+    }
+
+    /**
+     * 解析结束日期。
+     *
+     * @param value 日期字符串
+     * @return 结束时间
+     */
+    private LocalDateTime parseDateEnd(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim()).atTime(LocalTime.MAX);
+        } catch (DateTimeParseException exception) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "结束日期格式不正确，应为 yyyy-MM-dd");
         }
     }
 }

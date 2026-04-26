@@ -50,7 +50,7 @@ onMounted(fetchColumns);
 
 <template>
     <SiteHeader />
-    <main class="page-shell">
+    <main class="page-shell" data-testid="columns-page">
         <section class="columns-hero">
             <p class="eyebrow">专栏</p>
             <h1>按主题连续阅读，而不是零散跳转</h1>
@@ -61,33 +61,48 @@ onMounted(fetchColumns);
             <div v-if="loading" class="columns-state">专栏加载中...</div>
             <div v-else-if="errorMessage" class="columns-state error">{{ errorMessage }}</div>
             <div v-else-if="!columns.length" class="columns-state">暂时还没有可浏览的专栏。</div>
-            <div v-else class="columns-grid">
+            <div v-else class="columns-grid" data-testid="columns-grid">
                 <article
                     v-for="column in columns"
                     :key="column.id"
                     class="column-card"
+                    data-testid="column-card"
+                    role="link"
+                    tabindex="0"
+                    @click="router.push(`/columns/${column.id}`)"
+                    @keydown.enter="router.push(`/columns/${column.id}`)"
+                    @keydown.space.prevent="router.push(`/columns/${column.id}`)"
                 >
-                    <button class="column-card-cover" type="button" @click="router.push(`/columns/${column.id}`)">
-                        <img :src="column.coverUrl" :alt="`${column.title} 封面`">
-                    </button>
+                    <div class="column-card-cover" :aria-label="`查看专栏：${column.title}`">
+                        <img :src="column.coverUrl" :alt="`${column.title} 封面`" loading="lazy">
+                    </div>
                     <div class="column-card-body">
                         <div class="column-card-meta">
                             <span>{{ column.articleCount }} 篇文章</span>
                             <span>{{ column.subscriberCount }} 人订阅</span>
                         </div>
                         <h2>
-                            <RouterLink :to="`/columns/${column.id}`">{{ column.title }}</RouterLink>
+                            {{ column.title }}
                         </h2>
                         <p>{{ column.summary }}</p>
                         <div class="column-card-footer">
-                            <RouterLink class="column-author" :to="`/users/${column.author.id}`">
-                                <img :src="column.author.avatar" alt="作者头像">
+                            <RouterLink
+                                class="column-author"
+                                :to="`/users/${column.author.id}`"
+                                @click.stop
+                                @keydown.enter.stop
+                                @keydown.space.stop
+                            >
+                                <img :src="column.author.avatar" alt="作者头像" loading="lazy">
                                 <span>{{ column.author.name }}</span>
                             </RouterLink>
                             <ColumnSubscribeButton
                                 :column-id="column.id"
                                 :subscribed="column.subscribed"
                                 compact
+                                @click.stop
+                                @keydown.enter.stop
+                                @keydown.space.stop
                                 @change="(subscribed) => updateSubscribedState(column, subscribed)"
                             />
                         </div>
@@ -133,15 +148,26 @@ onMounted(fetchColumns);
     border: 1px solid rgba(219, 227, 223, 0.92);
     border-radius: 8px;
     box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.column-card:hover,
+.column-card:focus-visible {
+    background: color-mix(in srgb, var(--surface-soft) 34%, white);
+    border-color: rgba(15, 143, 117, 0.18);
+    box-shadow: 0 18px 32px rgba(24, 32, 31, 0.08);
+    transform: translateY(-2px);
+}
+
+.column-card:focus-visible {
+    outline: 2px solid rgba(15, 143, 117, 0.22);
+    outline-offset: 4px;
 }
 
 .column-card-cover {
     display: block;
     width: 100%;
-    padding: 0;
-    cursor: pointer;
-    background: transparent;
-    border: 0;
 }
 
 .column-card-cover img {
@@ -149,6 +175,12 @@ onMounted(fetchColumns);
     aspect-ratio: 16 / 9;
     object-fit: cover;
     display: block;
+    transition: transform 0.22s ease;
+}
+
+.column-card:hover .column-card-cover img,
+.column-card:focus-visible .column-card-cover img {
+    transform: scale(1.04);
 }
 
 .column-card-body {
@@ -170,9 +202,9 @@ onMounted(fetchColumns);
     margin: 0;
 }
 
-.column-card h2 a {
+.column-card h2 {
     color: var(--text);
-    text-decoration: none;
+    transition: color 0.18s ease;
 }
 
 .column-card p {
@@ -193,6 +225,9 @@ onMounted(fetchColumns);
     align-items: center;
     color: var(--text);
     text-decoration: none;
+    position: relative;
+    z-index: 1;
+    transition: color 0.18s ease;
 }
 
 .column-author img {
@@ -200,6 +235,15 @@ onMounted(fetchColumns);
     height: 32px;
     border-radius: 8px;
     object-fit: cover;
+}
+
+.column-card:hover h2,
+.column-card:focus-visible h2,
+.column-card:hover .column-author,
+.column-card:focus-visible .column-author,
+.column-author:hover,
+.column-author:focus-visible {
+    color: var(--brand-strong);
 }
 
 .columns-state {

@@ -24,6 +24,7 @@ const props = defineProps({
 const emit = defineEmits(['change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const toast = inject('toast', { success: () => {}, error: () => {} });
 const submitting = ref(false);
 const localFollowed = ref(Boolean(props.followed));
 
@@ -52,9 +53,11 @@ const toggleFollow = async () => {
         } else {
             await followUserApi(props.userId);
         }
+        toast.success(localFollowed.value ? '已关注' : '已取消关注');
         emit('change', localFollowed.value);
     } catch (error) {
         localFollowed.value = previous;
+        toast.error(error.message || '操作失败');
         emit('change', previous, error);
     } finally {
         submitting.value = false;
@@ -68,6 +71,7 @@ const toggleFollow = async () => {
         class="author-follow-button"
         :class="{ compact, active: localFollowed }"
         :disabled="disabled || submitting"
+        data-testid="author-follow-button"
         @click="toggleFollow"
     >
         {{ localFollowed ? '已关注' : '关注' }}

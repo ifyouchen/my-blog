@@ -249,7 +249,7 @@ function goReplyPage(step) {
 </script>
 
 <template>
-    <article class="comment-root-item">
+    <article class="comment-root-item" data-testid="comment-root-item">
         <img class="comment-root-avatar" :src="localComment.user.avatar" :alt="localComment.user.name">
         <div class="comment-root-main">
             <header class="comment-root-header">
@@ -266,14 +266,14 @@ function goReplyPage(step) {
             </div>
 
             <div class="comment-root-actions">
-                <button type="button" :class="{ active: localComment.liked }" @click="toggleLike(localComment)">
+                <button type="button" :class="{ active: localComment.liked }" data-testid="comment-like-button" @click="toggleLike(localComment)">
                     {{ localComment.liked ? '已赞' : '点赞' }} {{ localComment.likeCount }}
                 </button>
-                <button type="button" @click="startReply(localComment)">回复</button>
-                <button v-if="localComment.canPin" type="button" @click="togglePin">
+                <button type="button" data-testid="comment-reply-button" @click="startReply(localComment)">回复</button>
+                <button v-if="localComment.canPin" type="button" data-testid="comment-pin-button" @click="togglePin">
                     {{ localComment.pinned ? '取消置顶' : '置顶' }}
                 </button>
-                <button v-if="localComment.canDelete" type="button" class="danger" @click="removeComment(localComment)">
+                <button v-if="localComment.canDelete" type="button" class="danger" data-testid="comment-delete-button" @click="removeComment(localComment)">
                     删除
                 </button>
             </div>
@@ -295,11 +295,11 @@ function goReplyPage(step) {
                                 {{ reply.content }}
                             </p>
                             <div class="comment-root-actions reply-actions">
-                                <button type="button" :class="{ active: reply.liked }" @click="toggleLike(reply)">
+                                <button type="button" :class="{ active: reply.liked }" data-testid="reply-like-button" @click="toggleLike(reply)">
                                     {{ reply.liked ? '已赞' : '点赞' }} {{ reply.likeCount }}
                                 </button>
-                                <button type="button" @click="startReply(reply)">回复</button>
-                                <button v-if="reply.canDelete" type="button" class="danger" @click="removeComment(reply)">
+                                <button type="button" data-testid="reply-reply-button" @click="startReply(reply)">回复</button>
+                                <button v-if="reply.canDelete" type="button" class="danger" data-testid="reply-delete-button" @click="removeComment(reply)">
                                     删除
                                 </button>
                             </div>

@@ -38,6 +38,77 @@
         ORDER BY id ASC
     </select>
 
+    <select id="selectAdminPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                username LIKE CONCAT('%', #{keyword}, '%')
+                OR nickname LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAdminPage" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                username LIKE CONCAT('%', #{keyword}, '%')
+                OR nickname LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE deleted_at IS NULL
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE deleted_at IS NULL
+        AND status = #{status}
+    </select>
+
+    <select id="countCreatedOn" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE deleted_at IS NULL
+        AND DATE(created_at) = #{date}
+    </select>
+
+    <select id="countCreatedSince" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user
+        WHERE deleted_at IS NULL
+        AND DATE(created_at) &gt;= #{date}
+    </select>
+
     <select id="selectByAccount" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_user
@@ -116,4 +187,64 @@
         WHERE id = #{id}
         AND deleted_at IS NULL
     </update>
+
+    <select id="searchUsers" resultMap="BaseResultMap">
+        SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.avatar_url, u.bio, u.role, u.status,
+               u.created_at, u.updated_at, u.deleted_at, u.version
+        FROM blog_user u
+        LEFT JOIN (
+            SELECT following_user_id, COUNT(*) as fc
+            FROM blog_user_follow
+            WHERE deleted_at IS NULL
+            GROUP BY following_user_id
+        ) fc ON u.id = fc.following_user_id
+        WHERE u.deleted_at IS NULL
+        AND u.status = 'NORMAL'
+        <if test="keyword != null and keyword != ''">
+            AND (
+                u.username LIKE CONCAT('%', #{keyword}, '%')
+                OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+                OR u.bio LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY
+        <choose>
+            <when test="sort == 'followers'">
+                COALESCE(fc.fc, 0) DESC, u.id DESC
+            </when>
+            <otherwise>
+                u.id DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countSearchUsers" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_user u
+        WHERE u.deleted_at IS NULL
+        AND u.status = 'NORMAL'
+        <if test="keyword != null and keyword != ''">
+            AND (
+                u.username LIKE CONCAT('%', #{keyword}, '%')
+                OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+                OR u.bio LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </select>
+
+    <select id="countFollowersByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_user_follow
+        WHERE following_user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="countPublishedArticlesByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE author_id = #{userId}
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+    </select>
 </mapper>

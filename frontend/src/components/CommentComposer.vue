@@ -44,7 +44,7 @@ const avatarSrc = computed(() => {
 </script>
 
 <template>
-    <div :class="['comment-composer', { compact }]">
+    <div :class="['comment-composer', { compact }]" data-testid="comment-composer">
         <img class="comment-composer-avatar" :src="avatarSrc" alt="用户头像">
         <div class="comment-composer-main">
             <textarea
@@ -52,6 +52,7 @@ const avatarSrc = computed(() => {
                 class="comment-composer-input"
                 :rows="compact ? 3 : 4"
                 :placeholder="placeholder"
+                data-testid="comment-composer-input"
                 @input="emit('update:modelValue', $event.target.value)"
             />
             <div class="comment-composer-footer">
@@ -61,6 +62,7 @@ const avatarSrc = computed(() => {
                         v-if="showCancel"
                         type="button"
                         class="comment-composer-cancel"
+                        data-testid="comment-composer-cancel"
                         @click="emit('cancel')"
                     >
                         取消
@@ -69,6 +71,7 @@ const avatarSrc = computed(() => {
                         type="button"
                         class="comment-composer-submit"
                         :disabled="submitting"
+                        data-testid="comment-composer-submit"
                         @click="emit('submit')"
                     >
                         {{ submitting ? '提交中...' : submitText }}

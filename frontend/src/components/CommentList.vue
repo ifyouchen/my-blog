@@ -30,7 +30,7 @@ const loading = ref(false);
 const errorMessage = ref('');
 const sort = ref('hot');
 const currentPage = ref(1);
-const pageSize = 20;
+const pageSize = 10;
 const rootTotal = ref(0);
 const commentCount = ref(props.initialCount || 0);
 
@@ -133,13 +133,13 @@ watch(() => props.articleId, () => {
 </script>
 
 <template>
-    <section class="comment-panel">
+    <section class="comment-panel" data-testid="comment-panel">
         <header class="comment-panel-header">
             <div>
                 <h2 class="comment-panel-title">评论 {{ commentCount }}</h2>
                 <p class="comment-panel-subtitle">先看置顶，再看最热讨论，楼中楼会在当前评论下展开。</p>
             </div>
-            <div class="comment-sort-tabs">
+            <div class="comment-sort-tabs" data-testid="comment-sort-tabs">
                 <button
                     type="button"
                     :class="{ active: sort === 'hot' }"
@@ -173,7 +173,7 @@ watch(() => props.articleId, () => {
         <div v-else-if="!comments.length" class="comment-panel-state">
             还没有评论，来写下第一条想法。
         </div>
-        <div v-else class="comment-panel-list">
+        <div v-else class="comment-panel-list" data-testid="comment-list">
             <CommentRootItem
                 v-for="comment in comments"
                 :key="comment.id"

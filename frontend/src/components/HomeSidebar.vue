@@ -1,15 +1,21 @@
 <script setup>
-import { inject, onMounted, ref } from 'vue';
+import { computed, inject } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useRouter } from 'vue-router';
-import { getRecommendedColumnsApi } from '@/api/columns';
-import { getAuthorRankingsApi } from '@/api/rankings';
 
 const router = useRouter();
 const loginModal = inject('loginModal', { requireLogin: () => false });
-const specials = ref([]);
-const authors = ref([]);
-const loading = ref(false);
+const props = defineProps({
+    specials: {
+        type: Array,
+        default: () => []
+    },
+    authors: {
+        type: Array,
+        default: () => []
+    }
+});
+const loading = computed(() => false);
 
 const writeArticle = () => {
     const canContinue = loginModal.requireLogin(() => router.push('/editor/new'), {
@@ -22,29 +28,11 @@ const writeArticle = () => {
     }
 };
 
-const fetchSidebarData = async () => {
-    loading.value = true;
-    try {
-        const [columnItems, authorItems] = await Promise.all([
-            getRecommendedColumnsApi(3),
-            getAuthorRankingsApi(3)
-        ]);
-        specials.value = columnItems || [];
-        authors.value = authorItems || [];
-    } catch (error) {
-        specials.value = [];
-        authors.value = [];
-    } finally {
-        loading.value = false;
-    }
-};
-
-onMounted(fetchSidebarData);
 </script>
 
 <template>
-    <aside class="sidebar" aria-label="侧边栏">
-        <section class="side-section">
+    <aside class="sidebar" aria-label="侧边栏" data-testid="home-sidebar">
+        <section class="side-section" data-testid="home-specials">
             <div class="section-heading compact">
                 <div>
                     <p class="eyebrow">本周</p>
@@ -53,19 +41,19 @@ onMounted(fetchSidebarData);
             </div>
             <div class="special-list">
                 <RouterLink
-                    v-for="special in specials"
+                    v-for="special in props.specials"
                     :key="special.id"
                     class="special-item"
                     :to="`/columns/${special.id}`"
                 >
-                    <img :src="special.coverUrl" :alt="`${special.title} 封面`">
+                    <img :src="special.coverUrl" :alt="`${special.title} 封面`" loading="lazy">
                     <span>{{ special.title }}</span>
                 </RouterLink>
-                <p v-if="!loading && !specials.length" class="sidebar-empty">专栏内容正在整理中。</p>
+                <p v-if="!loading && !props.specials.length" class="sidebar-empty">专栏内容正在整理中。</p>
             </div>
         </section>
 
-        <section class="side-section">
+        <section class="side-section" data-testid="home-authors">
             <div class="section-heading compact">
                 <div>
                     <p class="eyebrow">创作者</p>
@@ -73,25 +61,27 @@ onMounted(fetchSidebarData);
                 </div>
             </div>
             <ol class="author-rank">
-                <li v-for="(author, index) in authors" :key="author.user.id">
+                <li v-for="(author, index) in props.authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
-                    <img :src="author.user.avatar" alt="作者头像">
+                    <RouterLink class="home-author-avatar" :to="`/users/${author.user.id}`">
+                        <img :src="author.user.avatar" alt="作者头像" loading="lazy">
+                    </RouterLink>
                     <div>
                         <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
                         <span>{{ author.totalViewCount }} 阅读 · {{ author.articleCount }} 篇</span>
                     </div>
                 </li>
-                <li v-if="!loading && !authors.length" class="sidebar-empty">
+                <li v-if="!loading && !props.authors.length" class="sidebar-empty">
                     作者榜正在生成中。
                 </li>
             </ol>
         </section>
 
-        <section class="side-section write-box">
+        <section class="side-section write-box" data-testid="home-write-box">
             <p class="eyebrow">开始创作</p>
             <h2>把项目经验写成下一篇文章</h2>
             <p>标题、Markdown、分类、标签、封面图，第一版先把写作路径做顺。</p>
-            <button class="primary-action block" type="button" @click="writeArticle">发布文章</button>
+            <button class="primary-action block" type="button" data-testid="home-write-button" @click="writeArticle">发布文章</button>
         </section>
     </aside>
 </template>
@@ -103,8 +93,24 @@ onMounted(fetchSidebarData);
     line-height: 1.6;
 }
 
+.special-item,
+.author-rank li {
+    transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.special-item:hover,
+.special-item:focus-visible,
+.author-rank li:hover {
+    transform: translateY(-1px);
+}
+
 .author-rank a {
     color: var(--text);
     text-decoration: none;
+}
+
+.home-author-avatar {
+    display: inline-flex;
+    border-radius: 50%;
 }
 </style>

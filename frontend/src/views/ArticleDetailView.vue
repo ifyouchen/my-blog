@@ -2,8 +2,8 @@
 import { computed, ref, watch, onMounted, onUnmounted, inject } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { getArticleApi } from '@/api/articles';
-import { likeArticleApi, unlikeArticleApi, getLikeStatusApi } from '@/api/likes';
-import { favoriteArticleApi, unfavoriteArticleApi, getFavoriteStatusApi } from '@/api/favorites';
+import { likeArticleApi, unlikeArticleApi } from '@/api/likes';
+import { favoriteArticleApi, unfavoriteArticleApi } from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import CommentList from '@/components/CommentList.vue';
@@ -59,6 +59,8 @@ const syncArticleState = () => {
     likeCount.value = article.value.likeCount || 0;
     favoriteCount.value = article.value.favoriteCount || 0;
     commentCount.value = article.value.commentCount || 0;
+    liked.value = Boolean(article.value.liked);
+    favorited.value = Boolean(article.value.favorited);
     feedback.value = '';
 };
 
@@ -98,18 +100,6 @@ const fetchArticle = async () => {
     }
 };
 
-const fetchLikeStatus = async () => {
-    if (!article.value || !remoteArticle.value) {
-        return;
-    }
-    try {
-        const status = await getLikeStatusApi(article.value.id);
-        liked.value = status.liked;
-    } catch (error) {
-        console.error('获取点赞状态失败:', error);
-    }
-};
-
 const toggleLike = async () => {
     const canContinue = loginModal.requireLogin(() => toggleLike(), {
         title: '登录后点赞',
@@ -134,18 +124,6 @@ const toggleLike = async () => {
         }
     } catch (error) {
         feedback.value = error.message || '操作失败';
-    }
-};
-
-const fetchFavoriteStatus = async () => {
-    if (!article.value || !remoteArticle.value) {
-        return;
-    }
-    try {
-        const status = await getFavoriteStatusApi(article.value.id);
-        favorited.value = status.favorited;
-    } catch (error) {
-        console.error('获取收藏状态失败:', error);
     }
 };
 
@@ -186,12 +164,6 @@ const handleScroll = () => {
 
 watch(article, syncArticleState, { immediate: true });
 watch(() => route.params.id, fetchArticle, { immediate: true });
-watch(remoteArticle, (newVal) => {
-    if (newVal) {
-        fetchLikeStatus();
-        fetchFavoriteStatus();
-    }
-}, { immediate: true });
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
@@ -204,8 +176,8 @@ onUnmounted(() => {
 
 <template>
     <SiteHeader />
-    <main v-if="article" class="page-shell detail-layout">
-        <article class="article-main">
+    <main v-if="article" class="page-shell detail-layout" data-testid="article-detail-page">
+        <article class="article-main" data-testid="article-detail-main">
             <img class="article-hero" :src="article.cover" :alt="article.coverAlt">
             <div class="article-body">
                 <div class="post-meta">
@@ -235,7 +207,7 @@ onUnmounted(() => {
                     <p>正文暂时为空，稍后再来看一眼。</p>
                 </section>
 
-                <section class="article-comment">
+                <section class="article-comment" data-testid="article-comments-section">
                     <CommentList
                         v-if="remoteArticle"
                         :article-id="article.id"

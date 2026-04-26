@@ -70,7 +70,7 @@ class AdminControllerTest {
     void shouldRejectNonAdminWhenGettingUsers() {
         AuthContext.set(buildPayload(1002L, "USER"));
 
-        assertThatThrownBy(() -> adminController.getUsers(1, 10, null))
+        assertThatThrownBy(() -> adminController.getUsers(1, 10, null, null))
             .isInstanceOf(ApplicationException.class)
             .hasMessageContaining("仅管理员可访问后台");
     }
@@ -84,10 +84,10 @@ class AdminControllerTest {
         AuthContext.set(buildPayload(1001L, "ADMIN"));
         PageResult<Map<String, Object>> pageResult =
             new PageResult<Map<String, Object>>(Collections.<Map<String, Object>>emptyList(), 1, 10, 0);
-        when(adminLogAppService.getLogs(1, 10)).thenReturn(pageResult);
+        when(adminLogAppService.getLogs(1, 10, null, null, null, null)).thenReturn(pageResult);
 
-        assertThat(adminController.getLogs(1, 10).getData()).isSameAs(pageResult);
-        verify(adminLogAppService).getLogs(1, 10);
+        assertThat(adminController.getLogs(1, 10, null, null, null, null).getData()).isSameAs(pageResult);
+        verify(adminLogAppService).getLogs(1, 10, null, null, null, null);
     }
 
     /**
@@ -98,12 +98,63 @@ class AdminControllerTest {
     void shouldRecordLogWhenUpdatingUserStatus() {
         AuthContext.set(buildPayload(1001L, "ADMIN"));
         Map<String, Object> result = new HashMap<String, Object>();
+        result.put("id", 2001L);
+        result.put("username", "tester");
+        result.put("previousStatus", "NORMAL");
         result.put("status", "DISABLED");
         when(adminAppService.updateUserStatus(2001L, "DISABLED")).thenReturn(result);
 
         assertThat(adminController.updateUserStatus(2001L, "DISABLED", null).getData().get("status"))
             .isEqualTo("DISABLED");
         verify(adminLogAppService).recordOperation(any(RecordAdminLogCommand.class));
+    }
+
+    /**
+     * 管理员查询用户列表时应透传关键字。
+     */
+    @Test
+    @DisplayName("管理员查询用户列表时应透传状态和关键字")
+    void shouldPassFiltersWhenGettingUsers() {
+        AuthContext.set(buildPayload(1001L, "ADMIN"));
+        PageResult<Map<String, Object>> pageResult =
+            new PageResult<Map<String, Object>>(Collections.<Map<String, Object>>emptyList(), 1, 10, 0);
+        when(adminAppService.getUsers(1, 10, "NORMAL", "demo")).thenReturn(pageResult);
+
+        assertThat(adminController.getUsers(1, 10, "NORMAL", "demo").getData()).isSameAs(pageResult);
+        verify(adminAppService).getUsers(1, 10, "NORMAL", "demo");
+    }
+
+    /**
+     * 管理员查询评论列表时应透传筛选参数。
+     */
+    @Test
+    @DisplayName("管理员查询评论列表时应透传文章和关键字筛选")
+    void shouldPassFiltersWhenGettingComments() {
+        AuthContext.set(buildPayload(1001L, "ADMIN"));
+        PageResult<Map<String, Object>> pageResult =
+            new PageResult<Map<String, Object>>(Collections.<Map<String, Object>>emptyList(), 1, 10, 0);
+        when(adminAppService.getComments(1, 10, 101L, "Spring")).thenReturn(pageResult);
+
+        assertThat(adminController.getComments(1, 10, 101L, "Spring").getData()).isSameAs(pageResult);
+        verify(adminAppService).getComments(1, 10, 101L, "Spring");
+    }
+
+    /**
+     * 管理员查询日志时应透传筛选参数。
+     */
+    @Test
+    @DisplayName("管理员查询日志时应透传筛选参数")
+    void shouldPassFiltersWhenGettingLogs() {
+        AuthContext.set(buildPayload(1001L, "ADMIN"));
+        PageResult<Map<String, Object>> pageResult =
+            new PageResult<Map<String, Object>>(Collections.<Map<String, Object>>emptyList(), 1, 10, 0);
+        when(adminLogAppService.getLogs(1, 10, "DELETE_COMMENT", "SUCCESS", "2026-04-01", "2026-04-24"))
+            .thenReturn(pageResult);
+
+        assertThat(
+            adminController.getLogs(1, 10, "DELETE_COMMENT", "SUCCESS", "2026-04-01", "2026-04-24").getData()
+        ).isSameAs(pageResult);
+        verify(adminLogAppService).getLogs(1, 10, "DELETE_COMMENT", "SUCCESS", "2026-04-01", "2026-04-24");
     }
 
     private JwtPayload buildPayload(Long userId, String role) {

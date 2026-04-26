@@ -43,6 +43,50 @@
         ORDER BY created_at DESC
     </select>
 
+    <select id="selectAdminPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        AND status != 'DELETED'
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND title LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAdminPage" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        AND status != 'DELETED'
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND title LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE id IN
+        <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+            #{articleId}
+        </foreach>
+        AND deleted_at IS NULL
+    </select>
+
     <select id="selectPublished" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
@@ -77,6 +121,12 @@
                 ORDER BY published_at DESC, id DESC
             </otherwise>
         </choose>
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+        <if test="offset != null">
+            OFFSET #{offset}
+        </if>
     </select>
 
     <select id="selectByAuthorId" resultMap="BaseResultMap">
@@ -85,6 +135,28 @@
         WHERE author_id = #{authorId}
         AND deleted_at IS NULL
         ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="selectByAuthorIdWithStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByAuthorIdWithStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
     </select>
 
     <select id="selectPublishedByAuthorId" resultMap="BaseResultMap">
@@ -96,6 +168,34 @@
         ORDER BY published_at DESC, id DESC
     </select>
 
+    <select id="selectLatestByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND deleted_at IS NULL
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectAuthorMetrics" resultMap="AuthorArticleMetricsResultMap">
+        SELECT
+            COUNT(*) AS article_count,
+            COALESCE(SUM(view_count), 0) AS total_views,
+            COALESCE(SUM(like_count), 0) AS total_likes,
+            COALESCE(SUM(favorite_count), 0) AS total_favorites,
+            COALESCE(SUM(comment_count), 0) AS total_comments,
+            SUM(CASE WHEN status = 'DRAFT' THEN 1 ELSE 0 END) AS draft_count,
+            SUM(CASE WHEN status = 'PUBLISHED' THEN 1 ELSE 0 END) AS published_count,
+            SUM(CASE WHEN status = 'OFFLINE' THEN 1 ELSE 0 END) AS offline_count,
+            SUM(CASE WHEN status = 'DELETED' THEN 1 ELSE 0 END) AS deleted_count
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
     <select id="selectHotPublishedByAuthorId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
@@ -104,6 +204,40 @@
         AND deleted_at IS NULL
         ORDER BY view_count DESC, like_count DESC, published_at DESC, id DESC
         LIMIT #{limit}
+    </select>
+
+    <select id="selectPublishedByAuthorIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE author_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        <choose>
+            <when test="sort == 'featured'">
+                ORDER BY like_count DESC, published_at DESC, id DESC
+            </when>
+            <when test="sort == 'latest'">
+                ORDER BY published_at DESC, id DESC
+            </when>
+            <otherwise>
+                ORDER BY view_count DESC, published_at DESC, id DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPublishedByAuthorIds" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE author_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
     </select>
 
     <select id="countById" resultType="int">
@@ -183,6 +317,17 @@
         ORDER BY id ASC
     </select>
 
+    <select id="selectTagRowsByArticleIds" resultType="com.myblog.infrastructure.repository.persistence.entity.ArticleTagRowDO">
+        SELECT article_id AS articleId, tag_name AS tagName
+        FROM blog_article_tag
+        WHERE article_id IN
+        <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+            #{articleId}
+        </foreach>
+        AND deleted_at IS NULL
+        ORDER BY article_id ASC, id ASC
+    </select>
+
     <update id="logicDeleteTagsByArticleId">
         UPDATE blog_article_tag
         SET deleted_at = NOW(),
@@ -212,4 +357,298 @@
         INSERT INTO blog_article_tag (article_id, tag_name)
         VALUES (#{articleId}, #{tagName})
     </insert>
+
+    <select id="countPublished" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                title LIKE CONCAT('%', #{keyword}, '%')
+                OR summary LIKE CONCAT('%', #{keyword}, '%')
+                OR content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND id IN (
+                SELECT article_id
+                FROM blog_article_tag
+                WHERE tag_name = #{tag}
+                AND deleted_at IS NULL
+            )
+        </if>
+    </select>
+
+    <select id="selectPublishedEnhanced" resultMap="BaseResultMap">
+        SELECT a.id, a.author_id, a.title, a.summary, a.content, a.cover_url, a.category, a.status,
+               a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
+               a.created_at, a.updated_at, a.deleted_at, a.version
+        FROM blog_article a
+        LEFT JOIN blog_user u ON a.author_id = u.id
+        WHERE a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                a.title LIKE CONCAT('%', #{keyword}, '%')
+                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR a.content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND a.category = #{category}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND a.id IN (
+                SELECT article_id
+                FROM blog_article_tag
+                WHERE tag_name = #{tag}
+                AND deleted_at IS NULL
+            )
+        </if>
+        <if test="authorKeyword != null and authorKeyword != ''">
+            AND (
+                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
+                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
+            )
+        </if>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+        </if>
+        <choose>
+            <when test="sort == 'hot'">
+                ORDER BY a.view_count DESC, a.published_at DESC, a.id DESC
+            </when>
+            <when test="sort == 'featured'">
+                ORDER BY a.like_count DESC, a.published_at DESC, a.id DESC
+            </when>
+            <otherwise>
+                ORDER BY a.published_at DESC, a.id DESC
+            </otherwise>
+        </choose>
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+        <if test="offset != null">
+            OFFSET #{offset}
+        </if>
+    </select>
+
+    <select id="countPublishedEnhanced" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article a
+        LEFT JOIN blog_user u ON a.author_id = u.id
+        WHERE a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                a.title LIKE CONCAT('%', #{keyword}, '%')
+                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR a.content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND a.category = #{category}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND a.id IN (
+                SELECT article_id
+                FROM blog_article_tag
+                WHERE tag_name = #{tag}
+                AND deleted_at IS NULL
+            )
+        </if>
+        <if test="authorKeyword != null and authorKeyword != ''">
+            AND (
+                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
+                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
+            )
+        </if>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+        </if>
+    </select>
+
+    <select id="selectPublishedEnhancedByAuthorIds" resultMap="BaseResultMap">
+        SELECT a.id, a.author_id, a.title, a.summary, a.content, a.cover_url, a.category, a.status,
+               a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
+               a.created_at, a.updated_at, a.deleted_at, a.version
+        FROM blog_article a
+        LEFT JOIN blog_user u ON a.author_id = u.id
+        WHERE a.author_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        AND a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                a.title LIKE CONCAT('%', #{keyword}, '%')
+                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR a.content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND a.category = #{category}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND a.id IN (
+                SELECT article_id
+                FROM blog_article_tag
+                WHERE tag_name = #{tag}
+                AND deleted_at IS NULL
+            )
+        </if>
+        <if test="authorKeyword != null and authorKeyword != ''">
+            AND (
+                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
+                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
+            )
+        </if>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+        </if>
+        <choose>
+            <when test="sort == 'featured'">
+                ORDER BY a.like_count DESC, a.published_at DESC, a.id DESC
+            </when>
+            <when test="sort == 'latest'">
+                ORDER BY a.published_at DESC, a.id DESC
+            </when>
+            <otherwise>
+                ORDER BY a.view_count DESC, a.published_at DESC, a.id DESC
+            </otherwise>
+        </choose>
+        <if test="offset != null">
+            LIMIT #{offset}
+        </if>
+        <if test="limit != null">
+            OFFSET #{offset}
+        </if>
+    </select>
+
+    <select id="countPublishedEnhancedByAuthorIds" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article a
+        LEFT JOIN blog_user u ON a.author_id = u.id
+        WHERE a.author_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        AND a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                a.title LIKE CONCAT('%', #{keyword}, '%')
+                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR a.content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND a.category = #{category}
+        </if>
+        <if test="tag != null and tag != ''">
+            AND a.id IN (
+                SELECT article_id
+                FROM blog_article_tag
+                WHERE tag_name = #{tag}
+                AND deleted_at IS NULL
+            )
+        </if>
+        <if test="authorKeyword != null and authorKeyword != ''">
+            AND (
+                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
+                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
+            )
+        </if>
+        <if test="dateFrom != null and dateFrom != ''">
+            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+        </if>
+        <if test="dateTo != null and dateTo != ''">
+            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+        </if>
+    </select>
+
+    <select id="countVisible" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE deleted_at IS NULL
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        AND status = #{status}
+    </select>
+
+    <select id="countCreatedOn" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        AND DATE(created_at) = #{date}
+    </select>
+
+    <select id="countCreatedSince" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        AND DATE(created_at) &gt;= #{date}
+    </select>
+
+    <select id="countPublishedAuthors" resultType="long">
+        SELECT COUNT(DISTINCT author_id)
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectAuthorArticleStats" resultMap="AuthorArticleStatsResultMap">
+        SELECT
+            author_id,
+            COUNT(*) as article_count,
+            SUM(view_count) as total_views,
+            SUM(like_count) as total_likes
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        GROUP BY author_id
+        ORDER BY total_views DESC, total_likes DESC
+        LIMIT #{limit}
+    </select>
+
+    <resultMap id="AuthorArticleStatsResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO">
+        <id column="author_id" property="authorId"/>
+        <result column="article_count" property="articleCount"/>
+        <result column="total_views" property="totalViews"/>
+        <result column="total_likes" property="totalLikes"/>
+    </resultMap>
+
+    <resultMap id="AuthorArticleMetricsResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO">
+        <result column="article_count" property="articleCount"/>
+        <result column="total_views" property="totalViews"/>
+        <result column="total_likes" property="totalLikes"/>
+        <result column="total_favorites" property="totalFavorites"/>
+        <result column="total_comments" property="totalComments"/>
+        <result column="draft_count" property="draftCount"/>
+        <result column="published_count" property="publishedCount"/>
+        <result column="offline_count" property="offlineCount"/>
+        <result column="deleted_count" property="deletedCount"/>
+    </resultMap>
 </mapper>

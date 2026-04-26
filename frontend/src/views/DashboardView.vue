@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
-import { getMyFavoritesApi } from '@/api/favorites';
+import { getMyFavoritesApi, unfavoriteArticleApi } from '@/api/favorites';
 import { deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleApi } from '@/api/articles';
 import { useSession } from '@/stores/session';
 
@@ -34,6 +34,7 @@ const overview = ref({
 const isLoading = ref(false);
 const loadError = ref('');
 const feedback = ref('');
+const feedbackType = ref('success');
 const actionLoadingId = ref(null);
 const jumpPage = ref(String(currentPage.value));
 
@@ -44,6 +45,13 @@ const statusOptions = [
     { label: '已下架', value: 'OFFLINE' },
     { label: '已删除', value: 'DELETED' }
 ];
+
+const articleStatusLabels = {
+    DRAFT: '草稿',
+    PUBLISHED: '已发布',
+    OFFLINE: '已下架',
+    DELETED: '已删除'
+};
 
 const syncRoute = (overrides = {}) => {
     const nextPage = String(overrides.page ?? currentPage.value);
@@ -57,9 +65,12 @@ const syncRoute = (overrides = {}) => {
     });
 };
 
-const fetchArticles = async () => {
-    isLoading.value = true;
-    loadError.value = '';
+const fetchArticles = async (options = {}) => {
+    const silent = Boolean(options.silent);
+    if (!silent) {
+        isLoading.value = true;
+        loadError.value = '';
+    }
     try {
         const pageResult = await getMyArticlesApi({
             page: currentPage.value,
@@ -73,7 +84,9 @@ const fetchArticles = async () => {
         total.value = 0;
         loadError.value = error.message || '加载文章失败';
     } finally {
-        isLoading.value = false;
+        if (!silent) {
+            isLoading.value = false;
+        }
     }
 };
 
@@ -129,6 +142,29 @@ const fetchFavorites = async () => {
     }
 };
 
+const removeFavorite = async (article) => {
+    actionLoadingId.value = article.id;
+    feedback.value = '';
+    try {
+        await unfavoriteArticleApi(article.id);
+        favorites.value = favorites.value.filter((item) => item.id !== article.id);
+        total.value = Math.max(0, total.value - 1);
+        feedback.value = `已取消收藏《${article.title}》`;
+        feedbackType.value = 'success';
+        const totalPagesAfterRemove = Math.max(1, Math.ceil(total.value / pageSize));
+        if (!favorites.value.length && currentPage.value > totalPagesAfterRemove) {
+            currentPage.value = totalPagesAfterRemove;
+            syncRoute({ page: totalPagesAfterRemove });
+            return;
+        }
+    } catch (error) {
+        feedback.value = error.message || '取消收藏失败';
+        feedbackType.value = 'error';
+    } finally {
+        actionLoadingId.value = null;
+    }
+};
+
 const fetchCurrentTab = async () => {
     if (!isLoggedIn.value) {
         loadError.value = '请先登录后查看个人中心内容';
@@ -165,7 +201,9 @@ const editArticle = (articleId) => {
 
 const publishOrOfflineArticle = async (article, nextStatus) => {
     actionLoadingId.value = article.id;
-    feedback.value = '';
+    if (feedbackType.value !== 'error') {
+        feedback.value = '';
+    }
     try {
         await updateArticleApi(article.id, {
             title: article.title,
@@ -175,10 +213,10 @@ const publishOrOfflineArticle = async (article, nextStatus) => {
             category: article.category,
             tags: article.tags
         }, nextStatus);
-        feedback.value = nextStatus === 'PUBLISHED' ? '文章已发布' : '文章已下架';
-        await Promise.all([fetchArticles(), fetchOverview()]);
+        await Promise.all([fetchArticles({ silent: true }), fetchOverview()]);
     } catch (error) {
         feedback.value = error.message || (nextStatus === 'PUBLISHED' ? '发布失败' : '下架失败');
+        feedbackType.value = 'error';
     } finally {
         actionLoadingId.value = null;
     }
@@ -191,9 +229,11 @@ const removeArticle = async (articleId) => {
     try {
         await deleteArticleApi(articleId);
         feedback.value = '文章已删除';
+        feedbackType.value = 'success';
         await Promise.all([fetchCurrentTab(), fetchOverview()]);
     } catch (error) {
         feedback.value = error.message || '删除失败';
+        feedbackType.value = 'error';
     }
 };
 
@@ -210,6 +250,26 @@ const metricCards = computed(() => ([
     { label: '总收藏', value: overview.value.totalFavoriteCount, hint: '累计收藏数' },
     { label: '总评论', value: overview.value.totalCommentCount, hint: '累计评论互动' }
 ]));
+
+const getArticleStatusLabel = (status) => articleStatusLabels[status] || status || '未知状态';
+
+const getArticleStatusClass = (status) => ({
+    published: status === 'PUBLISHED',
+    draft: status === 'DRAFT',
+    offline: status === 'OFFLINE',
+    deleted: status === 'DELETED'
+});
+
+const getUpdatedTimeParts = (text) => {
+    if (!text) {
+        return { date: '--', time: '' };
+    }
+    const [date, time] = String(text).split(' ');
+    return {
+        date: date || text,
+        time: time || ''
+    };
+};
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const pageStart = computed(() => {
@@ -285,7 +345,7 @@ watch(isLoggedIn, () => {
 
 <template>
     <SiteHeader />
-    <main class="page-shell dashboard-layout">
+    <main class="page-shell dashboard-layout" :data-testid="isFavorites ? 'dashboard-favorites-page' : 'dashboard-articles-page'">
         <CreatorSidebar />
 
         <section class="dashboard-main">
@@ -336,10 +396,11 @@ watch(isLoggedIn, () => {
                         {{ option.label }}
                     </button>
                 </div>
-                <p v-if="feedback" class="form-message success">{{ feedback }}</p>
+                <p v-if="feedback && feedbackType === 'error'" :class="['dashboard-feedback', feedbackType]">{{ feedback }}</p>
             </div>
 
-            <section v-if="isFavorites" class="dashboard-content-panel">
+            <section v-if="isFavorites" class="dashboard-content-panel" data-testid="dashboard-favorites-panel">
+                <p v-if="feedback" :class="['form-message', feedbackType]">{{ feedback }}</p>
                 <p v-if="isLoading" class="loading-text">加载中...</p>
                 <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
                 <div v-else-if="favorites.length" class="favorite-grid">
@@ -349,14 +410,28 @@ watch(isLoggedIn, () => {
                             <span>{{ article.category }}</span>
                             <h2>{{ article.title }}</h2>
                             <p>{{ article.summary }}</p>
-                            <RouterLink :to="`/articles/${article.id}`">继续阅读</RouterLink>
+                            <p class="favorite-meta">
+                                <span>作者：{{ article.author.name }}</span>
+                                <span>{{ article.favoritedAt || '刚刚收藏' }}</span>
+                            </p>
+                            <div class="favorite-actions">
+                                <RouterLink :to="`/articles/${article.id}`">继续阅读</RouterLink>
+                                <button
+                                    type="button"
+                                    class="btn-danger-secondary"
+                                    :disabled="actionLoadingId === article.id"
+                                    @click="removeFavorite(article)"
+                                >
+                                    {{ actionLoadingId === article.id ? '处理中...' : '取消收藏' }}
+                                </button>
+                            </div>
                         </div>
                     </article>
                 </div>
                 <p v-else class="empty-text">暂无收藏，去发现感兴趣的文章吧</p>
             </section>
 
-            <section v-else class="dashboard-content-panel table-panel">
+            <section v-else class="dashboard-content-panel table-panel" data-testid="dashboard-articles-panel">
                 <p v-if="isLoading" class="loading-text">正在加载文章...</p>
                 <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
                 <table v-else>
@@ -375,38 +450,66 @@ watch(isLoggedIn, () => {
                     </thead>
                     <tbody>
                         <tr v-for="article in articles" :key="article.id">
-                            <td>{{ article.title }}</td>
-                            <td><span class="status-pill">{{ article.status }}</span></td>
-                            <td>{{ article.viewCount }}</td>
-                            <td>{{ article.likeCount }}</td>
-                            <td>{{ article.favoriteCount }}</td>
-                            <td>{{ article.commentCount }}</td>
-                            <td>{{ article.updatedText }}</td>
-                            <td class="table-actions">
-                                <button
-                                    v-if="article.status === 'PUBLISHED'"
-                                    type="button"
-                                    :disabled="actionLoadingId === article.id"
-                                    @click="publishOrOfflineArticle(article, 'OFFLINE')"
-                                >
-                                    {{ actionLoadingId === article.id ? '处理中...' : '下架' }}
-                                </button>
-                                <button
-                                    v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE'"
-                                    type="button"
-                                    :disabled="actionLoadingId === article.id"
-                                    @click="publishOrOfflineArticle(article, 'PUBLISHED')"
-                                >
-                                    {{ actionLoadingId === article.id ? '处理中...' : '发布' }}
-                                </button>
-                                <span v-else class="table-action-muted">不可操作</span>
+                            <td class="article-title-cell">
+                                <div class="article-title-text">{{ article.title }}</div>
                             </td>
-                            <td class="table-actions">
-                                <RouterLink :to="`/articles/${article.id}`">查看</RouterLink>
-                                <button v-if="article.status !== 'DELETED'" type="button" @click="editArticle(article.id)">
-                                    {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
-                                </button>
-                                <button type="button" class="danger-link" @click="removeArticle(article.id)">删除</button>
+                            <td class="article-status-cell">
+                                <span class="status-pill" :class="getArticleStatusClass(article.status)">
+                                    {{ getArticleStatusLabel(article.status) }}
+                                </span>
+                            </td>
+                            <td class="article-metric-cell">{{ article.viewCount }}</td>
+                            <td class="article-metric-cell">{{ article.likeCount }}</td>
+                            <td class="article-metric-cell">{{ article.favoriteCount }}</td>
+                            <td class="article-metric-cell">{{ article.commentCount }}</td>
+                            <td class="article-time-cell">
+                                <span>{{ getUpdatedTimeParts(article.updatedText).date }}</span>
+                                <small v-if="getUpdatedTimeParts(article.updatedText).time">
+                                    {{ getUpdatedTimeParts(article.updatedText).time }}
+                                </small>
+                            </td>
+                            <td class="article-action-cell">
+                                <div class="article-inline-action">
+                                    <button
+                                        v-if="article.status === 'PUBLISHED'"
+                                        type="button"
+                                        class="action-link action-link-primary"
+                                        :disabled="actionLoadingId === article.id"
+                                        @click="publishOrOfflineArticle(article, 'OFFLINE')"
+                                    >
+                                        {{ actionLoadingId === article.id ? '处理中...' : '下架' }}
+                                    </button>
+                                    <button
+                                        v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE'"
+                                        type="button"
+                                        class="action-link action-link-primary"
+                                        :disabled="actionLoadingId === article.id"
+                                        @click="publishOrOfflineArticle(article, 'PUBLISHED')"
+                                    >
+                                        {{ actionLoadingId === article.id ? '处理中...' : '发布' }}
+                                    </button>
+                                    <span v-else class="article-action-muted">不可操作</span>
+                                </div>
+                            </td>
+                            <td class="article-action-cell">
+                                <div class="article-inline-actions">
+                                    <div class="article-inline-main">
+                                        <RouterLink class="action-link action-link-secondary" :to="`/articles/${article.id}`">
+                                            查看
+                                        </RouterLink>
+                                        <button
+                                            v-if="article.status !== 'DELETED'"
+                                            type="button"
+                                            class="action-link action-link-secondary"
+                                            @click="editArticle(article.id)"
+                                        >
+                                            {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
+                                        </button>
+                                    </div>
+                                    <button type="button" class="action-link action-link-danger" @click="removeArticle(article.id)">
+                                        删除
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -536,39 +639,216 @@ watch(isLoggedIn, () => {
 }
 
 .status-tabs button {
-    padding: 8px 14px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #fff;
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid rgba(101, 115, 111, 0.16);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.92);
     color: var(--muted);
+    transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.status-tabs button:hover {
+    color: var(--text);
+    border-color: rgba(15, 143, 117, 0.18);
+    background: rgba(15, 143, 117, 0.04);
 }
 
 .status-tabs button.active {
-    color: var(--brand);
-    border-color: var(--brand);
+    color: var(--brand-strong);
+    border-color: rgba(15, 143, 117, 0.22);
     background: rgba(15, 143, 117, 0.08);
 }
 
-.table-actions {
-    display: flex;
-    gap: 10px;
+.dashboard-feedback {
+    padding: 11px 14px;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    line-height: 1.6;
+}
+
+.dashboard-feedback.error {
+    color: #b83b3b;
+    background: rgba(209, 67, 67, 0.06);
+    border-color: rgba(209, 67, 67, 0.12);
+}
+
+.table-panel :deep(tbody tr:hover td) {
+    background: rgba(15, 143, 117, 0.025);
+}
+
+.article-action-cell {
+    width: 1%;
+    min-width: 156px;
+}
+
+.article-title-cell {
+    min-width: 140px;
+}
+
+.article-title-text {
+    display: -webkit-box;
+    max-width: 220px;
+    overflow: hidden;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1.55;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.article-status-cell {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.article-metric-cell {
+    width: 1%;
+    min-width: 54px;
+    color: var(--text);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.article-time-cell {
+    min-width: 118px;
+    display: grid;
+    height: 100%;
+    gap: 2px;
     align-items: center;
+    justify-content: center;
+    align-content: center;
+    color: var(--text);
+    white-space: nowrap;
 }
 
-.table-actions button {
-    padding: 0;
-    border: 0;
-    background: transparent;
+.article-time-cell small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.article-inline-action,
+.article-inline-actions,
+.article-inline-main {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.article-inline-actions {
+    justify-content: flex-start;
+}
+
+.action-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.action-link:disabled {
+    opacity: 0.62;
+    cursor: not-allowed;
+}
+
+.action-link-primary {
     color: var(--brand);
+    background: rgba(15, 143, 117, 0.07);
+    border-color: rgba(15, 143, 117, 0.14);
 }
 
-.table-action-muted {
+.action-link-primary:hover:not(:disabled) {
+    color: var(--brand-strong);
+    background: rgba(15, 143, 117, 0.1);
+    border-color: rgba(15, 143, 117, 0.18);
+}
+
+.action-link-secondary {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(101, 115, 111, 0.14);
+}
+
+.action-link-secondary:hover:not(:disabled) {
+    color: var(--brand-strong);
+    background: rgba(15, 143, 117, 0.04);
+    border-color: rgba(15, 143, 117, 0.14);
+}
+
+.action-link-danger {
+    padding-inline: 6px;
+    color: #c64141;
+    background: transparent;
+    border-color: transparent;
+}
+
+.action-link-danger:hover:not(:disabled) {
+    color: #b33434;
+    background: rgba(209, 67, 67, 0.06);
+    border-color: rgba(209, 67, 67, 0.08);
+}
+
+.article-action-muted {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.btn-danger-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 14px;
+    color: #d14343;
+    background: rgba(209, 67, 67, 0.06);
+    border: 1px solid rgba(209, 67, 67, 0.24);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-danger-secondary:hover:not(:disabled) {
+    background: rgba(209, 67, 67, 0.12);
+    border-color: rgba(209, 67, 67, 0.4);
+}
+
+.btn-danger-secondary:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(209, 67, 67, 0.16);
+}
+
+.btn-danger-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.favorite-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 0 0 8px;
     color: var(--muted);
     font-size: 13px;
 }
 
-.danger-link {
-    color: #d14343 !important;
+.favorite-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .dashboard-pagination {
@@ -640,6 +920,34 @@ watch(isLoggedIn, () => {
     border-color: var(--brand);
 }
 
+.status-pill.published {
+    color: var(--brand-strong);
+    background: rgba(15, 143, 117, 0.08);
+}
+
+.status-pill.draft {
+    color: #9a6700;
+    background: rgba(240, 201, 73, 0.1);
+}
+
+.status-pill.offline {
+    color: #8b5e00;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.status-pill.deleted {
+    color: #b42318;
+    background: rgba(180, 35, 24, 0.08);
+}
+
+.status-pill {
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 @media (max-width: 760px) {
     .creator-overview-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -657,6 +965,21 @@ watch(isLoggedIn, () => {
     .dashboard-pagination-jump input,
     .dashboard-pagination-jump button {
         width: 100%;
+    }
+
+    .article-action-cell {
+        min-width: 148px;
+    }
+
+    .article-inline-action,
+    .article-inline-actions,
+    .article-inline-main {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .action-link {
+        min-width: 0;
     }
 }
 

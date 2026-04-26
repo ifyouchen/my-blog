@@ -1,7 +1,8 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listArticlesApi } from '@/api/articles';
+import { getHomeBootstrapApi } from '@/api/home';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {
     ARTICLE_SORT_ITEMS,
@@ -13,16 +14,25 @@ import HomeIntro from '@/components/HomeIntro.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import TopicStrip from '@/components/TopicStrip.vue';
-import { articles as fallbackArticles } from '@/data/home';
+import { articles as fallbackArticles, topics as fallbackTopics } from '@/data/home';
 
-const articles = ref(fallbackArticles);
+const homeStats = ref({
+    totalArticles: 0,
+    totalAuthors: 0,
+    totalColumns: 0
+});
+const articles = ref([]);
 const currentPage = ref(1);
 const pageSize = 10;
-const total = ref(fallbackArticles.length);
+const total = ref(0);
+const topicItems = ref([]);
+const sidebarColumns = ref([]);
+const sidebarAuthors = ref([]);
 const loading = ref(false);
 const errorMessage = ref('');
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
+const bootstrapLoaded = ref(false);
 const route = useRoute();
 const router = useRouter();
 let requestSeq = 0;
@@ -46,6 +56,29 @@ const scrollToFeed = async () => {
         behavior: 'smooth',
         block: 'start'
     });
+};
+
+const loadHomeBootstrap = async () => {
+    try {
+        const bootstrap = await getHomeBootstrapApi();
+        if (bootstrap?.stats) {
+            homeStats.value = {
+                totalArticles: bootstrap.stats.totalArticles || 0,
+                totalAuthors: bootstrap.stats.totalAuthors || 0,
+                totalColumns: bootstrap.stats.totalColumns || 0
+            };
+        }
+        const categoryNames = (bootstrap?.categories || []).map((item) => item.name).filter(Boolean);
+        topicItems.value = ['全部', ...categoryNames];
+        sidebarColumns.value = bootstrap?.recommendedColumns || [];
+        sidebarAuthors.value = bootstrap?.authorRankings || [];
+    } catch (error) {
+        topicItems.value = ['全部'];
+        sidebarColumns.value = [];
+        sidebarAuthors.value = [];
+    } finally {
+        bootstrapLoaded.value = true;
+    }
 };
 
 const loadArticles = async (page, sort, category, shouldScroll = false) => {
@@ -80,9 +113,9 @@ const loadArticles = async (page, sort, category, shouldScroll = false) => {
         total.value = nextTotal;
         articles.value = pageResult.items;
     } catch (error) {
-        errorMessage.value = '文章列表加载失败，已显示本地示例内容';
-        articles.value = fallbackArticles;
-        total.value = fallbackArticles.length;
+        errorMessage.value = '文章列表加载失败，请稍后重试';
+        articles.value = [];
+        total.value = 0;
         currentPage.value = 1;
         activeSort.value = ARTICLE_SORT_LATEST;
         activeCategory.value = category || '';
@@ -150,13 +183,21 @@ watch(
     },
     { immediate: true }
 );
+
+onMounted(() => {
+    loadHomeBootstrap();
+});
 </script>
 
 <template>
     <SiteHeader />
-    <main class="page-shell">
-        <HomeIntro />
-        <TopicStrip />
+    <main class="page-shell" data-testid="home-page">
+        <HomeIntro
+            :total-articles="homeStats.totalArticles"
+            :total-authors="homeStats.totalAuthors"
+            :total-columns="homeStats.totalColumns"
+        />
+        <TopicStrip :topics="topicItems" />
         <div class="content-grid">
             <ArticleFeed
                 :articles="articles"
@@ -170,7 +211,7 @@ watch(
                 @page-change="changePage"
                 @sort-change="changeSort"
             />
-            <HomeSidebar />
+            <HomeSidebar :specials="sidebarColumns" :authors="sidebarAuthors" />
         </div>
     </main>
 </template>

@@ -8,6 +8,7 @@ import com.myblog.infrastructure.repository.persistence.mapper.AdminLogMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,9 +53,17 @@ public class MyBatisAdminLogRepository implements AdminLogRepository {
      * @return 日志列表
      */
     @Override
-    public List<AdminLog> findPage(int page, int pageSize) {
+    public List<AdminLog> findPage(int page, int pageSize, String operation,
+                                   String resultStatus, LocalDateTime dateFrom, LocalDateTime dateTo) {
         int offset = (page - 1) * pageSize;
-        List<AdminLogDO> adminLogDOList = adminLogMapper.selectPage(offset, pageSize);
+        List<AdminLogDO> adminLogDOList = adminLogMapper.selectPage(
+            offset,
+            pageSize,
+            operation,
+            resultStatus,
+            dateFrom,
+            dateTo
+        );
         List<AdminLog> logs = new ArrayList<AdminLog>(adminLogDOList.size());
         for (AdminLogDO adminLogDO : adminLogDOList) {
             logs.add(AdminLogPersistenceConverter.toDomain(adminLogDO));
@@ -68,8 +77,8 @@ public class MyBatisAdminLogRepository implements AdminLogRepository {
      * @return 日志数量
      */
     @Override
-    public int countAll() {
-        return adminLogMapper.countAll();
+    public int countAll(String operation, String resultStatus, LocalDateTime dateFrom, LocalDateTime dateTo) {
+        return adminLogMapper.countAll(operation, resultStatus, dateFrom, dateTo);
     }
 
     /**

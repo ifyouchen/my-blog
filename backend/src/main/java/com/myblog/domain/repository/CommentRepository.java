@@ -4,6 +4,7 @@ import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.CommentId;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +31,26 @@ public interface CommentRepository {
      * @return 评论列表
      */
     List<Comment> findByArticleId(ArticleId articleId);
+
+    /**
+     * 分页查询后台评论列表。
+     *
+     * @param articleId 文章 ID
+     * @param keyword 关键字
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 评论列表
+     */
+    List<Comment> findAdminPage(Long articleId, String keyword, int page, int pageSize);
+
+    /**
+     * 统计后台评论数量。
+     *
+     * @param articleId 文章 ID
+     * @param keyword 关键字
+     * @return 评论数量
+     */
+    long countAdminPage(Long articleId, String keyword);
 
     /**
      * 分页查询文章一级评论。
@@ -114,6 +135,29 @@ public interface CommentRepository {
      * @return 评论列表
      */
     List<Comment> findAll();
+
+    /**
+     * 统计未删除评论数量。
+     *
+     * @return 评论数量
+     */
+    long countAll();
+
+    /**
+     * 统计指定日期创建的评论数量。
+     *
+     * @param date 日期
+     * @return 评论数量
+     */
+    long countCreatedOn(LocalDate date);
+
+    /**
+     * 统计指定日期之后创建的评论数量。
+     *
+     * @param date 起始日期
+     * @return 评论数量
+     */
+    long countCreatedSince(LocalDate date);
 
     /**
      * 生成下一个评论 ID。

@@ -3,13 +3,16 @@ import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from '
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { createArticleApi, getEditableArticleApi, updateArticleApi } from '@/api/articles';
 import { getCategoriesApi, getTagsApi } from '@/api/admin';
+import { uploadImageApi } from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import RichMarkdownEditor from '@/components/RichMarkdownEditor.vue';
 import { topics } from '@/data/home';
+import { resolveMediaUrl } from '@/utils/media';
 
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
+const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
 
 const defaultDraft = {
     title: '',
@@ -19,14 +22,8 @@ const defaultDraft = {
 用一篇文章把你最近解决的问题写清楚。`,
     category: 'Spring Boot',
     tags: 'Spring Boot, JWT',
-    coverUrl: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=700&q=80'
+    coverUrl: ''
 };
-
-const coverOptions = [
-    defaultDraft.coverUrl,
-    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=700&q=80',
-    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80'
-];
 
 const route = useRoute();
 const router = useRouter();
@@ -50,11 +47,23 @@ const previewVisible = ref(false);
 const recoveryInfo = ref(null);
 const hydratingDraft = ref(false);
 const allowRouteLeave = ref(false);
+const coverUploading = ref(false);
+const coverInputRef = ref(null);
+const coverPreviewFailed = ref(false);
 
 const wordCount = computed(() => draft.content.trim().length);
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
 const previewTags = computed(() => parseTags(draft.tags));
 const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编辑内容' : '预览待发布内容'));
+const displayCoverUrl = computed(() => {
+    const source = draft.coverUrl || DEFAULT_ARTICLE_COVER_URL;
+    return coverPreviewFailed.value ? resolveMediaUrl(DEFAULT_ARTICLE_COVER_URL, '') : resolveMediaUrl(source, '');
+});
+const isUsingDefaultCover = computed(() => !draft.coverUrl || draft.coverUrl === DEFAULT_ARTICLE_COVER_URL);
+
+watch(() => draft.coverUrl, () => {
+    coverPreviewFailed.value = false;
+});
 
 function createDefaultDraft() {
     return { ...defaultDraft };
@@ -82,7 +91,7 @@ function applyDraft(source = {}) {
     draft.content = source.content || '';
     draft.category = source.category || categoryOptions.value[0] || '';
     draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
-    draft.coverUrl = source.coverUrl || defaultDraft.coverUrl;
+    draft.coverUrl = source.coverUrl || '';
 }
 
 function syncSavedSnapshot() {
@@ -317,12 +326,45 @@ async function publishArticle() {
     await persistArticle('PUBLISHED');
 }
 
-function changeCover() {
-    const currentIndex = coverOptions.indexOf(draft.coverUrl);
-    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % coverOptions.length : 0;
-    draft.coverUrl = coverOptions[nextIndex];
-    statusMessage.value = '已更换封面预览';
-    feedbackType.value = 'info';
+function triggerCoverPicker() {
+    if (coverUploading.value || publishLoading.value || pageLoading.value) {
+        return;
+    }
+    coverInputRef.value?.click();
+}
+
+async function handleCoverSelected(event) {
+    const [file] = event.target?.files || [];
+    event.target.value = '';
+    if (!file) {
+        return;
+    }
+    coverUploading.value = true;
+    try {
+        const result = await uploadImageApi(file, 'cover');
+        draft.coverUrl = result.url || defaultDraft.coverUrl;
+        coverPreviewFailed.value = false;
+        statusMessage.value = '封面已上传，发布或保存草稿后会写入文章';
+        feedbackType.value = 'success';
+    } catch (error) {
+        statusMessage.value = error.message || '封面上传失败';
+        feedbackType.value = 'error';
+    } finally {
+        coverUploading.value = false;
+    }
+}
+
+function handleCoverPreviewLoad() {
+    coverPreviewFailed.value = false;
+}
+
+function handleCoverPreviewError() {
+    if (!displayCoverUrl.value) {
+        return;
+    }
+    coverPreviewFailed.value = true;
+    statusMessage.value = '封面图片暂时无法访问，请检查链接或稍后重试';
+    feedbackType.value = 'error';
 }
 
 function viewPublishedArticle() {
@@ -389,22 +431,23 @@ onUnmounted(() => {
 
 <template>
     <SiteHeader />
-    <main class="page-shell editor-layout">
-        <section class="editor-main">
+    <main class="page-shell editor-layout" data-testid="editor-page">
+        <section class="editor-main" data-testid="editor-main">
             <div class="section-heading editor-heading">
                 <div>
                     <p class="eyebrow">创作中心</p>
                     <h1>{{ isEditMode ? '编辑文章' : '发布文章' }}</h1>
                 </div>
                 <div class="editor-actions">
-                    <button type="button" :disabled="publishLoading || pageLoading" @click="togglePreview">
+                    <button type="button" :disabled="publishLoading || pageLoading" data-testid="editor-preview-button" @click="togglePreview">
                         {{ previewVisible ? '收起预览' : '发布前预览' }}
                     </button>
-                    <button type="button" :disabled="publishLoading || pageLoading" @click="saveDraft">保存草稿</button>
+                    <button type="button" :disabled="publishLoading || pageLoading" data-testid="editor-save-draft" @click="saveDraft">保存草稿</button>
                     <button
                         class="primary-action"
                         type="button"
                         :disabled="publishLoading || pageLoading"
+                        data-testid="editor-publish-button"
                         @click="publishArticle"
                     >
                         {{ publishLoading ? '提交中...' : '发布文章' }}
@@ -467,19 +510,26 @@ onUnmounted(() => {
                 <div v-if="previewTags.length" class="editor-preview-tags">
                     <span v-for="tag in previewTags" :key="tag">{{ tag }}</span>
                 </div>
-                <img class="editor-preview-cover" :src="draft.coverUrl" alt="预览封面">
+                <img
+                    class="editor-preview-cover"
+                    :src="displayCoverUrl"
+                    alt="预览封面"
+                    @load="handleCoverPreviewLoad"
+                    @error="handleCoverPreviewError"
+                >
                 <MarkdownPreview v-if="draft.content.trim()" :content="draft.content" />
                 <div v-else class="editor-preview-empty">正文还没有内容，继续往下写就好。</div>
             </section>
 
+            <section v-if="!previewVisible">
             <label class="editor-title">
                 <span class="sr-only">文章标题</span>
-                <input v-model="draft.title" type="text" placeholder="请输入文章标题">
+                <input v-model="draft.title" type="text" placeholder="请输入文章标题" data-testid="editor-title-input">
             </label>
 
             <label class="editor-summary">
                 <span>文章摘要</span>
-                <textarea v-model="draft.summary" placeholder="用一两句话介绍这篇文章"></textarea>
+                <textarea v-model="draft.summary" placeholder="用一两句话介绍这篇文章" data-testid="editor-summary-input"></textarea>
             </label>
 
             <RichMarkdownEditor v-model="draft.content" />
@@ -492,6 +542,7 @@ onUnmounted(() => {
             <ul v-if="validationErrors.length" class="error-list">
                 <li v-for="error in validationErrors" :key="error">{{ error }}</li>
             </ul>
+            </section>
         </section>
 
         <aside class="editor-side">
@@ -515,9 +566,44 @@ onUnmounted(() => {
                 <input v-model="draft.tags" type="text" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
             </section>
             <section class="side-section upload-box">
-                <p class="eyebrow">封面图</p>
-                <img :src="draft.coverUrl" alt="文章封面预览">
-                <button type="button" @click="changeCover">更换封面</button>
+                <div class="cover-card-head">
+                    <div>
+                        <p class="eyebrow">文章封面</p>
+                        <h3>{{ isUsingDefaultCover ? '给文章加一张封面图' : '当前封面' }}</h3>
+                    </div>
+                    <span :class="['cover-status-pill', isUsingDefaultCover ? 'default' : 'custom']">
+                        {{ isUsingDefaultCover ? '系统默认封面' : '已上传自定义封面' }}
+                    </span>
+                </div>
+                <input
+                    ref="coverInputRef"
+                    type="file"
+                    accept="image/*"
+                    class="sr-only"
+                    @change="handleCoverSelected"
+                >
+                <div class="cover-card-preview">
+                    <img
+                        :src="displayCoverUrl"
+                        alt="文章封面预览"
+                        @load="handleCoverPreviewLoad"
+                        @error="handleCoverPreviewError"
+                    >
+                    <div class="cover-card-overlay">
+                        <span>{{ isUsingDefaultCover ? '未上传时将使用系统默认封面' : '这张图会作为文章封面展示' }}</span>
+                    </div>
+                </div>
+                <p v-if="isUsingDefaultCover" class="cover-help-text">
+                    当前会使用系统默认封面，你可以随时上传一张更贴合主题的封面。
+                </p>
+                <button
+                    type="button"
+                    class="cover-upload-button"
+                    :disabled="coverUploading || publishLoading || pageLoading"
+                    @click="triggerCoverPicker"
+                >
+                    {{ coverUploading ? '上传中...' : (isUsingDefaultCover ? '上传封面' : '更换封面') }}
+                </button>
             </section>
         </aside>
     </main>
@@ -605,6 +691,125 @@ onUnmounted(() => {
     border-radius: 8px;
 }
 
+.upload-box {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--brand, #0f8f75) 18%, var(--line));
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at top right, rgba(15, 143, 117, 0.14), transparent 42%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 249, 0.96));
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.cover-card-head {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.cover-card-head h3 {
+    margin: 4px 0 0;
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1.35;
+}
+
+.cover-status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cover-status-pill.default {
+    color: #8a5b00;
+    background: rgba(255, 214, 102, 0.22);
+    border: 1px solid rgba(201, 141, 0, 0.22);
+}
+
+.cover-status-pill.custom {
+    color: #0f6b5a;
+    background: rgba(15, 143, 117, 0.16);
+    border: 1px solid rgba(15, 143, 117, 0.18);
+}
+
+.cover-card-preview {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: var(--surface-soft);
+    aspect-ratio: 16 / 10;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.cover-card-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cover-card-overlay {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(16, 23, 31, 0), rgba(16, 23, 31, 0.78));
+}
+
+.cover-card-overlay span {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.cover-help-text {
+    margin: 0;
+    padding: 12px 14px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    background: rgba(255, 248, 225, 0.76);
+    border: 1px solid rgba(201, 141, 0, 0.16);
+    border-radius: 12px;
+}
+
+.cover-upload-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--brand, #0f8f75), #13a786);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+    box-shadow: 0 14px 28px rgba(15, 143, 117, 0.22);
+}
+
+.cover-upload-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+}
+
+.cover-upload-button:disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+    box-shadow: none;
+}
+
 @media (max-width: 760px) {
     .editor-recovery-banner {
         grid-template-columns: 1fr;
@@ -613,6 +818,10 @@ onUnmounted(() => {
     .editor-preview-head {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .cover-card-head {
+        flex-direction: column;
     }
 }
 </style>

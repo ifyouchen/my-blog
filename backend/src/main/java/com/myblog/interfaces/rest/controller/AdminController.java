@@ -16,12 +16,15 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -52,38 +55,74 @@ public class AdminController {
         }
     }
 
+    /**
+     * 查询后台概览统计。
+     *
+     * @return 概览统计
+     */
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
         ensureAdmin();
         return Result.success(adminAppService.getStats());
     }
 
+    /**
+     * 分页查询后台用户。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param status 状态筛选
+     * @param keyword 关键字
+     * @return 用户分页结果
+     */
     @GetMapping("/users")
     public Result<PageResult<Map<String, Object>>> getUsers(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String status) {
-        ensureAdmin();
-        return Result.success(adminAppService.getUsers(page, pageSize, status));
-    }
-
-    @GetMapping("/articles")
-    public Result<PageResult<Map<String, Object>>> getArticles(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword) {
         ensureAdmin();
-        return Result.success(adminAppService.getArticles(page, pageSize, status, keyword));
+        return Result.success(adminAppService.getUsers(page, pageSize, status, keyword));
     }
 
+    /**
+     * 分页查询后台文章。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param status 状态筛选
+     * @param keyword 关键字
+     * @param category 分类筛选
+     * @return 文章分页结果
+     */
+    @GetMapping("/articles")
+    public Result<PageResult<Map<String, Object>>> getArticles(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category) {
+        ensureAdmin();
+        return Result.success(adminAppService.getArticles(page, pageSize, status, keyword, category));
+    }
+
+    /**
+     * 分页查询后台评论。
+     *
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param articleId 文章 ID
+     * @param keyword 关键字
+     * @return 评论分页结果
+     */
     @GetMapping("/comments")
     public Result<PageResult<Map<String, Object>>> getComments(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) Long articleId) {
+            @RequestParam(required = false) Long articleId,
+            @RequestParam(required = false) String keyword) {
         ensureAdmin();
-        return Result.success(adminAppService.getComments(page, pageSize, articleId));
+        return Result.success(adminAppService.getComments(page, pageSize, articleId, keyword));
     }
 
     /**
@@ -120,19 +159,151 @@ public class AdminController {
         return Result.success(tagAppService.getTagPage(page, pageSize, enabled));
     }
 
+    @PostMapping("/categories")
+    public Result<CategoryDTO> createCategory(@RequestBody Map<String, Object> request,
+                                              @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        String name = (String) request.get("name");
+        String description = (String) request.get("description");
+        Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
+        CategoryDTO categoryDTO = categoryAppService.createCategory(name, description, sortOrder);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_CATEGORY",
+            "CATEGORY",
+            categoryDTO.getId(),
+            "创建分类 " + categoryDTO.getName(),
+            null,
+            toCategorySnapshot(categoryDTO),
+            httpServletRequest
+        ));
+        return Result.success(categoryDTO);
+    }
+
+    @PutMapping("/categories/{id}")
+    public Result<CategoryDTO> updateCategory(@PathVariable Long id,
+                                              @RequestBody Map<String, Object> request,
+                                              @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        CategoryDTO beforeCategory = categoryAppService.getCategory(id);
+        String name = (String) request.get("name");
+        String description = (String) request.get("description");
+        Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
+        Boolean enabled = parseBoolean(request.get("enabled"), true);
+        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, description, sortOrder, enabled);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_CATEGORY",
+            "CATEGORY",
+            categoryDTO.getId(),
+            "更新分类 " + categoryDTO.getName() + "，enabled=" + categoryDTO.getEnabled(),
+            toCategorySnapshot(beforeCategory),
+            toCategorySnapshot(categoryDTO),
+            httpServletRequest
+        ));
+        return Result.success(categoryDTO);
+    }
+
+    @DeleteMapping("/categories/{id}")
+    public Result<Map<String, Object>> deleteCategory(@PathVariable Long id,
+                                                      @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        CategoryDTO beforeCategory = categoryAppService.getCategory(id);
+        categoryAppService.deleteCategory(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_CATEGORY",
+            "CATEGORY",
+            id,
+            "删除分类 " + beforeCategory.getName(),
+            toCategorySnapshot(beforeCategory),
+            null,
+            httpServletRequest
+        ));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
+    @PostMapping("/tags")
+    public Result<TagDTO> createTag(@RequestBody Map<String, Object> request,
+                                    @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        String name = (String) request.get("name");
+        String description = (String) request.get("description");
+        TagDTO tagDTO = tagAppService.createTag(name, description);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_TAG",
+            "TAG",
+            tagDTO.getId(),
+            "创建标签 " + tagDTO.getName(),
+            null,
+            toTagSnapshot(tagDTO),
+            httpServletRequest
+        ));
+        return Result.success(tagDTO);
+    }
+
+    @PutMapping("/tags/{id}")
+    public Result<TagDTO> updateTag(@PathVariable Long id,
+                                    @RequestBody Map<String, Object> request,
+                                    @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        TagDTO beforeTag = tagAppService.getTag(id);
+        String name = (String) request.get("name");
+        String description = (String) request.get("description");
+        Boolean enabled = parseBoolean(request.get("enabled"), true);
+        TagDTO tagDTO = tagAppService.updateTag(id, name, description, enabled);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_TAG",
+            "TAG",
+            tagDTO.getId(),
+            "更新标签 " + tagDTO.getName() + "，enabled=" + tagDTO.getEnabled(),
+            toTagSnapshot(beforeTag),
+            toTagSnapshot(tagDTO),
+            httpServletRequest
+        ));
+        return Result.success(tagDTO);
+    }
+
+    @DeleteMapping("/tags/{id}")
+    public Result<Map<String, Object>> deleteTag(@PathVariable Long id,
+                                                 @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        TagDTO beforeTag = tagAppService.getTag(id);
+        tagAppService.deleteTag(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_TAG",
+            "TAG",
+            id,
+            "删除标签 " + beforeTag.getName(),
+            toTagSnapshot(beforeTag),
+            null,
+            httpServletRequest
+        ));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
     /**
      * 分页查询管理员操作日志。
      *
      * @param page 页码
      * @param pageSize 每页数量
+     * @param actionType 操作类型
+     * @param resultStatus 结果状态
+     * @param dateFrom 开始日期
+     * @param dateTo 结束日期
      * @return 日志分页结果
      */
     @GetMapping("/logs")
     public Result<PageResult<Map<String, Object>>> getLogs(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize) {
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String actionType,
+            @RequestParam(required = false) String resultStatus,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo) {
         ensureAdmin();
-        return Result.success(adminLogAppService.getLogs(page, pageSize));
+        return Result.success(adminLogAppService.getLogs(page, pageSize, actionType, resultStatus, dateFrom, dateTo));
     }
 
     /**
@@ -182,6 +353,23 @@ public class AdminController {
             "ARTICLE",
             id,
             "更新文章状态为 " + status,
+            buildArticleStatusBeforeSnapshot(result.getData()),
+            buildArticleStatusAfterSnapshot(result.getData()),
+            request
+        ));
+        return result;
+    }
+
+    @DeleteMapping("/articles/{id}")
+    public Result<Map<String, Object>> deleteArticle(@PathVariable Long id,
+                                                     @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.deleteArticle(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_ARTICLE",
+            "ARTICLE",
+            id,
+            "删除文章 " + result.getData().get("title"),
             buildArticleStatusBeforeSnapshot(result.getData()),
             buildArticleStatusAfterSnapshot(result.getData()),
             request
@@ -298,6 +486,45 @@ public class AdminController {
         snapshot.put("title", result.get("title"));
         snapshot.put("status", result.get("status"));
         return snapshot;
+    }
+
+    private Map<String, Object> toCategorySnapshot(CategoryDTO categoryDTO) {
+        Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
+        snapshot.put("id", categoryDTO.getId());
+        snapshot.put("name", categoryDTO.getName());
+        snapshot.put("description", categoryDTO.getDescription());
+        snapshot.put("sortOrder", categoryDTO.getSortOrder());
+        snapshot.put("enabled", categoryDTO.getEnabled());
+        return snapshot;
+    }
+
+    private Map<String, Object> toTagSnapshot(TagDTO tagDTO) {
+        Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
+        snapshot.put("id", tagDTO.getId());
+        snapshot.put("name", tagDTO.getName());
+        snapshot.put("description", tagDTO.getDescription());
+        snapshot.put("enabled", tagDTO.getEnabled());
+        return snapshot;
+    }
+
+    private Integer parseInteger(Object value, Integer fallback) {
+        if (value instanceof Number) {
+            return Integer.valueOf(((Number) value).intValue());
+        }
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+            return Integer.valueOf(Integer.parseInt(((String) value).trim()));
+        }
+        return fallback;
+    }
+
+    private Boolean parseBoolean(Object value, Boolean fallback) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+            return Boolean.valueOf(((String) value).trim());
+        }
+        return fallback;
     }
 
     /**
