@@ -53,9 +53,14 @@ export const extractToc = (content) => {
 };
 
 export const normalizeArticle = (article) => {
-    const rawContent = Array.isArray(article.content)
-        ? article.content.join('\n\n')
-        : (article.content || '');
+    let rawContent;
+    if (Array.isArray(article.content)) {
+        rawContent = article.content.join('\n\n');
+    } else if (typeof article.content === 'string') {
+        rawContent = article.content;
+    } else {
+        rawContent = '';
+    }
 
     return {
         id: article.id,

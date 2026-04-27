@@ -15,6 +15,7 @@ const route = useRoute();
 const router = useRouter();
 const keyword = ref('');
 const userMenuOpen = ref(false);
+const mobileMenuOpen = ref(false);
 const userMenuRef = ref(null);
 const notificationOpen = ref(false);
 const notificationRef = ref(null);
@@ -255,6 +256,17 @@ const handleNotificationsRefresh = () => {
             </form>
 
             <div class="header-actions">
+                <button
+                    class="mobile-menu-toggle"
+                    type="button"
+                    aria-label="展开导航菜单"
+                    :aria-expanded="mobileMenuOpen"
+                    @click="mobileMenuOpen = !mobileMenuOpen"
+                >
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
                 <template v-if="isLoggedIn">
                     <RouterLink class="text-link" to="/dashboard/articles" data-testid="header-dashboard-link">创作台</RouterLink>
                     <RouterLink v-if="state.user?.role === 'ADMIN'" class="text-link" to="/admin" data-testid="header-admin-link">后台</RouterLink>
@@ -377,4 +389,43 @@ const handleNotificationsRefresh = () => {
             </div>
         </div>
     </header>
+
+    <!-- Mobile nav drawer -->
+    <Teleport to="body">
+        <div v-if="mobileMenuOpen" class="mobile-menu-overlay" @click="mobileMenuOpen = false"></div>
+        <div class="mobile-menu-drawer" :class="{ open: mobileMenuOpen }">
+            <div class="mobile-menu-header">
+                <button
+                    class="mobile-menu-close"
+                    type="button"
+                    aria-label="关闭导航菜单"
+                    @click="mobileMenuOpen = false"
+                >×</button>
+            </div>
+            <nav class="mobile-nav" aria-label="移动端导航">
+                <RouterLink
+                    v-for="item in navItems"
+                    :key="item.label"
+                    :to="item.path"
+                    :class="{ active: item.path === '/'
+                        ? route.path === '/'
+                        : route.path === item.path || route.path.startsWith(`${item.path}/`) }"
+                    @click="mobileMenuOpen = false"
+                >
+                    {{ item.label }}
+                </RouterLink>
+            </nav>
+            <div class="mobile-menu-actions">
+                <template v-if="isLoggedIn">
+                    <RouterLink class="mobile-menu-link" to="/dashboard/articles" @click="mobileMenuOpen = false">创作台</RouterLink>
+                    <RouterLink v-if="state.user?.role === 'ADMIN'" class="mobile-menu-link" to="/admin" @click="mobileMenuOpen = false">后台</RouterLink>
+                    <button class="mobile-menu-link mobile-menu-link-danger" type="button" @click="logoutAndGoHome; mobileMenuOpen = false">
+                        退出
+                    </button>
+                </template>
+                <RouterLink v-else class="mobile-menu-link" to="/login" @click="mobileMenuOpen = false">登录</RouterLink>
+                <button class="primary-action" type="button" @click="writeArticle; mobileMenuOpen = false">写文章</button>
+            </div>
+        </div>
+    </Teleport>
 </template>

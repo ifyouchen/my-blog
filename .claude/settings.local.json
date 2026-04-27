@@ -36,7 +36,18 @@
       "Bash(mvn -q -DskipTests compile)",
       "Bash(dir \"F:\\\\software\\\\IdeaProject\\\\my-blog\")",
       "Bash(python3)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "WebFetch(domain:localhost)",
+      "Bash(npx vite *)",
+      "Bash(npm cache *)",
+      "Bash(npm config *)",
+      "Bash(npm ls *)",
+      "Bash(npm view *)",
+      "Bash(tasklist /FI \"IMAGENAME eq java.exe\")",
+      "Bash(findstr /I java)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":5173\")",
+      "Bash(findstr LISTEN)"
     ]
   }
 }

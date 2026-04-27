@@ -10,7 +10,7 @@ import {
 
 const createMarkdownRenderer = ({ copyableCode = false } = {}) => {
     const md = new MarkdownIt({
-        html: false,
+        html: true,
         linkify: true,
         breaks: false,
         typographer: true
@@ -20,6 +20,13 @@ const createMarkdownRenderer = ({ copyableCode = false } = {}) => {
         || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 
     md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+        const hrefIndex = tokens[idx].attrIndex('href');
+        if (hrefIndex >= 0) {
+            const href = tokens[idx].attrs[hrefIndex][1];
+            if (href && !/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i.test(href) && !/^(\/\/|#|\/|mailto:|tel:)/.test(href)) {
+                tokens[idx].attrs[hrefIndex][1] = 'https://' + href;
+            }
+        }
         const targetIndex = tokens[idx].attrIndex('target');
         const relIndex = tokens[idx].attrIndex('rel');
         if (targetIndex < 0) {
@@ -101,7 +108,9 @@ const previewMarkdown = createMarkdownRenderer({ copyableCode: true });
 const editorMarkdown = createMarkdownRenderer({ copyableCode: false });
 
 const sanitize = (html) => DOMPurify.sanitize(html, {
-    ADD_ATTR: ['target', 'rel', 'data-language']
+    ADD_ATTR: ['target', 'rel', 'data-language'],
+    ADD_TAGS: ['u'],
+    WHOLE_DOCUMENT: false
 });
 
 export const renderMarkdown = (markdown = '') => {
@@ -225,7 +234,12 @@ export const editorJsonToMarkdown = (json) => {
             return `![${alt}](${src})`;
         }
         if (node.type === 'paragraph') {
-            return (node.content || []).map(processNode).join('') + '\n';
+            const text = (node.content || []).map(processNode).join('');
+            const align = node.attrs?.textAlign;
+            if (align && align !== 'left') {
+                return `<p style="text-align:${align}">${text}</p>\n`;
+            }
+            return text + '\n';
         }
         if (node.type === 'heading') {
             const level = node.attrs.level || 1;
@@ -244,11 +258,56 @@ export const editorJsonToMarkdown = (json) => {
         if (node.type === 'horizontalRule') {
             return '---\n';
         }
+        if (node.type === 'table') {
+            const rows = (node.content || []).map(processNode).filter(Boolean);
+            if (!rows.length) return '';
+            // Find max column count from the first row
+            const colCount = rows[0].columns;
+            const headerRow = rows.find(r => r.isHeader);
+            // Build full markdown table
+            let result = '\n';
+            for (const row of rows) {
+                result += row.markdown + '\n';
+                if (row.isHeader) {
+                    result += '|' + '---|'.repeat(colCount) + '\n';
+                }
+            }
+            return result + '\n';
+        }
+        if (node.type === 'tableRow') {
+            const cells = (node.content || []).map(processNode);
+            if (!cells.length) return null;
+            const isHeader = node.content?.some(c => c.type === 'tableHeader');
+            const columns = cells.reduce((sum, c) => sum + (c.colspan || 1), 0);
+            const md = '| ' + cells.map(c => c.text).join(' | ') + ' |';
+            return { markdown: md, columns, isHeader };
+        }
+        if (node.type === 'tableHeader' || node.type === 'tableCell') {
+            const text = (node.content || []).map(processNode).join('').trim();
+            const colspan = node.attrs?.colspan || 1;
+            return { text, colspan };
+        }
         if (node.type === 'bulletList') {
-            return (node.content || []).map(processNode).join('');
+            return (node.content || []).map((child) => {
+                return processNode(child);
+            }).join('');
+        }
+        if (node.type === 'taskList') {
+            return (node.content || []).map((child) => {
+                return processNode(child);
+            }).join('');
+        }
+        if (node.type === 'taskItem') {
+            const checked = node.attrs?.checked;
+            const text = (node.content || []).map(processNode).join('');
+            return `- ${checked ? '[x]' : '[ ]'} ${text}\n`;
         }
         if (node.type === 'orderedList') {
-            return (node.content || []).map(processNode).join('');
+            let index = node.attrs?.start || 1;
+            return (node.content || []).map((child) => {
+                const text = processNode(child);
+                return `${index++}. ${text}\n`;
+            }).join('');
         }
         if (node.type === 'listItem') {
             const text = (node.content || []).map(processNode).join('');
@@ -263,6 +322,7 @@ export const editorJsonToMarkdown = (json) => {
                 for (const mark of node.marks) {
                     if (mark.type === 'bold') text = `**${text}**`;
                     if (mark.type === 'italic') text = `*${text}*`;
+                    if (mark.type === 'underline') text = `<u>${text}</u>`;
                     if (mark.type === 'code') text = `\`${text}\``;
                     if (mark.type === 'strike') text = `~~${text}~~`;
                     if (mark.type === 'link') text = `[${text}](${mark.attrs.href})`;

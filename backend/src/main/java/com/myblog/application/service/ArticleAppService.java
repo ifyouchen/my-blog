@@ -234,7 +234,7 @@ public class ArticleAppService {
             resolveCreateStatus(command.getStatus())
         );
         articleRepository.save(article);
-        return buildDto(article, author, command.getAuthorId());
+        return buildDetailDto(article, author, command.getAuthorId());
     }
 
     /**

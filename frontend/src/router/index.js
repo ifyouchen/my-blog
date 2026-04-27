@@ -247,8 +247,8 @@ const router = createRouter({
         if (savedPosition) {
             return savedPosition;
         }
-        const dashboardPaths = ['/dashboard/articles', '/dashboard/favorites'];
-        if (to.path === from.path && dashboardPaths.includes(to.path)) {
+        const samePathNoScroll = ['/', '/dashboard/articles', '/dashboard/favorites', '/search'];
+        if (to.path === from.path && samePathNoScroll.includes(to.path)) {
             return false;
         }
         return { top: 0 };

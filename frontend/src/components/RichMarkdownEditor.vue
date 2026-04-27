@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { EditorContent, useEditor, VueNodeViewRenderer } from '@tiptap/vue-3';
+import { BubbleMenu, EditorContent, useEditor, VueNodeViewRenderer } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Table from '@tiptap/extension-table';
@@ -8,6 +8,10 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
 import ResizeImage from 'tiptap-extension-resize-image';
 import { createBlogLowlight } from '@/utils/codeLanguages';
 import { editorHtmlToMarkdown, editorJsonToMarkdown, markdownToEditorHtml } from '@/utils/markdown';
@@ -49,6 +53,18 @@ const contextMenuState = reactive({
     open: false,
     top: 18,
     left: 18
+});
+
+const imageUrlDialog = reactive({
+    open: false,
+    url: '',
+    error: ''
+});
+
+const linkDialog = reactive({
+    open: false,
+    url: '',
+    error: ''
 });
 
 const isTableSeparator = (line = '') => {
@@ -166,6 +182,7 @@ const closeSlashMenu = () => {
 
 const closeContextMenu = () => {
     contextMenuState.open = false;
+    contextMenuMode.value = 'default';
 };
 
 const getParagraphContext = (editorInstance) => {
@@ -373,7 +390,7 @@ const editorCommands = [
         description: '通过链接插入外部图片',
         keywords: ['image', 'link', 'url', '图片', '链接', '外部图片'],
         run: () => {
-            insertImageByUrl();
+            openImageUrlDialog();
             closeSlashMenu();
         }
     }
@@ -453,6 +470,21 @@ const editor = useEditor({
         TableHeader,
         TableCell,
         codeBlockExtension,
+        Underline,
+        TaskList.configure({
+            HTMLAttributes: {
+                class: 'task-list'
+            }
+        }),
+        TaskItem.configure({
+            nested: true,
+            HTMLAttributes: {
+                class: 'task-item'
+            }
+        }),
+        TextAlign.configure({
+            types: ['heading', 'paragraph', 'tableHeader', 'tableCell']
+        }),
         ResizeImage.configure({
             inline: false,
             allowBase64: true,
@@ -600,16 +632,28 @@ const setLink = () => {
     if (!editor.value) {
         return;
     }
-    const previousUrl = editor.value.getAttributes('link').href || '';
-    const url = window.prompt('请输入链接地址', previousUrl);
-    if (url === null) {
-        return;
-    }
+    linkDialog.url = editor.value.getAttributes('link').href || '';
+    linkDialog.error = '';
+    linkDialog.open = true;
+};
+
+const confirmLink = () => {
+    const url = linkDialog.url.trim();
     if (!url) {
         editor.value.chain().focus().unsetLink().run();
+        linkDialog.open = false;
+        return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/') && !url.startsWith('#')) {
+        linkDialog.error = '请输入有效的链接地址（以 http:// 或 https:// 开头）';
         return;
     }
     editor.value.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    linkDialog.open = false;
+};
+
+const cancelLink = () => {
+    linkDialog.open = false;
 };
 
 const insertTable = () => {
@@ -642,19 +686,28 @@ const insertImageMarkdown = (url, alt = '图片') => {
     editor.value.commands.setImage({ src: url, alt });
 };
 
-const insertImageByUrl = () => {
-    if (!editor.value) {
-        return;
-    }
-    const url = window.prompt('请输入图片链接地址');
+const openImageUrlDialog = () => {
+    imageUrlDialog.open = true;
+    imageUrlDialog.url = '';
+    imageUrlDialog.error = '';
+};
+
+const confirmImageUrl = () => {
+    const url = imageUrlDialog.url.trim();
     if (!url) {
+        imageUrlDialog.error = '请输入图片链接地址';
         return;
     }
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        alert('请输入有效的图片链接（以 http:// 或 https:// 开头）');
+        imageUrlDialog.error = '请输入有效的图片链接（以 http:// 或 https:// 开头）';
         return;
     }
+    imageUrlDialog.open = false;
     insertImageMarkdown(url, '外部图片');
+};
+
+const cancelImageUrl = () => {
+    imageUrlDialog.open = false;
 };
 
 const uploadAndInsertImage = async (file) => {
@@ -705,9 +758,17 @@ const triggerImageUpload = () => {
 };
 
 const toggleBold = () => runEditorCommand((chain) => chain.toggleBold());
+const toggleItalic = () => runEditorCommand((chain) => chain.toggleItalic());
+const toggleStrike = () => runEditorCommand((chain) => chain.toggleStrike());
+const toggleCode = () => runEditorCommand((chain) => chain.toggleCode());
+const toggleUnderline = () => runEditorCommand((chain) => chain.toggleUnderline());
 const toggleHeading = (level) => runEditorCommand((chain) => chain.toggleHeading({ level }));
 const toggleBulletList = () => runEditorCommand((chain) => chain.toggleBulletList());
+const toggleOrderedList = () => runEditorCommand((chain) => chain.toggleOrderedList());
+const toggleTaskList = () => runEditorCommand((chain) => chain.toggleTaskList());
 const toggleBlockquote = () => runEditorCommand((chain) => chain.toggleBlockquote());
+const undo = () => runEditorCommand((chain) => chain.undo());
+const redo = () => runEditorCommand((chain) => chain.redo());
 const addRowBefore = () => runEditorCommand((chain) => chain.addRowBefore());
 const addRowAfter = () => runEditorCommand((chain) => chain.addRowAfter());
 const deleteRow = () => runEditorCommand((chain) => chain.deleteRow());
@@ -715,7 +776,13 @@ const addColumnBefore = () => runEditorCommand((chain) => chain.addColumnBefore(
 const addColumnAfter = () => runEditorCommand((chain) => chain.addColumnAfter());
 const deleteColumn = () => runEditorCommand((chain) => chain.deleteColumn());
 const toggleHeaderRow = () => runEditorCommand((chain) => chain.toggleHeaderRow());
+const toggleHeaderColumn = () => runEditorCommand((chain) => chain.toggleHeaderColumn());
+const toggleHeaderCell = () => runEditorCommand((chain) => chain.toggleHeaderCell());
+const mergeCells = () => runEditorCommand((chain) => chain.mergeCells());
+const splitCell = () => runEditorCommand((chain) => chain.splitCell());
+const mergeOrSplit = () => runEditorCommand((chain) => chain.mergeOrSplit());
 const deleteTable = () => runEditorCommand((chain) => chain.deleteTable());
+const setTextAlign = (align) => runEditorCommand((chain) => chain.setTextAlign(align));
 
 const isInTable = computed(() => {
     return editorStateVersion.value >= 0 && Boolean(editor.value?.isActive('table'));
@@ -726,6 +793,24 @@ const toolbarGroups = computed(() => {
     const currentEditor = editor.value;
     return [
         {
+            id: 'history',
+            label: '历史',
+            items: [
+                {
+                    id: 'undo',
+                    label: '撤销',
+                    active: false,
+                    run: undo
+                },
+                {
+                    id: 'redo',
+                    label: '重做',
+                    active: false,
+                    run: redo
+                }
+            ]
+        },
+        {
             id: 'text',
             label: '文字样式',
             items: [
@@ -734,6 +819,48 @@ const toolbarGroups = computed(() => {
                     label: '加粗',
                     active: Boolean(currentEditor?.isActive('bold')),
                     run: toggleBold
+                },
+                {
+                    id: 'italic',
+                    label: '斜体',
+                    active: Boolean(currentEditor?.isActive('italic')),
+                    run: toggleItalic
+                },
+                {
+                    id: 'underline',
+                    label: '下划线',
+                    active: Boolean(currentEditor?.isActive('underline')),
+                    run: toggleUnderline
+                },
+                {
+                    id: 'strike',
+                    label: '删除线',
+                    active: Boolean(currentEditor?.isActive('strike')),
+                    run: toggleStrike
+                },
+                {
+                    id: 'code',
+                    label: '行内代码',
+                    active: Boolean(currentEditor?.isActive('code')),
+                    run: toggleCode
+                },
+                {
+                    id: 'link',
+                    label: '链接',
+                    active: Boolean(currentEditor?.isActive('link')),
+                    run: setLink
+                }
+            ]
+        },
+        {
+            id: 'heading',
+            label: '标题',
+            items: [
+                {
+                    id: 'heading-1',
+                    label: 'H1',
+                    active: Boolean(currentEditor?.isActive('heading', { level: 1 })),
+                    run: () => toggleHeading(1)
                 },
                 {
                     id: 'heading-2',
@@ -755,9 +882,21 @@ const toolbarGroups = computed(() => {
             items: [
                 {
                     id: 'bullet-list',
-                    label: '列表',
+                    label: '无序列表',
                     active: Boolean(currentEditor?.isActive('bulletList')),
                     run: toggleBulletList
+                },
+                {
+                    id: 'ordered-list',
+                    label: '有序列表',
+                    active: Boolean(currentEditor?.isActive('orderedList')),
+                    run: toggleOrderedList
+                },
+                {
+                    id: 'task-list',
+                    label: '任务列表',
+                    active: Boolean(currentEditor?.isActive('taskList')),
+                    run: toggleTaskList
                 },
                 {
                     id: 'blockquote',
@@ -766,16 +905,28 @@ const toolbarGroups = computed(() => {
                     run: toggleBlockquote
                 },
                 {
-                    id: 'link',
-                    label: '链接',
-                    active: Boolean(currentEditor?.isActive('link')),
-                    run: setLink
-                },
-                {
                     id: 'divider',
                     label: '分割线',
                     active: false,
                     run: insertDivider
+                },
+                {
+                    id: 'align-left',
+                    label: '左对齐',
+                    active: Boolean(currentEditor?.isActive({ textAlign: 'left' })),
+                    run: () => setTextAlign('left')
+                },
+                {
+                    id: 'align-center',
+                    label: '居中对齐',
+                    active: Boolean(currentEditor?.isActive({ textAlign: 'center' })),
+                    run: () => setTextAlign('center')
+                },
+                {
+                    id: 'align-right',
+                    label: '右对齐',
+                    active: Boolean(currentEditor?.isActive({ textAlign: 'right' })),
+                    run: () => setTextAlign('right')
                 }
             ]
         },
@@ -800,7 +951,7 @@ const toolbarGroups = computed(() => {
                     id: 'insert-image-link',
                     label: '图片链接',
                     active: false,
-                    run: insertImageByUrl
+                    run: openImageUrlDialog
                 },
                 {
                     id: 'code-block',
@@ -813,9 +964,108 @@ const toolbarGroups = computed(() => {
     ];
 });
 
+const contextMenuMode = ref('default');
+
+const tableContextMenuItems = [
+    {
+        id: 'merge',
+        label: '合并',
+        items: [
+            { id: 'merge-cells', label: '合并单元格', run: mergeCells },
+            { id: 'split-cell', label: '拆分单元格', run: splitCell }
+        ]
+    },
+    {
+        id: 'rows',
+        label: '行操作',
+        items: [
+            { id: 'add-row-before', label: '上方插入行', run: addRowBefore },
+            { id: 'add-row-after', label: '下方插入行', run: addRowAfter },
+            { id: 'delete-row', label: '删除行', run: deleteRow }
+        ]
+    },
+    {
+        id: 'columns',
+        label: '列操作',
+        items: [
+            { id: 'add-col-before', label: '左侧插入列', run: addColumnBefore },
+            { id: 'add-col-after', label: '右侧插入列', run: addColumnAfter },
+            { id: 'delete-col', label: '删除列', run: deleteColumn }
+        ]
+    },
+    {
+        id: 'align',
+        label: '对齐',
+        items: [
+            { id: 'align-left', label: '左对齐', run: () => setTextAlign('left') },
+            { id: 'align-center', label: '居中对齐', run: () => setTextAlign('center') },
+            { id: 'align-right', label: '右对齐', run: () => setTextAlign('right') }
+        ]
+    },
+    {
+        id: 'header',
+        label: '表头',
+        items: [
+            { id: 'toggle-header-row', label: '切换行表头', run: toggleHeaderRow },
+            { id: 'toggle-header-column', label: '切换列表头', run: toggleHeaderColumn },
+            { id: 'toggle-header-cell', label: '切换单元格表头', run: toggleHeaderCell }
+        ]
+    },
+    {
+        id: 'table-actions',
+        label: '表格',
+        items: [
+            { id: 'delete-table', label: '删除表格', run: deleteTable }
+        ]
+    }
+];
+
 const contextMenuItems = computed(() => {
+    if (contextMenuMode.value === 'table') {
+        return tableContextMenuItems;
+    }
     return toolbarGroups.value;
 });
+
+const itemIcons = {
+    'undo': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.7 5H10a3.5 3.5 0 0 1 0 7H7v-1.5h3a2 2 0 1 0 0-4H4.7l1.8 1.8L5.14 9.7 1.7 6.25 5.14 2.8l1.36 1.36L4.7 5z"/></svg>',
+    'redo': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.3 5H6a3.5 3.5 0 0 0 0 7h3v-1.5H6a2 2 0 1 1 0-4h5.3l-1.8 1.8L10.86 9.7l3.44-3.45-3.44-3.45L9.5 4.16 11.3 5z"/></svg>',
+    'bold': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.06 7.44A3.17 3.17 0 0 0 12.5 5c0-1.74-1.3-3-3.26-3H4v12h5.85c2.04 0 3.64-1.16 3.64-3.2 0-1.64-1.16-2.83-2.43-3.36zM6.5 4.5h2.4c.96 0 1.6.52 1.6 1.3 0 .8-.64 1.34-1.6 1.34H6.5V4.5zm2.62 7H6.5v-3.2h2.62c1.06 0 1.78.58 1.78 1.6 0 1.02-.72 1.6-1.78 1.6z"/></svg>',
+    'italic': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 2.5L8 2l-2 11.5 1.5.5 2-11.5z"/><path d="M5 3h6v1.5H5V3zm0 8.5h6V13H5v-1.5z"/></svg>',
+    'underline': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 14h10v1.5H3V14zM4 1.5h2v5a2 2 0 0 0 2 2V1.5h2v5a4 4 0 0 1-8 0v-5z"/></svg>',
+    'strike': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M12.5 8.5c-.12.69-.38 1.23-.78 1.62-.4.39-.9.68-1.5.87s-1.27.3-1.99.3c-.54 0-1.07-.07-1.59-.21s-.98-.34-1.36-.59l-.25 1.35c.4.27.9.5 1.5.68s1.24.27 1.91.27c.92 0 1.74-.14 2.46-.42s1.35-.67 1.86-1.18c.51-.51.9-1.12 1.17-1.85.13-.36.2-.75.2-1.17 0-.68-.17-1.27-.52-1.77-.35-.5-.84-.86-1.47-1.08.7.23 1.23.62 1.59 1.17s.57 1.27.57 2.18zM1.5 7.25h13v1.5h-13v-1.5z"/></svg>',
+    'code': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5.85 4.85L2.7 8l3.15 3.15-1.06 1.06L.59 8.7a1 1 0 0 1 0-1.4l4.2-4.2 1.06 1.06zm4.3 0l3.15 3.15-3.15 3.15 1.06 1.06 4.2-4.2a1 1 0 0 0 0-1.4l-4.2-4.2-1.06 1.06z"/></svg>',
+    'heading-1': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h2v4h4V3h2v10H8V9H4v4H2V3zm12 0h-2v10h2V3z"/></svg>',
+    'heading-2': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h2v4h4V3h2v10H8V9H4v4H2V3zm12.5 4.5c0-.83-.67-1.5-1.5-1.5H11v2h1.5v5H14v-5.5z"/></svg>',
+    'heading-3': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h2v4h4V3h2v10H8V9H4v4H2V3zm9.5 4h2.5l-2.8 3.5 2.8 3.5h-2.5L11 12.5 9.8 14h-2.5l2.8-3.5L7.3 7h2.5l1.2 1.5L12.2 7z"/></svg>',
+    'bullet-list': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 3.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM7 4h7V2.5H7V4zm0 5h7V7.5H7V9zm0 5h7v-1.5H7V14z"/></svg>',
+    'ordered-list': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 2.5V1h1v3h-1V3H2v-1h.5zM1 5h2v.5H1.5V6H3v.5H1V7h3V4.5H1V5zm1 5.5V9H1V8h2v2.5h-1zm.5 1H1v-1h2v.5H1.5V13H3v.5H1V14h3v-2.5H2.5zM7 4h7V2.5H7V4zm0 5h7V7.5H7V9zm0 5h7v-1.5H7V14z"/></svg>',
+    'task-list': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5h10a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 12V4A1.5 1.5 0 0 1 3 2.5zm0 1a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V4a.5.5 0 0 0-.5-.5H3z"/><path d="M6.5 9.8l3.65-3.65.7.7-4.35 4.35-2.15-2.15.7-.7L6.5 9.8z"/></svg>',
+    'blockquote': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 3h5v5.5c0 2.38-1.07 4.12-3.12 5.12l-1.26-1.5c1.58-.83 2.38-2.12 2.38-3.12V9H2.5V3zm8 0h5v5.5c0 2.38-1.07 4.12-3.12 5.12l-1.26-1.5c1.58-.83 2.38-2.12 2.38-3.12V9h-3V3z"/></svg>',
+    'link': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6.88 3.88a3 3 0 0 1 4.24 0l1 1a3 3 0 0 1-4.24 4.24l-.5-.5.94-.94.5.5a1.5 1.5 0 0 0 2.12-2.12l-1-1a1.5 1.5 0 0 0-2.12 0l-.5.5-.94-.94.5-.5z"/><path d="M4.88 6.88a3 3 0 0 1 4.24 0l.5.5-.94.94-.5-.5a1.5 1.5 0 0 0-2.12 2.12l1 1a1.5 1.5 0 0 0 2.12 0l.5-.5.94.94-.5.5a3 3 0 0 1-4.24-4.24l-1-1a3 3 0 0 1 0-4.24V6.88z"/></svg>',
+    'divider': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 7.5h12v1H2z"/></svg>',
+    'table': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h4V3H3zm5 0v3h4V3H8zM3 7v3h4V7H3zm5 0v3h4V7H8zM3 11v2h4v-2H3zm5 0v2h4v-2H8z"/></svg>',
+    'insert-image': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v10h10V3H3zm2 3a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm7 6H4l3-4 2 2.5L11 8l2 4z"/></svg>',
+    'insert-image-link': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v10h10V3H3zm3 3h4v1H6V6zm0 2h7v1H6V8zm0 2h5v1H6v-1z"/></svg>',
+    'code-block': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5.85 4.85L2.7 8l3.15 3.15-1.06 1.06L.59 8.7a1 1 0 0 1 0-1.4l4.2-4.2 1.06 1.06zm4.3 0l3.15 3.15-3.15 3.15 1.06 1.06 4.2-4.2a1 1 0 0 0 0-1.4l-4.2-4.2-1.06 1.06z"/></svg>',
+    'add-row-before': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 8h12v1H2V8zm6-6l3 3H9v3H7V5H5l3-3zM2 12h12v1H2v-1z"/></svg>',
+    'add-row-after': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 8h12v1H2V8zm0-3h12v1H2V5zm3 5l3 3 3-3H9V7H7v3H5z"/></svg>',
+    'delete-row': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 8h12v1H2V8zm3-5h1v3H5V3zm5 0h1v3h-1V3zM5 9h1v4H5V9zm5 0h1v4h-1V9z"/></svg>',
+    'add-col-before': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2v12H7V2h1zM2 3h3v10H2V3zm9 0h3v10h-3V3zM5 6L2 9l3 3V9h3V7H5V6z"/></svg>',
+    'add-col-after': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2v12H7V2h1zM2 3h3v10H2V3zm9 3l3 3-3 3V9H9V7h3V6z"/></svg>',
+    'delete-col': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2v12H7V2h1zM2 3h1v10H2V3zm11 0h1v10h-1V3zM4 6h1v4H4V6zm2 0h1v4H6V6z"/></svg>',
+    'toggle-header-row': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v3H2V2zm0 4h12v1H2V6zm0 3h12v1H2V9zm0 3h12v1H2v-1z"/></svg>',
+    'toggle-header-column': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h3v12H2V2zm4 0h1v12H6V2zm3 0h1v12H9V2zm3 0h2v12h-2V2z"/></svg>',
+    'toggle-header-cell': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h4V3H3zm5 0v3h4V3H8zM3 7v3h4V7H3zm5 0v3h4V7H8zM3 11v3h4v-3H3zm5 0v3h4v-3H8z"/></svg>',
+    'merge-cells': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h4V3H3zm5 0v3h4V3H8zM3 7v3h4V7H3zm5 0v3h4V7H8zM3 11v2h4v-2H3zm5 0v2h4v-2H8z"/><path d="M6.5 8l-2 2V9H1.5V7H4.5V6l2 2zm3 0l2-2v1h3v2h-3v1l-2-2z" fill="currentColor"/></svg>',
+    'split-cell': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h4V3H3zm5 0v3h4V3H8zM3 7v3h4V7H3zm5 0v3h4V7H8zM3 11v2h4v-2H3zm5 0v2h4v-2H8z"/><path d="M8 6.5l2 2H9v3H7V8.5H6l2-2zm0 3l-2 2h1v3h2v-3h1l-2-2z" fill="currentColor"/></svg>',
+    'align-left': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2h14v1.5H1V2zm0 4h10v1.5H1V6zm0 4h14v1.5H1V10zm0 4h10v1.5H1V14z"/></svg>',
+    'align-center': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2h14v1.5H1V2zm2 4h10v1.5H3V6zm-2 4h14v1.5H1V10zm2 4h10v1.5H3V14z"/></svg>',
+    'align-right': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2h14v1.5H1V2zm4 4h10v1.5H5V6zm-4 4h14v1.5H1V10zm4 4h10v1.5H5V14z"/></svg>',
+    'delete-table': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h4V3H3zm5 0v3h4V3H8zM3 7v3h4V7H3zm5 0v3h4V7H8zM3 11v2h4v-2H3zm5 0v2h4v-2H8z"/><path d="M10.5 4.5l3 3m-3 0l3-3" stroke="currentColor" stroke-width="1.5"/></svg>'
+};
+
+const itemIconsHtml = (id) => itemIcons[id] || '';
 
 const runToolbarItem = (item) => {
     item?.run();
@@ -829,46 +1079,43 @@ const runContextMenuItem = (item) => {
     closeContextMenu();
 };
 
-const adjustContextMenuPosition = () => {
-    if (!contextMenuState.open || !editorRoot.value || !contextMenuRef.value) {
+const adjustContextMenuPosition = (clientX, clientY) => {
+    if (!contextMenuState.open || !contextMenuRef.value) {
         return;
     }
-    const container = editorRoot.value.getBoundingClientRect();
     const menu = contextMenuRef.value.getBoundingClientRect();
-
-    const viewportHeight = window.innerHeight;
+    const margin = 10;
     const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-    // 菜单相对于视口的实际位置
-    const menuRight = contextMenuState.left + container.left + menu.width;
-    const menuBottom = contextMenuState.top + container.top + menu.height;
+    let left = clientX;
+    let top = clientY;
 
-    let left = contextMenuState.left;
-    let top = contextMenuState.top;
-
-    // 水平方向：确保不超出右边界
-    if (menuRight > viewportWidth - 12) {
-        left = Math.max(12, viewportWidth - menu.width - container.left - 12);
+    // Prevent right edge overflow
+    if (left + menu.width > viewportWidth - margin) {
+        left = viewportWidth - margin - menu.width;
+    }
+    // Prevent left edge overflow
+    if (left < margin) {
+        left = margin;
     }
 
-    // 垂直方向：确保不超出底边界，如果下方空间不够则向上展开
-    if (menuBottom > viewportHeight - 12) {
-        // 尝试向上展开
-        const spaceAbove = contextMenuState.top;
-        const spaceBelow = viewportHeight - menuBottom;
-
-        if (spaceAbove > spaceBelow && spaceAbove >= menu.height) {
-            // 上方空间更多且足够
-            top = Math.max(12, contextMenuState.top - menu.height);
-        } else if (spaceAbove < menu.height) {
-            // 上方空间也不够，紧贴顶部
-            top = 12;
+    // Prevent bottom edge overflow — flip above cursor if there's room
+    if (top + menu.height > viewportHeight - margin) {
+        const flippedTop = clientY - menu.height;
+        if (flippedTop >= margin) {
+            top = flippedTop;
+        } else {
+            top = margin;
         }
-        // 否则保持原位置，让菜单部分可见
+    }
+    // Prevent top edge overflow
+    if (top < margin) {
+        top = margin;
     }
 
-    contextMenuState.left = left;
-    contextMenuState.top = top;
+    contextMenuState.left = Math.round(left);
+    contextMenuState.top = Math.round(top);
 };
 
 const handleEditorContextMenu = (event) => {
@@ -889,6 +1136,7 @@ const handleEditorContextMenu = (event) => {
 
     event.preventDefault();
     closeSlashMenu();
+    contextMenuMode.value = editor.value.isActive('table') ? 'table' : 'default';
 
     if (editor.value.state.selection.empty) {
         const position = editor.value.view.posAtCoords({
@@ -902,13 +1150,11 @@ const handleEditorContextMenu = (event) => {
         editor.value.chain().focus().run();
     }
 
-    const rootRect = editorRoot.value.getBoundingClientRect();
-    contextMenuState.left = Math.max(12, event.clientX - rootRect.left);
-    contextMenuState.top = Math.max(12, event.clientY - rootRect.top);
     contextMenuState.open = true;
 
+    // Use viewport-relative coordinates for fixed positioning
     nextTick(() => {
-        adjustContextMenuPosition();
+        adjustContextMenuPosition(event.clientX, event.clientY);
     });
 };
 
@@ -929,7 +1175,10 @@ const handleGlobalKeyDown = (event) => {
     }
 };
 
-const handleGlobalScroll = () => {
+const handleGlobalScroll = (event) => {
+    if (contextMenuRef.value?.contains(event.target)) {
+        return;
+    }
     closeContextMenu();
 };
 </script>
@@ -962,23 +1211,29 @@ const handleGlobalScroll = () => {
                         type="button"
                         :class="{ active: item.active, disabled: item.disabled }"
                         :disabled="item.disabled"
+                        :title="item.label"
+                        :aria-label="item.label"
                         @mousedown.prevent="keepEditorFocus"
                         @click="runToolbarItem(item)"
                     >
-                        {{ item.label }}
+                        <span v-html="itemIconsHtml(item.id)"></span>
                     </button>
                 </div>
             </div>
             <div v-if="editor && isInTable" class="table-context-toolbar" contenteditable="false">
-                <span>表格</span>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="addRowBefore">上方插入行</button>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="addRowAfter">下方插入行</button>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="deleteRow">删除行</button>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="addColumnBefore">左侧插入列</button>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="addColumnAfter">右侧插入列</button>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="deleteColumn">删除列</button>
-                <button type="button" @mousedown.prevent="keepEditorFocus" @click="toggleHeaderRow">切换表头</button>
-                <button type="button" class="danger" @mousedown.prevent="keepEditorFocus" @click="deleteTable">删除表格</button>
+                <span class="table-toolbar-label">表格</span>
+                <span class="table-toolbar-divider"></span>
+                <button type="button" class="table-toolbar-btn" title="上方插入行" @mousedown.prevent="keepEditorFocus" @click="addRowBefore"><span v-html="itemIconsHtml('add-row-before')"></span></button>
+                <button type="button" class="table-toolbar-btn" title="下方插入行" @mousedown.prevent="keepEditorFocus" @click="addRowAfter"><span v-html="itemIconsHtml('add-row-after')"></span></button>
+                <button type="button" class="table-toolbar-btn" title="删除行" @mousedown.prevent="keepEditorFocus" @click="deleteRow"><span v-html="itemIconsHtml('delete-row')"></span></button>
+                <span class="table-toolbar-divider"></span>
+                <button type="button" class="table-toolbar-btn" title="左侧插入列" @mousedown.prevent="keepEditorFocus" @click="addColumnBefore"><span v-html="itemIconsHtml('add-col-before')"></span></button>
+                <button type="button" class="table-toolbar-btn" title="右侧插入列" @mousedown.prevent="keepEditorFocus" @click="addColumnAfter"><span v-html="itemIconsHtml('add-col-after')"></span></button>
+                <button type="button" class="table-toolbar-btn" title="删除列" @mousedown.prevent="keepEditorFocus" @click="deleteColumn"><span v-html="itemIconsHtml('delete-col')"></span></button>
+                <span class="table-toolbar-divider"></span>
+                <button type="button" class="table-toolbar-btn" title="切换表头" @mousedown.prevent="keepEditorFocus" @click="toggleHeaderRow"><span v-html="itemIconsHtml('toggle-header-row')"></span></button>
+                <span class="table-toolbar-divider"></span>
+                <button type="button" class="table-toolbar-btn table-toolbar-btn--danger" title="删除表格" @mousedown.prevent="keepEditorFocus" @click="deleteTable"><span v-html="itemIconsHtml('delete-table')"></span></button>
             </div>
         </div>
         <div ref="editorRoot" class="editor-body" @contextmenu="handleEditorContextMenu">
@@ -1021,15 +1276,126 @@ const handleGlobalScroll = () => {
                             :class="{ active: item.active }"
                             @mousedown.prevent="runContextMenuItem(item)"
                         >
-                            {{ item.label }}
+                            <span class="context-item-icon" v-html="itemIconsHtml(item.id)"></span>
+                            <span class="context-item-label">{{ item.label }}</span>
                         </button>
                     </div>
                 </template>
             </div>
+            <BubbleMenu
+                v-if="editor"
+                :editor="editor"
+                class="editor-bubble-menu"
+                :tippy-options="{ duration: 150, placement: 'top' }"
+            >
+                <button
+                    type="button"
+                    class="bubble-menu-btn"
+                    :class="{ active: editor.isActive('bold') }"
+                    title="加粗"
+                    @click="toggleBold"
+                ><span v-html="itemIconsHtml('bold')"></span></button>
+                <button
+                    type="button"
+                    class="bubble-menu-btn"
+                    :class="{ active: editor.isActive('italic') }"
+                    title="斜体"
+                    @click="toggleItalic"
+                ><span v-html="itemIconsHtml('italic')"></span></button>
+                <button
+                    type="button"
+                    class="bubble-menu-btn"
+                    :class="{ active: editor.isActive('strike') }"
+                    title="删除线"
+                    @click="toggleStrike"
+                ><span v-html="itemIconsHtml('strike')"></span></button>
+                <button
+                    type="button"
+                    class="bubble-menu-btn"
+                    :class="{ active: editor.isActive('code') }"
+                    title="行内代码"
+                    @click="toggleCode"
+                ><span v-html="itemIconsHtml('code')"></span></button>
+                <span class="bubble-menu-sep"></span>
+                <button
+                    type="button"
+                    class="bubble-menu-btn"
+                    :class="{ active: editor.isActive('link') }"
+                    title="链接"
+                    @click="setLink"
+                ><span v-html="itemIconsHtml('link')"></span></button>
+            </BubbleMenu>
             <EditorContent :editor="editor" />
         </div>
         <p v-if="uploadError" class="upload-error">{{ uploadError }}</p>
     </section>
+
+    <Teleport to="body">
+        <div
+            v-if="imageUrlDialog.open"
+            class="image-url-overlay"
+            @click.self="cancelImageUrl"
+        >
+            <div class="image-url-dialog" role="dialog" aria-modal="true" aria-label="插入图片链接">
+                <div class="image-url-header">
+                    <h3>插入图片链接</h3>
+                    <button type="button" class="image-url-close" @click="cancelImageUrl">&times;</button>
+                </div>
+                <div class="image-url-body">
+                    <label class="image-url-label" for="image-url-input">图片链接地址</label>
+                    <input
+                        id="image-url-input"
+                        v-model="imageUrlDialog.url"
+                        type="url"
+                        placeholder="https://example.com/image.jpg"
+                        class="image-url-input"
+                        autofocus
+                        @keydown.enter="confirmImageUrl"
+                    >
+                    <p v-if="imageUrlDialog.error" class="image-url-error">{{ imageUrlDialog.error }}</p>
+                    <div v-if="imageUrlDialog.url && !imageUrlDialog.error" class="image-url-preview">
+                        <img :src="imageUrlDialog.url" alt="图片预览" @error="false">
+                    </div>
+                </div>
+                <div class="image-url-actions">
+                    <button type="button" class="image-url-cancel" @click="cancelImageUrl">取消</button>
+                    <button type="button" class="image-url-confirm" @click="confirmImageUrl">插入</button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+
+    <Teleport to="body">
+        <div
+            v-if="linkDialog.open"
+            class="image-url-overlay"
+            @click.self="cancelLink"
+        >
+            <div class="image-url-dialog" role="dialog" aria-modal="true" aria-label="插入链接">
+                <div class="image-url-header">
+                    <h3>插入链接</h3>
+                    <button type="button" class="image-url-close" @click="cancelLink">&times;</button>
+                </div>
+                <div class="image-url-body">
+                    <label class="image-url-label" for="link-url-input">链接地址</label>
+                    <input
+                        id="link-url-input"
+                        v-model="linkDialog.url"
+                        type="url"
+                        placeholder="https://example.com 或 /articles/123"
+                        class="image-url-input"
+                        autofocus
+                        @keydown.enter="confirmLink"
+                    >
+                    <p v-if="linkDialog.error" class="image-url-error">{{ linkDialog.error }}</p>
+                </div>
+                <div class="image-url-actions">
+                    <button type="button" class="image-url-cancel" @click="cancelLink">取消</button>
+                    <button type="button" class="image-url-confirm" @click="confirmLink">确认</button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -1057,5 +1423,167 @@ const handleGlobalScroll = () => {
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.image-url-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    padding: 20px;
+}
+
+.image-url-dialog {
+    width: 100%;
+    max-width: 460px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+}
+
+.image-url-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 22px 0;
+}
+
+.image-url-header h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text, #1f2329);
+}
+
+.image-url-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--muted, #6b7280);
+    font-size: 22px;
+    cursor: pointer;
+    border-radius: 999px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.image-url-close:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text, #1f2329);
+}
+
+.image-url-body {
+    padding: 18px 22px 0;
+    display: grid;
+    gap: 8px;
+}
+
+.image-url-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text, #1f2329);
+}
+
+.image-url-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    font-size: 14px;
+    outline: 0;
+    transition: border-color 0.18s ease;
+    box-sizing: border-box;
+}
+
+.image-url-input:focus {
+    border-color: var(--brand, #1f7ae0);
+    box-shadow: 0 0 0 3px rgba(31, 122, 224, 0.1);
+}
+
+.image-url-input::placeholder {
+    color: #b0b8c4;
+}
+
+.image-url-error {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #d14343;
+    background: rgba(209, 67, 67, 0.06);
+    border-radius: 8px;
+    line-height: 1.4;
+}
+
+.image-url-preview {
+    margin-top: 4px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border, #e5e7eb);
+    background: #f8f9fb;
+}
+
+.image-url-preview img {
+    display: block;
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+.image-url-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 18px 22px 22px;
+}
+
+.image-url-cancel,
+.image-url-confirm {
+    min-height: 40px;
+    padding: 0 22px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.image-url-cancel {
+    background: transparent;
+    border: 1px solid var(--border, #e5e7eb);
+    color: var(--muted, #6b7280);
+}
+
+.image-url-cancel:hover {
+    border-color: var(--text, #1f2329);
+    color: var(--text, #1f2329);
+}
+
+.image-url-confirm {
+    background: linear-gradient(135deg, #1f7ae0, #1664c4);
+    border: none;
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(31, 122, 224, 0.22);
+}
+
+.image-url-confirm:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 10px 24px rgba(31, 122, 224, 0.3);
+}
+
+.link-dialog-hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted, #6b7280);
+    line-height: 1.4;
 }
 </style>

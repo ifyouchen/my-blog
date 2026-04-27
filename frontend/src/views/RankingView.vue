@@ -128,7 +128,7 @@ onMounted(fetchRankings);
                     <div v-else class="ranking-author-list">
                         <div v-for="author in authorRankings" :key="author.user.id" class="ranking-author-card">
                             <div class="ranking-author-head">
-                                <span class="ranking-side-rank">{{ author.rank }}</span>
+                                <span class="ranking-side-rank" :class="`rank-${author.rank}`">{{ author.rank }}</span>
                                 <RouterLink class="ranking-author-avatar" :to="`/users/${author.user.id}`">
                                     <img :src="author.user.avatar" alt="作者头像" loading="lazy">
                                 </RouterLink>
@@ -207,10 +207,10 @@ onMounted(fetchRankings);
     position: sticky;
     top: 96px;
     display: grid;
-    gap: 14px;
+    gap: 16px;
     padding: 22px;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.92);
+    background: linear-gradient(180deg, #ffffff, rgba(248, 251, 255, 0.96));
+    border: 1px solid rgba(208, 219, 236, 0.88);
     border-radius: 22px;
     box-shadow: 0 18px 42px rgba(31, 78, 168, 0.07);
 }
@@ -375,51 +375,36 @@ onMounted(fetchRankings);
 }
 
 .ranking-side-heading {
-    margin-bottom: 4px;
+    margin-bottom: 0;
+}
+
+.ranking-author-list {
+    display: grid;
+    gap: 10px;
 }
 
 .ranking-author-card {
     display: grid;
-    gap: 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
-    transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
-}
-
-.ranking-author-card:last-child {
-    padding-bottom: 0;
-    border-bottom: 0;
+    gap: 10px;
+    padding: 16px;
+    background: #ffffff;
+    border: 1px solid rgba(208, 219, 236, 0.5);
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(31, 78, 168, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .ranking-author-card:hover {
-    background: rgba(40, 118, 255, 0.04);
-    transform: translateY(-1px);
-}
-
-.rank-author-head p,
-.ranking-author-copy p {
-    margin: 4px 0 0;
-    color: var(--muted);
-    font-size: 13px;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(31, 78, 168, 0.08);
+    border-color: rgba(31, 122, 224, 0.18);
 }
 
 .ranking-author-head {
     display: grid;
-    grid-template-columns: 28px 42px minmax(0, 1fr);
+    grid-template-columns: 28px 44px minmax(0, 1fr);
     gap: 12px;
     align-items: center;
-}
-
-.ranking-author-avatar {
-    display: inline-flex;
-    border-radius: 16px;
-}
-
-.ranking-author-avatar img {
-    width: 42px;
-    height: 42px;
-    object-fit: cover;
-    border-radius: 16px;
 }
 
 .ranking-side-rank {
@@ -428,11 +413,50 @@ onMounted(fetchRankings);
     justify-content: center;
     width: 28px;
     height: 28px;
-    color: var(--brand-strong);
     font-size: 12px;
     font-weight: 700;
-    background: rgba(40, 118, 255, 0.08);
+    color: var(--brand-strong);
+    background: linear-gradient(135deg, rgba(40, 118, 255, 0.1), rgba(91, 152, 255, 0.05));
+    border: 1px solid rgba(40, 118, 255, 0.12);
     border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.ranking-side-rank.rank-1 {
+    color: #ffffff;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    border-color: #FFD700;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25);
+}
+
+.ranking-side-rank.rank-2 {
+    color: #ffffff;
+    background: linear-gradient(135deg, #E8E8E8, #B0B0B0);
+    border-color: #C0C0C0;
+    box-shadow: 0 2px 8px rgba(192, 192, 192, 0.25);
+}
+
+.ranking-side-rank.rank-3 {
+    color: #ffffff;
+    background: linear-gradient(135deg, #F5A87A, #CD7F32);
+    border-color: #CD7F32;
+    box-shadow: 0 2px 8px rgba(205, 127, 50, 0.2);
+}
+
+.ranking-author-avatar {
+    display: inline-flex;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(31, 122, 224, 0.1), rgba(31, 122, 224, 0.03));
+    flex-shrink: 0;
+}
+
+.ranking-author-avatar img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
 }
 
 .ranking-author-copy {
@@ -440,22 +464,39 @@ onMounted(fetchRankings);
 }
 
 .ranking-author-copy a {
+    display: block;
     color: var(--text);
     font-weight: 700;
+    font-size: 15px;
     text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.18s ease;
 }
 
-.ranking-author-meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+.ranking-author-copy a:hover {
+    color: var(--brand-strong);
+}
+
+.ranking-author-copy p {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .ranking-author-footer {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.ranking-author-meta {
+    display: flex;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
@@ -463,28 +504,32 @@ onMounted(fetchRankings);
     display: inline-flex;
     align-items: center;
     min-height: 24px;
-    padding: 0 8px;
+    padding: 0 10px;
+    font-size: 11px;
     color: var(--muted);
-    font-size: 12px;
-    background: rgba(40, 118, 255, 0.07);
+    background: rgba(40, 118, 255, 0.06);
     border-radius: 999px;
+    white-space: nowrap;
 }
 
 .ranking-author-self-tag {
     display: inline-flex;
     align-items: center;
-    min-height: 30px;
-    padding: 0 10px;
-    color: var(--muted);
+    min-height: 28px;
+    padding: 0 12px;
     font-size: 12px;
-    background: rgba(40, 118, 255, 0.07);
+    font-weight: 600;
+    color: var(--brand-strong);
+    background: rgba(40, 118, 255, 0.08);
     border-radius: 999px;
+    white-space: nowrap;
 }
 
 .ranking-author-card :deep(.author-follow-button) {
-    min-height: 32px;
+    min-height: 28px;
     padding-inline: 12px;
     border-radius: 999px;
+    font-size: 12px;
 }
 
 .ranking-state {
@@ -530,7 +575,7 @@ onMounted(fetchRankings);
     }
 
     .ranking-sidebar-card {
-        padding: 18px;
+        padding: 16px;
     }
 
     .ranking-post-title {

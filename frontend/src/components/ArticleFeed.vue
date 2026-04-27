@@ -41,6 +41,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    hideSort: {
+        type: Boolean,
+        default: false
+    },
     sort: {
         type: String,
         default: ARTICLE_SORT_LATEST
@@ -137,7 +141,7 @@ watch(
                 <p class="eyebrow">{{ eyebrow }}</p>
                 <h2 id="feed-title">{{ title }}</h2>
             </div>
-            <div class="sort-tabs" aria-label="排序" :class="{ invisible: !props.sortItems.length }">
+            <div v-if="!hideSort" class="sort-tabs" aria-label="排序" :class="{ invisible: !props.sortItems.length }">
                 <button
                     v-for="item in props.sortItems"
                     :key="item.value"

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listArticlesApi } from '@/api/articles';
 import {
@@ -9,8 +9,8 @@ import {
     saveRecentKeywordApi,
     clearRecentKeywordsApi
 } from '@/api/search';
-import { followUserApi } from '@/api/following';
-import { subscribeColumnApi } from '@/api/columns';
+import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
+import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import { useSession } from '@/stores/session';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {
@@ -59,6 +59,117 @@ const guestRecentSearches = ref([]);
 // Expand/collapse state for filters
 const categoriesExpanded = ref(false);
 const tagsExpanded = ref(false);
+const filtersExpanded = ref(false);
+
+const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const datePresets = [
+    { label: '今天', getRange: () => {
+        const today = new Date();
+        return { from: formatDate(today), to: formatDate(today) };
+    }},
+    { label: '本周', getRange: () => {
+        const now = new Date();
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
+        return { from: formatDate(monday), to: formatDate(now) };
+    }},
+    { label: '本月', getRange: () => {
+        const now = new Date();
+        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { from: formatDate(first), to: formatDate(now) };
+    }},
+    { label: '今年', getRange: () => {
+        const now = new Date();
+        const first = new Date(now.getFullYear(), 0, 1);
+        return { from: formatDate(first), to: formatDate(now) };
+    }},
+];
+
+const isPresetActive = (preset) => {
+    const { from, to } = preset.getRange();
+    return dateFrom.value === from && dateTo.value === to;
+};
+
+const applyDatePreset = (preset) => {
+    const { from, to } = preset.getRange();
+    dateFrom.value = from;
+    dateTo.value = to;
+    currentPage.value = 1;
+    syncRoute({ page: 1, dateFrom: from, dateTo: to });
+};
+
+const activeFilters = computed(() => {
+    const filters = [];
+    if (activeCategory.value) {
+        filters.push({
+            key: 'category',
+            label: `分类: ${activeCategory.value}`,
+            onRemove: () => { activeCategory.value = ''; currentPage.value = 1; syncRoute({ page: 1 }); }
+        });
+    }
+    if (activeTag.value) {
+        filters.push({
+            key: 'tag',
+            label: `标签: ${activeTag.value}`,
+            onRemove: () => { activeTag.value = ''; currentPage.value = 1; syncRoute({ page: 1 }); }
+        });
+    }
+    if (!isDefaultArticleSort(activeSort.value)) {
+        const sortItem = ARTICLE_SORT_ITEMS.find(s => s.value === activeSort.value);
+        if (sortItem) {
+            filters.push({
+                key: 'sort',
+                label: `排序: ${sortItem.label}`,
+                onRemove: () => { activeSort.value = ARTICLE_SORT_LATEST; currentPage.value = 1; syncRoute({ page: 1 }); }
+            });
+        }
+    }
+    if (authorKeyword.value) {
+        filters.push({
+            key: 'author',
+            label: `作者: ${authorKeyword.value}`,
+            onRemove: () => { authorKeyword.value = ''; currentPage.value = 1; syncRoute({ page: 1 }); }
+        });
+    }
+    if (dateFrom.value || dateTo.value) {
+        const label = dateFrom.value && dateTo.value
+            ? `${dateFrom.value} ~ ${dateTo.value}`
+            : (dateFrom.value || dateTo.value);
+        filters.push({
+            key: 'date',
+            label: `日期: ${label}`,
+            onRemove: () => { dateFrom.value = ''; dateTo.value = ''; currentPage.value = 1; syncRoute({ page: 1 }); }
+        });
+    }
+    if (followingOnly.value) {
+        filters.push({
+            key: 'following',
+            label: '仅看关注',
+            onRemove: () => { followingOnly.value = false; currentPage.value = 1; syncRoute({ page: 1 }); }
+        });
+    }
+    return filters;
+});
+
+const activeFilterCount = computed(() => activeFilters.value.length);
+
+const clearAllFilters = () => {
+    activeCategory.value = '';
+    activeTag.value = '';
+    activeSort.value = ARTICLE_SORT_LATEST;
+    authorKeyword.value = '';
+    dateFrom.value = '';
+    dateTo.value = '';
+    followingOnly.value = false;
+    currentPage.value = 1;
+    syncRoute({ page: 1 });
+};
 
 const MAX_VISIBLE_TAGS = 10; // 大约两行的数量
 
@@ -79,6 +190,12 @@ const visibleTags = computed(() => {
 const hasMoreCategories = computed(() => categoryOptions.value.length > MAX_VISIBLE_TAGS);
 const hasMoreTags = computed(() => tagOptions.value.length > MAX_VISIBLE_TAGS);
 const hotKeywords = computed(() => bootstrap.value?.hotKeywords || []);
+const showKeywordChips = computed(() =>
+    !keyword.value.trim() &&
+    articles.value.length === 0 &&
+    users.value.length === 0 &&
+    columns.value.length === 0
+);
 const recentKeywords = computed(() => bootstrap.value?.recentKeywords || guestRecentSearches.value);
 
 const syncRoute = (overrides = {}) => {
@@ -194,7 +311,6 @@ const runSearch = async () => {
 };
 
 const changeTab = (tab) => {
-    const scrollY = window.scrollY;
     activeTab.value = tab;
     currentPage.value = 1;
     // Reset article-only filters when switching tabs
@@ -206,23 +322,18 @@ const changeTab = (tab) => {
     dateTo.value = '';
     followingOnly.value = false;
     syncRoute({ tab, page: 1 });
-    nextTick(() => window.scrollTo(0, scrollY));
 };
 
 const changeCategory = (value) => {
-    const scrollY = window.scrollY;
     activeCategory.value = value === '全部' ? '' : value;
     currentPage.value = 1;
     syncRoute({ page: 1, category: activeCategory.value || undefined });
-    nextTick(() => window.scrollTo(0, scrollY));
 };
 
 const changeTag = (value) => {
-    const scrollY = window.scrollY;
     activeTag.value = value === '全部' ? '' : value;
     currentPage.value = 1;
     syncRoute({ page: 1, tag: activeTag.value || undefined });
-    nextTick(() => window.scrollTo(0, scrollY));
 };
 
 const changeSort = (sort) => {
@@ -320,30 +431,14 @@ const goToColumn = (columnId) => {
     router.push(`/columns/${columnId}`);
 };
 
-const handleFollow = async (user) => {
-    if (!isLoggedIn.value) {
-        return;
-    }
-    try {
-        await followUserApi(user.id);
-        user.followed = true;
-        user.followerCount = (user.followerCount || 0) + 1;
-    } catch (e) {
-        console.error('Failed to follow user:', e);
-    }
+const handleFollowChange = (user, followed) => {
+    user.followed = followed;
+    user.followerCount = Math.max(0, (user.followerCount || 0) + (followed ? 1 : -1));
 };
 
-const handleSubscribe = async (column) => {
-    if (!isLoggedIn.value) {
-        return;
-    }
-    try {
-        await subscribeColumnApi(column.id);
-        column.subscribed = true;
-        column.subscriberCount = (column.subscriberCount || 0) + 1;
-    } catch (e) {
-        console.error('Failed to subscribe column:', e);
-    }
+const handleSubscribeChange = (column, subscribed) => {
+    column.subscribed = subscribed;
+    column.subscriberCount = Math.max(0, (column.subscriberCount || 0) + (subscribed ? 1 : -1));
 };
 
 watch(
@@ -382,7 +477,7 @@ onMounted(fetchBootstrap);
             </form>
 
             <!-- Recent + Hot Keywords -->
-            <div v-if="recentKeywords.length || hotKeywords.length" class="keyword-section">
+            <div v-if="showKeywordChips && (recentKeywords.length || hotKeywords.length)" class="keyword-section">
                 <div v-if="recentKeywords.length" class="keyword-group">
                     <span class="keyword-label">最近搜索</span>
                     <div class="keyword-row">
@@ -439,8 +534,36 @@ onMounted(fetchBootstrap);
                 </button>
             </div>
 
+            <!-- Mobile filter toggle -->
+            <button
+                v-if="activeTab === 'articles'"
+                class="mobile-filter-toggle"
+                type="button"
+                @click="filtersExpanded = !filtersExpanded"
+            >
+                <span>
+                    筛选条件
+                    <span v-if="activeFilterCount" class="filter-count-badge">{{ activeFilterCount }}</span>
+                </span>
+                <span class="filter-toggle-arrow" :class="{ open: filtersExpanded }">▾</span>
+            </button>
+
             <!-- Article Filters -->
-            <div v-if="activeTab === 'articles'" class="search-filters">
+            <div v-if="activeTab === 'articles'" class="search-filters" :class="{ collapsed: !filtersExpanded }">
+                <div class="filter-group sort-row">
+                    <span>排序方式</span>
+                    <div class="sort-buttons">
+                        <button
+                            v-for="item in ARTICLE_SORT_ITEMS"
+                            :key="item.value"
+                            type="button"
+                            :class="{ active: activeSort === item.value }"
+                            @click="changeSort(item.value)"
+                        >
+                            {{ item.label }}
+                        </button>
+                    </div>
+                </div>
                 <div class="filter-group">
                     <span>分类</span>
                     <div class="tag-row">
@@ -496,19 +619,30 @@ onMounted(fetchBootstrap);
                     >
                 </div>
                 <div class="filter-group date-filters">
-                    <span>日期范围</span>
-                    <div class="date-inputs">
+                    <span>发布日期</span>
+                    <div class="date-presets">
+                        <button
+                            v-for="preset in datePresets"
+                            :key="preset.label"
+                            type="button"
+                            :class="{ active: isPresetActive(preset) }"
+                            @click="applyDatePreset(preset)"
+                        >
+                            {{ preset.label }}
+                        </button>
+                    </div>
+                    <div class="date-range">
                         <input
                             v-model="dateFrom"
                             type="date"
-                            class="filter-input date-input"
+                            class="filter-input"
                             @change="changeDateFrom"
                         >
-                        <span class="date-separator">至</span>
+                        <span class="date-range-sep">至</span>
                         <input
                             v-model="dateTo"
                             type="date"
-                            class="filter-input date-input"
+                            class="filter-input"
                             @change="changeDateTo"
                         >
                     </div>
@@ -534,6 +668,20 @@ onMounted(fetchBootstrap);
                 </div>
             </div>
 
+            <!-- Active filter chips -->
+            <div v-if="activeTab === 'articles' && activeFilters.length" class="active-filter-bar">
+                <span class="active-filter-label">已筛选：</span>
+                <span
+                    v-for="f in activeFilters"
+                    :key="f.key"
+                    class="active-filter-chip"
+                >
+                    {{ f.label }}
+                    <button type="button" class="chip-remove" @click="f.onRemove">&times;</button>
+                </span>
+                <button type="button" class="chip-clear-all" @click="clearAllFilters">清空全部</button>
+            </div>
+
             <p class="result-note">
                 <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章</template>
                 <template v-else-if="activeTab === 'users'">共找到 {{ userTotal }} 位作者</template>
@@ -544,6 +692,7 @@ onMounted(fetchBootstrap);
         <!-- Article Results -->
         <ArticleFeed
             v-if="activeTab === 'articles'"
+            hide-sort
             :articles="articles"
             :page="currentPage"
             :page-size="pageSize"
@@ -580,13 +729,13 @@ onMounted(fetchBootstrap);
                             <span>文章 {{ user.articleCount || 0 }}</span>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        class="follow-btn"
-                        @click.stop="handleFollow(user)"
-                    >
-                        关注
-                    </button>
+                    <AuthorFollowButton
+                        :user-id="user.id"
+                        :followed="user.followed"
+                        compact
+                        @click.stop
+                        @change="(followed) => handleFollowChange(user, followed)"
+                    />
                 </div>
             </div>
             <div v-if="userTotal > pageSize" class="pagination">
@@ -638,14 +787,13 @@ onMounted(fetchBootstrap);
                             <span>文章 {{ column.articleCount || 0 }}</span>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        :class="['subscribe-btn', { subscribed: column.subscribed }]"
-                        :disabled="column.subscribed"
-                        @click.stop="handleSubscribe(column)"
-                    >
-                        {{ column.subscribed ? '已订阅' : '订阅' }}
-                    </button>
+                    <ColumnSubscribeButton
+                        :column-id="column.id"
+                        :subscribed="column.subscribed"
+                        compact
+                        @click.stop
+                        @change="(subscribed) => handleSubscribeChange(column, subscribed)"
+                    />
                 </div>
             </div>
             <div v-if="columnTotal > pageSize" class="pagination">
@@ -843,20 +991,6 @@ onMounted(fetchBootstrap);
     border-color: var(--primary);
 }
 
-.date-inputs {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.date-input {
-    width: 140px;
-}
-
-.date-separator {
-    color: var(--muted);
-}
-
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -998,38 +1132,6 @@ onMounted(fetchBootstrap);
     border-radius: 999px;
 }
 
-.follow-btn, .subscribe-btn {
-    min-height: 38px;
-    padding: 0 18px;
-    border-radius: 999px;
-    border: 1px solid rgba(40, 118, 255, 0.18);
-    background: rgba(255, 255, 255, 0.92);
-    color: var(--primary);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    box-shadow: 0 10px 22px rgba(31, 78, 168, 0.05);
-}
-
-.follow-btn:hover, .subscribe-btn:hover {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    border-color: transparent;
-    color: white;
-}
-
-.subscribe-btn.subscribed {
-    background: var(--surface-soft);
-    border-color: var(--line);
-    color: var(--muted);
-    cursor: default;
-}
-
-.subscribe-btn.subscribed:hover {
-    background: var(--surface-soft);
-    border-color: var(--line);
-    color: var(--muted);
-}
-
 .pagination {
     display: flex;
     justify-content: center;
@@ -1056,7 +1158,56 @@ onMounted(fetchBootstrap);
     color: var(--muted);
 }
 
+/* Mobile filter toggle */
+.mobile-filter-toggle {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 18px;
+    margin-top: 4px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.mobile-filter-toggle:hover {
+    border-color: var(--primary);
+}
+
+.filter-toggle-arrow {
+    font-size: 12px;
+    transition: transform 0.18s ease;
+}
+
+.filter-toggle-arrow.open {
+    transform: rotate(180deg);
+}
+
 @media (max-width: 720px) {
+    .mobile-filter-toggle {
+        display: flex;
+    }
+
+    .search-filters.collapsed {
+        display: none;
+    }
+
+    .search-filters {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .filter-input {
+        max-width: none;
+        width: 100%;
+    }
+
     .user-card, .column-card {
         grid-template-columns: auto minmax(0, 1fr);
     }
@@ -1065,5 +1216,147 @@ onMounted(fetchBootstrap);
         grid-column: 1 / -1;
         width: fit-content;
     }
+}
+
+.active-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.active-filter-label {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 13px;
+    background: var(--brand-soft);
+    color: var(--brand-strong);
+    border: 1px solid rgba(31, 122, 224, 0.16);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--brand-strong);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.chip-remove:hover {
+    background: rgba(31, 122, 224, 0.12);
+}
+
+.chip-clear-all {
+    padding: 4px 12px;
+    font-size: 13px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.chip-clear-all:hover {
+    color: var(--error);
+    border-color: var(--error);
+}
+
+.sort-row .sort-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sort-row .sort-buttons button {
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #ffffff;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text);
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.sort-row .sort-buttons button.active {
+    color: #ffffff;
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+    font-weight: 600;
+}
+
+.sort-row .sort-buttons button:hover:not(.active) {
+    border-color: var(--primary);
+    color: var(--brand-strong);
+}
+
+.date-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.date-presets button {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #ffffff;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text);
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.date-presets button.active {
+    color: #ffffff;
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+    font-weight: 600;
+}
+
+.date-presets button:hover:not(.active) {
+    border-color: var(--primary);
+    color: var(--brand-strong);
+}
+
+.filter-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    background: var(--brand-strong);
+    border-radius: 999px;
+    line-height: 1;
 }
 </style>

@@ -195,7 +195,9 @@ const fetchCurrentTab = async () => {
         await fetchFavorites();
         return;
     }
-    await Promise.all([fetchArticles(), fetchOverview()]);
+    // Use silent mode when data already exists to prevent page flickering on tab/page switch
+    const hasExistingData = articles.value.length > 0;
+    await Promise.all([fetchArticles({ silent: hasExistingData }), fetchOverview()]);
 };
 
 const changePage = (page) => {
@@ -753,17 +755,16 @@ watch(isLoggedIn, () => {
 
 .article-time-cell {
     min-width: 118px;
-    display: grid;
-    height: 100%;
-    gap: 2px;
-    align-items: center;
-    justify-content: center;
-    align-content: center;
     color: var(--text);
     white-space: nowrap;
 }
 
+.article-time-cell span {
+    display: block;
+}
+
 .article-time-cell small {
+    display: block;
     color: var(--muted);
     font-size: 12px;
 }
@@ -772,27 +773,24 @@ watch(isLoggedIn, () => {
 .article-inline-actions,
 .article-inline-main {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
-}
-
-.article-inline-actions {
-    justify-content: flex-start;
 }
 
 .action-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 30px;
-    padding: 0 12px;
+    min-height: 34px;
+    padding: 0 14px;
     border: 1px solid transparent;
     border-radius: 999px;
     font-size: 13px;
     font-weight: 700;
     line-height: 1;
     cursor: pointer;
+    text-decoration: none;
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
@@ -826,16 +824,15 @@ watch(isLoggedIn, () => {
 }
 
 .action-link-danger {
-    padding-inline: 6px;
     color: #c64141;
-    background: transparent;
-    border-color: transparent;
+    background: rgba(209, 67, 67, 0.06);
+    border-color: rgba(209, 67, 67, 0.12);
 }
 
 .action-link-danger:hover:not(:disabled) {
     color: #b33434;
-    background: rgba(209, 67, 67, 0.06);
-    border-color: rgba(209, 67, 67, 0.08);
+    background: rgba(209, 67, 67, 0.12);
+    border-color: rgba(209, 67, 67, 0.18);
 }
 
 .article-action-muted {
