@@ -110,9 +110,9 @@ const avatarSrc = computed(() => {
 .comment-composer-main {
     min-width: 0;
     padding: 12px;
-    background: #f8fbfa;
+    background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .comment-composer-input {
@@ -139,7 +139,7 @@ const avatarSrc = computed(() => {
     justify-content: space-between;
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid rgba(219, 227, 223, 0.92);
+    border-top: 1px solid var(--line);
 }
 
 .comment-composer-feedback {
@@ -160,12 +160,12 @@ const avatarSrc = computed(() => {
     padding: 0 14px;
     font-size: 13px;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .comment-composer-cancel {
     color: var(--muted);
-    background: #ffffff;
+    background: var(--surface);
     border: 1px solid var(--line);
 }
 

@@ -1,6 +1,6 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { BubbleMenu, EditorContent, useEditor, VueNodeViewRenderer } from '@tiptap/vue-3';
+import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
+import {BubbleMenu, EditorContent, useEditor, VueNodeViewRenderer} from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Table from '@tiptap/extension-table';
@@ -13,11 +13,11 @@ import TaskItem from '@tiptap/extension-task-item';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import ResizeImage from 'tiptap-extension-resize-image';
-import { createBlogLowlight } from '@/utils/codeLanguages';
-import { editorHtmlToMarkdown, editorJsonToMarkdown, markdownToEditorHtml } from '@/utils/markdown';
+import {createBlogLowlight} from '@/utils/codeLanguages';
+import {editorJsonToMarkdown, markdownToEditorHtml} from '@/utils/markdown';
 import CodeBlockNodeView from '@/components/CodeBlockNodeView.vue';
-import { uploadImageApi } from '@/api/uploads.js';
-import { useSession } from '@/stores/session';
+import {uploadImageApi} from '@/api/uploads.js';
+import {useSession} from '@/stores/session';
 
 const { isLoggedIn } = useSession();
 
@@ -1417,7 +1417,7 @@ const handleGlobalScroll = (event) => {
     color: #d14343;
     font-size: 13px;
     background: rgba(209, 67, 67, 0.06);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
 }
 
 button:disabled {
@@ -1440,9 +1440,9 @@ button:disabled {
 .image-url-dialog {
     width: 100%;
     max-width: 460px;
-    background: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.18);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
     overflow: hidden;
 }
 
@@ -1457,7 +1457,7 @@ button:disabled {
     margin: 0;
     font-size: 17px;
     font-weight: 700;
-    color: var(--text, #1f2329);
+    color: var(--text);
 }
 
 .image-url-close {
@@ -1469,16 +1469,16 @@ button:disabled {
     padding: 0;
     border: none;
     background: transparent;
-    color: var(--muted, #6b7280);
+    color: var(--muted);
     font-size: 22px;
     cursor: pointer;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .image-url-close:hover {
     background: rgba(0, 0, 0, 0.06);
-    color: var(--text, #1f2329);
+    color: var(--text);
 }
 
 .image-url-body {
@@ -1490,15 +1490,15 @@ button:disabled {
 .image-url-label {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text, #1f2329);
+    color: var(--text);
 }
 
 .image-url-input {
     width: 100%;
     min-height: 44px;
     padding: 0 14px;
-    border: 1px solid var(--border, #e5e7eb);
-    border-radius: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
     font-size: 14px;
     outline: 0;
     transition: border-color 0.18s ease;
@@ -1506,8 +1506,8 @@ button:disabled {
 }
 
 .image-url-input:focus {
-    border-color: var(--brand, #1f7ae0);
-    box-shadow: 0 0 0 3px rgba(31, 122, 224, 0.1);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .image-url-input::placeholder {
@@ -1520,16 +1520,16 @@ button:disabled {
     font-size: 13px;
     color: #d14343;
     background: rgba(209, 67, 67, 0.06);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     line-height: 1.4;
 }
 
 .image-url-preview {
     margin-top: 4px;
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    border: 1px solid var(--border, #e5e7eb);
-    background: #f8f9fb;
+    border: 1px solid var(--line);
+    background: var(--surface-soft);
 }
 
 .image-url-preview img {
@@ -1550,7 +1550,7 @@ button:disabled {
 .image-url-confirm {
     min-height: 40px;
     padding: 0 22px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -1559,31 +1559,31 @@ button:disabled {
 
 .image-url-cancel {
     background: transparent;
-    border: 1px solid var(--border, #e5e7eb);
-    color: var(--muted, #6b7280);
+    border: 1px solid var(--line);
+    color: var(--muted);
 }
 
 .image-url-cancel:hover {
-    border-color: var(--text, #1f2329);
-    color: var(--text, #1f2329);
+    border-color: var(--text);
+    color: var(--text);
 }
 
 .image-url-confirm {
-    background: linear-gradient(135deg, #1f7ae0, #1664c4);
+    background: var(--brand);
     border: none;
     color: #ffffff;
-    box-shadow: 0 8px 20px rgba(31, 122, 224, 0.22);
+    box-shadow: none;
 }
 
 .image-url-confirm:hover {
     filter: brightness(1.06);
-    box-shadow: 0 10px 24px rgba(31, 122, 224, 0.3);
+    box-shadow: none;
 }
 
 .link-dialog-hint {
     margin: 0;
     font-size: 12px;
-    color: var(--muted, #6b7280);
+    color: var(--muted);
     line-height: 1.4;
 }
 </style>

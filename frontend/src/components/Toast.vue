@@ -56,7 +56,7 @@ const icons = {
     min-width: 240px;
     max-width: 420px;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     pointer-events: auto;
     font-size: 14px;
@@ -106,7 +106,7 @@ const icons = {
     cursor: pointer;
     background: rgba(255, 255, 255, 0.2);
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     transition: background-color 0.15s;
 }
 

@@ -233,9 +233,9 @@ watch(() => props.articleId, () => {
     gap: 8px;
     align-items: center;
     padding: 4px;
-    background: #f8fbfa;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
 }
 
 .comment-sort-tabs button {
@@ -247,12 +247,12 @@ watch(() => props.articleId, () => {
     cursor: pointer;
     background: transparent;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 }
 
 .comment-sort-tabs button.active {
     color: var(--brand-strong);
-    background: #ffffff;
+    background: var(--surface);
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
@@ -268,9 +268,9 @@ watch(() => props.articleId, () => {
 .comment-panel-state {
     padding: 18px 20px;
     color: var(--muted);
-    background: #f8fbfa;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
 }
 
 .comment-panel-state.error {
@@ -298,9 +298,9 @@ watch(() => props.articleId, () => {
     color: var(--text);
     font-size: 13px;
     cursor: pointer;
-    background: #ffffff;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
 }
 
 .comment-panel-pagination button:disabled {

@@ -1,16 +1,16 @@
 <script setup>
-import { computed, ref, watch, onMounted, onUnmounted, inject } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
-import { getArticleApi } from '@/api/articles';
-import { likeArticleApi, unlikeArticleApi } from '@/api/likes';
-import { favoriteArticleApi, unfavoriteArticleApi } from '@/api/favorites';
+import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+import {RouterLink, useRoute} from 'vue-router';
+import {getArticleApi} from '@/api/articles';
+import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
+import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import CommentList from '@/components/CommentList.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
-import { articles } from '@/data/home';
-import { useSession } from '@/stores/session';
+import {articles} from '@/data/home';
+import {useSession} from '@/stores/session';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
@@ -374,12 +374,13 @@ onUnmounted(() => {
 <style scoped>
 .article-heading-panel {
     display: grid;
-    gap: 18px;
-    margin-bottom: 28px;
-    padding: 22px 24px 24px;
-    background: linear-gradient(180deg, rgba(31, 122, 224, 0.04), rgba(31, 122, 224, 0));
-    border: 1px solid rgba(31, 122, 224, 0.08);
-    border-radius: 20px;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 20px 20px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .article-heading-top,
@@ -417,13 +418,13 @@ onUnmounted(() => {
 .article-stat-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-height: 34px;
-    padding: 0 12px;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 10px;
     color: var(--muted);
-    background: rgba(31, 122, 224, 0.05);
-    border: 1px solid rgba(31, 122, 224, 0.08);
-    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
     line-height: 1;
 }
 
@@ -450,29 +451,29 @@ onUnmounted(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 94px;
-    min-height: 40px;
-    padding: 0 16px;
-    color: var(--brand-strong);
+    min-width: 84px;
+    min-height: 34px;
+    padding: 0 14px;
+    color: var(--text);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    background: rgba(31, 122, 224, 0.08);
-    border: 1px solid rgba(31, 122, 224, 0.18);
-    border-radius: 999px;
-    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .article-quick-button:hover:not(:disabled) {
-    background: rgba(31, 122, 224, 0.14);
-    border-color: rgba(31, 122, 224, 0.28);
-    transform: translateY(-1px);
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--brand);
 }
 
 .article-quick-button.active {
-    color: var(--brand-strong);
-    background: rgba(31, 122, 224, 0.1);
-    border-color: rgba(31, 122, 224, 0.2);
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--brand);
 }
 
 .article-quick-label {
@@ -495,11 +496,11 @@ onUnmounted(() => {
 }
 
 .article-content-empty {
-    padding: 28px 24px;
+    padding: 24px 20px;
     color: var(--muted);
     background: var(--surface-soft);
     border: 1px dashed var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
 }
 
 .article-content-empty p {
@@ -516,21 +517,23 @@ onUnmounted(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 32px;
-    padding: 0 12px;
+    min-height: 28px;
+    padding: 0 10px;
     line-height: 1;
-    color: var(--brand-strong);
+    color: var(--text);
+    font-size: 13px;
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
 }
 
 .comment-placeholder {
-    padding: 40px;
+    padding: 32px;
     text-align: center;
     color: var(--muted);
-    background: var(--surface);
-    border-radius: 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 @media (max-width: 760px) {

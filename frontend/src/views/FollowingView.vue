@@ -1,15 +1,15 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SidebarBlock from '@/components/SidebarBlock.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { getFollowingFeedApi, getMyFollowingApi } from '@/api/following';
-import { getAuthorRankingsApi } from '@/api/rankings';
-import { ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, normalizeArticleSort } from '@/constants/articleSort';
-import { useSession } from '@/stores/session';
+import {getFollowingFeedApi, getMyFollowingApi} from '@/api/following';
+import {getAuthorRankingsApi} from '@/api/rankings';
+import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, normalizeArticleSort} from '@/constants/articleSort';
+import {useSession} from '@/stores/session';
 
 const route = useRoute();
 const router = useRouter();
@@ -263,10 +263,10 @@ watch(() => route.query, async (query) => {
     display: grid;
     gap: 12px;
     padding: 12px;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 18px;
-    transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .following-author-item {
@@ -279,7 +279,7 @@ watch(() => route.query, async (query) => {
     width: 48px;
     height: 48px;
     object-fit: cover;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
 }
 
 .following-author-item strong,
@@ -309,8 +309,8 @@ watch(() => route.query, async (query) => {
 .following-author-item:hover,
 .following-author-item:focus-visible,
 .rank-author-item:hover {
-    background: rgba(40, 118, 255, 0.05);
-    border-color: rgba(40, 118, 255, 0.14);
+    background: rgba(37, 99, 235, 0.05);
+    border-color: rgba(37, 99, 235, 0.14);
     box-shadow: 0 16px 28px rgba(31, 78, 168, 0.08);
     transform: translateY(-1px);
 }

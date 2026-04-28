@@ -1,20 +1,17 @@
-<script setup>
-import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
-import { useRoute, useRouter } from 'vue-router';
-import { navItems } from '@/data/home';
-import { useSession } from '@/stores/session';
-import {
-    getNotificationUnreadCountApi,
-    getRecentNotificationsApi,
-    markNotificationReadApi,
-    markAllNotificationsReadApi
-} from '@/api/notifications';
+<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
+import {navItems} from '@/data/home';
+import {useSession} from '@/stores/session';
+import {getNotificationUnreadCountApi, getRecentNotificationsApi, markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
 
 const route = useRoute();
 const router = useRouter();
 const keyword = ref('');
 const userMenuOpen = ref(false);
+// 在 dashboard / editor 页面时，页面内已有「新建文章」按钮，隐藏 header 里的「写文章」
+const hideWriteButton = computed(() =>
+    route.path.startsWith('/dashboard') || route.path.startsWith('/editor')
+);
 const mobileMenuOpen = ref(false);
 const userMenuRef = ref(null);
 const notificationOpen = ref(false);
@@ -43,14 +40,6 @@ const logoutAndGoHome = () => {
     userMenuOpen.value = false;
     logout();
     router.push('/');
-};
-
-const openUserMenu = () => {
-    userMenuOpen.value = true;
-};
-
-const closeUserMenu = () => {
-    userMenuOpen.value = false;
 };
 
 const toggleUserMenu = () => {
@@ -339,39 +328,25 @@ const handleNotificationsRefresh = () => {
                     <div
                         ref="userMenuRef"
                         class="user-menu"
-                        @mouseenter="openUserMenu"
-                        @mouseleave="closeUserMenu"
                     >
-                        <div class="user-menu-trigger-group">
+                        <div class="user-menu-trigger-group" @click.stop="toggleUserMenu">
                             <button
                                 class="user-chip user-home-link"
                                 type="button"
                                 data-testid="header-user-home"
-                                @click="goToUserHome"
+                                :aria-expanded="userMenuOpen"
+                                aria-haspopup="true"
                             >
                                 <img :src="avatarUrl" alt="用户头像">
                                 <span>{{ displayName }}</span>
                             </button>
-                            <button
-                                class="user-menu-toggle"
-                                type="button"
-                                aria-label="展开用户菜单"
-                                :aria-expanded="userMenuOpen"
-                                data-testid="header-user-menu-toggle"
-                                @click.stop="toggleUserMenu"
-                            >
-                                <span
-                                    class="user-trigger-arrow"
-                                    :class="{ open: userMenuOpen }"
-                                    aria-hidden="true"
-                                >
-                                    ▾
-                                </span>
-                            </button>
                         </div>
-                        <div v-if="userMenuOpen" class="user-menu-panel" data-testid="header-user-menu">
+                        <div v-if="userMenuOpen" class="user-menu-panel" data-testid="header-user-menu" @click.stop>
+                            <button class="user-menu-item" type="button" data-testid="header-user-home-link" @click="goToUserHome">
+                                个人主页
+                            </button>
                             <button class="user-menu-item" type="button" data-testid="header-profile-link" @click="goToProfile">
-                                个人资料
+                                个人设置
                             </button>
                             <button
                                 class="user-menu-item user-menu-item-danger"
@@ -379,13 +354,19 @@ const handleNotificationsRefresh = () => {
                                 data-testid="header-logout-button"
                                 @click="logoutAndGoHome"
                             >
-                                退出
+                                退出登录
                             </button>
                         </div>
                     </div>
                 </template>
                 <RouterLink v-else class="text-link" to="/login" data-testid="header-login-link">登录</RouterLink>
-                <button class="primary-action" type="button" data-testid="header-write-article" @click="writeArticle">写文章</button>
+                <button
+                    v-if="!hideWriteButton"
+                    class="primary-action"
+                    type="button"
+                    data-testid="header-write-article"
+                    @click="writeArticle"
+                >写文章</button>
             </div>
         </div>
     </header>
@@ -402,6 +383,16 @@ const handleNotificationsRefresh = () => {
                     @click="mobileMenuOpen = false"
                 >×</button>
             </div>
+
+            <!-- 已登录：用户信息区 -->
+            <div v-if="isLoggedIn" class="mobile-user-info">
+                <img :src="avatarUrl" class="mobile-user-avatar" alt="用户头像">
+                <div class="mobile-user-detail">
+                    <span class="mobile-user-name">{{ displayName }}</span>
+                    <span v-if="unreadCount > 0" class="mobile-unread-hint">{{ displayUnreadCount }} 条未读通知</span>
+                </div>
+            </div>
+
             <nav class="mobile-nav" aria-label="移动端导航">
                 <RouterLink
                     v-for="item in navItems"
@@ -417,14 +408,20 @@ const handleNotificationsRefresh = () => {
             </nav>
             <div class="mobile-menu-actions">
                 <template v-if="isLoggedIn">
+                    <RouterLink class="mobile-menu-link" :to="`/users/${state.user?.id}`" @click="mobileMenuOpen = false">个人主页</RouterLink>
+                    <RouterLink class="mobile-menu-link" to="/notifications" @click="mobileMenuOpen = false">
+                        通知
+                        <span v-if="unreadCount > 0" class="mobile-badge">{{ displayUnreadCount }}</span>
+                    </RouterLink>
                     <RouterLink class="mobile-menu-link" to="/dashboard/articles" @click="mobileMenuOpen = false">创作台</RouterLink>
-                    <RouterLink v-if="state.user?.role === 'ADMIN'" class="mobile-menu-link" to="/admin" @click="mobileMenuOpen = false">后台</RouterLink>
-                    <button class="mobile-menu-link mobile-menu-link-danger" type="button" @click="logoutAndGoHome; mobileMenuOpen = false">
-                        退出
+                    <RouterLink v-if="state.user?.role === 'ADMIN'" class="mobile-menu-link" to="/admin" @click="mobileMenuOpen = false">后台管理</RouterLink>
+                    <RouterLink class="mobile-menu-link" to="/settings/profile" @click="mobileMenuOpen = false">个人设置</RouterLink>
+                    <button class="mobile-menu-link mobile-menu-link-danger" type="button" @click="logoutAndGoHome">
+                        退出登录
                     </button>
                 </template>
                 <RouterLink v-else class="mobile-menu-link" to="/login" @click="mobileMenuOpen = false">登录</RouterLink>
-                <button class="primary-action" type="button" @click="writeArticle; mobileMenuOpen = false">写文章</button>
+                <button class="primary-action block" type="button" @click="writeArticle; mobileMenuOpen = false">写文章</button>
             </div>
         </div>
     </Teleport>

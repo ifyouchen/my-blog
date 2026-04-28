@@ -1,12 +1,9 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {computed, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import {
-    getNotificationsApi,
-    markNotificationReadApi
-} from '@/api/notifications';
+import {getNotificationsApi, markNotificationReadApi} from '@/api/notifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -424,16 +421,14 @@ watch(
 .notifications-hero {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
-    align-items: flex-end;
+    gap: 16px;
+    align-items: center;
     justify-content: space-between;
-    padding: 28px 32px;
-    background:
-        radial-gradient(circle at top left, rgba(40, 118, 255, 0.12), transparent 32%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 24px;
-    box-shadow: 0 22px 52px rgba(31, 78, 168, 0.08);
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .hero-copy {
@@ -474,34 +469,35 @@ watch(
 .filter-tabs {
     display: flex;
     gap: 4px;
-    padding: 6px;
-    background: rgba(255, 255, 255, 0.88);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 999px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+    padding: 3px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .filter-tabs button {
-    min-height: 38px;
-    padding: 0 18px;
-    color: #6b7280;
+    min-height: 30px;
+    padding: 0 12px;
+    color: var(--muted);
     cursor: pointer;
     background: transparent;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
     font-weight: 600;
-    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    transition: background 0.12s, color 0.12s;
 }
 
 .filter-tabs button:hover:not(:disabled) {
-    color: #111827;
-    background: rgba(15, 23, 42, 0.05);
+    color: var(--text);
+    background: var(--surface);
 }
 
 .filter-tabs button.active {
     color: #ffffff;
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    box-shadow: 0 12px 26px rgba(37, 99, 235, 0.24);
+    background: var(--brand);
+    box-shadow: none;
 }
 
 .filter-tabs button:disabled {
@@ -511,10 +507,10 @@ watch(
 
 .notifications-panel {
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 24px;
-    box-shadow: 0 20px 50px rgba(31, 78, 168, 0.06);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .panel-status {
@@ -524,21 +520,21 @@ watch(
 }
 
 .panel-status-refreshing {
-    color: var(--brand-strong);
-    background: rgba(40, 118, 255, 0.06);
-    border-bottom: 1px solid rgba(40, 118, 255, 0.08);
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-bottom: 1px solid var(--line);
 }
 
 .panel-status-error {
-    color: #b91c1c;
-    background: rgba(248, 113, 113, 0.08);
-    border-bottom: 1px solid rgba(248, 113, 113, 0.1);
+    color: var(--accent);
+    background: #fff0f0;
+    border-bottom: 1px solid var(--line);
 }
 
 .notifications-skeleton {
     display: grid;
-    gap: 1px;
-    background: rgba(15, 23, 42, 0.06);
+    gap: 0;
+    background: var(--line);
 }
 
 .skeleton-item {
@@ -547,15 +543,16 @@ watch(
     gap: 16px;
     align-items: center;
     padding: 22px 24px;
-    background: #ffffff;
+    background: var(--surface);
 }
 
 .skeleton-avatar {
-    width: 52px;
-    height: 52px;
-    background: linear-gradient(90deg, rgba(226, 232, 240, 0.9), rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-soft) 50%, var(--surface-muted) 75%);
+    background-size: 200% 100%;
     border-radius: 50%;
-    animation: shimmer 1.4s linear infinite;
+    animation: shimmer 1.4s ease-in-out infinite;
 }
 
 .skeleton-lines {
@@ -566,9 +563,10 @@ watch(
 .skeleton-line {
     display: block;
     height: 12px;
-    background: linear-gradient(90deg, rgba(226, 232, 240, 0.9), rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
-    border-radius: 999px;
-    animation: shimmer 1.4s linear infinite;
+    background: linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-soft) 50%, var(--surface-muted) 75%);
+    background-size: 200% 100%;
+    border-radius: var(--radius-sm);
+    animation: shimmer 1.4s ease-in-out infinite;
 }
 
 .line-lg {
@@ -594,8 +592,8 @@ watch(
 .notifications-list {
     position: relative;
     display: grid;
-    gap: 1px;
-    background: rgba(208, 219, 236, 0.78);
+    gap: 0;
+    background: var(--line);
 }
 
 .notifications-list.is-refreshing {
@@ -604,30 +602,30 @@ watch(
 
 .notification-item {
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr) auto;
-    gap: 16px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 14px;
     align-items: center;
-    padding: 22px 24px;
+    padding: 14px 20px;
     cursor: pointer;
-    background: #ffffff;
-    transition: background-color 0.18s ease, transform 0.18s ease;
+    background: var(--surface);
+    transition: background 0.12s;
 }
 
 .notification-item:hover {
-    background: #f7faff;
+    background: var(--surface-soft);
 }
 
 .notification-item.unread {
-    background:
-        linear-gradient(90deg, rgba(40, 118, 255, 0.08), rgba(40, 118, 255, 0.02) 14%, #ffffff 22%);
+    background: var(--brand-soft);
+    border-left: 3px solid var(--brand);
 }
 
 .notification-avatar {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
     object-fit: cover;
     border-radius: 50%;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    box-shadow: none;
 }
 
 .notification-content {
@@ -672,11 +670,11 @@ watch(
 }
 
 .unread-dot {
-    width: 10px;
-    height: 10px;
-    background: #3b82f6;
+    width: 8px;
+    height: 8px;
+    background: var(--brand);
     border-radius: 50%;
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12);
+    box-shadow: none;
 }
 
 .notification-arrow {
@@ -690,19 +688,17 @@ watch(
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--brand-strong);
+    color: var(--brand);
     font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.92));
-    backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.85);
 }
 
 .pagination-bar {
     display: grid;
     gap: 14px;
     padding: 16px 20px 20px;
-    background: #ffffff;
+    background: var(--surface);
     border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
 
@@ -720,27 +716,27 @@ watch(
 }
 
 .pagination-actions button {
-    min-width: 40px;
-    min-height: 36px;
-    padding: 0 12px;
-    color: #374151;
+    min-width: 32px;
+    min-height: 30px;
+    padding: 0 8px;
+    color: var(--text);
+    font-size: 13px;
     cursor: pointer;
-    background: #f8fafc;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 10px;
-    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .pagination-actions button:hover:not(:disabled) {
-    color: var(--brand-strong);
-    background: rgba(40, 118, 255, 0.05);
-    border-color: rgba(40, 118, 255, 0.24);
+    color: var(--brand);
+    border-color: var(--brand);
 }
 
 .pagination-actions button.active {
     color: #ffffff;
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    border-color: transparent;
+    background: var(--brand);
+    border-color: var(--brand);
 }
 
 .pagination-actions button:disabled {
@@ -764,11 +760,11 @@ watch(
 
     .notifications-hero,
     .notifications-panel {
-        border-radius: 16px;
+        border-radius: var(--radius-sm);
     }
 
     .notifications-hero {
-        padding: 22px 20px;
+        padding: 16px;
     }
 
     .hero-copy h1 {

@@ -148,9 +148,9 @@ const avatarUrl = (comment) => {
 
 .comment-thread-card {
     padding: 12px;
-    background: #f8fbfa;
+    background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .comment-thread-meta {

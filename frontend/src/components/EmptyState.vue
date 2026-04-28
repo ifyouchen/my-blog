@@ -39,43 +39,38 @@ const props = defineProps({
 .empty-state-shell {
     display: grid;
     justify-items: center;
-    gap: 16px;
-    padding: 42px 28px;
+    gap: 14px;
+    padding: 36px 24px;
     text-align: center;
-    background:
-        radial-gradient(circle at top, rgba(40, 118, 255, 0.08), transparent 40%),
-        linear-gradient(180deg, rgba(248, 251, 255, 0.96), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 24px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .empty-state-shell.compact {
-    padding: 30px 22px;
-    gap: 12px;
-    border-radius: 20px;
+    padding: 24px 20px;
+    gap: 10px;
 }
 
 .empty-state-shell.error {
-    background:
-        radial-gradient(circle at top, rgba(248, 113, 113, 0.08), transparent 40%),
-        linear-gradient(180deg, rgba(255, 251, 251, 0.98), #ffffff);
-    border-color: rgba(248, 113, 113, 0.22);
+    background: #fff8f8;
+    border-color: rgba(199, 50, 50, 0.2);
 }
 
 .empty-state-mark {
-    width: 52px;
-    height: 52px;
-    border-radius: 18px;
-    background:
-        linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(59, 130, 246, 0.08));
-    box-shadow: 0 16px 30px rgba(31, 78, 168, 0.08);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+    border: 1px solid var(--line);
+    box-shadow: none;
 }
 
 .empty-state-shell.error .empty-state-mark {
-    background:
-        linear-gradient(135deg, rgba(248, 113, 113, 0.16), rgba(252, 165, 165, 0.08));
-    box-shadow: 0 16px 30px rgba(185, 28, 28, 0.08);
+    background: #ffe8e8;
+    border-color: rgba(199, 50, 50, 0.2);
+    box-shadow: none;
 }
 
 .empty-state-copy {
@@ -95,8 +90,9 @@ const props = defineProps({
 
 .empty-state-copy h3 {
     color: var(--text-strong);
-    font-size: 24px;
-    line-height: 1.2;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
 }
 
 .empty-state-copy p {
@@ -105,12 +101,12 @@ const props = defineProps({
 }
 
 .compact .empty-state-mark {
-    width: 44px;
-    height: 44px;
-    border-radius: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
 }
 
 .compact .empty-state-copy h3 {
-    font-size: 20px;
+    font-size: 16px;
 }
 </style>

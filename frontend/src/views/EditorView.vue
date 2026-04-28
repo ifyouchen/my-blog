@@ -1,15 +1,15 @@
 <script setup>
-import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { createArticleApi, getEditableArticleApi, updateArticleApi } from '@/api/articles';
-import { getCategoriesApi, getTagsApi } from '@/api/admin';
-import { uploadImageApi } from '@/api/uploads';
+import {computed, inject, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
+import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
+import {createArticleApi, getEditableArticleApi, updateArticleApi} from '@/api/articles';
+import {getCategoriesApi, getTagsApi} from '@/api/admin';
+import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import RichMarkdownEditor from '@/components/RichMarkdownEditor.vue';
-import { topics } from '@/data/home';
-import { resolveMediaUrl } from '@/utils/media';
+import {topics} from '@/data/home';
+import {resolveMediaUrl} from '@/utils/media';
 
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
@@ -644,8 +644,8 @@ onUnmounted(() => {
     gap: 14px;
     padding: 18px 20px;
     background: var(--surface);
-    border: 1px solid rgba(31, 122, 224, 0.08);
-    border-radius: 18px;
+    border: 1px solid rgba(37, 99, 235, 0.08);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
 }
 
@@ -696,7 +696,7 @@ onUnmounted(() => {
     padding: 0 10px;
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
 }
 
@@ -709,26 +709,24 @@ onUnmounted(() => {
     width: 100%;
     max-height: 280px;
     object-fit: cover;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
 }
 
 .editor-preview-empty {
     padding: 22px 18px;
     background: var(--surface-soft);
     border: 1px dashed var(--line);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
 }
 
 .upload-box {
     display: grid;
     gap: 14px;
     padding: 18px;
-    border: 1px solid color-mix(in srgb, var(--brand, #1f7ae0) 18%, var(--line));
-    border-radius: 18px;
-    background:
-        radial-gradient(circle at top right, rgba(31, 122, 224, 0.14), transparent 42%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .cover-card-head {
@@ -750,7 +748,7 @@ onUnmounted(() => {
     align-items: center;
     min-height: 30px;
     padding: 0 12px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
@@ -764,14 +762,14 @@ onUnmounted(() => {
 
 .cover-status-pill.custom {
     color: var(--brand-strong);
-    background: rgba(31, 122, 224, 0.12);
-    border: 1px solid rgba(31, 122, 224, 0.16);
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.16);
 }
 
 .cover-card-preview {
     position: relative;
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid rgba(15, 23, 42, 0.08);
     background: var(--surface-soft);
     aspect-ratio: 16 / 10;
@@ -803,9 +801,9 @@ onUnmounted(() => {
     color: var(--muted);
     font-size: 13px;
     line-height: 1.7;
-    background: rgba(31, 122, 224, 0.05);
-    border: 1px solid rgba(31, 122, 224, 0.08);
-    border-radius: 12px;
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.08);
+    border-radius: var(--radius-lg);
 }
 
 .cover-path-field {
@@ -830,14 +828,14 @@ onUnmounted(() => {
     min-height: 44px;
     padding: 0 16px;
     border: 0;
-    border-radius: 999px;
-    background: linear-gradient(135deg, var(--brand, #1f7ae0), var(--brand-strong, #1664c4));
+    border-radius: var(--radius-sm);
+    background: var(--brand);
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
-    box-shadow: 0 14px 28px rgba(31, 122, 224, 0.2);
+    transition: filter 0.16s ease;
+    box-shadow: none;
 }
 
 .cover-upload-button:hover {

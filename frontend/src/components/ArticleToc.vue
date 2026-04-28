@@ -155,7 +155,7 @@ onUnmounted(() => {
     padding: 14px 0 14px 14px;
     background: var(--surface);
     border: 1px solid rgba(219, 227, 223, 0.82);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     box-shadow: 0 12px 24px rgba(29, 45, 41, 0.05);
 }
 
@@ -180,7 +180,7 @@ onUnmounted(() => {
     line-height: 24px;
     text-align: center;
     background: var(--surface-soft);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .toc-nav {
@@ -214,7 +214,7 @@ onUnmounted(() => {
     line-height: 1.4;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     transition: color 0.2s, background 0.2s;
 }
 
@@ -226,18 +226,18 @@ onUnmounted(() => {
     width: 3px;
     content: "";
     background: transparent;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .toc-item:hover {
     color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.05);
+    background: var(--brand-soft);
 }
 
 .toc-item.active {
     color: var(--brand-strong);
     font-weight: 800;
-    background: rgba(15, 143, 117, 0.08);
+    background: var(--brand-soft);
 }
 
 .toc-item.active::before {

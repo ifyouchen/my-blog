@@ -1,7 +1,6 @@
 <script setup>
-import { computed, inject } from 'vue';
-import { RouterLink } from 'vue-router';
-import { useRouter } from 'vue-router';
+import {computed, inject} from 'vue';
+import {RouterLink, useRouter} from 'vue-router';
 import SidebarBlock from '@/components/SidebarBlock.vue';
 
 const router = useRouter();
@@ -78,32 +77,34 @@ const writeArticle = () => {
     color: var(--muted);
     font-size: 13px;
     line-height: 1.6;
-    padding: 16px 14px;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), #ffffff);
-    border: 1px dashed rgba(208, 219, 236, 0.92);
-    border-radius: 16px;
-}
-
-.special-item,
-.author-rank li {
-    transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+    padding: 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .special-item:hover,
-.special-item:focus-visible,
+.special-item:focus-visible {
+    background: var(--surface-soft);
+}
+
 .author-rank li:hover {
-    background: color-mix(in srgb, var(--brand-soft) 34%, #ffffff);
-    box-shadow: 0 14px 24px rgba(31, 78, 168, 0.08);
-    transform: translateY(-1px);
+    background: var(--surface-soft);
 }
 
 .author-rank a {
     color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
     text-decoration: none;
+    transition: color 0.12s;
+}
+
+.author-rank a:hover {
+    color: var(--brand);
 }
 
 .home-author-avatar {
     display: inline-flex;
-    border-radius: 14px;
 }
 </style>

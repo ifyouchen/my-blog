@@ -1,5 +1,5 @@
 <script setup>
-import { computed, useSlots } from 'vue';
+import {computed, useSlots} from 'vue';
 
 defineEmits(['avatar-load', 'avatar-error']);
 
@@ -93,159 +93,189 @@ const hasActions = computed(() => Boolean(slots.actions));
 </template>
 
 <style scoped>
+/* ============================================================
+   个人主页头部 — 清爽横排布局，去胶囊
+   ============================================================ */
 .profile-summary {
     display: grid;
-    gap: 28px;
-    padding: 32px;
-    background:
-        radial-gradient(circle at top right, rgba(40, 118, 255, 0.14), transparent 26%),
-        linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    border: 1px solid rgba(196, 211, 232, 0.92);
-    border-radius: 24px;
-    box-shadow: 0 24px 60px rgba(31, 78, 168, 0.08);
+    gap: 24px;
+    padding: 28px 32px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
 }
 
 .profile-summary-main {
     display: grid;
-    grid-template-columns: 116px minmax(0, 1fr);
-    gap: 24px;
-    align-items: center;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
 }
 
 .profile-summary-avatar {
-    width: 116px;
-    height: 116px;
+    width: 100px;
+    height: 100px;
     object-fit: cover;
-    border-radius: 28px;
-    border: 4px solid rgba(40, 118, 255, 0.12);
-    box-shadow: 0 20px 44px rgba(40, 118, 255, 0.14);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--line);
 }
 
 .profile-summary-copy {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
 .profile-summary-title-row {
     display: flex;
-    gap: 14px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
 }
 
 .profile-summary-title-row h1 {
     margin: 0;
-    font-size: clamp(32px, 4vw, 42px);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-size: clamp(24px, 3vw, 32px);
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-strong);
 }
 
 .profile-summary-badge {
     display: inline-flex;
     align-items: center;
-    min-height: 30px;
-    padding: 0 14px;
-    font-size: 12px;
+    height: 24px;
+    padding: 0 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
-    color: var(--brand-strong);
-    background: rgba(40, 118, 255, 0.1);
-    border: 1px solid rgba(40, 118, 255, 0.16);
-    border-radius: 999px;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: var(--radius-sm);
 }
 
 .profile-summary-subtitle {
     margin: 0;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .profile-summary-bio,
 .profile-summary-helper {
     margin: 0;
     color: var(--muted);
-    line-height: 1.85;
+    font-size: 14px;
+    line-height: 1.75;
     max-width: 72ch;
 }
 
+/* 底部统计行 — 横排分隔线风格，不用小卡片 */
 .profile-summary-footer {
     display: flex;
-    gap: 20px;
+    gap: 0;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    padding-top: 22px;
-    border-top: 1px solid rgba(196, 211, 232, 0.86);
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
 }
 
 .profile-summary-stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
-    flex: 1 1 520px;
+    gap: 0;
+    flex: 1;
 }
 
 .profile-summary-stats span {
-    display: inline-grid;
-    gap: 8px;
-    min-width: 128px;
-    padding: 16px 18px;
-    text-align: center;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(240, 247, 255, 0.84));
-    border: 1px solid rgba(196, 211, 232, 0.9);
-    border-radius: 18px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 6px 20px 6px 0;
+    margin-right: 20px;
     color: var(--muted);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    font-size: 13px;
+    border-right: 1px solid var(--line);
+}
+
+.profile-summary-stats span:first-child {
+    padding-left: 0;
+}
+
+.profile-summary-stats span:last-child {
+    border-right: 0;
+    margin-right: 0;
 }
 
 .profile-summary-stats strong {
-    color: var(--text);
-    font-size: 24px;
+    color: var(--text-strong);
+    font-size: 18px;
+    font-weight: 700;
     line-height: 1;
 }
 
 .profile-summary-actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
     justify-content: flex-end;
-}
-
-@media (max-width: 980px) {
-    .profile-summary-stats {
-        flex-basis: 100%;
-    }
+    padding-left: 16px;
 }
 
 @media (max-width: 760px) {
     .profile-summary {
-        padding: 22px 18px;
+        padding: 20px 18px;
     }
 
     .profile-summary-main {
-        grid-template-columns: 1fr;
+        grid-template-columns: 80px minmax(0, 1fr);
+        gap: 16px;
+        align-items: center;
     }
 
     .profile-summary-avatar {
-        width: 92px;
-        height: 92px;
-        border-radius: 24px;
+        width: 80px;
+        height: 80px;
     }
 
     .profile-summary-title-row h1 {
-        font-size: 28px;
+        font-size: 22px;
     }
 
     .profile-summary-stats {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
     }
 
-    .profile-summary-stats span,
+    .profile-summary-stats span {
+        padding: 4px 14px 4px 0;
+        margin-right: 14px;
+        font-size: 12px;
+    }
+
+    .profile-summary-stats strong {
+        font-size: 16px;
+    }
+
+    .profile-summary-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .profile-summary-actions {
+        padding-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .profile-summary-actions :deep(a),
     .profile-summary-actions :deep(button) {
-        width: 100%;
         min-width: 0;
     }
 }

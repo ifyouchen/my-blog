@@ -1,9 +1,9 @@
 <script setup>
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import {onMounted, ref} from 'vue';
+import {useRouter} from 'vue-router';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { getColumnsApi } from '@/api/columns';
+import {getColumnsApi} from '@/api/columns';
 
 const router = useRouter();
 const columns = ref([]);
@@ -144,25 +144,23 @@ onMounted(fetchColumns);
 
 .column-card {
     overflow: hidden;
-    background: #ffffff;
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 22px;
-    box-shadow: 0 18px 38px rgba(31, 78, 168, 0.07);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
     cursor: pointer;
-    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    transition: background 0.12s, border-color 0.12s;
 }
 
 .column-card:hover,
 .column-card:focus-visible {
-    background: color-mix(in srgb, var(--surface-soft) 34%, white);
-    border-color: rgba(40, 118, 255, 0.18);
-    box-shadow: 0 22px 40px rgba(31, 78, 168, 0.11);
-    transform: translateY(-2px);
+    background: var(--surface-soft);
+    border-color: var(--line-strong);
 }
 
 .column-card:focus-visible {
-    outline: 2px solid rgba(40, 118, 255, 0.24);
-    outline-offset: 4px;
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
 }
 
 .column-card-cover {
@@ -233,7 +231,7 @@ onMounted(fetchColumns);
 .column-author img {
     width: 32px;
     height: 32px;
-    border-radius: 12px;
+    border-radius: 50%;
     object-fit: cover;
 }
 

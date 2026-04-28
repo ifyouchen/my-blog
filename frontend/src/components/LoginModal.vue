@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useSession } from '@/stores/session';
+import {ref} from 'vue';
+import {useRouter} from 'vue-router';
+import {useSession} from '@/stores/session';
 
 const props = defineProps({
     visible: {
@@ -118,8 +118,8 @@ const goToRegister = () => {
     padding: 32px;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
 }
 
 .modal-close {
@@ -133,13 +133,13 @@ const goToRegister = () => {
     color: var(--muted);
     cursor: pointer;
     background: none;
-    border: none;
-    border-radius: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .modal-close:hover {
     color: var(--text);
-    background: var(--line);
+    background: var(--surface-soft);
 }
 
 .modal-content h2 {
@@ -175,12 +175,12 @@ const goToRegister = () => {
 
 .form-group input {
     width: 100%;
-    padding: 12px 14px;
+    padding: 10px 12px;
     font-size: 14px;
     border: 1px solid var(--line);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     outline: none;
-    background: var(--bg);
+    background: var(--surface);
     color: var(--text);
     box-sizing: border-box;
 }
@@ -198,14 +198,14 @@ const goToRegister = () => {
 
 .submit-btn {
     width: 100%;
-    padding: 12px;
-    font-size: 15px;
+    padding: 10px;
+    font-size: 14px;
     font-weight: 600;
     color: #ffffff;
     cursor: pointer;
     background: var(--brand);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 }
 
 .submit-btn:hover:not(:disabled) {

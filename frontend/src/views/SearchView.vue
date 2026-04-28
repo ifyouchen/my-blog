@@ -1,24 +1,13 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { listArticlesApi } from '@/api/articles';
-import {
-    getSearchBootstrapApi,
-    searchUsersApi,
-    searchColumnsApi,
-    saveRecentKeywordApi,
-    clearRecentKeywordsApi
-} from '@/api/search';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {listArticlesApi} from '@/api/articles';
+import {clearRecentKeywordsApi, getSearchBootstrapApi, saveRecentKeywordApi, searchColumnsApi, searchUsersApi} from '@/api/search';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
-import { useSession } from '@/stores/session';
+import {useSession} from '@/stores/session';
 import ArticleFeed from '@/components/ArticleFeed.vue';
-import {
-    ARTICLE_SORT_ITEMS,
-    ARTICLE_SORT_LATEST,
-    isDefaultArticleSort,
-    normalizeArticleSort
-} from '@/constants/articleSort';
+import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
 import SiteHeader from '@/components/SiteHeader.vue';
 
 const GUEST_RECENT_SEARCHES_KEY = 'my-blog:recent-searches';
@@ -820,10 +809,8 @@ onMounted(fetchBootstrap);
 <style scoped>
 .search-panel {
     display: grid;
-    gap: 18px;
-    background:
-        linear-gradient(180deg, rgba(31, 122, 224, 0.04) 0%, rgba(31, 122, 224, 0) 55%),
-        #ffffff;
+    gap: 16px;
+    background: transparent;
 }
 
 .search-panel .eyebrow {
@@ -836,11 +823,11 @@ onMounted(fetchBootstrap);
 
 .keyword-section {
     display: grid;
-    gap: 14px;
-    padding: 18px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    gap: 12px;
+    padding: 14px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .keyword-group {
@@ -861,20 +848,19 @@ onMounted(fetchBootstrap);
 }
 
 .keyword-chip {
-    min-height: 34px;
-    padding: 0 14px;
-    border-radius: 999px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--line);
     font-size: 13px;
     cursor: pointer;
-    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    transition: color 0.12s, border-color 0.12s;
 }
 
 .keyword-chip:hover {
-    color: var(--brand-strong);
-    background: var(--brand-soft);
-    border-color: rgba(31, 122, 224, 0.16);
+    color: var(--brand);
+    border-color: var(--brand);
 }
 
 .keyword-chip.hot {
@@ -884,11 +870,11 @@ onMounted(fetchBootstrap);
 }
 
 .keyword-clear {
-    min-height: 34px;
-    padding: 0 14px;
-    border-radius: 999px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid var(--line);
     font-size: 13px;
     color: var(--muted);
     cursor: pointer;
@@ -900,19 +886,19 @@ onMounted(fetchBootstrap);
 }
 
 .expand-btn {
-    min-height: 34px;
-    padding: 0 14px;
-    border-radius: 999px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
     background: transparent;
-    border: 1px dashed var(--border);
+    border: 1px dashed var(--line);
     font-size: 13px;
     color: var(--muted);
     cursor: pointer;
 }
 
 .expand-btn:hover {
-    color: var(--brand-strong);
-    border-color: var(--brand-strong);
+    color: var(--brand);
+    border-color: var(--brand);
     border-style: solid;
 }
 
@@ -945,20 +931,20 @@ onMounted(fetchBootstrap);
     right: 0;
     bottom: -5px;
     left: 0;
-    height: 3px;
+    height: 2px;
     content: "";
     background: var(--brand);
-    border-radius: 999px;
+    border-radius: 0;
 }
 
 .search-filters {
     display: grid;
-    gap: 16px;
-    padding: 22px;
+    gap: 14px;
+    padding: 16px;
     margin-top: 4px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .filter-group {
@@ -976,14 +962,14 @@ onMounted(fetchBootstrap);
 }
 
 .filter-input {
-    min-height: 40px;
-    padding: 0 14px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    min-height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
     font-size: 13px;
     width: 100%;
     max-width: 240px;
-    background: #ffffff;
+    background: var(--surface);
 }
 
 .filter-input:focus {
@@ -1040,37 +1026,35 @@ onMounted(fetchBootstrap);
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 18px;
-    padding: 20px;
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 22px;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.06);
-    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    background: var(--surface);
+    box-shadow: none;
+    transition: background 0.12s;
 }
 
 .user-card:hover, .column-card:hover {
-    border-color: rgba(31, 122, 224, 0.18);
-    background: color-mix(in srgb, var(--brand-soft) 38%, #ffffff);
-    box-shadow: 0 22px 44px rgba(31, 78, 168, 0.11);
-    transform: translateY(-2px);
+    background: var(--surface-soft);
+    border-color: var(--line-strong);
 }
 
 .user-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 18px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
     object-fit: cover;
-    box-shadow: 0 12px 24px rgba(31, 78, 168, 0.08);
+    box-shadow: none;
 }
 
 .column-cover {
-    width: 112px;
-    height: 78px;
-    border-radius: 16px;
+    width: 96px;
+    height: 68px;
+    border-radius: var(--radius-sm);
     object-fit: cover;
-    box-shadow: 0 12px 24px rgba(31, 78, 168, 0.08);
+    box-shadow: none;
 }
 
 .user-info, .column-info {
@@ -1126,10 +1110,11 @@ onMounted(fetchBootstrap);
 .user-stats span, .column-stats span {
     display: inline-flex;
     align-items: center;
-    min-height: 26px;
-    padding: 0 10px;
-    background: rgba(40, 118, 255, 0.07);
-    border-radius: 999px;
+    min-height: 22px;
+    padding: 0 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .pagination {
@@ -1141,12 +1126,14 @@ onMounted(fetchBootstrap);
 }
 
 .pagination button {
-    min-height: 36px;
-    padding: 0 16px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--bg-secondary);
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 13px;
     cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
 }
 
 .pagination button:hover {
@@ -1164,16 +1151,16 @@ onMounted(fetchBootstrap);
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    min-height: 44px;
-    padding: 0 18px;
+    min-height: 40px;
+    padding: 0 14px;
     margin-top: 4px;
     color: var(--text);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .mobile-filter-toggle:hover {
@@ -1223,10 +1210,10 @@ onMounted(fetchBootstrap);
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    padding: 8px 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .active-filter-label {
@@ -1239,12 +1226,12 @@ onMounted(fetchBootstrap);
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 3px 8px;
     font-size: 13px;
     background: var(--brand-soft);
-    color: var(--brand-strong);
-    border: 1px solid rgba(31, 122, 224, 0.16);
-    border-radius: 999px;
+    color: var(--brand);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
     white-space: nowrap;
 }
 
@@ -1257,24 +1244,24 @@ onMounted(fetchBootstrap);
     padding: 0;
     border: none;
     background: transparent;
-    color: var(--brand-strong);
-    font-size: 16px;
+    color: var(--brand);
+    font-size: 14px;
     line-height: 1;
     cursor: pointer;
-    border-radius: 50%;
+    border-radius: var(--radius-sm);
 }
 
 .chip-remove:hover {
-    background: rgba(31, 122, 224, 0.12);
+    background: var(--brand-hover);
 }
 
 .chip-clear-all {
-    padding: 4px 12px;
+    padding: 3px 8px;
     font-size: 13px;
     color: var(--muted);
     background: transparent;
-    border: 1px dashed var(--border);
-    border-radius: 999px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
@@ -1290,27 +1277,27 @@ onMounted(fetchBootstrap);
 }
 
 .sort-row .sort-buttons button {
-    min-height: 34px;
-    padding: 0 14px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: #ffffff;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
     font-size: 13px;
     cursor: pointer;
     color: var(--text);
-    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .sort-row .sort-buttons button.active {
     color: #ffffff;
-    background: var(--brand-strong);
-    border-color: var(--brand-strong);
+    background: var(--brand);
+    border-color: var(--brand);
     font-weight: 600;
 }
 
 .sort-row .sort-buttons button:hover:not(.active) {
-    border-color: var(--primary);
-    color: var(--brand-strong);
+    color: var(--brand);
+    border-color: var(--brand);
 }
 
 .date-presets {
@@ -1321,42 +1308,42 @@ onMounted(fetchBootstrap);
 }
 
 .date-presets button {
-    min-height: 30px;
-    padding: 0 12px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: #ffffff;
+    min-height: 26px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
     font-size: 12px;
     cursor: pointer;
     color: var(--text);
-    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .date-presets button.active {
     color: #ffffff;
-    background: var(--brand-strong);
-    border-color: var(--brand-strong);
+    background: var(--brand);
+    border-color: var(--brand);
     font-weight: 600;
 }
 
 .date-presets button:hover:not(.active) {
-    border-color: var(--primary);
-    color: var(--brand-strong);
+    color: var(--brand);
+    border-color: var(--brand);
 }
 
 .filter-count-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    margin-left: 6px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    margin-left: 4px;
     font-size: 11px;
     font-weight: 700;
     color: #ffffff;
-    background: var(--brand-strong);
-    border-radius: 999px;
+    background: var(--brand);
+    border-radius: var(--radius-sm);
     line-height: 1;
 }
 </style>

@@ -1,15 +1,7 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue';
+import {computed, inject, ref, watch} from 'vue';
 import CommentComposer from '@/components/CommentComposer.vue';
-import {
-    createCommentApi,
-    deleteCommentApi,
-    likeCommentApi,
-    pageRepliesApi,
-    pinCommentApi,
-    unlikeCommentApi,
-    unpinCommentApi
-} from '@/api/comments';
+import {createCommentApi, deleteCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
 
 const props = defineProps({
     articleId: {
@@ -424,12 +416,12 @@ function goReplyPage(step) {
     padding: 0 8px;
     font-size: 12px;
     font-weight: 700;
-    border-radius: 999px;
+border-radius: var(--radius-sm);
 }
 
 .comment-badge.author {
-    color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.08);
+color: var(--brand-strong);
+    background: var(--brand-soft);
 }
 
 .comment-badge.pinned {
@@ -475,9 +467,9 @@ function goReplyPage(step) {
 .comment-reply-shell {
     margin-top: 14px;
     padding: 14px;
-    background: #f8fbfa;
-    border: 1px solid rgba(219, 227, 223, 0.92);
-    border-radius: 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
 }
 
 .comment-reply-items {
@@ -520,9 +512,9 @@ function goReplyPage(step) {
     color: var(--brand-strong);
     font-size: 13px;
     cursor: pointer;
-    background: #ffffff;
-    border: 1px solid rgba(15, 143, 117, 0.16);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
 }
 
 .comment-reply-loading,

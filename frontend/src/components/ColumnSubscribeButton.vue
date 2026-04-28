@@ -84,7 +84,7 @@ const toggleSubscribe = async () => {
     cursor: pointer;
     background: var(--brand-strong);
     border: 1px solid var(--brand-strong);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 

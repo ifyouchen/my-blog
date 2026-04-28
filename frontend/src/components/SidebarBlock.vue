@@ -33,31 +33,32 @@ const props = defineProps({
 </template>
 
 <style scoped>
+/* 蓝白渐变侧边栏区块 — 白底、细边框、适度圆角 */
 .sidebar-block {
     display: grid;
-    gap: 14px;
-    padding: 20px;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 22px;
-    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.06);
+    gap: 12px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .sidebar-block.compact {
-    padding: 18px;
-    gap: 12px;
+    padding: 14px;
+    gap: 10px;
 }
 
 .sidebar-block-head {
     display: flex;
-    align-items: end;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
 }
 
 .sidebar-block-copy {
     display: grid;
-    gap: 4px;
+    gap: 2px;
     min-width: 0;
 }
 
@@ -68,33 +69,29 @@ const props = defineProps({
 
 .sidebar-block-copy h2 {
     color: var(--text-strong);
-    font-size: 28px;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0;
 }
 
 .compact .sidebar-block-copy h2 {
-    font-size: 24px;
+    font-size: 14px;
 }
 
 .sidebar-block-body {
     display: grid;
-    gap: 12px;
+    gap: 10px;
 }
 
 @media (max-width: 760px) {
     .sidebar-block {
-        padding: 18px;
-        border-radius: 20px;
+        padding: 14px;
     }
 
     .sidebar-block-head {
         align-items: start;
         flex-direction: column;
-    }
-
-    .sidebar-block-copy h2 {
-        font-size: 24px;
     }
 }
 </style>

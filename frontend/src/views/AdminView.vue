@@ -1022,7 +1022,7 @@ onMounted(() => {
     color: var(--text);
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     outline: 0;
 }
 
@@ -1044,7 +1044,7 @@ onMounted(() => {
     cursor: pointer;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .admin-resource-panel button:hover:not(:disabled) {
@@ -1146,7 +1146,7 @@ onMounted(() => {
     color: var(--text);
     background: var(--surface-soft);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .backend-pagination-actions button:hover:not(:disabled),

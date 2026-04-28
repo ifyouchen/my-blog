@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { renderMarkdown } from '@/utils/markdown';
+import {computed, ref} from 'vue';
+import {renderMarkdown} from '@/utils/markdown';
 
 const props = defineProps({
     content: {
@@ -143,9 +143,9 @@ const cancelExternalLink = () => {
     width: 100%;
     max-width: 400px;
     padding: 28px 24px;
-    background: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.18);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
     text-align: center;
 }
 
@@ -159,13 +159,13 @@ const cancelExternalLink = () => {
     margin: 0 0 10px;
     font-size: 18px;
     font-weight: 700;
-    color: var(--text, #1f2329);
+    color: var(--text);
 }
 
 .external-link-message {
     margin: 0 0 6px;
     font-size: 14px;
-    color: var(--muted, #6b7280);
+    color: var(--muted);
     line-height: 1.5;
 }
 
@@ -173,10 +173,10 @@ const cancelExternalLink = () => {
     margin: 0 0 22px;
     padding: 10px 14px;
     font-size: 13px;
-    color: var(--brand-strong, #1664c4);
-    background: rgba(31, 122, 224, 0.06);
-    border: 1px solid rgba(31, 122, 224, 0.12);
-    border-radius: 10px;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    border-radius: var(--radius-sm);
     word-break: break-all;
     line-height: 1.5;
     font-weight: 600;
@@ -192,7 +192,7 @@ const cancelExternalLink = () => {
 .external-link-confirm {
     min-height: 40px;
     padding: 0 22px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -201,24 +201,24 @@ const cancelExternalLink = () => {
 
 .external-link-cancel {
     background: transparent;
-    border: 1px solid var(--border, #e5e7eb);
-    color: var(--muted, #6b7280);
+    border: 1px solid var(--line);
+    color: var(--muted);
 }
 
 .external-link-cancel:hover {
-    border-color: var(--text, #1f2329);
-    color: var(--text, #1f2329);
+    border-color: var(--text);
+    color: var(--text);
 }
 
 .external-link-confirm {
-    background: linear-gradient(135deg, #1f7ae0, #1664c4);
+    background: var(--brand);
     border: none;
     color: #ffffff;
-    box-shadow: 0 8px 20px rgba(31, 122, 224, 0.22);
+    box-shadow: none;
 }
 
 .external-link-confirm:hover {
     filter: brightness(1.06);
-    box-shadow: 0 10px 24px rgba(31, 122, 224, 0.3);
+    box-shadow: none;
 }
 </style>

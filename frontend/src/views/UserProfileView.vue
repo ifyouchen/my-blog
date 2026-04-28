@@ -1,15 +1,15 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import {computed, inject, ref, watch} from 'vue';
+import {RouterLink, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
-import { getUserArticlesApi } from '@/api/articles';
-import { getUserProfileApi } from '@/api/auth';
-import { useSession } from '@/stores/session';
-import { buildProfileSummaryStats } from '@/utils/profileSummary';
+import {getUserArticlesApi} from '@/api/articles';
+import {getUserProfileApi} from '@/api/auth';
+import {useSession} from '@/stores/session';
+import {buildProfileSummaryStats} from '@/utils/profileSummary';
 
 const route = useRoute();
 const { state } = useSession();
@@ -133,18 +133,21 @@ watch(() => route.params.id, () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
+    height: 36px;
     padding: 0 16px;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--text);
-    background: #ffffff;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 12px;
-    box-shadow: 0 10px 24px rgba(31, 78, 168, 0.05);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .profile-owner-action:hover {
-    color: var(--brand-strong);
-    border-color: rgba(40, 118, 255, 0.18);
-    background: rgba(40, 118, 255, 0.05);
+    color: var(--brand);
+    border-color: var(--brand);
+    background: var(--brand-soft);
 }
 </style>

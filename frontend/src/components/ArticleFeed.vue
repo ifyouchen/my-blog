@@ -1,8 +1,8 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { articles as defaultArticles } from '@/data/home';
-import { ARTICLE_SORT_LATEST } from '@/constants/articleSort';
+import {computed, ref, watch} from 'vue';
+import {useRouter} from 'vue-router';
+import {articles as defaultArticles} from '@/data/home';
+import {ARTICLE_SORT_LATEST} from '@/constants/articleSort';
 
 const props = defineProps({
     articles: {
@@ -261,81 +261,77 @@ watch(
     visibility: hidden;
 }
 
+/* 文章列表卡片 — 蓝白渐变风格，柔和交互 */
 .interactive-post {
     cursor: pointer;
-    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    transition: background 0.12s;
 }
 
 .interactive-post:hover,
 .interactive-post:focus-visible {
-    background: color-mix(in srgb, var(--surface-soft) 36%, white);
-    border-color: rgba(31, 122, 224, 0.16);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
-    transform: translateY(-2px);
+    background: var(--surface-soft);
 }
 
 .interactive-post:focus-visible {
-    outline: 2px solid rgba(31, 122, 224, 0.2);
-    outline-offset: 4px;
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
 }
 
 .post-title {
-    transition: color 0.18s ease;
+    transition: color 0.12s;
 }
 
 .interactive-post:hover .post-title,
-.interactive-post:focus-visible .post-title,
-.interactive-post:hover .author-hotspot,
-.interactive-post:focus-visible .author-hotspot {
-    color: var(--brand-strong);
+.interactive-post:focus-visible .post-title {
+    color: var(--brand);
 }
 
 .interactive-post:hover .post-cover img,
 .interactive-post:focus-visible .post-cover img {
-    transform: scale(1.04);
+    transform: scale(1.02);
 }
 
 .post-cover img {
-    transition: transform 0.22s ease;
+    transition: transform 0.2s ease;
 }
 
 .author-hotspot {
     position: relative;
     z-index: 1;
-    border-radius: 999px;
-    transition: color 0.18s ease;
+    transition: color 0.12s;
 }
 
 .author-hotspot:hover,
 .author-hotspot:focus-visible {
-    color: var(--brand-strong);
+    color: var(--brand);
 }
 
-/* Loading skeleton */
+/* Loading skeleton — 去大圆角和渐变 */
 .loading-placeholder {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 0;
 }
 
 .skeleton-post {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 236px;
-    gap: 22px;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 16px;
     align-items: center;
-    padding: 20px;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.9);
-    border-radius: 22px;
-    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.05);
+    padding: 16px 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .skeleton-cover {
     grid-column: 2;
     width: 100%;
-    height: 148px;
-    border-radius: 18px;
-    background: linear-gradient(90deg, rgba(226, 232, 240, 0.86) 25%, rgba(241, 245, 249, 0.96) 50%, rgba(226, 232, 240, 0.86) 75%);
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-soft) 50%, var(--surface-muted) 75%);
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
@@ -344,23 +340,23 @@ watch(
     grid-column: 1;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .skeleton-title {
-    height: 26px;
-    width: 72%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(226, 232, 240, 0.86) 25%, rgba(241, 245, 249, 0.96) 50%, rgba(226, 232, 240, 0.86) 75%);
+    height: 20px;
+    width: 70%;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-soft) 50%, var(--surface-muted) 75%);
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
 .skeleton-text {
-    height: 14px;
+    height: 13px;
     width: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(226, 232, 240, 0.86) 25%, rgba(241, 245, 249, 0.96) 50%, rgba(226, 232, 240, 0.86) 75%);
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-soft) 50%, var(--surface-muted) 75%);
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
@@ -370,13 +366,13 @@ watch(
 }
 
 :deep(.empty-state) {
-    padding: 34px 28px;
+    padding: 32px 20px;
     color: var(--muted);
     text-align: center;
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.9);
-    border-radius: 22px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 @keyframes skeleton-shimmer {
@@ -387,7 +383,7 @@ watch(
 @media (max-width: 760px) {
     .skeleton-post {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
     }
 
     .skeleton-cover,
@@ -396,7 +392,8 @@ watch(
     }
 
     .skeleton-cover {
-        height: 180px;
+        aspect-ratio: 16 / 9;
+        height: auto;
     }
 }
 </style>

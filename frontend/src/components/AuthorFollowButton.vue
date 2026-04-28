@@ -1,6 +1,6 @@
 <script setup>
-import { inject, ref, watch } from 'vue';
-import { followUserApi, unfollowUserApi } from '@/api/following';
+import {inject, ref, watch} from 'vue';
+import {followUserApi, unfollowUserApi} from '@/api/following';
 
 const props = defineProps({
     userId: {
@@ -83,46 +83,51 @@ const toggleFollow = async () => {
 
 <style scoped>
 .author-follow-button {
-    min-height: 34px;
-    padding: 0 14px;
-    color: var(--brand-strong);
+    min-height: 32px;
+    padding: 0 12px;
+    color: var(--brand);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    background: rgba(31, 122, 224, 0.08);
-    border: 1px solid rgba(31, 122, 224, 0.18);
-    border-radius: 8px;
-    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    background: var(--surface);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background 0.12s;
 }
 
 .author-follow-button:hover:not(:disabled) {
-    background: rgba(31, 122, 224, 0.14);
-    border-color: rgba(31, 122, 224, 0.28);
-    transform: translateY(-1px);
+    color: #ffffff;
+    background: var(--brand);
 }
 
 .author-follow-button.active {
-    color: var(--brand-strong);
-    background: rgba(31, 122, 224, 0.1);
-    border-color: rgba(31, 122, 224, 0.2);
+    color: var(--muted);
+    background: var(--surface-soft);
+    border-color: var(--line);
+}
+
+.author-follow-button.active:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--surface);
 }
 
 .author-follow-button.compact {
-    min-height: 30px;
-    padding: 0 12px;
+    min-height: 26px;
+    padding: 0 10px;
     font-size: 12px;
 }
 
 .author-follow-button.detail {
-    min-width: 94px;
-    min-height: 40px;
-    padding: 0 16px;
+    min-width: 84px;
+    min-height: 34px;
+    padding: 0 14px;
     font-size: 14px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
 }
 
 .author-follow-button:disabled {
     cursor: not-allowed;
-    opacity: 0.72;
+    opacity: 0.6;
 }
 </style>

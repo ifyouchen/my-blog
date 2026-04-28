@@ -1,8 +1,8 @@
 <script setup>
-import { computed } from 'vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
+import {computed} from 'vue';
+import {RouterLink, RouterView, useRoute} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { useSession } from '@/stores/session';
+import {useSession} from '@/stores/session';
 
 const route = useRoute();
 const { state } = useSession();
@@ -91,19 +91,15 @@ const requestRefresh = () => {
 }
 
 .admin-workspace-head {
-    background:
-        linear-gradient(180deg, rgba(31, 122, 224, 0.04), rgba(31, 122, 224, 0)),
-        #ffffff;
+    background: var(--surface);
 }
 
 .admin-refresh-button {
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
 }
 
 .admin-empty-panel {
-    background:
-        linear-gradient(180deg, rgba(31, 122, 224, 0.03), rgba(31, 122, 224, 0)),
-        #ffffff;
+    background: var(--surface);
 }
 
 @media (max-width: 760px) {

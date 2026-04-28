@@ -1,11 +1,11 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import {onMounted, ref, watch} from 'vue';
+import {useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { getColumnArticlesApi, getColumnDetailApi } from '@/api/columns';
+import {getColumnArticlesApi, getColumnDetailApi} from '@/api/columns';
 
 const route = useRoute();
 const column = ref(null);
@@ -111,12 +111,10 @@ watch(() => route.params.id, async () => {
     grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
     gap: 24px;
     padding: 24px;
-    background:
-        radial-gradient(circle at top right, rgba(40, 118, 255, 0.12), transparent 28%),
-        linear-gradient(180deg, rgba(248, 251, 255, 0.98), #ffffff);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 24px;
-    box-shadow: 0 22px 50px rgba(31, 78, 168, 0.08);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .column-detail-hero img {
@@ -124,8 +122,8 @@ watch(() => route.params.id, async () => {
     height: 100%;
     min-height: 280px;
     object-fit: cover;
-    border-radius: 20px;
-    box-shadow: 0 18px 36px rgba(31, 78, 168, 0.12);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .column-detail-content {

@@ -1,12 +1,12 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import {computed, ref, watch} from 'vue';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
-import { getMyFavoritesApi, unfavoriteArticleApi } from '@/api/favorites';
-import { deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleStatusApi } from '@/api/articles';
-import { useSession } from '@/stores/session';
+import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
+import {deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
+import {useSession} from '@/stores/session';
 
 const route = useRoute();
 const router = useRouter();
@@ -604,11 +604,11 @@ watch(isLoggedIn, () => {
 .creator-overview-latest {
     display: grid;
     gap: 8px;
-    padding: 18px 20px;
-    background: linear-gradient(180deg, rgba(31, 122, 224, 0.03), rgba(31, 122, 224, 0));
-    border: 1px solid rgba(31, 122, 224, 0.08);
-    border-radius: 18px;
-    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
 }
 
 .creator-overview-card span,
@@ -646,12 +646,14 @@ watch(isLoggedIn, () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 36px;
-    padding: 0 14px;
-    color: var(--brand-strong);
-    background: rgba(31, 122, 224, 0.08);
-    border: 1px solid rgba(31, 122, 224, 0.14);
-    border-radius: 999px;
+    min-height: 34px;
+    padding: 0 12px;
+    color: var(--brand);
+    font-size: 13px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, border-color 0.12s;
 }
 
 .dashboard-toolbar {
@@ -667,35 +669,36 @@ watch(isLoggedIn, () => {
 }
 
 .status-tabs button {
-    min-height: 34px;
-    padding: 0 14px;
-    border: 1px solid rgba(107, 114, 128, 0.16);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
     color: var(--muted);
-    transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .status-tabs button:hover {
     color: var(--text);
-    border-color: rgba(31, 122, 224, 0.18);
-    background: rgba(31, 122, 224, 0.05);
+    border-color: var(--line-strong);
 }
 
 .status-tabs button.active {
-    color: var(--brand-strong);
-    border-color: rgba(31, 122, 224, 0.2);
-    background: rgba(31, 122, 224, 0.08);
+    color: #ffffff;
+    border-color: var(--brand);
+    background: var(--brand);
 }
 
 .dashboard-feedback {
     display: flex;
     gap: 10px;
     align-items: center;
-    padding: 12px 14px;
+    padding: 10px 14px;
     margin: 0;
     border: 1px solid transparent;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     line-height: 1.6;
 }
 
@@ -717,7 +720,7 @@ watch(isLoggedIn, () => {
 }
 
 .table-panel :deep(tbody tr:hover td) {
-    background: rgba(31, 122, 224, 0.035);
+    background: var(--surface-soft);
 }
 
 .article-action-cell {
@@ -782,16 +785,16 @@ watch(isLoggedIn, () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 34px;
-    padding: 0 14px;
-    border: 1px solid transparent;
-    border-radius: 999px;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1;
     cursor: pointer;
     text-decoration: none;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .action-link:disabled {
@@ -801,38 +804,37 @@ watch(isLoggedIn, () => {
 
 .action-link-primary {
     color: var(--brand);
-    background: rgba(31, 122, 224, 0.08);
-    border-color: rgba(31, 122, 224, 0.14);
+    background: var(--surface);
+    border-color: var(--brand);
 }
 
 .action-link-primary:hover:not(:disabled) {
-    color: var(--brand-strong);
-    background: rgba(31, 122, 224, 0.12);
-    border-color: rgba(31, 122, 224, 0.18);
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
 }
 
 .action-link-secondary {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.94);
-    border-color: rgba(101, 115, 111, 0.14);
+    background: var(--surface);
+    border-color: var(--line);
 }
 
 .action-link-secondary:hover:not(:disabled) {
-    color: var(--brand-strong);
-    background: rgba(31, 122, 224, 0.04);
-    border-color: rgba(31, 122, 224, 0.14);
+    color: var(--brand);
+    border-color: var(--brand);
 }
 
 .action-link-danger {
-    color: #c64141;
-    background: rgba(209, 67, 67, 0.06);
-    border-color: rgba(209, 67, 67, 0.12);
+    color: var(--accent);
+    background: var(--surface);
+    border-color: var(--accent);
 }
 
 .action-link-danger:hover:not(:disabled) {
-    color: #b33434;
-    background: rgba(209, 67, 67, 0.12);
-    border-color: rgba(209, 67, 67, 0.18);
+    color: #ffffff;
+    background: var(--accent);
+    border-color: var(--accent);
 }
 
 .article-action-muted {
@@ -846,25 +848,25 @@ watch(isLoggedIn, () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 36px;
-    padding: 0 14px;
-    color: #d14343;
-    background: rgba(209, 67, 67, 0.06);
-    border: 1px solid rgba(209, 67, 67, 0.24);
-    border-radius: 999px;
-    font-size: 14px;
+    min-height: 32px;
+    padding: 0 12px;
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
     cursor: pointer;
-    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    transition: color 0.12s, background 0.12s;
 }
 
 .btn-danger-secondary:hover:not(:disabled) {
-    background: rgba(209, 67, 67, 0.12);
-    border-color: rgba(209, 67, 67, 0.4);
+    color: #ffffff;
+    background: var(--accent);
 }
 
 .btn-danger-secondary:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(209, 67, 67, 0.16);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .btn-danger-secondary:disabled {
@@ -890,11 +892,12 @@ watch(isLoggedIn, () => {
 
 .dashboard-pagination {
     display: grid;
-    gap: 12px;
-    padding: 16px 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 18px;
+    gap: 10px;
+    padding: 14px 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
 }
 
 .dashboard-pagination p {
@@ -912,13 +915,16 @@ watch(isLoggedIn, () => {
 
 .dashboard-pagination-actions button,
 .dashboard-pagination-jump button {
-    min-width: 40px;
-    min-height: 36px;
-    padding: 0 12px;
+    min-width: 32px;
+    min-height: 30px;
+    padding: 0 8px;
     color: var(--text);
-    background: var(--surface-soft);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, border-color 0.12s;
 }
 
 .dashboard-pagination-actions button:hover:not(:disabled),
@@ -943,13 +949,14 @@ watch(isLoggedIn, () => {
 }
 
 .dashboard-pagination-jump input {
-    width: 76px;
-    min-height: 36px;
-    padding: 0 10px;
+    width: 60px;
+    min-height: 30px;
+    padding: 0 8px;
     color: var(--text);
-    background: var(--surface-soft);
+    font-size: 13px;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     outline: 0;
 }
 
@@ -959,30 +966,26 @@ watch(isLoggedIn, () => {
 
 .status-pill.published {
     color: var(--brand-strong);
-    background: rgba(15, 143, 117, 0.08);
+    background: var(--brand-soft);
+    border-left-color: var(--brand);
 }
 
 .status-pill.draft {
     color: #9a6700;
-    background: rgba(240, 201, 73, 0.1);
+    background: rgba(240, 201, 73, 0.12);
+    border-left-color: #d4a017;
 }
 
 .status-pill.offline {
     color: #8b5e00;
     background: rgba(245, 158, 11, 0.1);
+    border-left-color: #d97706;
 }
 
 .status-pill.deleted {
     color: #b42318;
     background: rgba(180, 35, 24, 0.08);
-}
-
-.status-pill {
-    min-height: 26px;
-    padding: 0 9px;
-    border-radius: 7px;
-    font-size: 12px;
-    font-weight: 700;
+    border-left-color: var(--accent);
 }
 
 @media (max-width: 760px) {

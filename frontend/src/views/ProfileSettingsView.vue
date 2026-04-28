@@ -1,13 +1,13 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
-import { uploadImageApi } from '@/api/uploads';
+import {computed, onMounted, reactive, ref, watch} from 'vue';
+import {RouterLink} from 'vue-router';
+import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
-import { getUserHotArticlesApi, getUserProfileApi, updateProfileApi } from '@/api/auth';
-import { useSession } from '@/stores/session';
-import { buildProfileSummaryStats } from '@/utils/profileSummary';
-import { resolveMediaUrl } from '@/utils/media';
+import {getUserHotArticlesApi, getUserProfileApi, updateProfileApi} from '@/api/auth';
+import {useSession} from '@/stores/session';
+import {buildProfileSummaryStats} from '@/utils/profileSummary';
+import {resolveMediaUrl} from '@/utils/media';
 
 const { state, updateCurrentUser } = useSession();
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=240&q=80';
@@ -524,7 +524,7 @@ onMounted(async () => {
                         <div
                             class="profile-hot-cover"
                             :style="article.coverUrl
-                                ? { backgroundImage: `linear-gradient(180deg, rgba(40, 118, 255, 0.12), rgba(14, 33, 74, 0.58)), url(${resolveMediaUrl(article.coverUrl, article.cover)})` }
+                                ? { backgroundImage: `url(${resolveMediaUrl(article.coverUrl, article.cover)})` }
                                 : undefined"
                         >
                             <span class="profile-hot-category">{{ article.category || '未分类' }}</span>
@@ -568,10 +568,10 @@ onMounted(async () => {
 }
 
 .profile-settings-panel {
-    background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), #ffffff);
-    border: 1px solid rgba(196, 211, 232, 0.92);
-    border-radius: 24px;
-    box-shadow: 0 22px 56px rgba(31, 78, 168, 0.07);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .profile-secondary-action {
@@ -582,15 +582,15 @@ onMounted(async () => {
     min-height: 40px;
     padding: 0 16px;
     color: var(--text);
-    background: #ffffff;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .profile-secondary-action:hover {
-    color: var(--brand-strong);
-    border-color: rgba(40, 118, 255, 0.18);
-    background: rgba(40, 118, 255, 0.05);
+    color: var(--brand);
+    border-color: var(--brand);
+    background: var(--brand-soft);
 }
 
 .profile-settings-grid {
@@ -631,16 +631,15 @@ onMounted(async () => {
     display: grid;
     gap: 16px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.86);
-    border: 1px solid rgba(208, 219, 236, 0.9);
-    border-radius: 20px;
-    transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.22s ease, box-shadow 0.22s ease;
 }
 
 .profile-field-card:hover {
-    border-color: rgba(40, 118, 255, 0.16);
-    box-shadow: 0 16px 34px rgba(31, 78, 168, 0.08);
-    transform: translateY(-1px);
+    border-color: var(--brand);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .profile-field-head {
@@ -669,18 +668,18 @@ onMounted(async () => {
     gap: 8px;
     min-height: 34px;
     padding: 0 12px;
-    color: var(--brand-strong);
+    color: var(--brand);
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    background: rgba(40, 118, 255, 0.08);
-    border: 1px solid rgba(40, 118, 255, 0.12);
-    border-radius: 999px;
-    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    background: var(--brand-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.18s ease, background 0.18s ease;
 }
 
 .field-edit-button {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    box-shadow: none;
 }
 
 .field-edit-button-icon,
@@ -702,13 +701,12 @@ onMounted(async () => {
 .field-edit-button:hover,
 .profile-field-actions button:not(.primary-action):hover,
 .profile-hot-item:hover {
-    border-color: rgba(40, 118, 255, 0.24);
-    box-shadow: 0 12px 26px rgba(31, 78, 168, 0.1);
-    transform: translateY(-1px);
+    border-color: var(--brand);
+    box-shadow: none;
 }
 
 .field-edit-button:hover {
-    background: rgba(40, 118, 255, 0.12);
+    background: var(--brand-hover);
 }
 
 .profile-field-value {
@@ -728,15 +726,15 @@ onMounted(async () => {
     width: 100%;
     padding: 12px 14px;
     color: var(--text);
-    background: #ffffff;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .profile-field-card input:focus,
 .profile-field-card textarea:focus {
-    border-color: rgba(40, 118, 255, 0.34);
-    box-shadow: 0 0 0 4px rgba(40, 118, 255, 0.08);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
     outline: none;
 }
 
@@ -761,9 +759,9 @@ onMounted(async () => {
 
 .profile-action-with-icon.secondary {
     color: var(--text);
-    background: #ffffff;
+    background: var(--surface);
     border-color: var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 .profile-settings-panel-footer {
@@ -791,15 +789,15 @@ onMounted(async () => {
     display: grid;
     overflow: hidden;
     color: inherit;
-    background: rgba(255, 255, 255, 0.88);
-    border: 1px solid rgba(208, 219, 236, 0.92);
-    border-radius: 20px;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .profile-hot-item:hover {
-    box-shadow: 0 14px 30px rgba(31, 78, 168, 0.1);
-    transform: translateY(-2px);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    border-color: var(--brand);
 }
 
 .profile-hot-cover {
@@ -809,9 +807,7 @@ onMounted(async () => {
     justify-content: space-between;
     min-height: 118px;
     padding: 16px;
-    background:
-        linear-gradient(180deg, rgba(40, 118, 255, 0.12), rgba(14, 33, 74, 0.58)),
-        linear-gradient(135deg, rgba(40, 118, 255, 0.34), rgba(14, 33, 74, 0.94));
+    background: var(--surface-muted);
     background-size: cover;
     background-position: center;
 }
@@ -825,10 +821,9 @@ onMounted(async () => {
     color: #ffffff;
     font-size: 12px;
     font-weight: 700;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-sm);
 }
 
 .profile-hot-body {
