@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 @Repository
 @Profile("!memory")
 public class MyBatisCategoryRepository implements CategoryRepository {
@@ -69,17 +68,12 @@ public class MyBatisCategoryRepository implements CategoryRepository {
     @Override
     public Category save(Category category) {
         CategoryDO categoryDO = CategoryPersistenceConverter.toData(category);
-        if (categoryMapper.countById(category.getId().getValue()) > 0) {
-            categoryMapper.update(categoryDO);
-        } else {
-            categoryMapper.insert(categoryDO);
-        }
+        categoryMapper.insertOrUpdate(categoryDO);
         return category;
     }
 
     @Override
     public Long nextId() {
-        Long nextId = categoryMapper.selectNextId();
-        return nextId == null ? 1L : nextId;
+        return categoryMapper.selectNextId();
     }
 }

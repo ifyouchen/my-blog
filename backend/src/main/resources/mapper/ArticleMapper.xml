@@ -309,6 +309,33 @@
         AND deleted_at IS NULL
     </update>
 
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
+        INSERT INTO blog_article (
+            id, author_id, title, summary, content, cover_url, category, status,
+            view_count, like_count, favorite_count, comment_count, published_at,
+            created_at, updated_at
+        ) VALUES (
+            #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{status},
+            #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
+            #{createdAt}, #{updatedAt}
+        )
+        ON DUPLICATE KEY UPDATE
+            title = #{title},
+            summary = #{summary},
+            content = #{content},
+            cover_url = #{coverUrl},
+            category = #{category},
+            status = #{status},
+            view_count = #{viewCount},
+            like_count = #{likeCount},
+            favorite_count = #{favoriteCount},
+            comment_count = #{commentCount},
+            published_at = #{publishedAt},
+            updated_at = NOW(),
+            version = version + 1
+    </insert>
+
     <select id="selectTagNamesByArticleId" resultType="string">
         SELECT tag_name
         FROM blog_article_tag

@@ -263,19 +263,16 @@ public class CommentAppService {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "无权限删除该评论");
         }
 
-        List<Comment> commentsToDelete;
-        if (comment.isRootComment()) {
-            commentsToDelete = commentRepository.findThreadByRootCommentId(comment.getId());
-        } else {
-            commentsToDelete = Collections.singletonList(comment);
-        }
-
         Long articleId = article.getId().getValue();
-        int deleteCount = commentsToDelete.size();
+        int deleteCount;
 
-        for (Comment item : commentsToDelete) {
-            item.delete();
-            commentRepository.save(item);
+        if (comment.isRootComment()) {
+            // 批量软删除整个楼层（根评论 + 所有回复），一条 SQL 搞定
+            deleteCount = commentRepository.deleteThreadByRootCommentId(comment.getId());
+        } else {
+            comment.delete();
+            commentRepository.save(comment);
+            deleteCount = 1;
         }
 
         eventPublisher.publishEvent(new CommentDeletedEvent(commentId, articleId, deleteCount));
@@ -408,11 +405,11 @@ public class CommentAppService {
     }
 
     private Map<Long, Integer> loadReplyCounts(List<Long> rootCommentIds) {
-        Map<Long, Integer> replyCountMap = new HashMap<Long, Integer>();
-        for (Long rootCommentId : rootCommentIds) {
-            replyCountMap.put(rootCommentId, (int) commentRepository.countReplies(new CommentId(rootCommentId)));
+        if (rootCommentIds == null || rootCommentIds.isEmpty()) {
+            return new HashMap<Long, Integer>();
         }
-        return replyCountMap;
+        // 批量查询回复数，解决 N+1 问题
+        return commentRepository.countRepliesBatch(rootCommentIds);
     }
 
     private Map<Long, List<Comment>> groupByRootCommentId(List<Comment> comments) {
@@ -460,12 +457,14 @@ public class CommentAppService {
                 }
             }
         }
-        Map<Long, User> userMap = new HashMap<Long, User>();
-        for (Long userId : userIds) {
-            User user = userRepository.findById(new UserId(userId)).orElse(null);
-            if (user != null) {
-                userMap.put(userId, user);
-            }
+        if (userIds.isEmpty()) {
+            return new HashMap<Long, User>();
+        }
+        // 批量查询用户，解决 N+1 问题
+        List<User> users = userRepository.findByIds(new ArrayList<Long>(userIds));
+        Map<Long, User> userMap = new HashMap<Long, User>(users.size() * 2);
+        for (User user : users) {
+            userMap.put(user.getId().getValue(), user);
         }
         return userMap;
     }

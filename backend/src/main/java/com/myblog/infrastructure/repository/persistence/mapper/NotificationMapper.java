@@ -29,6 +29,8 @@ public interface NotificationMapper {
                                                 @Param("limit") int limit);
 
     int insert(NotificationDO notificationDO);
+    int insertOrUpdate(NotificationDO notificationDO);
+
 
     int update(NotificationDO notificationDO);
 

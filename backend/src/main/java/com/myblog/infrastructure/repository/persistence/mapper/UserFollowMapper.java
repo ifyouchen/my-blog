@@ -37,6 +37,8 @@ public interface UserFollowMapper {
     Long selectNextId();
 
     int insert(UserFollowDO userFollowDO);
+    int insertOrUpdate(UserFollowDO userFollowDO);
+
 
     int update(UserFollowDO userFollowDO);
 }

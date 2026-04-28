@@ -7,7 +7,9 @@ import com.myblog.domain.model.aggregate.AdminLog;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.AdminLogRepository;
 import com.myblog.shared.result.PageResult;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -45,11 +47,13 @@ public class AdminLogAppService {
     }
 
     /**
-     * 记录管理员操作日志。
+     * 异步记录管理员操作日志（不阻塞主业务流程）。
+     * 使用 REQUIRES_NEW 独立事务，避免主事务回滚导致日志丢失。
      *
      * @param command 记录命令
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Async
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
     public void recordOperation(RecordAdminLogCommand command) {
         AdminLog adminLog = AdminLog.create(
             adminLogRepository.nextId(),

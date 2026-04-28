@@ -5,6 +5,7 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.infrastructure.repository.persistence.converter.UserPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.UserDO;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.UserMapper;
 import com.myblog.shared.enums.UserStatus;
 import org.springframework.context.annotation.Profile;
@@ -13,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,14 +30,18 @@ import java.util.Optional;
 public class MyBatisUserRepository implements UserRepository {
 
     private final UserMapper userMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建用户 MyBatis 仓储。
      *
      * @param userMapper 用户 Mapper
+     * @param snowflakeIdGenerator Snowflake ID 生成器
      */
-    public MyBatisUserRepository(UserMapper userMapper) {
+    public MyBatisUserRepository(UserMapper userMapper,
+                                 SnowflakeIdGenerator snowflakeIdGenerator) {
         this.userMapper = userMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -95,11 +102,8 @@ public class MyBatisUserRepository implements UserRepository {
     @Transactional(rollbackFor = Exception.class)
     public User save(User user) {
         UserDO userDO = UserPersistenceConverter.toData(user);
-        if (userMapper.countById(user.getId().getValue()) > 0) {
-            userMapper.update(userDO);
-            return user;
-        }
-        userMapper.insert(userDO);
+        // 使用 INSERT ... ON DUPLICATE KEY UPDATE，避免前置 countById 查询
+        userMapper.insertOrUpdate(userDO);
         return user;
     }
 
@@ -196,8 +200,7 @@ public class MyBatisUserRepository implements UserRepository {
      */
     @Override
     public Long nextId() {
-        Long nextId = userMapper.selectNextId();
-        return nextId == null ? 1001L : nextId;
+        return snowflakeIdGenerator.nextId();
     }
 
     @Override
@@ -224,5 +227,45 @@ public class MyBatisUserRepository implements UserRepository {
     @Override
     public int countPublishedArticles(Long userId) {
         return userMapper.countPublishedArticlesByUserId(userId);
+    }
+
+    @Override
+    public Map<Long, Integer> countFollowersBatchByIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new HashMap<Long, Integer>();
+        }
+        List<Map<String, Object>> rows = userMapper.countFollowersBatchByUserIds(userIds);
+        Map<Long, Integer> result = new HashMap<Long, Integer>(userIds.size() * 2);
+        for (Long userId : userIds) {
+            result.put(userId, 0);
+        }
+        for (Map<String, Object> row : rows) {
+            Object userIdObj = row.get("userId");
+            Object countObj = row.get("followerCount");
+            if (userIdObj != null && countObj != null) {
+                result.put(((Number) userIdObj).longValue(), ((Number) countObj).intValue());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Map<Long, Integer> countPublishedArticlesBatchByIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new HashMap<Long, Integer>();
+        }
+        List<Map<String, Object>> rows = userMapper.countPublishedArticlesBatchByUserIds(userIds);
+        Map<Long, Integer> result = new HashMap<Long, Integer>(userIds.size() * 2);
+        for (Long userId : userIds) {
+            result.put(userId, 0);
+        }
+        for (Map<String, Object> row : rows) {
+            Object userIdObj = row.get("userId");
+            Object countObj = row.get("articleCount");
+            if (userIdObj != null && countObj != null) {
+                result.put(((Number) userIdObj).longValue(), ((Number) countObj).intValue());
+            }
+        }
+        return result;
     }
 }

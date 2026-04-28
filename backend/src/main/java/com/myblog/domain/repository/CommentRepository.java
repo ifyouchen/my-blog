@@ -6,6 +6,7 @@ import com.myblog.domain.model.valueobject.CommentId;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -113,6 +114,22 @@ public interface CommentRepository {
      * @return 整串评论列表
      */
     List<Comment> findThreadByRootCommentId(CommentId rootCommentId);
+
+    /**
+     * 批量统计多个根评论的回复数量。
+     *
+     * @param rootCommentIds 根评论 ID 列表
+     * @return rootCommentId -> replyCount 映射
+     */
+    Map<Long, Integer> countRepliesBatch(List<Long> rootCommentIds);
+
+    /**
+     * 批量软删除一级评论及其所有回复。
+     *
+     * @param rootCommentId 根评论 ID
+     * @return 实际删除的评论数量
+     */
+    int deleteThreadByRootCommentId(CommentId rootCommentId);
 
     /**
      * 保存评论。

@@ -24,6 +24,8 @@ public interface CategoryMapper {
     Long selectNextId();
 
     int insert(CategoryDO categoryDO);
+    int insertOrUpdate(CategoryDO categoryDO);
+
 
     int update(CategoryDO categoryDO);
 }

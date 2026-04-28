@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 /**
  * 通知 MyBatis 仓储实现。
  *
@@ -66,12 +65,7 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     @Override
     public Notification save(Notification notification) {
         NotificationDO notificationDO = NotificationPersistenceConverter.toData(notification);
-        if (notificationMapper.countById(notification.getId().getValue()) > 0) {
-            notificationMapper.update(notificationDO);
-        } else {
-            notificationMapper.insert(notificationDO);
-        }
-        return notification;
+        notificationMapper.insertOrUpdate(notificationDO);        return notification;
     }
 
     @Override
@@ -86,7 +80,6 @@ public class MyBatisNotificationRepository implements NotificationRepository {
 
     @Override
     public Long nextId() {
-        Long nextId = notificationMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
+        return notificationMapper.selectNextId();
     }
 }

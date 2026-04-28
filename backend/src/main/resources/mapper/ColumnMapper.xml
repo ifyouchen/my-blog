@@ -20,16 +20,8 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        c.id, c.author_id, c.title, c.summary, c.cover_url, c.status, c.sort_order, c.subscriber_count,
-        (
-            SELECT COUNT(1)
-            FROM blog_column_article ca
-            INNER JOIN blog_article a ON a.id = ca.article_id
-            WHERE ca.column_id = c.id
-            AND ca.deleted_at IS NULL
-            AND a.deleted_at IS NULL
-            AND a.status = 'PUBLISHED'
-        ) AS article_count,
+        c.id, c.author_id, c.title, c.summary, c.cover_url, c.status, c.sort_order,
+        c.subscriber_count, c.article_count,
         c.created_at, c.updated_at, c.deleted_at, c.version
     </sql>
 
@@ -79,10 +71,11 @@
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
         INSERT INTO blog_column (
-            id, author_id, title, summary, cover_url, status, sort_order, subscriber_count,
+            id, author_id, title, summary, cover_url, status, sort_order, subscriber_count, article_count,
             created_at, updated_at, deleted_at, version
         ) VALUES (
-            #{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{subscriberCount},
+            #{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder},
+            #{subscriberCount}, #{articleCount},
             #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
         )
     </insert>
@@ -96,6 +89,7 @@
             status = #{status},
             sort_order = #{sortOrder},
             subscriber_count = #{subscriberCount},
+            article_count = #{articleCount},
             updated_at = #{updatedAt},
             deleted_at = #{deletedAt},
             version = version + 1
@@ -135,6 +129,15 @@
         VALUES (#{columnId}, #{articleId}, #{sortOrder})
     </insert>
 
+    <!-- 绑定文章后递增专栏文章数（维护冗余字段） -->
+    <update id="incrementArticleCount">
+        UPDATE blog_column
+        SET article_count = article_count + 1,
+            updated_at = NOW()
+        WHERE id = #{columnId}
+        AND deleted_at IS NULL
+    </update>
+
     <select id="searchPublished" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_column c
@@ -170,4 +173,24 @@
             )
         </if>
     </select>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
+        INSERT INTO blog_column
+        (id, author_id, title, summary, cover_url, status, sort_order, subscriber_count, article_count, created_at, updated_at, deleted_at, version)
+        VALUES
+        (#{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{subscriberCount}, #{articleCount}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
+        ON DUPLICATE KEY UPDATE
+            author_id = #{authorId},
+            title = #{title},
+            summary = #{summary},
+            cover_url = #{coverUrl},
+            status = #{status},
+            sort_order = #{sortOrder},
+            subscriber_count = #{subscriberCount},
+            article_count = #{articleCount},
+            updated_at = NOW(),
+            deleted_at = #{deletedAt},
+            version = version + 1
+    </insert>
 </mapper>

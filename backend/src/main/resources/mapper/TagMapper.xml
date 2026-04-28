@@ -97,4 +97,14 @@
         WHERE id = #{id}
         AND deleted_at IS NULL
     </update>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.TagDO">
+        INSERT INTO blog_tag
+        (id, name, description, enabled, created_at, updated_at)
+        VALUES
+        (#{id}, #{name}, #{description}, #{enabled}, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            id, name, description, enabled, created_at, updated_at = #{id}, #{name}, #{description}, #{enabled}, #{createdAt}, #{updatedAt}
+    </insert>
 </mapper>

@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 用户应用服务。
@@ -136,21 +139,39 @@ public class UserAppService {
         List<User> users = userRepository.searchUsers(keyword, "followers", page, pageSize);
         long total = userRepository.countSearchUsers(keyword);
 
+        if (users.isEmpty()) {
+            return new PageResult<>(new ArrayList<UserSearchDTO>(), page, pageSize, total);
+        }
+
+        // 批量查询粉丝数、文章数、关注状态，解决 N+1 问题
+        List<Long> userIds = users.stream()
+            .map(u -> u.getId().getValue())
+            .collect(Collectors.toList());
+
+        Map<Long, Integer> followerCountMap = userRepository.countFollowersBatchByIds(userIds);
+        Map<Long, Integer> articleCountMap = userRepository.countPublishedArticlesBatchByIds(userIds);
+
+        Set<Long> followedUserIds = java.util.Collections.emptySet();
+        if (currentUserId != null) {
+            List<Long> followedList = userFollowRepository.findFollowingUserIdsIn(
+                new UserId(currentUserId), userIds
+            );
+            followedUserIds = new java.util.HashSet<>(followedList);
+        }
+
+        final Set<Long> finalFollowedUserIds = followedUserIds;
         List<UserSearchDTO> dtos = new ArrayList<>(users.size());
         for (User user : users) {
+            Long uid = user.getId().getValue();
             UserSearchDTO dto = new UserSearchDTO();
-            dto.setId(user.getId().getValue());
+            dto.setId(uid);
             dto.setUsername(user.getUsername());
             dto.setNickname(user.getNickname());
             dto.setAvatarUrl(user.getAvatarUrl());
             dto.setBio(user.getBio());
-            dto.setFollowerCount(userRepository.countFollowers(user.getId().getValue()));
-            dto.setPublishedArticleCount(userRepository.countPublishedArticles(user.getId().getValue()));
-            if (currentUserId != null) {
-                dto.setFollowed(userFollowRepository.exists(new UserId(currentUserId), user.getId()));
-            } else {
-                dto.setFollowed(false);
-            }
+            dto.setFollowerCount(followerCountMap.getOrDefault(uid, 0));
+            dto.setPublishedArticleCount(articleCountMap.getOrDefault(uid, 0));
+            dto.setFollowed(finalFollowedUserIds.contains(uid));
             dtos.add(dto);
         }
 

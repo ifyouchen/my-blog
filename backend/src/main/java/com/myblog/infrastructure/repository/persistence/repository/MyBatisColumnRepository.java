@@ -9,9 +9,11 @@ import com.myblog.infrastructure.repository.persistence.mapper.ColumnMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 专栏 MyBatis 仓储实现。
@@ -23,9 +25,12 @@ import java.util.Optional;
 public class MyBatisColumnRepository implements ColumnRepository {
 
     private final ColumnMapper columnMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisColumnRepository(ColumnMapper columnMapper) {
+    public MyBatisColumnRepository(ColumnMapper columnMapper,
+                                    SnowflakeIdGenerator snowflakeIdGenerator) {
         this.columnMapper = columnMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -65,18 +70,13 @@ public class MyBatisColumnRepository implements ColumnRepository {
     @Transactional(rollbackFor = Exception.class)
     public Column save(Column column) {
         ColumnDO columnDO = toData(column);
-        if (columnMapper.countById(column.getId().getValue()) > 0) {
-            columnMapper.update(columnDO);
-        } else {
-            columnMapper.insert(columnDO);
-        }
+        columnMapper.insertOrUpdate(columnDO);
         return column;
     }
 
     @Override
     public Long nextId() {
-        Long nextId = columnMapper.selectNextId();
-        return nextId == null ? 2000L : nextId;
+        return snowflakeIdGenerator.nextId();
     }
 
     @Override
@@ -91,14 +91,18 @@ public class MyBatisColumnRepository implements ColumnRepository {
             columnMapper.restoreColumnArticle(columnId.getValue(), articleId, sortOrder);
         } else {
             columnMapper.insertColumnArticle(columnId.getValue(), articleId, sortOrder);
+            // 维护冗余的 article_count 字段
+            columnMapper.incrementArticleCount(columnId.getValue());
         }
     }
 
     @Override
     public List<Column> searchPublished(String keyword, String sort, int page, int pageSize) {
-        int offset = (Math.max(page, 1) - 1) * Math.max(pageSize, 1);
-        List<ColumnDO> columnDOList = columnMapper.searchPublished(keyword, sort, offset, pageSize);
-        List<Column> columns = new ArrayList<>(columnDOList.size());
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<ColumnDO> columnDOList = columnMapper.searchPublished(keyword, sort, offset, currentPageSize);
+        List<Column> columns = new ArrayList<Column>(columnDOList.size());
         for (ColumnDO columnDO : columnDOList) {
             columns.add(toDomain(columnDO));
         }
@@ -139,10 +143,10 @@ public class MyBatisColumnRepository implements ColumnRepository {
         columnDO.setSortOrder(column.getSortOrder());
         columnDO.setSubscriberCount(column.getSubscriberCount());
         columnDO.setArticleCount(column.getArticleCount());
-        columnDO.setCreatedAt(column.getCreatedAt());
-        columnDO.setUpdatedAt(column.getUpdatedAt());
+        columnDO.setCreatedAt(column.getCreatedAt() != null ? column.getCreatedAt() : LocalDateTime.now());
+        columnDO.setUpdatedAt(LocalDateTime.now());
         columnDO.setDeletedAt(column.getDeletedAt());
-        columnDO.setVersion(column.getVersion());
+        columnDO.setVersion(column.getVersion() != null ? column.getVersion() : 0);
         return columnDO;
     }
 }

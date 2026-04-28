@@ -78,4 +78,16 @@
         WHERE id = #{id}
         AND version = #{version}
     </update>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentLikeDO">
+        INSERT INTO blog_comment_like
+        (id, comment_id, user_id, created_at, updated_at)
+        VALUES
+        (#{id}, #{commentId}, #{userId}, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            comment_id = #{commentId},
+            user_id = #{userId},
+            updated_at = NOW()
+    </insert>
 </mapper>

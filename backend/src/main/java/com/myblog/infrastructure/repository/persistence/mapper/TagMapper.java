@@ -24,6 +24,8 @@ public interface TagMapper {
     Long selectNextId();
 
     int insert(TagDO tagDO);
+    int insertOrUpdate(TagDO tagDO);
+
 
     int update(TagDO tagDO);
 }

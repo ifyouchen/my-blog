@@ -124,4 +124,20 @@
         SELECT COALESCE(MAX(id), 100) + 1
         FROM blog_notification
     </select>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.NotificationDO">
+        INSERT INTO blog_notification
+        (id, receiver_user_id, actor_user_id, type, article_id, comment_id, payload_json, created_at, updated_at)
+        VALUES
+        (#{id}, #{receiverUserId}, #{actorUserId}, #{type}, #{articleId}, #{commentId}, #{payloadJson}, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            receiver_user_id = #{receiverUserId},
+            actor_user_id = #{actorUserId},
+            type = #{type},
+            article_id = #{articleId},
+            comment_id = #{commentId},
+            payload_json = #{payloadJson},
+            updated_at = NOW()
+    </insert>
 </mapper>

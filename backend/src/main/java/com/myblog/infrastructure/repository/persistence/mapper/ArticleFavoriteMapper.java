@@ -28,8 +28,15 @@ public interface ArticleFavoriteMapper {
     Long selectNextId();
 
     int insert(ArticleFavoriteDO favoriteDO);
+    int insertOrUpdate(ArticleFavoriteDO articleFavoriteDO);
+
 
     int update(ArticleFavoriteDO favoriteDO);
 
     int deleteByArticleAndUser(@Param("articleId") Long articleId, @Param("userId") Long userId);
+
+    /**
+     * 批量查询用户对多篇文章的收藏状态，返回已收藏的文章ID。
+     */
+    List<Long> selectFavoritedArticleIdsByUser(@Param("articleIds") List<Long> articleIds, @Param("userId") Long userId);
 }

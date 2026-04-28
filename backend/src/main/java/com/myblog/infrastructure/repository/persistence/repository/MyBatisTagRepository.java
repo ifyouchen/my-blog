@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 @Repository
 @Profile("!memory")
 public class MyBatisTagRepository implements TagRepository {
@@ -69,17 +68,12 @@ public class MyBatisTagRepository implements TagRepository {
     @Override
     public Tag save(Tag tag) {
         TagDO tagDO = TagPersistenceConverter.toData(tag);
-        if (tagMapper.countById(tag.getId().getValue()) > 0) {
-            tagMapper.update(tagDO);
-        } else {
-            tagMapper.insert(tagDO);
-        }
+        tagMapper.insertOrUpdate(tagDO);
         return tag;
     }
 
     @Override
     public Long nextId() {
-        Long nextId = tagMapper.selectNextId();
-        return nextId == null ? 1L : nextId;
+        return tagMapper.selectNextId();
     }
 }

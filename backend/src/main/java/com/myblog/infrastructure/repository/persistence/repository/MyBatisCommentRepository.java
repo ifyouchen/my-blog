@@ -6,6 +6,7 @@ import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.repository.CommentRepository;
 import com.myblog.infrastructure.repository.persistence.converter.CommentPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.CommentDO;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.CommentMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,14 +30,18 @@ import java.util.Optional;
 public class MyBatisCommentRepository implements CommentRepository {
 
     private final CommentMapper commentMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建评论 MyBatis 仓储。
      *
      * @param commentMapper 评论 Mapper
+     * @param snowflakeIdGenerator Snowflake ID 生成器
      */
-    public MyBatisCommentRepository(CommentMapper commentMapper) {
+    public MyBatisCommentRepository(CommentMapper commentMapper,
+                                    SnowflakeIdGenerator snowflakeIdGenerator) {
         this.commentMapper = commentMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -176,11 +183,7 @@ public class MyBatisCommentRepository implements CommentRepository {
             return comment;
         }
         CommentDO commentDO = CommentPersistenceConverter.toData(comment);
-        if (commentMapper.countById(comment.getId().getValue()) > 0) {
-            commentMapper.update(commentDO);
-        } else {
-            commentMapper.insert(commentDO);
-        }
+        commentMapper.insertOrUpdate(commentDO);
         return comment;
     }
 
@@ -214,14 +217,29 @@ public class MyBatisCommentRepository implements CommentRepository {
         return commentMapper.countCreatedSince(date);
     }
 
-    /**
-     * 生成下一个评论 ID。
-     *
-     * @return 评论 ID
-     */
+    @Override
+    public Map<Long, Integer> countRepliesBatch(List<Long> rootCommentIds) {
+        if (rootCommentIds == null || rootCommentIds.isEmpty()) {
+            return new HashMap<Long, Integer>();
+        }
+        List<Map<String, Object>> rows = commentMapper.countRepliesByRootIds(rootCommentIds);
+        Map<Long, Integer> result = new HashMap<Long, Integer>(rows.size());
+        for (Map<String, Object> row : rows) {
+            Long rootId = ((Number) row.get("rootCommentId")).longValue();
+            Integer cnt = ((Number) row.get("cnt")).intValue();
+            result.put(rootId, cnt);
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteThreadByRootCommentId(CommentId rootCommentId) {
+        return commentMapper.deleteThreadByRootCommentId(rootCommentId.getValue());
+    }
+
     @Override
     public Long nextId() {
-        Long nextId = commentMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
+        return snowflakeIdGenerator.nextId();
     }
 }

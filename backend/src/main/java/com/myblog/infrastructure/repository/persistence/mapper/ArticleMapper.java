@@ -207,6 +207,14 @@ public interface ArticleMapper {
     int update(ArticleDO article);
 
     /**
+     * 插入或更新文章（INSERT ... ON DUPLICATE KEY UPDATE）。
+     *
+     * @param article 文章数据对象
+     * @return 影响行数
+     */
+    int insertOrUpdate(ArticleDO article);
+
+    /**
      * 查询文章标签名称列表。
      *
      * @param articleId 文章 ID

@@ -26,6 +26,8 @@ public interface CommentLikeMapper {
     Long selectNextId();
 
     int insert(CommentLikeDO commentLikeDO);
+    int insertOrUpdate(CommentLikeDO commentLikeDO);
+
 
     int update(CommentLikeDO commentLikeDO);
 }

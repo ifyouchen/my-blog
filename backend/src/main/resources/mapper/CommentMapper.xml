@@ -203,6 +203,33 @@
         WHERE id = #{id}
     </select>
 
+    <!-- 批量统计多个根评论的回复数，解决 N+1 问题 -->
+    <select id="countRepliesByRootIds" resultType="java.util.Map">
+        SELECT root_comment_id AS rootCommentId, COUNT(1) AS replyCount
+        FROM blog_comment
+        WHERE root_comment_id IN
+        <foreach collection="rootCommentIds" item="rootCommentId" open="(" separator="," close=")">
+            #{rootCommentId}
+        </foreach>
+        AND parent_id IS NOT NULL
+        AND deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        GROUP BY root_comment_id
+    </select>
+
+    <!-- 批量软删除一级评论及其所有回复 -->
+    <update id="deleteThreadByRootCommentId">
+        UPDATE blog_comment
+        SET deleted_at = NOW(),
+            updated_at = NOW(),
+            status = 'DELETED',
+            pinned = 0,
+            pinned_at = NULL,
+            version = version + 1
+        WHERE root_comment_id = #{rootCommentId}
+        AND deleted_at IS NULL
+    </update>
+
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 100) + 1
         FROM blog_comment
@@ -255,4 +282,23 @@
         WHERE id = #{id}
         AND deleted_at IS NULL
     </update>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
+        INSERT INTO blog_comment
+        (id, article_id, user_id, root_comment_id, parent_id, content, status, like_count, pinned, pinned_at, created_at, updated_at)
+        VALUES
+        (#{id}, #{articleId}, #{userId}, #{rootCommentId}, #{parentId}, #{content}, #{status}, #{likeCount}, #{pinned}, #{pinnedAt}, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            article_id = #{articleId},
+            user_id = #{userId},
+            root_comment_id = #{rootCommentId},
+            parent_id = #{parentId},
+            content = #{content},
+            status = #{status},
+            like_count = #{likeCount},
+            pinned = #{pinned},
+            pinned_at = #{pinnedAt},
+            updated_at = NOW()
+    </insert>
 </mapper>

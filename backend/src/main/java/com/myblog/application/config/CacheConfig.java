@@ -10,6 +10,8 @@ import com.myblog.application.dto.TagDTO;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -98,7 +100,22 @@ public class CacheConfig {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("async-");
+        // 队列满时由调用线程执行，避免丢失任务
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+        // 应用关闭时等待正在执行的任务完成
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
+    }
+
+    /**
+     * Snowflake ID 生成器，用于替换所有表的 MAX(id)+1 模式。
+     * machineId 默认为 1，可通过环境变量 SNOWFLAKE_MACHINE_ID 配置（0-1023）。
+     */
+    @Bean
+    public SnowflakeIdGenerator snowflakeIdGenerator(
+            @Value("${my-blog.snowflake.machine-id:1}") long machineId) {
+        return new SnowflakeIdGenerator(machineId);
     }
 }

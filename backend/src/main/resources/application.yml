@@ -16,8 +16,8 @@ spring:
       connection-timeout: 30000
   sql:
     init:
-      mode: always
-      schema-locations: classpath:db/schema.sql
+      mode: never
+      schema-locations: classpath:db/initdata.sql
   redis:
     host: ${REDIS_HOST:192.168.80.128}
     port: ${REDIS_PORT:6379}

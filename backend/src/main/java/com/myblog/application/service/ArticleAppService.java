@@ -26,8 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -162,11 +164,11 @@ public class ArticleAppService {
             );
         }
 
-        List<ArticleDTO> items = toDTOList(articles);
+        List<ArticleDTO> items = toDTOList(articles, query.getCurrentUserId());
         return new PageResult<ArticleDTO>(items, page, pageSize, total);
     }
 
-    private List<ArticleDTO> toDTOList(List<Article> articles) {
+    private List<ArticleDTO> toDTOList(List<Article> articles, Long currentUserId) {
         if (articles.isEmpty()) {
             return new ArrayList<>();
         }
@@ -178,11 +180,41 @@ public class ArticleAppService {
         Map<Long, User> authorMap = userRepository.findByIds(authorIds).stream()
             .collect(Collectors.toMap(u -> u.getId().getValue(), u -> u));
 
+        // 批量查询点赞状态和收藏状态，解决 N+1 问题
+        List<Long> articleIds = articles.stream()
+            .map(a -> a.getId().getValue())
+            .collect(Collectors.toList());
+        Set<Long> likedArticleIds = Collections.emptySet();
+        Set<Long> favoritedArticleIds = Collections.emptySet();
+        Set<Long> followedAuthorIds = Collections.emptySet();
+        if (currentUserId != null) {
+            UserId currentUser = new UserId(currentUserId);
+            likedArticleIds = articleLikeRepository.findLikedArticleIdsByUser(articleIds, currentUser);
+            favoritedArticleIds = articleFavoriteRepository.findFavoritedArticleIdsByUser(articleIds, currentUser);
+            // 批量查询已关注的作者
+            followedAuthorIds = new java.util.HashSet<>(
+                userFollowRepository.findFollowingUserIdsIn(currentUser, authorIds)
+            );
+        }
+
+        final Set<Long> finalLikedArticleIds = likedArticleIds;
+        final Set<Long> finalFavoritedArticleIds = favoritedArticleIds;
+        final Set<Long> finalFollowedAuthorIds = followedAuthorIds;
+
         List<ArticleDTO> items = new ArrayList<>(articles.size());
         for (Article article : articles) {
             User author = authorMap.get(article.getAuthorId().getValue());
             if (author != null) {
-                items.add(buildDto(article, author, null));
+                ArticleDTO dto = articleAssembler.toDTO(article, author);
+                dto.setLiked(finalLikedArticleIds.contains(article.getId().getValue()));
+                dto.setFavorited(finalFavoritedArticleIds.contains(article.getId().getValue()));
+                if (dto.getAuthor() != null) {
+                    boolean followed = currentUserId != null
+                        && !article.getAuthorId().getValue().equals(currentUserId)
+                        && finalFollowedAuthorIds.contains(article.getAuthorId().getValue());
+                    dto.getAuthor().setFollowed(followed);
+                }
+                items.add(dto);
             }
         }
         return items;

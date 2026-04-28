@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 评论 MyBatis Mapper。
@@ -55,9 +56,21 @@ public interface CommentMapper {
 
     int countById(@Param("id") Long id);
 
+    /**
+     * 批量统计多个根评论的回复数。
+     */
+    List<Map<String, Object>> countRepliesByRootIds(@Param("rootCommentIds") List<Long> rootCommentIds);
+
+    /**
+     * 批量软删除一级评论及其全部回复。
+     */
+    int deleteThreadByRootCommentId(@Param("rootCommentId") Long rootCommentId);
+
     Long selectNextId();
 
     int insert(CommentDO commentDO);
+    int insertOrUpdate(CommentDO commentDO);
+
 
     int update(CommentDO commentDO);
 

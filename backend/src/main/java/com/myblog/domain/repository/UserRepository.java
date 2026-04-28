@@ -6,6 +6,7 @@ import com.myblog.shared.enums.UserStatus;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -163,4 +164,20 @@ public interface UserRepository {
      * @return 已发布文章数
      */
     int countPublishedArticles(Long userId);
+
+    /**
+     * 批量统计多个用户的粉丝数。
+     *
+     * @param userIds 用户ID列表
+     * @return userId -> followerCount 映射
+     */
+    Map<Long, Integer> countFollowersBatchByIds(List<Long> userIds);
+
+    /**
+     * 批量统计多个用户的已发布文章数。
+     *
+     * @param userIds 用户ID列表
+     * @return userId -> articleCount 映射
+     */
+    Map<Long, Integer> countPublishedArticlesBatchByIds(List<Long> userIds);
 }

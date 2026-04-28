@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 专栏订阅 MyBatis 仓储实现。
@@ -21,9 +22,12 @@ import java.util.Optional;
 public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRepository {
 
     private final ColumnSubscriptionMapper columnSubscriptionMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisColumnSubscriptionRepository(ColumnSubscriptionMapper columnSubscriptionMapper) {
+    public MyBatisColumnSubscriptionRepository(ColumnSubscriptionMapper columnSubscriptionMapper,
+                                               SnowflakeIdGenerator snowflakeIdGenerator) {
         this.columnSubscriptionMapper = columnSubscriptionMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -65,9 +69,8 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
 
     @Override
     public Long nextId() {
-        Long nextId = columnSubscriptionMapper.selectNextId();
-        return nextId == null ? 3000L : nextId;
-    }
+        return snowflakeIdGenerator.nextId();
+        }
 
     @Override
     public boolean exists(ColumnId columnId, UserId userId) {

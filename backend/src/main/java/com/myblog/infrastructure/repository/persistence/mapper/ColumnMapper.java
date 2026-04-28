@@ -26,6 +26,8 @@ public interface ColumnMapper {
     int countById(@Param("id") Long id);
 
     int insert(ColumnDO columnDO);
+    int insertOrUpdate(ColumnDO columnDO);
+
 
     int update(ColumnDO columnDO);
 
@@ -38,6 +40,11 @@ public interface ColumnMapper {
 
     int insertColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId,
                             @Param("sortOrder") int sortOrder);
+
+    /**
+     * 将专栏的 article_count +1（绑定文章时维护冗余字段）。
+     */
+    int incrementArticleCount(@Param("columnId") Long columnId);
 
     List<ColumnDO> searchPublished(@Param("keyword") String keyword, @Param("sort") String sort,
                                    @Param("offset") int offset, @Param("limit") int limit);

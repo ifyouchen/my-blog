@@ -137,7 +137,12 @@ public class RankingAppService {
             dto.setRank(rank++);
             result.add(dto);
         }
-        authorRankingsCache.put(limit, copyAuthorRankings(result));
+        // 存入缓存时先将 followed 重置为 false（缓存保存用户无关的基础数据）
+        List<AuthorRankingDTO> baseForCache = copyAuthorRankings(result);
+        for (AuthorRankingDTO item : baseForCache) {
+            item.setFollowed(false);
+        }
+        authorRankingsCache.put(limit, baseForCache);
         return applyFollowStatus(result, currentUserId);
     }
 

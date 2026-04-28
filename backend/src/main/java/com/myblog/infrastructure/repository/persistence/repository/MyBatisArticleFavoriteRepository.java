@@ -7,14 +7,17 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleFavoriteRepository;
 import com.myblog.infrastructure.repository.persistence.converter.ArticleFavoritePersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleFavoriteMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 文章收藏 MyBatis 仓储实现。
@@ -27,9 +30,12 @@ import java.util.Optional;
 public class MyBatisArticleFavoriteRepository implements ArticleFavoriteRepository {
 
     private final ArticleFavoriteMapper articleFavoriteMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisArticleFavoriteRepository(ArticleFavoriteMapper articleFavoriteMapper) {
+    public MyBatisArticleFavoriteRepository(ArticleFavoriteMapper articleFavoriteMapper,
+                                            SnowflakeIdGenerator snowflakeIdGenerator) {
         this.articleFavoriteMapper = articleFavoriteMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -65,41 +71,43 @@ public class MyBatisArticleFavoriteRepository implements ArticleFavoriteReposito
     @Transactional(rollbackFor = Exception.class)
     public ArticleFavorite save(ArticleFavorite favorite) {
         ArticleFavoriteDO favoriteDO = ArticleFavoritePersistenceConverter.toData(favorite);
-        if (articleFavoriteMapper.countById(favorite.getId().getValue()) > 0) {
-            articleFavoriteMapper.update(favoriteDO);
-        } else {
-            articleFavoriteMapper.insert(favoriteDO);
-        }
+        articleFavoriteMapper.insertOrUpdate(favoriteDO);
         return favorite;
     }
 
     @Override
     public Long nextId() {
-        Long nextId = articleFavoriteMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
+        return snowflakeIdGenerator.nextId();
     }
 
     @Override
     public List<ArticleFavorite> findByUserId(UserId userId, int page, int pageSize) {
-        int offset = (page - 1) * pageSize;
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
         List<ArticleFavoriteDO> favoriteDOList = articleFavoriteMapper.selectByUserId(
-            userId.getValue(), offset, pageSize
+            userId.getValue(), offset, currentPageSize
         );
-        List<ArticleFavorite> favorites = new ArrayList<>(favoriteDOList.size());
+        List<ArticleFavorite> favorites = new ArrayList<ArticleFavorite>(favoriteDOList.size());
         for (ArticleFavoriteDO favoriteDO : favoriteDOList) {
             favorites.add(ArticleFavoritePersistenceConverter.toDomain(favoriteDO));
         }
         return favorites;
     }
 
-    /**
-     * 统计用户收藏数量。
-     *
-     * @param userId 用户 ID
-     * @return 收藏数量
-     */
     @Override
     public int countByUserId(UserId userId) {
         return articleFavoriteMapper.countByUserId(userId.getValue());
+    }
+
+    @Override
+    public Set<Long> findFavoritedArticleIdsByUser(List<Long> articleIds, UserId userId) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            return new HashSet<Long>();
+        }
+        List<Long> favoritedIds = articleFavoriteMapper.selectFavoritedArticleIdsByUser(
+            articleIds, userId.getValue()
+        );
+        return new HashSet<Long>(favoritedIds);
     }
 }

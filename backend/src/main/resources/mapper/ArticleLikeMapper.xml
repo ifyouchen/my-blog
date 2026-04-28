@@ -92,4 +92,28 @@
         AND user_id = #{userId}
         AND deleted_at IS NULL
     </update>
+
+    <!-- 批量查询用户已点赞的文章ID，解决文章列表 N+1 问题 -->
+    <select id="selectLikedArticleIdsByUser" resultType="long">
+        SELECT article_id
+        FROM blog_article_like
+        WHERE article_id IN
+        <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+            #{articleId}
+        </foreach>
+        AND user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO">
+        INSERT INTO blog_article_like
+        (id, article_id, user_id, created_at, updated_at)
+        VALUES
+        (#{id}, #{articleId}, #{userId}, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            article_id = #{articleId},
+            user_id = #{userId},
+            updated_at = NOW()
+    </insert>
 </mapper>

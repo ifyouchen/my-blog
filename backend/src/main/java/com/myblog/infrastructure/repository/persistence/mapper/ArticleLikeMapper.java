@@ -4,6 +4,7 @@ import com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 文章点赞 MyBatis Mapper。
@@ -55,8 +56,15 @@ public interface ArticleLikeMapper {
     Long selectNextId();
 
     int insert(ArticleLikeDO articleLikeDO);
+    int insertOrUpdate(ArticleLikeDO articleLikeDO);
+
 
     int update(ArticleLikeDO articleLikeDO);
 
     int deleteByArticleAndUser(@Param("articleId") Long articleId, @Param("userId") Long userId);
+
+    /**
+     * 批量查询用户对多篇文章的点赞状态，返回已点赞的文章ID。
+     */
+    List<Long> selectLikedArticleIdsByUser(@Param("articleIds") List<Long> articleIds, @Param("userId") Long userId);
 }

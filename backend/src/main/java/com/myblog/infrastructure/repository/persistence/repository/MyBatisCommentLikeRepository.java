@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 /**
  * 评论点赞 MyBatis 仓储实现。
  *
@@ -61,17 +60,12 @@ public class MyBatisCommentLikeRepository implements CommentLikeRepository {
     @Override
     public CommentLike save(CommentLike commentLike) {
         CommentLikeDO commentLikeDO = CommentLikePersistenceConverter.toData(commentLike);
-        if (commentLikeMapper.countById(commentLike.getId().getValue()) > 0) {
-            commentLikeMapper.update(commentLikeDO);
-        } else {
-            commentLikeMapper.insert(commentLikeDO);
-        }
+        commentLikeMapper.insertOrUpdate(commentLikeDO);
         return commentLike;
     }
 
     @Override
     public Long nextId() {
-        Long nextId = commentLikeMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
+        return commentLikeMapper.selectNextId();
     }
 }

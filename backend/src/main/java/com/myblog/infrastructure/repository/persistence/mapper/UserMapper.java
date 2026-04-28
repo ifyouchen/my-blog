@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户 MyBatis Mapper。
@@ -114,6 +115,8 @@ public interface UserMapper {
      * @return 影响行数
      */
     int insert(UserDO user);
+    int insertOrUpdate(UserDO userDO);
+
 
     /**
      * 更新用户。
@@ -160,4 +163,20 @@ public interface UserMapper {
      * @return 已发布文章数
      */
     int countPublishedArticlesByUserId(@Param("userId") Long userId);
+
+    /**
+     * 批量统计多个用户的粉丝数。
+     *
+     * @param userIds 用户ID列表
+     * @return userId -> followerCount 映射列表
+     */
+    List<Map<String, Object>> countFollowersBatchByUserIds(@Param("userIds") List<Long> userIds);
+
+    /**
+     * 批量统计多个用户的已发布文章数。
+     *
+     * @param userIds 用户ID列表
+     * @return userId -> articleCount 映射列表
+     */
+    List<Map<String, Object>> countPublishedArticlesBatchByUserIds(@Param("userIds") List<Long> userIds);
 }

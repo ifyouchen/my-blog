@@ -2,11 +2,16 @@ package com.myblog.application.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.dto.AuthorRankingDTO;
+import com.myblog.application.dto.CategoryDTO;
+import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
+import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 首页启动数据应用服务。
@@ -24,30 +29,53 @@ public class HomeBootstrapAppService {
     private final CategoryAppService categoryAppService;
     private final ColumnAppService columnAppService;
     private final RankingAppService rankingAppService;
+    private final Executor taskExecutor;
 
     public HomeBootstrapAppService(@Qualifier("homeBootstrapCache") Cache<String, HomeBootstrapDTO> homeBootstrapCache,
                                    HomeStatsAppService homeStatsAppService,
                                    CategoryAppService categoryAppService,
                                    ColumnAppService columnAppService,
-                                   RankingAppService rankingAppService) {
+                                   RankingAppService rankingAppService,
+                                   Executor taskExecutor) {
         this.homeBootstrapCache = homeBootstrapCache;
         this.homeStatsAppService = homeStatsAppService;
         this.categoryAppService = categoryAppService;
         this.columnAppService = columnAppService;
         this.rankingAppService = rankingAppService;
+        this.taskExecutor = taskExecutor;
     }
 
+    /**
+     * 获取首页引导数据（并行加载各模块数据，减少整体响应时间）。
+     *
+     * @return 首页引导数据
+     */
     public HomeBootstrapDTO getBootstrap() {
         HomeBootstrapDTO cached = homeBootstrapCache.getIfPresent(BOOTSTRAP_CACHE_KEY);
         if (cached != null) {
             return cached;
         }
 
+        // 并行加载 4 路数据，总耗时取决于最慢的那一路
+        CompletableFuture<HomeStats> statsFuture =
+            CompletableFuture.supplyAsync(() -> homeStatsAppService.getStats(), taskExecutor);
+
+        CompletableFuture<List<CategoryDTO>> categoriesFuture =
+            CompletableFuture.supplyAsync(() -> categoryAppService.getCategories(true), taskExecutor);
+
+        CompletableFuture<List<ColumnDTO>> columnsFuture =
+            CompletableFuture.supplyAsync(() -> columnAppService.listRecommendedColumns(3, null), taskExecutor);
+
+        CompletableFuture<List<AuthorRankingDTO>> rankingsFuture =
+            CompletableFuture.supplyAsync(() -> rankingAppService.listAuthorRankings(3, null), taskExecutor);
+
+        // 等待所有完成并组装结果
         HomeBootstrapDTO bootstrap = new HomeBootstrapDTO();
-        bootstrap.setStats(homeStatsAppService.getStats());
-        bootstrap.setCategories(categoryAppService.getCategories(true));
-        bootstrap.setRecommendedColumns(columnAppService.listRecommendedColumns(3, null));
-        bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingAppService.listAuthorRankings(3, null)));
+        bootstrap.setStats(statsFuture.join());
+        bootstrap.setCategories(categoriesFuture.join());
+        bootstrap.setRecommendedColumns(columnsFuture.join());
+        bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
+
         homeBootstrapCache.put(BOOTSTRAP_CACHE_KEY, bootstrap);
         return bootstrap;
     }

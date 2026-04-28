@@ -4,7 +4,9 @@ import com.myblog.domain.model.aggregate.ArticleLike;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.UserId;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 文章点赞仓储接口。
@@ -55,4 +57,13 @@ public interface ArticleLikeRepository {
      * @return 点赞记录ID
      */
     Long nextId();
+
+    /**
+     * 批量查询当前用户对多篇文章的点赞状态。
+     *
+     * @param articleIds 文章ID列表
+     * @param userId 用户ID
+     * @return 已点赞的文章ID集合
+     */
+    Set<Long> findLikedArticleIdsByUser(List<Long> articleIds, UserId userId);
 }

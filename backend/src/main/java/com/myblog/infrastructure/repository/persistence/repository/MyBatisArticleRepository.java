@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 文章 MyBatis 仓储实现。
@@ -31,14 +32,18 @@ import java.util.Optional;
 public class MyBatisArticleRepository implements ArticleRepository {
 
     private final ArticleMapper articleMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建文章 MyBatis 仓储。
      *
      * @param articleMapper 文章 Mapper
+     * @param snowflakeIdGenerator 雪花 ID 生成器
      */
-    public MyBatisArticleRepository(ArticleMapper articleMapper) {
+    public MyBatisArticleRepository(ArticleMapper articleMapper,
+                                    SnowflakeIdGenerator snowflakeIdGenerator) {
         this.articleMapper = articleMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -270,7 +275,7 @@ public class MyBatisArticleRepository implements ArticleRepository {
     }
 
     /**
-     * 保存文章。
+     * 保存文章（使用 INSERT ... ON DUPLICATE KEY UPDATE，消除前置 countById 查询）。
      *
      * @param article 文章聚合根
      * @return 保存后的文章
@@ -279,11 +284,7 @@ public class MyBatisArticleRepository implements ArticleRepository {
     @Transactional(rollbackFor = Exception.class)
     public Article save(Article article) {
         ArticleDO articleDO = ArticlePersistenceConverter.toData(article);
-        if (articleMapper.countById(article.getId().getValue()) > 0) {
-            articleMapper.update(articleDO);
-        } else {
-            articleMapper.insert(articleDO);
-        }
+        articleMapper.insertOrUpdate(articleDO);
         saveTags(article);
         return article;
     }
@@ -301,9 +302,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      */
     @Override
     public Long nextId() {
-        Long nextId = articleMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
-    }
+        return snowflakeIdGenerator.nextId();
+        }
 
     /**
      * 统计已发布文章数量。

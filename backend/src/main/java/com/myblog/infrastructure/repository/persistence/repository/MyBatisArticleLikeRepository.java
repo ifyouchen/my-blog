@@ -6,12 +6,17 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleLikeRepository;
 import com.myblog.infrastructure.repository.persistence.converter.ArticleLikePersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleLikeMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 文章点赞 MyBatis 仓储实现。
@@ -24,9 +29,12 @@ import java.util.Optional;
 public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
 
     private final ArticleLikeMapper articleLikeMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisArticleLikeRepository(ArticleLikeMapper articleLikeMapper) {
+    public MyBatisArticleLikeRepository(ArticleLikeMapper articleLikeMapper,
+                                        SnowflakeIdGenerator snowflakeIdGenerator) {
         this.articleLikeMapper = articleLikeMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -89,17 +97,8 @@ public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
     @Transactional(rollbackFor = Exception.class)
     public ArticleLike save(ArticleLike articleLike) {
         ArticleLikeDO articleLikeDO = ArticleLikePersistenceConverter.toData(articleLike);
-        if (articleLikeMapper.countById(articleLike.getId().getValue()) > 0) {
-            int rows = articleLikeMapper.update(articleLikeDO);
-            if (rows == 0) {
-                throw new com.myblog.shared.exception.ApplicationException(
-                    com.myblog.shared.exception.ErrorCode.CONFLICT,
-                    "点赞记录已被其他操作修改，请重试"
-                );
-            }
-        } else {
-            articleLikeMapper.insert(articleLikeDO);
-        }
+        articleLikeMapper.insertOrUpdate(articleLikeDO);
+
         return articleLike;
     }
 
@@ -110,7 +109,24 @@ public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
      */
     @Override
     public Long nextId() {
-        Long nextId = articleLikeMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
+        return snowflakeIdGenerator.nextId();
+    }
+
+    /**
+     * 批量查询当前用户对多篇文章的点赞状态。
+     *
+     * @param articleIds 文章ID列表
+     * @param userId 用户ID
+     * @return 已点赞的文章ID集合
+     */
+    @Override
+    public Set<Long> findLikedArticleIdsByUser(List<Long> articleIds, UserId userId) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            return new HashSet<Long>();
+        }
+        List<Long> likedIds = articleLikeMapper.selectLikedArticleIdsByUser(
+            articleIds, userId.getValue()
+        );
+        return new HashSet<Long>(likedIds);
     }
 }

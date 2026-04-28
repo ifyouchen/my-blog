@@ -106,4 +106,18 @@
             version = version + 1
         WHERE id = #{id}
     </update>
+
+    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserFollowDO">
+        INSERT INTO blog_user_follow
+        (id, follower_user_id, following_user_id, created_at, updated_at, deleted_at, version)
+        VALUES
+        (#{id}, #{followerUserId}, #{followingUserId}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
+        ON DUPLICATE KEY UPDATE
+            follower_user_id = #{followerUserId},
+            following_user_id = #{followingUserId},
+            updated_at = NOW(),
+            deleted_at = #{deletedAt},
+            version = version + 1
+    </insert>
 </mapper>

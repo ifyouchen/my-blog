@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 管理员操作日志 MyBatis 仓储实现。
@@ -22,14 +23,18 @@ import java.util.List;
 public class MyBatisAdminLogRepository implements AdminLogRepository {
 
     private final AdminLogMapper adminLogMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建管理员操作日志仓储。
      *
      * @param adminLogMapper 日志 Mapper
+     * @param snowflakeIdGenerator 雪花 ID 生成器
      */
-    public MyBatisAdminLogRepository(AdminLogMapper adminLogMapper) {
+    public MyBatisAdminLogRepository(AdminLogMapper adminLogMapper,
+                                     SnowflakeIdGenerator snowflakeIdGenerator) {
         this.adminLogMapper = adminLogMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -88,7 +93,6 @@ public class MyBatisAdminLogRepository implements AdminLogRepository {
      */
     @Override
     public Long nextId() {
-        Long nextId = adminLogMapper.selectNextId();
-        return nextId == null ? 101L : nextId;
-    }
+        return snowflakeIdGenerator.nextId();
+        }
 }
