@@ -76,8 +76,6 @@ const loadLogs = async () => {
         state.page = result.page || state.page;
         state.jumpPage = String(state.page);
     } catch (error) {
-        state.items = [];
-        state.total = 0;
         state.error = error.message || '日志列表加载失败';
     } finally {
         state.loading = false;
@@ -199,8 +197,18 @@ watch(
         </div>
 
         <div class="admin-table-shell">
-            <p v-if="state.loading" class="backend-state-text">日志数据加载中...</p>
-            <p v-else-if="state.error" class="backend-state-text error-text">{{ state.error }}</p>
+            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
+                正在更新日志数据...
+            </p>
+            <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
+                {{ state.error }}
+            </p>
+            <p v-if="state.loading && !state.items.length" class="backend-state-text">
+                日志数据加载中...
+            </p>
+            <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
+                {{ state.error }}
+            </p>
             <template v-else>
                 <div class="admin-table-wrap" data-testid="admin-logs-table">
                     <table class="admin-table">

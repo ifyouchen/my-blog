@@ -37,7 +37,23 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    initialLoading: {
+        type: Boolean,
+        default: false
+    },
+    refreshing: {
+        type: Boolean,
+        default: false
+    },
+    hasLoadedOnce: {
+        type: Boolean,
+        default: false
+    },
     errorMessage: {
+        type: String,
+        default: ''
+    },
+    inlineErrorMessage: {
         type: String,
         default: ''
     },
@@ -59,6 +75,19 @@ const emit = defineEmits(['page-change', 'sort-change']);
 const router = useRouter();
 const jumpPage = ref(String(props.page));
 
+const isInitialLoading = computed(() =>
+    props.initialLoading || (props.loading && !props.hasLoadedOnce && props.articles.length === 0)
+);
+const isRefreshing = computed(() =>
+    props.refreshing || (props.loading && (props.hasLoadedOnce || props.articles.length > 0))
+);
+const isBusy = computed(() => isInitialLoading.value || isRefreshing.value);
+const showEmpty = computed(() =>
+    !isInitialLoading.value
+    && !isRefreshing.value
+    && !props.errorMessage
+    && props.articles.length === 0
+);
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
 const pageStart = computed(() => {
     if (!props.total) {
@@ -105,7 +134,7 @@ const paginationItems = computed(() => {
 });
 
 const goToPage = (page) => {
-    if (props.loading || page < 1 || page > totalPages.value || page === props.page) {
+    if (isBusy.value || page < 1 || page > totalPages.value || page === props.page) {
         return;
     }
     emit('page-change', page);
@@ -135,7 +164,12 @@ watch(
 </script>
 
 <template>
-    <section class="feed" :class="{ loading }" aria-labelledby="feed-title" data-feed-root>
+    <section
+        class="feed"
+        :class="{ loading: isInitialLoading, refreshing: isRefreshing }"
+        aria-labelledby="feed-title"
+        data-feed-root
+    >
         <div class="section-heading">
             <div>
                 <p class="eyebrow">{{ eyebrow }}</p>
@@ -147,7 +181,7 @@ watch(
                     :key="item.value"
                     type="button"
                     :class="{ active: props.sort === item.value }"
-                    :disabled="loading || props.sort === item.value"
+                    :disabled="isBusy || props.sort === item.value"
                     @click="emit('sort-change', item.value)"
                 >
                     {{ item.label }}
@@ -155,11 +189,17 @@ watch(
             </div>
         </div>
 
-        <template v-if="!loading && articles.length === 0" class="empty-state">
+        <div v-if="isRefreshing" class="feed-refresh-note">
+            正在更新内容...
+        </div>
+
+        <p v-if="inlineErrorMessage" class="feed-message feed-message-inline">{{ inlineErrorMessage }}</p>
+
+        <template v-if="showEmpty" class="empty-state">
             <div class="empty-state">{{ emptyText }}</div>
         </template>
 
-        <template v-else-if="!loading">
+        <template v-else-if="articles.length > 0">
             <article
                 v-for="article in articles"
                 :key="article.id"
@@ -201,7 +241,7 @@ watch(
             </article>
         </template>
 
-        <div v-if="loading" class="loading-placeholder">
+        <div v-if="isInitialLoading" class="loading-placeholder">
             <div v-for="i in 3" :key="i" class="skeleton-post">
                 <div class="skeleton-cover"></div>
                 <div class="skeleton-content">
@@ -212,7 +252,7 @@ watch(
             </div>
         </div>
 
-        <p v-if="errorMessage" class="feed-message">{{ errorMessage }}</p>
+        <p v-if="errorMessage && articles.length === 0" class="feed-message">{{ errorMessage }}</p>
 
         <nav v-if="totalPages > 1" class="pagination-bar" aria-label="文章分页">
             <p>
@@ -220,22 +260,22 @@ watch(
                 共 {{ total }} 篇，当前 {{ pageStart }}-{{ pageEnd }} 篇
             </p>
             <div class="pagination-actions">
-                <button type="button" :disabled="loading || page <= 1" @click="goToPage(1)">首页</button>
-                <button type="button" :disabled="loading || page <= 1" @click="goToPage(page - 1)">上一页</button>
+                <button type="button" :disabled="isBusy || page <= 1" @click="goToPage(1)">首页</button>
+                <button type="button" :disabled="isBusy || page <= 1" @click="goToPage(page - 1)">上一页</button>
                 <template v-for="item in paginationItems" :key="`${item.type}-${item.value}`">
                     <span v-if="item.type === 'ellipsis'" class="pagination-ellipsis">...</span>
                     <button
                         v-else
                         type="button"
                         :class="{ active: item.value === page }"
-                        :disabled="loading || item.value === page"
+                        :disabled="isBusy || item.value === page"
                         @click="goToPage(item.value)"
                     >
                         {{ item.value }}
                     </button>
                 </template>
-                <button type="button" :disabled="loading || page >= totalPages" @click="goToPage(page + 1)">下一页</button>
-                <button type="button" :disabled="loading || page >= totalPages" @click="goToPage(totalPages)">末页</button>
+                <button type="button" :disabled="isBusy || page >= totalPages" @click="goToPage(page + 1)">下一页</button>
+                <button type="button" :disabled="isBusy || page >= totalPages" @click="goToPage(totalPages)">末页</button>
             </div>
             <form class="pagination-jump" @submit.prevent="submitJump">
                 <label for="page-jump-input">跳至</label>
@@ -245,12 +285,12 @@ watch(
                     type="number"
                     min="1"
                     :max="totalPages"
-                    :disabled="loading"
+                    :disabled="isBusy"
                     inputmode="numeric"
                     aria-label="输入页码"
                 >
                 <span>页</span>
-                <button type="submit" :disabled="loading">跳转</button>
+                <button type="submit" :disabled="isBusy">跳转</button>
             </form>
         </nav>
     </section>
@@ -259,6 +299,21 @@ watch(
 <style scoped>
 .invisible {
     visibility: hidden;
+}
+
+.feed-refresh-note {
+    margin: 4px 0 10px;
+    padding: 8px 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: var(--radius-sm);
+}
+
+.feed-message-inline {
+    margin: 0 0 10px;
 }
 
 /* 文章列表卡片 — 蓝白渐变风格，柔和交互 */

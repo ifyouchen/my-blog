@@ -7,7 +7,6 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleFavoriteRepository;
 import com.myblog.infrastructure.repository.persistence.converter.ArticleFavoritePersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleFavoriteMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -30,12 +29,9 @@ import java.util.Set;
 public class MyBatisArticleFavoriteRepository implements ArticleFavoriteRepository {
 
     private final ArticleFavoriteMapper articleFavoriteMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisArticleFavoriteRepository(ArticleFavoriteMapper articleFavoriteMapper,
-                                            SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisArticleFavoriteRepository(ArticleFavoriteMapper articleFavoriteMapper) {
         this.articleFavoriteMapper = articleFavoriteMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -77,7 +73,7 @@ public class MyBatisArticleFavoriteRepository implements ArticleFavoriteReposito
 
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
+        return articleFavoriteMapper.selectNextId();
     }
 
     @Override
@@ -88,6 +84,26 @@ public class MyBatisArticleFavoriteRepository implements ArticleFavoriteReposito
         List<ArticleFavoriteDO> favoriteDOList = articleFavoriteMapper.selectByUserId(
             userId.getValue(), offset, currentPageSize
         );
+        return toDomainList(favoriteDOList);
+    }
+
+    @Override
+    public List<ArticleFavorite> findPublishedByUserId(UserId userId, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<ArticleFavoriteDO> favoriteDOList = articleFavoriteMapper.selectPublishedByUserId(
+            userId.getValue(), offset, currentPageSize
+        );
+        return toDomainList(favoriteDOList);
+    }
+
+    @Override
+    public int countPublishedByUserId(UserId userId) {
+        return articleFavoriteMapper.countPublishedByUserId(userId.getValue());
+    }
+
+    private List<ArticleFavorite> toDomainList(List<ArticleFavoriteDO> favoriteDOList) {
         List<ArticleFavorite> favorites = new ArrayList<ArticleFavorite>(favoriteDOList.size());
         for (ArticleFavoriteDO favoriteDO : favoriteDOList) {
             favorites.add(ArticleFavoritePersistenceConverter.toDomain(favoriteDO));

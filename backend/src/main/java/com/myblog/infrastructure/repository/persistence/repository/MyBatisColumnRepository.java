@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 专栏 MyBatis 仓储实现。
@@ -25,12 +24,9 @@ import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 public class MyBatisColumnRepository implements ColumnRepository {
 
     private final ColumnMapper columnMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisColumnRepository(ColumnMapper columnMapper,
-                                    SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisColumnRepository(ColumnMapper columnMapper) {
         this.columnMapper = columnMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -76,7 +72,7 @@ public class MyBatisColumnRepository implements ColumnRepository {
 
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
+        return columnMapper.selectNextId();
     }
 
     @Override

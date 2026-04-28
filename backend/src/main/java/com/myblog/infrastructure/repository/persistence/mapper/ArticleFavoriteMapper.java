@@ -21,7 +21,13 @@ public interface ArticleFavoriteMapper {
 
     List<ArticleFavoriteDO> selectByUserId(@Param("userId") Long userId, @Param("offset") int offset, @Param("limit") int limit);
 
+    List<ArticleFavoriteDO> selectPublishedByUserId(@Param("userId") Long userId,
+                                                    @Param("offset") int offset,
+                                                    @Param("limit") int limit);
+
     int countByUserId(@Param("userId") Long userId);
+
+    int countPublishedByUserId(@Param("userId") Long userId);
 
     int countById(@Param("id") Long id);
 

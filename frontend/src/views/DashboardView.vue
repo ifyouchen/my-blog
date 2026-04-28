@@ -6,6 +6,7 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
+import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 
 const route = useRoute();
@@ -32,8 +33,16 @@ const overview = ref({
     latestArticleTitle: '',
     latestUpdatedAt: ''
 });
-const isLoading = ref(false);
-const loadError = ref('');
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading: isLoading,
+    runStableRequest,
+    resetStableRequest
+} = useStableListRequest();
 const feedback = ref('');
 const feedbackType = ref('success');
 const actionLoadingId = ref(null);
@@ -84,28 +93,25 @@ const syncRoute = (overrides = {}) => {
 };
 
 const fetchArticles = async (options = {}) => {
-    const silent = Boolean(options.silent);
-    if (!silent) {
-        isLoading.value = true;
-        loadError.value = '';
-    }
-    try {
-        const pageResult = await getMyArticlesApi({
+    const { result } = await runStableRequest(
+        () => getMyArticlesApi({
             page: currentPage.value,
             pageSize,
             status: articleStatus.value
-        });
-        articles.value = pageResult.items || [];
-        total.value = pageResult.total || 0;
-    } catch (error) {
-        articles.value = [];
-        total.value = 0;
-        loadError.value = error.message || '加载文章失败';
-    } finally {
-        if (!silent) {
-            isLoading.value = false;
+        }),
+        {
+            silent: options.silent ?? hasLoadedOnce.value,
+            initialErrorMessage: '加载文章失败',
+            refreshErrorMessage: '文章列表刷新失败，请稍后重试'
         }
+    );
+
+    if (!result) {
+        return;
     }
+
+    articles.value = result.items || [];
+    total.value = result.total || 0;
 };
 
 const fetchOverview = async () => {
@@ -144,20 +150,22 @@ const fetchOverview = async () => {
     }
 };
 
-const fetchFavorites = async () => {
-    isLoading.value = true;
-    loadError.value = '';
-    try {
-        const pageResult = await getMyFavoritesApi(currentPage.value, pageSize);
-        favorites.value = pageResult.items || [];
-        total.value = pageResult.total || 0;
-    } catch (error) {
-        favorites.value = [];
-        total.value = 0;
-        loadError.value = error.message || '加载收藏失败';
-    } finally {
-        isLoading.value = false;
+const fetchFavorites = async (options = {}) => {
+    const { result } = await runStableRequest(
+        () => getMyFavoritesApi(currentPage.value, pageSize),
+        {
+            silent: options.silent ?? hasLoadedOnce.value,
+            initialErrorMessage: '加载收藏失败',
+            refreshErrorMessage: '收藏列表刷新失败，请稍后重试'
+        }
+    );
+
+    if (!result) {
+        return;
     }
+
+    favorites.value = result.items || [];
+    total.value = result.total || 0;
 };
 
 const removeFavorite = async (article) => {
@@ -185,19 +193,21 @@ const removeFavorite = async (article) => {
 
 const fetchCurrentTab = async () => {
     if (!isLoggedIn.value) {
-        loadError.value = '请先登录后查看个人中心内容';
+        resetStableRequest();
+        errorMessage.value = '请先登录后查看个人中心内容';
         articles.value = [];
         favorites.value = [];
         total.value = 0;
         return;
     }
     if (isFavorites.value) {
-        await fetchFavorites();
+        await fetchFavorites({ silent: hasLoadedOnce.value && favorites.value.length > 0 });
         return;
     }
-    // Use silent mode when data already exists to prevent page flickering on tab/page switch
-    const hasExistingData = articles.value.length > 0;
-    await Promise.all([fetchArticles({ silent: hasExistingData }), fetchOverview()]);
+    await Promise.all([
+        fetchArticles({ silent: hasLoadedOnce.value && articles.value.length > 0 }),
+        fetchOverview()
+    ]);
 };
 
 const changePage = (page) => {
@@ -285,6 +295,14 @@ const getUpdatedTimeParts = (text) => {
 };
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const hasCurrentItems = computed(() => (isFavorites.value ? favorites.value.length > 0 : articles.value.length > 0));
+const showListLoading = computed(() => initialLoading.value || (refreshing.value && !hasCurrentItems.value));
+const showEmptyState = computed(() => (
+    hasLoadedOnce.value
+    && !refreshing.value
+    && !errorMessage.value
+    && !hasCurrentItems.value
+));
 const pageStart = computed(() => {
     if (!total.value) {
         return 0;
@@ -342,7 +360,13 @@ const submitJump = () => {
 
 watch(
     () => [route.name, route.query.page, route.query.status],
-    () => {
+    (next, prev) => {
+        if (prev && next[0] !== prev[0]) {
+            resetStableRequest();
+            articles.value = [];
+            favorites.value = [];
+            total.value = 0;
+        }
         currentPage.value = Number.parseInt(route.query.page || '1', 10) || 1;
         articleStatus.value = String(route.query.status || '');
         jumpPage.value = String(currentPage.value);
@@ -417,8 +441,10 @@ watch(isLoggedIn, () => {
 
             <section v-if="isFavorites" class="dashboard-content-panel" data-testid="dashboard-favorites-panel">
                 <p v-if="feedback" :class="['form-message', feedbackType]">{{ feedback }}</p>
-                <p v-if="isLoading" class="loading-text">加载中...</p>
-                <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
+                <p v-if="refreshing && favorites.length" class="loading-text subtle">正在更新收藏...</p>
+                <p v-if="inlineError" class="error-text">{{ inlineError }}</p>
+                <p v-if="showListLoading" class="loading-text">加载中...</p>
+                <p v-else-if="errorMessage && !favorites.length" class="error-text">{{ errorMessage }}</p>
                 <div v-else-if="favorites.length" class="favorite-grid">
                     <article v-for="article in favorites" :key="article.id" class="favorite-card">
                         <img :src="article.cover" :alt="article.coverAlt">
@@ -445,7 +471,7 @@ watch(isLoggedIn, () => {
                     </article>
                 </div>
                 <EmptyState
-                    v-else
+                    v-else-if="showEmptyState"
                     eyebrow="收藏夹"
                     title="暂无收藏"
                     description="去首页、搜索或排行榜逛逛，把感兴趣的文章先收藏起来。"
@@ -454,9 +480,11 @@ watch(isLoggedIn, () => {
             </section>
 
             <section v-else class="dashboard-content-panel table-panel" data-testid="dashboard-articles-panel">
-                <p v-if="isLoading" class="loading-text">正在加载文章...</p>
-                <p v-else-if="loadError" class="error-text">{{ loadError }}</p>
-                <table v-else>
+                <p v-if="refreshing && articles.length" class="loading-text subtle">正在更新文章...</p>
+                <p v-if="inlineError" class="error-text">{{ inlineError }}</p>
+                <p v-if="showListLoading" class="loading-text">正在加载文章...</p>
+                <p v-else-if="errorMessage && !articles.length" class="error-text">{{ errorMessage }}</p>
+                <table v-else-if="articles.length">
                     <thead>
                         <tr>
                             <th>标题</th>
@@ -537,7 +565,7 @@ watch(isLoggedIn, () => {
                     </tbody>
                 </table>
                 <EmptyState
-                    v-if="!isLoading && !loadError && !articles.length"
+                    v-if="showEmptyState"
                     eyebrow="内容管理"
                     title="还没有文章"
                     description="先去写下第一篇内容，把你的项目经验或技术笔记发布出来。"
@@ -717,6 +745,22 @@ watch(isLoggedIn, () => {
     color: #b83b3b;
     background: rgba(209, 67, 67, 0.06);
     border-color: rgba(209, 67, 67, 0.12);
+}
+
+.loading-text {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.loading-text.subtle {
+    display: inline-flex;
+    width: fit-content;
+    padding: 6px 10px;
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-sm);
 }
 
 .table-panel :deep(tbody tr:hover td) {

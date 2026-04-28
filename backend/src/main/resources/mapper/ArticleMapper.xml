@@ -29,7 +29,19 @@
         created_at, updated_at, deleted_at, version
     </sql>
 
-<select id="selectById" resultMap="BaseResultMap">
+    <sql id="List_Column_List">
+        id, author_id, title, summary, cover_url, category, status,
+        view_count, like_count, favorite_count, comment_count, published_at,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <sql id="List_Alias_Column_List">
+        a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.status,
+        a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
+        a.created_at, a.updated_at, a.deleted_at, a.version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
         WHERE id = #{id}
@@ -37,14 +49,14 @@
     </select>
 
     <select id="selectAll" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE deleted_at IS NULL
         ORDER BY created_at DESC
     </select>
 
     <select id="selectAdminPage" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE deleted_at IS NULL
         AND status != 'DELETED'
@@ -78,7 +90,7 @@
     </select>
 
     <select id="selectByIds" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE id IN
         <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
@@ -88,7 +100,7 @@
     </select>
 
     <select id="selectPublished" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE status = 'PUBLISHED'
         AND deleted_at IS NULL
@@ -130,7 +142,7 @@
     </select>
 
     <select id="selectByAuthorId" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE author_id = #{authorId}
         AND deleted_at IS NULL
@@ -138,7 +150,7 @@
     </select>
 
     <select id="selectByAuthorIdWithStatus" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE author_id = #{authorId}
         AND deleted_at IS NULL
@@ -160,7 +172,7 @@
     </select>
 
     <select id="selectPublishedByAuthorId" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE author_id = #{authorId}
         AND status = 'PUBLISHED'
@@ -169,7 +181,7 @@
     </select>
 
     <select id="selectLatestByAuthorId" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE author_id = #{authorId}
         AND deleted_at IS NULL
@@ -197,7 +209,7 @@
     </select>
 
     <select id="selectHotPublishedByAuthorId" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE author_id = #{authorId}
         AND status = 'PUBLISHED'
@@ -207,7 +219,7 @@
     </select>
 
     <select id="selectPublishedByAuthorIds" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+        SELECT <include refid="List_Column_List"/>
         FROM blog_article
         WHERE author_id IN
         <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
@@ -249,6 +261,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 100) + 1
         FROM blog_article
+        WHERE id &lt; 10000000000
     </select>
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
@@ -411,9 +424,7 @@
     </select>
 
     <select id="selectPublishedEnhanced" resultMap="BaseResultMap">
-        SELECT a.id, a.author_id, a.title, a.summary, a.content, a.cover_url, a.category, a.status,
-               a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
-               a.created_at, a.updated_at, a.deleted_at, a.version
+        SELECT <include refid="List_Alias_Column_List"/>
         FROM blog_article a
         LEFT JOIN blog_user u ON a.author_id = u.id
         WHERE a.status = 'PUBLISHED'
@@ -444,10 +455,10 @@
             )
         </if>
         <if test="dateFrom != null and dateFrom != ''">
-            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+            AND a.published_at &gt;= #{dateFrom}
         </if>
         <if test="dateTo != null and dateTo != ''">
-            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
         <choose>
             <when test="sort == 'hot'">
@@ -500,17 +511,15 @@
             )
         </if>
         <if test="dateFrom != null and dateFrom != ''">
-            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+            AND a.published_at &gt;= #{dateFrom}
         </if>
         <if test="dateTo != null and dateTo != ''">
-            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
     </select>
 
     <select id="selectPublishedEnhancedByAuthorIds" resultMap="BaseResultMap">
-        SELECT a.id, a.author_id, a.title, a.summary, a.content, a.cover_url, a.category, a.status,
-               a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
-               a.created_at, a.updated_at, a.deleted_at, a.version
+        SELECT <include refid="List_Alias_Column_List"/>
         FROM blog_article a
         LEFT JOIN blog_user u ON a.author_id = u.id
         WHERE a.author_id IN
@@ -545,10 +554,10 @@
             )
         </if>
         <if test="dateFrom != null and dateFrom != ''">
-            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+            AND a.published_at &gt;= #{dateFrom}
         </if>
         <if test="dateTo != null and dateTo != ''">
-            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
         <choose>
             <when test="sort == 'featured'">
@@ -561,10 +570,10 @@
                 ORDER BY a.view_count DESC, a.published_at DESC, a.id DESC
             </otherwise>
         </choose>
-        <if test="offset != null">
-            LIMIT #{offset}
-        </if>
         <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+        <if test="offset != null">
             OFFSET #{offset}
         </if>
     </select>
@@ -605,10 +614,10 @@
             )
         </if>
         <if test="dateFrom != null and dateFrom != ''">
-            AND DATE(a.published_at) &gt;= DATE(#{dateFrom})
+            AND a.published_at &gt;= #{dateFrom}
         </if>
         <if test="dateTo != null and dateTo != ''">
-            AND DATE(a.published_at) &lt;= DATE(#{dateTo})
+            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
     </select>
 
@@ -629,14 +638,15 @@
         SELECT COUNT(1)
         FROM blog_article
         WHERE deleted_at IS NULL
-        AND DATE(created_at) = #{date}
+        AND created_at &gt;= #{date}
+        AND created_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
     </select>
 
     <select id="countCreatedSince" resultType="long">
         SELECT COUNT(1)
         FROM blog_article
         WHERE deleted_at IS NULL
-        AND DATE(created_at) &gt;= #{date}
+        AND created_at &gt;= #{date}
     </select>
 
     <select id="countPublishedAuthors" resultType="long">

@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 用户关注 MyBatis 仓储实现。
@@ -24,12 +23,9 @@ import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 public class MyBatisUserFollowRepository implements UserFollowRepository {
 
     private final UserFollowMapper userFollowMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisUserFollowRepository(UserFollowMapper userFollowMapper,
-                                        SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisUserFollowRepository(UserFollowMapper userFollowMapper) {
         this.userFollowMapper = userFollowMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -70,8 +66,8 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
 
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
-        }
+        return userFollowMapper.selectNextId();
+    }
 
     @Override
     public boolean exists(UserId followerUserId, UserId followingUserId) {

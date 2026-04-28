@@ -4,7 +4,7 @@ import { subscribeColumnApi, unsubscribeColumnApi } from '@/api/columns';
 
 const props = defineProps({
     columnId: {
-        type: Number,
+        type: [Number, String],
         required: true
     },
     subscribed: {

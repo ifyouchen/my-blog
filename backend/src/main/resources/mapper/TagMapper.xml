@@ -75,6 +75,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 0) + 1
         FROM blog_tag
+        WHERE id &lt; 10000000000
     </select>
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.TagDO">
@@ -105,6 +106,9 @@
         VALUES
         (#{id}, #{name}, #{description}, #{enabled}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
-            id, name, description, enabled, created_at, updated_at = #{id}, #{name}, #{description}, #{enabled}, #{createdAt}, #{updatedAt}
+            name = #{name},
+            description = #{description},
+            enabled = #{enabled},
+            updated_at = #{updatedAt}
     </insert>
 </mapper>

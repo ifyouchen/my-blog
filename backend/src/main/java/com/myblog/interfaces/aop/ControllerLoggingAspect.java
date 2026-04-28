@@ -6,13 +6,12 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
-import java.util.Map;
 
 @Aspect
 @Component
@@ -25,38 +24,33 @@ public class ControllerLoggingAspect {
 
     @Around("controllerMethods()")
     public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
 
-        // Get request info
         HttpServletRequest request = getCurrentRequest();
         String methodName = joinPoint.getSignature().toShortString();
         String requestUri = request != null ? request.getRequestURI() : "unknown";
         String httpMethod = request != null ? request.getMethod() : "unknown";
-
-        // Build params string
+        String traceId = MDC.get("traceId");
         String params = buildParamsString(joinPoint.getArgs());
 
-        // Log request
-        log.info("[HTTP {}] {} - Args: {}", httpMethod, requestUri, params);
+        log.info("[CTRL] [traceId={}] [HTTP {}] {} - Method: {} - Args: {}",
+            traceId, httpMethod, requestUri, methodName, params);
 
-        Object result = null;
         Throwable error = null;
-        long duration = 0;
 
         try {
-            result = joinPoint.proceed();
-            return result;
+            return joinPoint.proceed();
         } catch (Throwable t) {
             error = t;
             throw t;
         } finally {
-            duration = System.currentTimeMillis() - startTime;
+            double durationMs = (System.nanoTime() - startTime) / 1_000_000.0D;
             if (error != null) {
-                log.error("[HTTP {}] {} - Duration: {}ms - Error: {}",
-                    httpMethod, requestUri, duration, error.getMessage());
+                log.error("[CTRL] [traceId={}] [HTTP {}] {} - Method: {} - Business: {}ms - Error: {}",
+                    traceId, httpMethod, requestUri, methodName, formatDuration(durationMs), error.getMessage());
             } else {
-                log.info("[HTTP {}] {} - Duration: {}ms - Success",
-                    httpMethod, requestUri, duration);
+                log.info("[CTRL] [traceId={}] [HTTP {}] {} - Method: {} - Business: {}ms - Success",
+                    traceId, httpMethod, requestUri, methodName, formatDuration(durationMs));
             }
         }
     }
@@ -94,5 +88,9 @@ public class ControllerLoggingAspect {
         return obj instanceof String ||
                obj instanceof Number ||
                obj instanceof Boolean;
+    }
+
+    private String formatDuration(double durationMs) {
+        return String.format("%.2f", durationMs);
     }
 }

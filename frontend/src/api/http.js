@@ -14,6 +14,30 @@ const getToken = () => {
     }
 };
 
+const logDevTrace = (type, detail = {}) => {
+    if (!import.meta.env.DEV) {
+        return;
+    }
+
+    const { traceId = '', path = '', status = '', message = '' } = detail;
+    const segments = [`[request:${type}]`];
+
+    if (path) {
+        segments.push(path);
+    }
+    if (status) {
+        segments.push(`status=${status}`);
+    }
+    if (traceId) {
+        segments.push(`traceId=${traceId}`);
+    }
+    if (message) {
+        segments.push(message);
+    }
+
+    console.error(segments.join(' | '));
+};
+
 export const request = async (path, options = {}) => {
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = {
@@ -38,11 +62,22 @@ export const request = async (path, options = {}) => {
         body,
         headers
     });
+    const traceId = response.headers.get('X-Trace-Id') || '';
     let payload;
     try {
         payload = await response.json();
     } catch (error) {
-        throw new TypeError('Failed to fetch');
+        const parseError = new TypeError('Failed to fetch');
+        if (traceId) {
+            parseError.traceId = traceId;
+        }
+        logDevTrace('parse-error', {
+            traceId,
+            path,
+            status: response.status,
+            message: parseError.message
+        });
+        throw parseError;
     }
 
     if (!response.ok) {
@@ -50,7 +85,17 @@ export const request = async (path, options = {}) => {
             localStorage.removeItem(SESSION_KEY);
             window.dispatchEvent(new CustomEvent('my-blog-auth-expired'));
         }
-        throw new Error(payload.message || `请求失败 (${response.status})`);
+        const requestError = new Error(payload.message || `请求失败 (${response.status})`);
+        if (traceId) {
+            requestError.traceId = traceId;
+        }
+        logDevTrace('http-error', {
+            traceId,
+            path,
+            status: response.status,
+            message: requestError.message
+        });
+        throw requestError;
     }
 
     if (payload.code !== 0) {
@@ -58,7 +103,17 @@ export const request = async (path, options = {}) => {
             localStorage.removeItem(SESSION_KEY);
             window.dispatchEvent(new CustomEvent('my-blog-auth-expired'));
         }
-        throw new Error(payload.message || '请求失败');
+        const businessError = new Error(payload.message || '请求失败');
+        if (traceId) {
+            businessError.traceId = traceId;
+        }
+        logDevTrace('business-error', {
+            traceId,
+            path,
+            status: response.status,
+            message: businessError.message
+        });
+        throw businessError;
     }
 
     return payload.data;

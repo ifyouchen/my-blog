@@ -1,11 +1,12 @@
 <script setup>
 import {computed, inject, ref, watch} from 'vue';
 import CommentComposer from '@/components/CommentComposer.vue';
+import UserHoverCard from '@/components/UserHoverCard.vue';
 import {createCommentApi, deleteCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
 
 const props = defineProps({
     articleId: {
-        type: Number,
+        type: [Number, String],
         required: true
     },
     comment: {
@@ -242,11 +243,18 @@ function goReplyPage(step) {
 
 <template>
     <article class="comment-root-item" data-testid="comment-root-item">
-        <img class="comment-root-avatar" :src="localComment.user.avatar" :alt="localComment.user.name">
+        <UserHoverCard
+            :user="localComment.user"
+            variant="avatar"
+            avatar-class="comment-root-avatar"
+        />
         <div class="comment-root-main">
             <header class="comment-root-header">
                 <div class="comment-root-author-line">
-                    <strong>{{ localComment.user.name }}</strong>
+                    <UserHoverCard
+                        :user="localComment.user"
+                        name-class="comment-author-name"
+                    />
                     <span v-if="localComment.author" class="comment-badge author">作者</span>
                     <span v-if="localComment.pinned" class="comment-badge pinned">置顶</span>
                     <span class="comment-root-time">{{ localComment.time }}</span>
@@ -273,10 +281,17 @@ function goReplyPage(step) {
             <section v-if="displayedReplyCount > 0 || activeReplyTarget" class="comment-reply-shell">
                 <div v-if="visibleReplies.length" class="comment-reply-items">
                     <article v-for="reply in visibleReplies" :key="reply.id" class="comment-reply-item">
-                        <img class="comment-reply-avatar" :src="reply.user.avatar" :alt="reply.user.name">
+                        <UserHoverCard
+                            :user="reply.user"
+                            variant="avatar"
+                            avatar-class="comment-reply-avatar"
+                        />
                         <div class="comment-reply-main">
                             <div class="comment-reply-author-line">
-                                <strong>{{ reply.user.name }}</strong>
+                                <UserHoverCard
+                                    :user="reply.user"
+                                    name-class="comment-author-name"
+                                />
                                 <span v-if="reply.author" class="comment-badge author">作者</span>
                                 <span class="comment-root-time">{{ reply.time }}</span>
                             </div>
@@ -366,14 +381,14 @@ function goReplyPage(step) {
     align-items: start;
 }
 
-.comment-root-avatar,
-.comment-reply-avatar {
+:deep(.comment-root-avatar),
+:deep(.comment-reply-avatar) {
     border-radius: 50%;
     object-fit: cover;
     background: var(--surface-soft);
 }
 
-.comment-root-avatar {
+:deep(.comment-root-avatar) {
     width: 40px;
     height: 40px;
 }
@@ -398,9 +413,14 @@ function goReplyPage(step) {
 }
 
 .comment-root-author-line strong,
-.comment-reply-author-line strong {
+.comment-reply-author-line strong,
+:deep(.comment-author-name) {
     font-size: 15px;
     color: var(--text);
+}
+
+:deep(.comment-author-name) {
+    font-weight: 700;
 }
 
 .comment-root-time {
@@ -483,7 +503,7 @@ color: var(--brand-strong);
     gap: 10px;
 }
 
-.comment-reply-avatar {
+:deep(.comment-reply-avatar) {
     width: 32px;
     height: 32px;
 }
@@ -532,7 +552,7 @@ color: var(--brand-strong);
         grid-template-columns: 32px minmax(0, 1fr);
     }
 
-    .comment-root-avatar {
+    :deep(.comment-root-avatar) {
         width: 32px;
         height: 32px;
     }

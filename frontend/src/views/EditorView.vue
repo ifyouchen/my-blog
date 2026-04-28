@@ -49,6 +49,7 @@ const hydratingDraft = ref(false);
 const allowRouteLeave = ref(false);
 const coverUploading = ref(false);
 const coverInputRef = ref(null);
+const richEditorRef = ref(null);
 const coverPreviewFailed = ref(false);
 const showBackToTop = ref(false);
 
@@ -385,6 +386,13 @@ function togglePreview() {
     previewVisible.value = !previewVisible.value;
 }
 
+function handleTocNavigate({ index }) {
+    if (previewVisible.value) {
+        return;
+    }
+    richEditorRef.value?.scrollToHeadingByIndex(index);
+}
+
 function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -543,7 +551,7 @@ onUnmounted(() => {
                 <textarea v-model="draft.summary" placeholder="用一两句话介绍这篇文章" data-testid="editor-summary-input"></textarea>
             </label>
 
-            <RichMarkdownEditor v-model="draft.content" />
+            <RichMarkdownEditor ref="richEditorRef" v-model="draft.content" />
             <div class="editor-feedback">
                 <span>正文 {{ wordCount }} 字</span>
                 <span :class="['editor-dirty', hasUnsavedChanges ? 'warning' : 'saved']">
@@ -559,7 +567,10 @@ onUnmounted(() => {
         <aside class="editor-side">
             <ArticleToc
                 :content="draft.content"
-                target-selector=".rich-markdown-editor .ProseMirror"
+                :target-selector="previewVisible ? '.editor-preview-panel .markdown-preview' : '.rich-markdown-editor .ProseMirror'"
+                :use-custom-navigation="!previewVisible"
+                :refresh-on-content-change="!previewVisible"
+                @navigate="handleTocNavigate"
             />
             <section class="side-section editor-category-section">
                 <div class="editor-category-head">

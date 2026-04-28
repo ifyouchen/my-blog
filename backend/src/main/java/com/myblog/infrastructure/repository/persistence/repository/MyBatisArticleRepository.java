@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 文章 MyBatis 仓储实现。
@@ -32,18 +31,14 @@ import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 public class MyBatisArticleRepository implements ArticleRepository {
 
     private final ArticleMapper articleMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建文章 MyBatis 仓储。
      *
      * @param articleMapper 文章 Mapper
-     * @param snowflakeIdGenerator 雪花 ID 生成器
      */
-    public MyBatisArticleRepository(ArticleMapper articleMapper,
-                                    SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisArticleRepository(ArticleMapper articleMapper) {
         this.articleMapper = articleMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -302,8 +297,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      */
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
-        }
+        return articleMapper.selectNextId();
+    }
 
     /**
      * 统计已发布文章数量。

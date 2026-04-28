@@ -6,7 +6,6 @@ import com.myblog.infrastructure.repository.persistence.mapper.UserSearchHistory
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 
 /**
  * 用户搜索历史 MyBatis 仓储实现。
@@ -18,12 +17,9 @@ import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepository {
 
     private final UserSearchHistoryMapper userSearchHistoryMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisUserSearchHistoryRepository(UserSearchHistoryMapper userSearchHistoryMapper,
-                                               SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisUserSearchHistoryRepository(UserSearchHistoryMapper userSearchHistoryMapper) {
         this.userSearchHistoryMapper = userSearchHistoryMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     @Override
@@ -69,6 +65,6 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
 
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
-        }
+        return userSearchHistoryMapper.selectNextId();
+    }
 }

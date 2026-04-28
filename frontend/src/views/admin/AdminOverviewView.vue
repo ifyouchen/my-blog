@@ -59,9 +59,13 @@ onMounted(loadOverview);
                 </div>
             </div>
 
-            <p v-if="loading" class="backend-state-text">概览数据加载中...</p>
-            <p v-else-if="error" class="backend-state-text error-text">{{ error }}</p>
-            <div v-else class="admin-overview-grid" data-testid="admin-overview-stats">
+            <p v-if="loading && stats" class="backend-state-text subtle">正在更新概览数据...</p>
+            <p v-if="error && stats" class="backend-state-text error-text subtle">
+                {{ error }}
+            </p>
+            <p v-if="loading && !stats" class="backend-state-text">概览数据加载中...</p>
+            <p v-else-if="error && !stats" class="backend-state-text error-text">{{ error }}</p>
+            <div v-else-if="stats" class="admin-overview-grid" data-testid="admin-overview-stats">
                 <article v-for="card in statCards" :key="card.label" class="admin-overview-card">
                     <span>{{ card.label }}</span>
                     <strong>{{ card.value }}</strong>

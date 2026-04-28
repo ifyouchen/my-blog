@@ -3,11 +3,12 @@ import { computed, inject, ref, watch } from 'vue';
 import { createCommentApi, pageCommentsApi } from '@/api/comments';
 import CommentComposer from '@/components/CommentComposer.vue';
 import CommentRootItem from '@/components/CommentRootItem.vue';
+import { useStableListRequest } from '@/composables/useStableListRequest';
 import { useSession } from '@/stores/session';
 
 const props = defineProps({
     articleId: {
-        type: Number,
+        type: [Number, String],
         required: true
     },
     initialCount: {
@@ -26,8 +27,16 @@ const composerFeedback = ref('');
 const composerSubmitting = ref(false);
 
 const comments = ref([]);
-const loading = ref(false);
-const errorMessage = ref('');
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading,
+    runStableRequest,
+    resetStableRequest
+} = useStableListRequest();
 const sort = ref('hot');
 const currentPage = ref(1);
 const pageSize = 10;
@@ -42,32 +51,45 @@ const currentUser = computed(() => state.user || null);
 const totalPages = computed(() => Math.max(1, Math.ceil(rootTotal.value / pageSize)));
 const avatarUrl = computed(() => currentUser.value?.avatar || currentUser.value?.avatarUrl);
 
-async function fetchComments(page = currentPage.value) {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const result = await pageCommentsApi(props.articleId, {
+async function fetchComments(page = currentPage.value, { reset = false } = {}) {
+    if (reset) {
+        resetStableRequest();
+        comments.value = [];
+        currentPage.value = 1;
+        rootTotal.value = 0;
+    }
+
+    const { result } = await runStableRequest(
+        () => pageCommentsApi(props.articleId, {
             page,
             pageSize,
             sort: sort.value
-        });
-        comments.value = result.items || [];
-        rootTotal.value = result.total || 0;
-        currentPage.value = result.page || page;
-        if (!comments.value.length && currentPage.value > 1 && rootTotal.value > 0) {
-            const fallbackPage = Math.max(1, Math.ceil(rootTotal.value / pageSize));
-            if (fallbackPage !== currentPage.value) {
-                await fetchComments(fallbackPage);
-                return;
-            }
+        }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '评论加载失败',
+            refreshErrorMessage: '评论刷新失败，请稍后重试'
         }
-    } catch (error) {
-        errorMessage.value = error.message || '评论加载失败';
-        comments.value = [];
-        rootTotal.value = 0;
-    } finally {
-        loading.value = false;
+    );
+
+    if (!result) {
+        return;
     }
+
+    const nextComments = result.items || [];
+    const nextTotal = result.total || 0;
+    const nextPage = result.page || page;
+    if (!nextComments.length && nextPage > 1 && nextTotal > 0) {
+        const fallbackPage = Math.max(1, Math.ceil(nextTotal / pageSize));
+        if (fallbackPage !== nextPage) {
+            await fetchComments(fallbackPage);
+            return;
+        }
+    }
+
+    comments.value = nextComments;
+    rootTotal.value = nextTotal;
+    currentPage.value = nextPage;
 }
 
 async function submitComment() {
@@ -125,10 +147,7 @@ function goPage(page) {
 }
 
 watch(() => props.articleId, () => {
-    comments.value = [];
-    currentPage.value = 1;
-    rootTotal.value = 0;
-    fetchComments(1);
+    fetchComments(1, { reset: true });
 }, { immediate: true });
 </script>
 
@@ -168,9 +187,16 @@ watch(() => props.articleId, () => {
             @submit="submitComment"
         />
 
-        <div v-if="loading" class="comment-panel-state">评论加载中...</div>
-        <div v-else-if="errorMessage" class="comment-panel-state error">{{ errorMessage }}</div>
-        <div v-else-if="!comments.length" class="comment-panel-state">
+        <div v-if="refreshing && comments.length" class="comment-panel-refresh">正在更新评论...</div>
+        <div v-if="inlineError" class="comment-panel-state error">{{ inlineError }}</div>
+        <div
+            v-if="initialLoading || (refreshing && !comments.length)"
+            class="comment-panel-state"
+        >
+            评论加载中...
+        </div>
+        <div v-else-if="errorMessage && !comments.length" class="comment-panel-state error">{{ errorMessage }}</div>
+        <div v-else-if="hasLoadedOnce && !refreshing && !comments.length" class="comment-panel-state">
             还没有评论，来写下第一条想法。
         </div>
         <div v-else class="comment-panel-list" data-testid="comment-list">
@@ -192,9 +218,27 @@ watch(() => props.articleId, () => {
             </div>
             <div v-if="totalPages > 1" class="comment-panel-pagination">
                 <button type="button" :disabled="currentPage <= 1 || loading" @click="goPage(1)">首页</button>
-                <button type="button" :disabled="currentPage <= 1 || loading" @click="goPage(currentPage - 1)">上一页</button>
-                <button type="button" :disabled="currentPage >= totalPages || loading" @click="goPage(currentPage + 1)">下一页</button>
-                <button type="button" :disabled="currentPage >= totalPages || loading" @click="goPage(totalPages)">末页</button>
+                <button
+                    type="button"
+                    :disabled="currentPage <= 1 || loading"
+                    @click="goPage(currentPage - 1)"
+                >
+                    上一页
+                </button>
+                <button
+                    type="button"
+                    :disabled="currentPage >= totalPages || loading"
+                    @click="goPage(currentPage + 1)"
+                >
+                    下一页
+                </button>
+                <button
+                    type="button"
+                    :disabled="currentPage >= totalPages || loading"
+                    @click="goPage(totalPages)"
+                >
+                    末页
+                </button>
             </div>
         </footer>
     </section>
@@ -275,6 +319,15 @@ watch(() => props.articleId, () => {
 
 .comment-panel-state.error {
     color: #b42318;
+}
+
+.comment-panel-refresh {
+    padding: 8px 12px;
+    color: var(--brand-strong);
+    font-size: 13px;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-sm);
 }
 
 .comment-panel-meta {

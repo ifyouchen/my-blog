@@ -1,5 +1,8 @@
 package com.myblog.interfaces.rest.dto.response;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+
 import java.util.List;
 
 /**
@@ -10,10 +13,15 @@ import java.util.List;
  */
 public class CommentResponse {
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long articleId;
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long userId;
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long rootCommentId;
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long parentId;
     private String content;
     private String createdAt;

@@ -5,31 +5,39 @@ import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getArticleRankingsApi, getAuthorRankingsApi} from '@/api/rankings';
 import {useSession} from '@/stores/session';
+import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const router = useRouter();
 const articleRankings = ref([]);
 const authorRankings = ref([]);
-const loading = ref(false);
-const errorMessage = ref('');
 const { state } = useSession();
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    runStableRequest
+} = useStableListRequest();
 
 const fetchRankings = async () => {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const [articleList, authorList] = await Promise.all([
+    const response = await runStableRequest(
+        () => Promise.all([
             getArticleRankingsApi(10),
             getAuthorRankingsApi(10)
-        ]);
-        articleRankings.value = articleList || [];
-        authorRankings.value = authorList || [];
-    } catch (error) {
-        articleRankings.value = [];
-        authorRankings.value = [];
-        errorMessage.value = error.message || '排行榜加载失败';
-    } finally {
-        loading.value = false;
+        ]),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '排行榜加载失败',
+            refreshErrorMessage: '排行榜刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
     }
+    const [articleList, authorList] = response.result || [];
+    articleRankings.value = articleList || [];
+    authorRankings.value = authorList || [];
 };
 
 const handleFollowChange = (target, followed) => {
@@ -53,7 +61,9 @@ onMounted(fetchRankings);
             <p>先从最值得点开的内容入手，再顺着作者继续深挖，读得更快也更准。</p>
         </section>
 
-        <p v-if="errorMessage" class="feed-message">{{ errorMessage }}</p>
+        <p v-if="inlineError" class="feed-message">{{ inlineError }}</p>
+        <p v-if="errorMessage && !articleRankings.length && !authorRankings.length" class="feed-message">{{ errorMessage }}</p>
+        <p v-if="refreshing" class="ranking-refresh-note">正在更新榜单...</p>
 
         <div class="ranking-layout">
             <section class="ranking-feed" data-testid="ranking-articles">
@@ -62,7 +72,7 @@ onMounted(fetchRankings);
                     <h2>高热文章</h2>
                     <span class="eyebrow">文章榜</span>
                 </div>
-                <div v-if="loading" class="ranking-state">加载中...</div>
+                <div v-if="initialLoading && !articleRankings.length" class="ranking-state">加载中...</div>
                 <ol v-else class="ranking-post-list">
                     <li
                         v-for="(article, index) in articleRankings"
@@ -124,7 +134,7 @@ onMounted(fetchRankings);
                         <h2>影响力作者</h2>
                         <span class="eyebrow">作者榜</span>
                     </div>
-                    <div v-if="loading" class="ranking-state">加载中...</div>
+                    <div v-if="initialLoading && !authorRankings.length" class="ranking-state">加载中...</div>
                     <div v-else class="ranking-author-list">
                         <div v-for="author in authorRankings" :key="author.user.id" class="ranking-author-card">
                             <span class="ranking-side-rank" :class="`rank-${author.rank}`">{{ author.rank }}</span>
@@ -594,6 +604,17 @@ onMounted(fetchRankings);
     padding: 24px 20px;
     color: var(--muted);
     font-size: 14px;
+}
+
+.ranking-refresh-note {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: var(--radius-sm);
 }
 
 /* ============================================================

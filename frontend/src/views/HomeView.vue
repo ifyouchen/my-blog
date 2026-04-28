@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { listArticlesApi } from '@/api/articles';
 import { getHomeBootstrapApi } from '@/api/home';
 import ArticleFeed from '@/components/ArticleFeed.vue';
+import { useStableListRequest } from '@/composables/useStableListRequest';
 import {
     ARTICLE_SORT_ITEMS,
     ARTICLE_SORT_LATEST,
@@ -28,20 +29,26 @@ const total = ref(0);
 const topicItems = ref([]);
 const sidebarColumns = ref([]);
 const sidebarAuthors = ref([]);
-const loading = ref(false);
-const errorMessage = ref('');
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
 const route = useRoute();
 const router = useRouter();
-let requestSeq = 0;
 let firstLoad = true;
 let previousRouteState = {
     page: undefined,
     sort: undefined,
     category: undefined
 };
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading,
+    runStableRequest
+} = useStableListRequest();
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 
@@ -82,50 +89,40 @@ const loadHomeBootstrap = async () => {
 };
 
 const loadArticles = async (page, sort, category, shouldScroll = false) => {
-    const seq = requestSeq + 1;
-    requestSeq = seq;
-    loading.value = true;
-    errorMessage.value = '';
-
-    try {
-        const pageResult = await listArticlesApi({ page, pageSize, sort, category });
-        if (seq !== requestSeq) {
-            return;
+    const response = await runStableRequest(
+        () => listArticlesApi({ page, pageSize, sort, category }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '文章列表加载失败，请稍后重试',
+            refreshErrorMessage: '文章列表刷新失败，请稍后重试'
         }
+    );
+    if (response?.ignored || response?.error) {
+        return;
+    }
 
-        const nextTotal = Number(pageResult.total || 0);
-        const lastPage = Math.max(1, Math.ceil(nextTotal / pageSize));
-        if (nextTotal > 0 && page > lastPage) {
-            await router.replace({
-                query: {
-                    ...route.query,
-                    category: category || undefined,
-                    sort: isDefaultArticleSort(sort) ? undefined : sort,
-                    page: lastPage === 1 ? undefined : String(lastPage)
-                }
-            });
-            return;
-        }
-
-        currentPage.value = page;
-        activeSort.value = sort;
-        activeCategory.value = category || '';
-        total.value = nextTotal;
-        articles.value = pageResult.items;
-    } catch (error) {
-        errorMessage.value = '文章列表加载失败，请稍后重试';
-        articles.value = [];
-        total.value = 0;
-        currentPage.value = 1;
-        activeSort.value = ARTICLE_SORT_LATEST;
-        activeCategory.value = category || '';
-    } finally {
-        if (seq === requestSeq) {
-            loading.value = false;
-            if (shouldScroll) {
-                await scrollToFeed();
+    const pageResult = response.result || {};
+    const nextTotal = Number(pageResult.total || 0);
+    const lastPage = Math.max(1, Math.ceil(nextTotal / pageSize));
+    if (nextTotal > 0 && page > lastPage) {
+        await router.replace({
+            query: {
+                ...route.query,
+                category: category || undefined,
+                sort: isDefaultArticleSort(sort) ? undefined : sort,
+                page: lastPage === 1 ? undefined : String(lastPage)
             }
-        }
+        });
+        return;
+    }
+
+    currentPage.value = page;
+    activeSort.value = sort;
+    activeCategory.value = category || '';
+    total.value = nextTotal;
+    articles.value = pageResult.items || [];
+    if (shouldScroll) {
+        await scrollToFeed();
     }
 };
 
@@ -205,7 +202,11 @@ onMounted(() => {
                 :page-size="pageSize"
                 :total="total"
                 :loading="loading"
+                :initial-loading="initialLoading"
+                :refreshing="refreshing"
+                :has-loaded-once="hasLoadedOnce"
                 :error-message="errorMessage"
+                :inline-error-message="inlineError"
                 :sort="activeSort"
                 :sort-items="ARTICLE_SORT_ITEMS"
                 @page-change="changePage"

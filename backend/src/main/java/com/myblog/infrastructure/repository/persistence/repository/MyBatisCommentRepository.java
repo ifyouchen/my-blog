@@ -6,7 +6,6 @@ import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.repository.CommentRepository;
 import com.myblog.infrastructure.repository.persistence.converter.CommentPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.CommentDO;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.CommentMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -30,18 +29,14 @@ import java.util.Optional;
 public class MyBatisCommentRepository implements CommentRepository {
 
     private final CommentMapper commentMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建评论 MyBatis 仓储。
      *
      * @param commentMapper 评论 Mapper
-     * @param snowflakeIdGenerator Snowflake ID 生成器
      */
-    public MyBatisCommentRepository(CommentMapper commentMapper,
-                                    SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisCommentRepository(CommentMapper commentMapper) {
         this.commentMapper = commentMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -226,7 +221,7 @@ public class MyBatisCommentRepository implements CommentRepository {
         Map<Long, Integer> result = new HashMap<Long, Integer>(rows.size());
         for (Map<String, Object> row : rows) {
             Long rootId = ((Number) row.get("rootCommentId")).longValue();
-            Integer cnt = ((Number) row.get("cnt")).intValue();
+            Integer cnt = ((Number) row.get("replyCount")).intValue();
             result.put(rootId, cnt);
         }
         return result;
@@ -240,6 +235,6 @@ public class MyBatisCommentRepository implements CommentRepository {
 
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
+        return commentMapper.selectNextId();
     }
 }

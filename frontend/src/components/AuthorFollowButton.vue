@@ -4,7 +4,7 @@ import {followUserApi, unfollowUserApi} from '@/api/following';
 
 const props = defineProps({
     userId: {
-        type: Number,
+        type: [Number, String],
         required: true
     },
     followed: {

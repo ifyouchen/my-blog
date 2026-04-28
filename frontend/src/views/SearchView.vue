@@ -9,6 +9,7 @@ import {useSession} from '@/stores/session';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
 import SiteHeader from '@/components/SiteHeader.vue';
+import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const GUEST_RECENT_SEARCHES_KEY = 'my-blog:recent-searches';
 const MAX_GUEST_RECENT_SEARCHES = 10;
@@ -39,8 +40,16 @@ const users = ref([]);
 const userTotal = ref(0);
 const columns = ref([]);
 const columnTotal = ref(0);
-const loading = ref(false);
-const errorMessage = ref('');
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading,
+    runStableRequest,
+    resetStableRequest
+} = useStableListRequest();
 
 // Guest recent searches
 const guestRecentSearches = ref([]);
@@ -220,10 +229,8 @@ const fetchBootstrap = async () => {
 };
 
 const fetchArticles = async () => {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const pageResult = await listArticlesApi({
+    const response = await runStableRequest(
+        () => listArticlesApi({
             keyword: keyword.value.trim(),
             category: activeCategory.value,
             tag: activeTag.value,
@@ -234,56 +241,61 @@ const fetchArticles = async () => {
             followingOnly: followingOnly.value,
             page: currentPage.value,
             pageSize
-        });
-        articles.value = pageResult.items || [];
-        articleTotal.value = pageResult.total || 0;
-    } catch (e) {
-        articles.value = [];
-        articleTotal.value = 0;
-        errorMessage.value = e.message || '搜索失败，请稍后重试';
-    } finally {
-        loading.value = false;
+        }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '搜索失败，请稍后重试',
+            refreshErrorMessage: '搜索结果刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
     }
+    const pageResult = response.result || {};
+    articles.value = pageResult.items || [];
+    articleTotal.value = pageResult.total || 0;
 };
 
 const fetchUsers = async () => {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const pageResult = await searchUsersApi({
+    const response = await runStableRequest(
+        () => searchUsersApi({
             keyword: keyword.value.trim(),
             page: currentPage.value,
             pageSize
-        });
-        users.value = pageResult.items || [];
-        userTotal.value = pageResult.total || 0;
-    } catch (e) {
-        users.value = [];
-        userTotal.value = 0;
-        errorMessage.value = e.message || '搜索失败，请稍后重试';
-    } finally {
-        loading.value = false;
+        }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '搜索失败，请稍后重试',
+            refreshErrorMessage: '搜索结果刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
     }
+    const pageResult = response.result || {};
+    users.value = pageResult.items || [];
+    userTotal.value = pageResult.total || 0;
 };
 
 const fetchColumns = async () => {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const pageResult = await searchColumnsApi({
+    const response = await runStableRequest(
+        () => searchColumnsApi({
             keyword: keyword.value.trim(),
             page: currentPage.value,
             pageSize
-        });
-        columns.value = pageResult.items || [];
-        columnTotal.value = pageResult.total || 0;
-    } catch (e) {
-        columns.value = [];
-        columnTotal.value = 0;
-        errorMessage.value = e.message || '搜索失败，请稍后重试';
-    } finally {
-        loading.value = false;
+        }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '搜索失败，请稍后重试',
+            refreshErrorMessage: '搜索结果刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
     }
+    const pageResult = response.result || {};
+    columns.value = pageResult.items || [];
+    columnTotal.value = pageResult.total || 0;
 };
 
 const runSearch = async () => {
@@ -301,6 +313,7 @@ const runSearch = async () => {
 
 const changeTab = (tab) => {
     activeTab.value = tab;
+    resetStableRequest();
     currentPage.value = 1;
     // Reset article-only filters when switching tabs
     activeCategory.value = '';
@@ -435,6 +448,7 @@ watch(
     (query) => {
         const newTab = String(query.tab || 'articles');
         if (newTab !== activeTab.value) {
+            resetStableRequest();
             activeTab.value = newTab;
         }
         keyword.value = String(query.keyword || '');
@@ -687,7 +701,11 @@ onMounted(fetchBootstrap);
             :page-size="pageSize"
             :total="articleTotal"
             :loading="loading"
+            :initial-loading="initialLoading"
+            :refreshing="refreshing"
+            :has-loaded-once="hasLoadedOnce"
             :error-message="errorMessage"
+            :inline-error-message="inlineError"
             :sort="activeSort"
             :sort-items="ARTICLE_SORT_ITEMS"
             eyebrow="搜索结果"
@@ -699,9 +717,11 @@ onMounted(fetchBootstrap);
 
         <!-- User Results -->
         <div v-else-if="activeTab === 'users'" class="user-results">
-            <div v-if="loading" class="loading-state">加载中...</div>
-            <div v-else-if="errorMessage" class="error-state">{{ errorMessage }}</div>
-            <div v-else-if="users.length === 0" class="empty-state">暂无匹配作者</div>
+            <div v-if="refreshing && users.length" class="refresh-state">正在更新作者结果...</div>
+            <div v-if="inlineError" class="error-state search-state-panel">{{ inlineError }}</div>
+            <div v-if="initialLoading && !users.length" class="loading-state">加载中...</div>
+            <div v-else-if="errorMessage && !users.length" class="error-state">{{ errorMessage }}</div>
+            <div v-else-if="!refreshing && hasLoadedOnce && users.length === 0" class="empty-state">暂无匹配作者</div>
             <div v-else class="user-list">
                 <div
                     v-for="user in users"
@@ -731,6 +751,7 @@ onMounted(fetchBootstrap);
                 <button
                     v-if="currentPage > 1"
                     type="button"
+                    :disabled="loading"
                     @click="changePage(currentPage - 1)"
                 >
                     上一页
@@ -739,6 +760,7 @@ onMounted(fetchBootstrap);
                 <button
                     v-if="currentPage * pageSize < userTotal"
                     type="button"
+                    :disabled="loading"
                     @click="changePage(currentPage + 1)"
                 >
                     下一页
@@ -748,9 +770,11 @@ onMounted(fetchBootstrap);
 
         <!-- Column Results -->
         <div v-else-if="activeTab === 'columns'" class="column-results">
-            <div v-if="loading" class="loading-state">加载中...</div>
-            <div v-else-if="errorMessage" class="error-state">{{ errorMessage }}</div>
-            <div v-else-if="columns.length === 0" class="empty-state">暂无匹配专栏</div>
+            <div v-if="refreshing && columns.length" class="refresh-state">正在更新专栏结果...</div>
+            <div v-if="inlineError" class="error-state search-state-panel">{{ inlineError }}</div>
+            <div v-if="initialLoading && !columns.length" class="loading-state">加载中...</div>
+            <div v-else-if="errorMessage && !columns.length" class="error-state">{{ errorMessage }}</div>
+            <div v-else-if="!refreshing && hasLoadedOnce && columns.length === 0" class="empty-state">暂无匹配专栏</div>
             <div v-else class="column-list">
                 <div
                     v-for="column in columns"
@@ -789,6 +813,7 @@ onMounted(fetchBootstrap);
                 <button
                     v-if="currentPage > 1"
                     type="button"
+                    :disabled="loading"
                     @click="changePage(currentPage - 1)"
                 >
                     上一页
@@ -797,6 +822,7 @@ onMounted(fetchBootstrap);
                 <button
                     v-if="currentPage * pageSize < columnTotal"
                     type="button"
+                    :disabled="loading"
                     @click="changePage(currentPage + 1)"
                 >
                     下一页
@@ -1011,6 +1037,17 @@ onMounted(fetchBootstrap);
     text-align: center;
     padding: 40px;
     color: var(--muted);
+}
+
+.refresh-state {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: var(--radius-sm);
 }
 
 .search-state-panel {

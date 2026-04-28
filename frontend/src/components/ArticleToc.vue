@@ -10,8 +10,18 @@ const props = defineProps({
     targetSelector: {
         type: String,
         default: '.markdown-preview'
+    },
+    useCustomNavigation: {
+        type: Boolean,
+        default: false
+    },
+    refreshOnContentChange: {
+        type: Boolean,
+        default: false
     }
 });
+
+const emit = defineEmits(['navigate']);
 
 const activeId = ref('');
 const tocNavRef = ref(null);
@@ -91,19 +101,27 @@ const scheduleObserverRefresh = async () => {
     initObserver();
 };
 
-const scrollToHeading = (id) => {
+const scrollToHeading = (item, index) => {
+    const id = item.id;
+    activeId.value = id;
+
+    if (props.useCustomNavigation) {
+        emit('navigate', { item, index });
+        scrollActiveItemIntoView();
+        return;
+    }
+
     const element = document.getElementById(id);
     if (element) {
-        activeId.value = id;
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         scrollActiveItemIntoView();
     }
 };
 
 watch(toc, async (nextToc, previousToc) => {
-    const nextIds = nextToc.map((item) => item.id).join('|');
-    const previousIds = (previousToc || []).map((item) => item.id).join('|');
-    if (nextIds === previousIds && observer.value) {
+    const nextSignature = nextToc.map((item) => `${item.id}:${item.level}:${item.text}`).join('|');
+    const previousSignature = (previousToc || []).map((item) => `${item.id}:${item.level}:${item.text}`).join('|');
+    if (nextSignature === previousSignature && observer.value && !props.refreshOnContentChange) {
         return;
     }
 
@@ -114,6 +132,10 @@ watch(toc, async (nextToc, previousToc) => {
     }
 
     await scheduleObserverRefresh();
+});
+
+watch(() => props.targetSelector, () => {
+    scheduleObserverRefresh();
 });
 
 onMounted(() => {
@@ -135,13 +157,13 @@ onUnmounted(() => {
         </div>
         <nav ref="tocNavRef" class="toc-nav" aria-label="文章目录">
             <a
-                v-for="item in toc"
+                v-for="(item, index) in toc"
                 :key="item.id"
                 :href="`#${item.id}`"
                 :class="['toc-item', `level-${item.level}`, { active: activeId === item.id }]"
                 :data-toc-id="item.id"
                 :title="item.text"
-                @click.prevent="scrollToHeading(item.id)"
+                @click.prevent="scrollToHeading(item, index)"
             >
                 {{ item.text }}
             </a>

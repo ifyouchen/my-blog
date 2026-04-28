@@ -89,6 +89,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 1000) + 1
         FROM blog_user_follow
+        WHERE id &lt; 10000000000
     </select>
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserFollowDO">

@@ -121,7 +121,6 @@ const loadHotArticles = async () => {
     try {
         hotArticles.value = await getUserHotArticlesApi(state.user.id, 3);
     } catch (error) {
-        hotArticles.value = [];
         hotArticlesError.value = error.message || '热门文章加载失败';
     } finally {
         hotArticlesLoading.value = false;
@@ -509,8 +508,18 @@ onMounted(async () => {
                     <p>按阅读优先、点赞次之的热度排序，帮助你快速回看最受欢迎的内容。</p>
                 </div>
 
-                <div v-if="hotArticlesLoading" class="profile-hot-state">热门文章加载中...</div>
-                <div v-else-if="hotArticlesError" class="profile-hot-state error-text">{{ hotArticlesError }}</div>
+                <div v-if="hotArticlesLoading && hotArticles.length" class="profile-hot-state subtle">
+                    正在更新热门文章...
+                </div>
+                <div v-if="hotArticlesError && hotArticles.length" class="profile-hot-state error-text subtle">
+                    {{ hotArticlesError }}
+                </div>
+                <div v-if="hotArticlesLoading && !hotArticles.length" class="profile-hot-state">
+                    热门文章加载中...
+                </div>
+                <div v-else-if="hotArticlesError && !hotArticles.length" class="profile-hot-state error-text">
+                    {{ hotArticlesError }}
+                </div>
                 <div v-else-if="!hotArticles.length" class="profile-hot-state">
                     还没有足够热度的文章，先去发布第一篇内容。
                 </div>
@@ -778,6 +787,21 @@ onMounted(async () => {
 .profile-hot-state {
     color: var(--muted);
     line-height: 1.7;
+}
+
+.profile-hot-state.subtle {
+    width: fit-content;
+    padding: 6px 10px;
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-sm);
+}
+
+.profile-hot-state.error-text.subtle {
+    color: var(--accent);
+    background: rgba(209, 67, 67, 0.06);
+    border-color: rgba(209, 67, 67, 0.12);
 }
 
 .profile-hot-list {

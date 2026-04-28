@@ -99,14 +99,15 @@
         SELECT COUNT(1)
         FROM blog_user
         WHERE deleted_at IS NULL
-        AND DATE(created_at) = #{date}
+        AND created_at &gt;= #{date}
+        AND created_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
     </select>
 
     <select id="countCreatedSince" resultType="long">
         SELECT COUNT(1)
         FROM blog_user
         WHERE deleted_at IS NULL
-        AND DATE(created_at) &gt;= #{date}
+        AND created_at &gt;= #{date}
     </select>
 
     <select id="selectByAccount" resultMap="BaseResultMap">
@@ -140,6 +141,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 1000) + 1
         FROM blog_user
+        WHERE id &lt; 10000000000
     </select>
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">

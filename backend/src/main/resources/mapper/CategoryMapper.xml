@@ -76,6 +76,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 0) + 1
         FROM blog_category
+        WHERE id &lt; 10000000000
     </select>
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
@@ -107,6 +108,10 @@
         VALUES
         (#{id}, #{name}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
-            id, name, description, sort_order, enabled, created_at, updated_at = #{id}, #{name}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt}
+            name = #{name},
+            description = #{description},
+            sort_order = #{sortOrder},
+            enabled = #{enabled},
+            updated_at = #{updatedAt}
     </insert>
 </mapper>

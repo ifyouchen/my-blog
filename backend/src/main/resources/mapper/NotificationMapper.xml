@@ -123,6 +123,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 100) + 1
         FROM blog_notification
+        WHERE id &lt; 10000000000
     </select>
 
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->

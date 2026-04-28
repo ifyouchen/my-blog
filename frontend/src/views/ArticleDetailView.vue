@@ -21,8 +21,8 @@ const remoteArticle = ref(null);
 const isLoading = ref(false);
 const loadError = ref('');
 const useLocalFallback = ref(false);
-const articleId = computed(() => Number(route.params.id));
-const localArticle = computed(() => articles.find((item) => item.id === articleId.value) || null);
+const articleId = computed(() => String(route.params.id || ''));
+const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
 const article = computed(() => {
     if (remoteArticle.value) {
         return remoteArticle.value;

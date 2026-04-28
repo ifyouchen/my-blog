@@ -6,7 +6,6 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleLikeRepository;
 import com.myblog.infrastructure.repository.persistence.converter.ArticleLikePersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleLikeMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -29,12 +28,9 @@ import java.util.Set;
 public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
 
     private final ArticleLikeMapper articleLikeMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
-    public MyBatisArticleLikeRepository(ArticleLikeMapper articleLikeMapper,
-                                        SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisArticleLikeRepository(ArticleLikeMapper articleLikeMapper) {
         this.articleLikeMapper = articleLikeMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -109,7 +105,7 @@ public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
      */
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
+        return articleLikeMapper.selectNextId();
     }
 
     /**

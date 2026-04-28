@@ -206,7 +206,46 @@ export const editorHtmlToMarkdown = (html = '') => {
 export const editorJsonToMarkdown = (json) => {
     if (!json || !json.content) return '';
 
-    const processNode = (node) => {
+    const normalizeBlock = (content = '') => {
+        const trimmed = String(content).replace(/\n+$/g, '');
+        return trimmed ? `${trimmed}\n\n` : '';
+    };
+
+    const indentLines = (content = '', depth = 0) => {
+        const indent = '  '.repeat(depth);
+        return String(content)
+            .split('\n')
+            .map((line) => (line ? `${indent}${line}` : line))
+            .join('\n');
+    };
+
+    const processInlineContent = (node) => {
+        return (node.content || []).map((child) => processNode(child, { inline: true })).join('');
+    };
+
+    const processListItem = (node, marker, depth = 0) => {
+        const children = node.content || [];
+        const inlineParts = [];
+        const nestedBlocks = [];
+
+        children.forEach((child) => {
+            if (child.type === 'paragraph') {
+                inlineParts.push(processNode(child, { inline: true }));
+                return;
+            }
+            if (child.type === 'bulletList' || child.type === 'orderedList' || child.type === 'taskList') {
+                nestedBlocks.push(processNode(child, { depth: depth + 1, nested: true }));
+                return;
+            }
+            inlineParts.push(processNode(child, { inline: true }).trim());
+        });
+
+        const prefix = `${'  '.repeat(depth)}${marker} `;
+        const firstLine = `${prefix}${inlineParts.join('').trim()}`.trimEnd();
+        return `${firstLine}\n${nestedBlocks.join('')}`;
+    };
+
+    const processNode = (node, context = {}) => {
         if (node.type === 'imageResize') {
             const src = node.attrs.src || '';
             const alt = node.attrs.alt || '';
@@ -235,28 +274,34 @@ export const editorJsonToMarkdown = (json) => {
         }
         if (node.type === 'paragraph') {
             const text = (node.content || []).map(processNode).join('');
+            if (context.inline) {
+                return text;
+            }
             const align = node.attrs?.textAlign;
             if (align && align !== 'left') {
-                return `<p style="text-align:${align}">${text}</p>\n`;
+                return normalizeBlock(`<p style="text-align:${align}">${text}</p>`);
             }
-            return text + '\n';
+            return normalizeBlock(text);
         }
         if (node.type === 'heading') {
             const level = node.attrs.level || 1;
-            const text = (node.content || []).map(processNode).join('');
-            return '#'.repeat(level) + ' ' + text + '\n';
+            const text = processInlineContent(node);
+            return normalizeBlock('#'.repeat(level) + ' ' + text);
         }
         if (node.type === 'blockquote') {
-            const text = (node.content || []).map(processNode).join('');
-            return '> ' + text + '\n';
+            const text = (node.content || [])
+                .map((child) => processNode(child).trim())
+                .filter(Boolean)
+                .join('\n');
+            return normalizeBlock(text.split('\n').map((line) => `> ${line}`).join('\n'));
         }
         if (node.type === 'codeBlock') {
             const language = node.attrs.language || '';
-            const text = (node.content || []).map(processNode).join('');
-            return '```' + language + '\n' + text + '\n```\n';
+            const text = processInlineContent(node);
+            return normalizeBlock('```' + language + '\n' + text + '\n```');
         }
         if (node.type === 'horizontalRule') {
-            return '---\n';
+            return normalizeBlock('---');
         }
         if (node.type === 'table') {
             const rows = (node.content || []).map(processNode).filter(Boolean);
@@ -272,7 +317,7 @@ export const editorJsonToMarkdown = (json) => {
                     result += '|' + '---|'.repeat(colCount) + '\n';
                 }
             }
-            return result + '\n';
+            return normalizeBlock(result);
         }
         if (node.type === 'tableRow') {
             const cells = (node.content || []).map(processNode);
@@ -283,35 +328,37 @@ export const editorJsonToMarkdown = (json) => {
             return { markdown: md, columns, isHeader };
         }
         if (node.type === 'tableHeader' || node.type === 'tableCell') {
-            const text = (node.content || []).map(processNode).join('').trim();
+            const text = (node.content || []).map((child) => processNode(child, { inline: true })).join('').trim();
             const colspan = node.attrs?.colspan || 1;
             return { text, colspan };
         }
         if (node.type === 'bulletList') {
-            return (node.content || []).map((child) => {
-                return processNode(child);
-            }).join('');
+            const depth = context.depth || 0;
+            const content = (node.content || [])
+                .map((child) => processListItem(child, '-', depth))
+                .join('');
+            return context.nested ? content : `${content}\n`;
         }
         if (node.type === 'taskList') {
-            return (node.content || []).map((child) => {
-                return processNode(child);
-            }).join('');
+            const depth = context.depth || 0;
+            const content = (node.content || [])
+                .map((child) => processListItem(child, child.attrs?.checked ? '- [x]' : '- [ ]', depth))
+                .join('');
+            return context.nested ? content : `${content}\n`;
         }
         if (node.type === 'taskItem') {
-            const checked = node.attrs?.checked;
-            const text = (node.content || []).map(processNode).join('');
-            return `- ${checked ? '[x]' : '[ ]'} ${text}\n`;
+            return processListItem(node, node.attrs?.checked ? '- [x]' : '- [ ]', context.depth || 0);
         }
         if (node.type === 'orderedList') {
             let index = node.attrs?.start || 1;
-            return (node.content || []).map((child) => {
-                const text = processNode(child);
-                return `${index++}. ${text}\n`;
-            }).join('');
+            const depth = context.depth || 0;
+            const content = (node.content || [])
+                .map((child) => processListItem(child, `${index++}.`, depth))
+                .join('');
+            return context.nested ? content : `${content}\n`;
         }
         if (node.type === 'listItem') {
-            const text = (node.content || []).map(processNode).join('');
-            return '- ' + text + '\n';
+            return processInlineContent(node);
         }
         if (node.type === 'hardBreak') {
             return '\n';
@@ -331,7 +378,8 @@ export const editorJsonToMarkdown = (json) => {
             return text;
         }
         if (node.content) {
-            return node.content.map(processNode).join('');
+            const content = node.content.map((child) => processNode(child, context)).join('');
+            return context.inline ? content : indentLines(content, context.depth || 0);
         }
         return '';
     };

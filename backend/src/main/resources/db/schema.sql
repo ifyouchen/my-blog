@@ -99,12 +99,11 @@ CREATE TABLE `blog_article`  (
                                  `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
                                  `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                  PRIMARY KEY (`id`) USING BTREE,
-                                 INDEX `idx_blog_article_author`(`author_id`) USING BTREE,
-                                 INDEX `idx_blog_article_status_created`(`status`, `created_at`) USING BTREE,
-                                 INDEX `idx_blog_article_category_created`(`category`, `created_at`) USING BTREE,
-                                 INDEX `idx_blog_article_author_status_updated`(`author_id`, `status`, `updated_at`) USING BTREE,
-                                 INDEX `idx_blog_article_status_published_hot`(`status`, `view_count`, `published_at`, `id`) USING BTREE,
-                                 INDEX `idx_blog_article_status_published_featured`(`status`, `like_count`, `published_at`, `id`) USING BTREE,
+                                 INDEX `idx_article_feed_latest`(`status`, `deleted_at`, `published_at` DESC, `id` DESC) USING BTREE,
+                                 INDEX `idx_article_category_latest`(`status`, `deleted_at`, `category`, `published_at` DESC, `id` DESC) USING BTREE,
+                                 INDEX `idx_article_author_status_updated_v2`(`author_id`, `deleted_at`, `status`, `updated_at` DESC, `id` DESC) USING BTREE,
+                                 INDEX `idx_article_hot_v2`(`status`, `deleted_at`, `view_count` DESC, `published_at` DESC, `id` DESC) USING BTREE,
+                                 INDEX `idx_article_featured_v2`(`status`, `deleted_at`, `like_count` DESC, `published_at` DESC, `id` DESC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 9004 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客文章表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -121,7 +120,7 @@ CREATE TABLE `blog_article_favorite`  (
                                           `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                           PRIMARY KEY (`id`) USING BTREE,
                                           UNIQUE INDEX `uk_blog_article_favorite_article_user`(`article_id`, `user_id`) USING BTREE,
-                                          INDEX `idx_blog_article_favorite_user`(`user_id`) USING BTREE
+                                          INDEX `idx_favorite_user_page_v2`(`user_id`, `deleted_at`, `created_at` DESC, `article_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客文章收藏表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -138,7 +137,7 @@ CREATE TABLE `blog_article_like`  (
                                       `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                       PRIMARY KEY (`id`) USING BTREE,
                                       UNIQUE INDEX `uk_blog_article_like_article_user`(`article_id`, `user_id`) USING BTREE,
-                                      INDEX `idx_blog_article_like_user`(`user_id`) USING BTREE
+                                      INDEX `idx_like_user_article_v2`(`user_id`, `deleted_at`, `article_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客文章点赞表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -155,7 +154,7 @@ CREATE TABLE `blog_article_tag`  (
                                      `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                      PRIMARY KEY (`id`) USING BTREE,
                                      UNIQUE INDEX `uk_blog_article_tag_article_name`(`article_id`, `tag_name`) USING BTREE,
-                                     INDEX `idx_blog_article_tag_name`(`tag_name`) USING BTREE
+                                     INDEX `idx_article_tag_lookup_v2`(`tag_name`, `deleted_at`, `article_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 19 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客文章标签表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -197,7 +196,7 @@ CREATE TABLE `blog_column`  (
                                 `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                 PRIMARY KEY (`id`) USING BTREE,
                                 INDEX `idx_blog_column_author`(`author_id`) USING BTREE,
-                                INDEX `idx_blog_column_status_sort`(`status`, `sort_order`) USING BTREE
+                                INDEX `idx_column_published_sort_v2`(`status`, `deleted_at`, `sort_order` ASC, `subscriber_count` DESC, `id` DESC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 2004 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客专栏表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -215,7 +214,8 @@ CREATE TABLE `blog_column_article`  (
                                         `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                         PRIMARY KEY (`id`) USING BTREE,
                                         UNIQUE INDEX `uk_blog_column_article_pair`(`column_id`, `article_id`) USING BTREE,
-                                        INDEX `idx_blog_column_article_article`(`article_id`) USING BTREE
+                                        INDEX `idx_blog_column_article_article`(`article_id`) USING BTREE,
+                                        INDEX `idx_column_article_page_v2`(`column_id`, `deleted_at`, `sort_order` ASC, `id` ASC, `article_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客专栏文章关联表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -255,11 +255,9 @@ CREATE TABLE `blog_comment`  (
                                  `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
                                  `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                  PRIMARY KEY (`id`) USING BTREE,
-                                 INDEX `idx_blog_comment_article`(`article_id`) USING BTREE,
                                  INDEX `idx_blog_comment_user`(`user_id`) USING BTREE,
-                                 INDEX `idx_blog_comment_root`(`root_comment_id`) USING BTREE,
-                                 INDEX `idx_blog_comment_parent`(`parent_id`) USING BTREE,
-                                 INDEX `idx_blog_comment_root_sort`(`article_id`, `parent_id`, `status`, `pinned`, `pinned_at`, `like_count`, `created_at`, `id`) USING BTREE
+                                 INDEX `idx_comment_root_page_v2`(`article_id`, `parent_id`, `status`, `deleted_at`, `pinned` DESC, `pinned_at` DESC, `like_count` DESC, `created_at` DESC, `id` DESC) USING BTREE,
+                                 INDEX `idx_comment_reply_page_v2`(`root_comment_id`, `parent_id`, `status`, `deleted_at`, `created_at` ASC, `id` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客评论表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -297,9 +295,9 @@ CREATE TABLE `blog_notification`  (
                                       `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
                                       `version` bigint(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                       PRIMARY KEY (`id`) USING BTREE,
-                                      INDEX `idx_blog_notification_receiver_read_created`(`receiver_user_id`, `read_at`, `created_at`) USING BTREE,
-                                      INDEX `idx_blog_notification_receiver_created`(`receiver_user_id`, `created_at`) USING BTREE,
-                                      INDEX `idx_blog_notification_actor`(`actor_user_id`) USING BTREE
+                                      INDEX `idx_blog_notification_actor`(`actor_user_id`) USING BTREE,
+                                      INDEX `idx_notification_receiver_page_v2`(`receiver_user_id`, `deleted_at`, `created_at` DESC, `id` DESC) USING BTREE,
+                                      INDEX `idx_notification_receiver_read_page_v2`(`receiver_user_id`, `deleted_at`, `read_at`, `created_at` DESC, `id` DESC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客通知表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -316,8 +314,8 @@ CREATE TABLE `blog_user_follow`  (
                                      `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                      PRIMARY KEY (`id`) USING BTREE,
                                      UNIQUE INDEX `uk_blog_user_follow_pair`(`follower_user_id`, `following_user_id`) USING BTREE,
-                                     INDEX `idx_blog_user_follow_following`(`following_user_id`) USING BTREE,
-                                     INDEX `idx_blog_user_follow_follower_created`(`follower_user_id`, `created_at`) USING BTREE
+                                     INDEX `idx_following_page_v2`(`follower_user_id`, `deleted_at`, `created_at` DESC, `id` DESC, `following_user_id`) USING BTREE,
+                                     INDEX `idx_follower_count_v2`(`following_user_id`, `deleted_at`, `follower_user_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客用户关注表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -336,7 +334,8 @@ CREATE TABLE `blog_user_search_history`  (
                                              `version` bigint(0) NOT NULL DEFAULT 0 COMMENT '版本号',
                                              PRIMARY KEY (`id`) USING BTREE,
                                              INDEX `idx_search_history_user_keyword`(`user_id`, `keyword`) USING BTREE,
-                                             INDEX `idx_search_history_last_searched`(`last_searched_at`) USING BTREE
+                                             INDEX `idx_search_history_last_searched`(`last_searched_at`) USING BTREE,
+                                             INDEX `idx_search_history_recent_v2`(`user_id`, `deleted_at`, `last_searched_at` DESC, `id` DESC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户搜索历史表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------

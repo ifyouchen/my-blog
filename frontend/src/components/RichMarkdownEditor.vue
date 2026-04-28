@@ -757,6 +757,60 @@ const triggerImageUpload = () => {
     imageInputRef.value?.click();
 };
 
+const clearHeadingJumpHighlights = () => {
+    if (!editor.value?.view?.dom) {
+        return;
+    }
+    editor.value.view.dom
+        .querySelectorAll('.editor-heading-jump-highlight')
+        .forEach((node) => node.classList.remove('editor-heading-jump-highlight'));
+};
+
+const scrollToHeadingByIndex = async (headingIndex) => {
+    if (!editor.value) {
+        return false;
+    }
+
+    let currentIndex = -1;
+    let targetPosition = null;
+    editor.value.state.doc.descendants((node, position) => {
+        if (node.type.name !== 'heading') {
+            return true;
+        }
+        currentIndex += 1;
+        if (currentIndex === headingIndex) {
+            targetPosition = position;
+            return false;
+        }
+        return true;
+    });
+
+    if (targetPosition === null) {
+        return false;
+    }
+
+    closeSlashMenu();
+    closeContextMenu();
+    editor.value.chain().focus().setTextSelection(targetPosition + 1).run();
+    await nextTick();
+
+    const domNode = editor.value.view.nodeDOM(targetPosition);
+    const headingElement = domNode instanceof HTMLElement ? domNode : domNode?.parentElement;
+    if (headingElement) {
+        clearHeadingJumpHighlights();
+        headingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        headingElement.classList.add('editor-heading-jump-highlight');
+        window.setTimeout(() => {
+            headingElement.classList.remove('editor-heading-jump-highlight');
+        }, 1400);
+    }
+    return true;
+};
+
+defineExpose({
+    scrollToHeadingByIndex
+});
+
 const toggleBold = () => runEditorCommand((chain) => chain.toggleBold());
 const toggleItalic = () => runEditorCommand((chain) => chain.toggleItalic());
 const toggleStrike = () => runEditorCommand((chain) => chain.toggleStrike());

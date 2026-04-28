@@ -61,6 +61,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 2000) + 1
         FROM blog_column
+        WHERE id &lt; 10000000000
     </select>
 
     <select id="countById" resultType="int">

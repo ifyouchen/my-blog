@@ -6,36 +6,54 @@ import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getColumnArticlesApi, getColumnDetailApi} from '@/api/columns';
+import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const route = useRoute();
 const column = ref(null);
 const articles = ref([]);
-const loading = ref(false);
-const errorMessage = ref('');
 const currentPage = ref(1);
 const total = ref(0);
 const pageSize = 10;
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading,
+    runStableRequest,
+    resetStableRequest
+} = useStableListRequest();
 
-const fetchColumn = async () => {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const columnId = Number(route.params.id);
-        const [columnDetail, articlePage] = await Promise.all([
-            getColumnDetailApi(columnId),
-            getColumnArticlesApi(columnId, { page: currentPage.value, pageSize })
-        ]);
-        column.value = columnDetail;
-        articles.value = articlePage.items || [];
-        total.value = articlePage.total || 0;
-    } catch (error) {
+const fetchColumn = async ({ reset = false } = {}) => {
+    if (reset) {
+        resetStableRequest();
         column.value = null;
         articles.value = [];
         total.value = 0;
-        errorMessage.value = error.message || '专栏加载失败';
-    } finally {
-        loading.value = false;
     }
+
+    const columnId = String(route.params.id || '');
+    const { result } = await runStableRequest(
+        () => Promise.all([
+            getColumnDetailApi(columnId),
+            getColumnArticlesApi(columnId, { page: currentPage.value, pageSize })
+        ]),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '专栏加载失败',
+            refreshErrorMessage: '专栏文章刷新失败，请稍后重试'
+        }
+    );
+
+    if (!result) {
+        return;
+    }
+
+    const [columnDetail, articlePage] = result;
+    column.value = columnDetail;
+    articles.value = articlePage.items || [];
+    total.value = articlePage.total || 0;
 };
 
 const changePage = async (page) => {
@@ -51,11 +69,11 @@ const handleSubscribeChange = (subscribed) => {
     column.value.subscriberCount = Math.max(0, (column.value.subscriberCount || 0) + (subscribed ? 1 : -1));
 };
 
-onMounted(fetchColumn);
+onMounted(() => fetchColumn({ reset: true }));
 
 watch(() => route.params.id, async () => {
     currentPage.value = 1;
-    await fetchColumn();
+    await fetchColumn({ reset: true });
 });
 </script>
 
@@ -81,8 +99,17 @@ watch(() => route.params.id, async () => {
             </div>
         </section>
 
+        <section v-else-if="initialLoading" class="column-detail-hero column-detail-loading">
+            <div class="column-detail-loading-media"></div>
+            <div class="column-detail-content">
+                <p class="eyebrow">专栏</p>
+                <h1>正在加载专栏...</h1>
+                <p>我们正在准备这个专栏的内容。</p>
+            </div>
+        </section>
+
         <EmptyState
-            v-else
+            v-else-if="errorMessage"
             eyebrow="专栏"
             title="暂时无法加载这个专栏"
             :description="errorMessage || '请稍后重试。'"
@@ -95,7 +122,11 @@ watch(() => route.params.id, async () => {
             :page-size="pageSize"
             :total="total"
             :loading="loading"
+            :initial-loading="initialLoading"
+            :refreshing="refreshing"
+            :has-loaded-once="hasLoadedOnce"
             :error-message="errorMessage"
+            :inline-error-message="inlineError"
             :sort-items="[]"
             eyebrow="专栏文章"
             title="继续阅读"
@@ -126,10 +157,32 @@ watch(() => route.params.id, async () => {
     box-shadow: none;
 }
 
+.column-detail-loading {
+    min-height: 320px;
+}
+
+.column-detail-loading-media {
+    min-height: 280px;
+    background: linear-gradient(90deg, #f2f5f8 25%, #e8eef4 37%, #f2f5f8 63%);
+    background-size: 400% 100%;
+    border-radius: var(--radius-sm);
+    animation: column-skeleton 1.2s ease-in-out infinite;
+}
+
 .column-detail-content {
     display: grid;
     align-content: start;
     gap: 14px;
+}
+
+@keyframes column-skeleton {
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: 0 0;
+    }
 }
 
 .column-detail-content h1,

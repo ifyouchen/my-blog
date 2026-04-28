@@ -45,7 +45,20 @@
         FROM blog_article_favorite
         WHERE user_id = #{userId}
         AND deleted_at IS NULL
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectPublishedByUserId" resultMap="BaseResultMap">
+        SELECT f.id, f.article_id, f.user_id, f.created_at, f.updated_at, f.deleted_at, f.version
+        FROM blog_article_favorite f
+        INNER JOIN blog_article a
+            ON a.id = f.article_id
+            AND a.status = 'PUBLISHED'
+            AND a.deleted_at IS NULL
+        WHERE f.user_id = #{userId}
+        AND f.deleted_at IS NULL
+        ORDER BY f.created_at DESC, f.id DESC
         LIMIT #{offset}, #{limit}
     </select>
 
@@ -54,6 +67,17 @@
         FROM blog_article_favorite
         WHERE user_id = #{userId}
         AND deleted_at IS NULL
+    </select>
+
+    <select id="countPublishedByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_article_favorite f
+        INNER JOIN blog_article a
+            ON a.id = f.article_id
+            AND a.status = 'PUBLISHED'
+            AND a.deleted_at IS NULL
+        WHERE f.user_id = #{userId}
+        AND f.deleted_at IS NULL
     </select>
 
     <select id="countById" resultType="int">
@@ -65,6 +89,7 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 100) + 1
         FROM blog_article_favorite
+        WHERE id &lt; 10000000000
     </select>
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO">

@@ -4,30 +4,39 @@ import {useRouter} from 'vue-router';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getColumnsApi} from '@/api/columns';
+import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const router = useRouter();
 const columns = ref([]);
-const loading = ref(false);
-const errorMessage = ref('');
 const currentPage = ref(1);
 const total = ref(0);
 const pageSize = 9;
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading,
+    runStableRequest
+} = useStableListRequest();
 
 const fetchColumns = async () => {
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const pageResult = await getColumnsApi({ page: currentPage.value, pageSize });
-        columns.value = pageResult.items || [];
-        total.value = pageResult.total || 0;
-        currentPage.value = pageResult.page || currentPage.value;
-    } catch (error) {
-        columns.value = [];
-        total.value = 0;
-        errorMessage.value = error.message || '专栏加载失败';
-    } finally {
-        loading.value = false;
+    const response = await runStableRequest(
+        () => getColumnsApi({ page: currentPage.value, pageSize }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '专栏加载失败',
+            refreshErrorMessage: '专栏刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
     }
+    const pageResult = response.result || {};
+    columns.value = pageResult.items || [];
+    total.value = pageResult.total || 0;
+    currentPage.value = pageResult.page || currentPage.value;
 };
 
 const totalPages = () => Math.max(1, Math.ceil(total.value / pageSize));
@@ -58,9 +67,11 @@ onMounted(fetchColumns);
         </section>
 
         <section class="columns-grid-panel">
-            <div v-if="loading" class="columns-state">专栏加载中...</div>
-            <div v-else-if="errorMessage" class="columns-state error">{{ errorMessage }}</div>
-            <div v-else-if="!columns.length" class="columns-state">暂时还没有可浏览的专栏。</div>
+            <div v-if="refreshing && columns.length" class="columns-state refreshing">正在更新专栏...</div>
+            <div v-if="inlineError" class="columns-state error">{{ inlineError }}</div>
+            <div v-if="initialLoading && !columns.length" class="columns-state">专栏加载中...</div>
+            <div v-else-if="errorMessage && !columns.length" class="columns-state error">{{ errorMessage }}</div>
+            <div v-else-if="!refreshing && hasLoadedOnce && !columns.length" class="columns-state">暂时还没有可浏览的专栏。</div>
             <div v-else class="columns-grid" data-testid="columns-grid">
                 <article
                     v-for="column in columns"
@@ -114,8 +125,20 @@ onMounted(fetchColumns);
         <nav v-if="totalPages() > 1" class="pagination-bar" aria-label="专栏分页">
             <p>第 {{ currentPage }} / {{ totalPages() }} 页，共 {{ total }} 个专栏</p>
             <div class="pagination-actions">
-                <button type="button" :disabled="currentPage <= 1 || loading" @click="changePage(currentPage - 1)">上一页</button>
-                <button type="button" :disabled="currentPage >= totalPages() || loading" @click="changePage(currentPage + 1)">下一页</button>
+                <button
+                    type="button"
+                    :disabled="currentPage <= 1 || loading"
+                    @click="changePage(currentPage - 1)"
+                >
+                    上一页
+                </button>
+                <button
+                    type="button"
+                    :disabled="currentPage >= totalPages() || loading"
+                    @click="changePage(currentPage + 1)"
+                >
+                    下一页
+                </button>
             </div>
         </nav>
     </main>
@@ -246,6 +269,21 @@ onMounted(fetchColumns);
 
 .columns-state {
     color: var(--muted);
+}
+
+.columns-state.refreshing {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: var(--radius-sm);
+}
+
+.columns-state.error {
+    color: var(--error);
 }
 
 @media (max-width: 1080px) {

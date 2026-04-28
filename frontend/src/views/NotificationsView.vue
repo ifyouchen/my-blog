@@ -15,8 +15,6 @@ const notifications = ref([]);
 const total = ref(0);
 const currentFilter = ref(validFilters.includes(route.query.filter) ? route.query.filter : 'all');
 const currentPage = ref(Number.parseInt(route.query.page || '1', 10) || 1);
-const loadedFilter = ref(currentFilter.value);
-const loadedPage = ref(currentPage.value);
 const initialLoading = ref(true);
 const refreshing = ref(false);
 const errorMessage = ref('');
@@ -81,9 +79,6 @@ const formatTime = (timeStr) => {
 };
 
 const totalPages = computed(() => (total.value > 0 ? Math.ceil(total.value / pageSize) : 1));
-const hasLoadedCurrentQuery = computed(
-    () => loadedFilter.value === currentFilter.value && loadedPage.value === currentPage.value
-);
 
 const visiblePages = computed(() => {
     const pages = [];
@@ -137,8 +132,6 @@ const fetchNotifications = async ({ silent = false } = {}) => {
 
         notifications.value = nextItems;
         total.value = nextTotal;
-        loadedFilter.value = currentFilter.value;
-        loadedPage.value = currentPage.value;
     } catch (error) {
         if (!hasLoadedOnce) {
             notifications.value = [];
@@ -312,7 +305,7 @@ watch(
                 <div
                     v-else
                     class="notifications-list"
-                    :class="{ 'is-refreshing': refreshing && !hasLoadedCurrentQuery }"
+                    :class="{ 'is-refreshing': refreshing }"
                 >
                     <article
                         v-for="notification in notifications"
@@ -352,9 +345,6 @@ watch(
                             <span class="notification-arrow">›</span>
                         </div>
                     </article>
-                    <div v-if="refreshing && !hasLoadedCurrentQuery" class="list-refresh-mask">
-                        正在切换通知视图...
-                    </div>
                 </div>
 
                 <footer v-if="total > 0 && totalPages > 1" class="pagination-bar">
@@ -596,10 +586,6 @@ watch(
     background: var(--line);
 }
 
-.notifications-list.is-refreshing {
-    min-height: 320px;
-}
-
 .notification-item {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) auto;
@@ -681,17 +667,6 @@ watch(
     color: #cbd5e1;
     font-size: 26px;
     line-height: 1;
-}
-
-.list-refresh-mask {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    color: var(--brand);
-    font-size: 14px;
-    font-weight: 600;
-    background: rgba(255, 255, 255, 0.85);
 }
 
 .pagination-bar {

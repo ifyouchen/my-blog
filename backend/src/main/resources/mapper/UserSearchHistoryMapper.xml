@@ -33,7 +33,7 @@
         FROM blog_user_search_history
         WHERE user_id = #{userId}
         AND deleted_at IS NULL
-        ORDER BY last_searched_at DESC
+        ORDER BY last_searched_at DESC, id DESC
         LIMIT #{offset}, #{limit}
     </select>
 
@@ -98,5 +98,6 @@
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 0) + 1
         FROM blog_user_search_history
+        WHERE id &lt; 10000000000
     </select>
 </mapper>

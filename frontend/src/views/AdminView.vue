@@ -191,8 +191,6 @@ async function fetchCategories(targetPage = categoryState.page) {
         categoryState.page = nextPage;
         categoryState.jumpPage = String(categoryState.page);
     } catch (error) {
-        categoryState.items = [];
-        categoryState.total = 0;
         categoryState.error = error.message || '获取分类失败';
     } finally {
         categoryState.loading = false;
@@ -237,8 +235,6 @@ async function fetchTags(targetPage = tagState.page) {
         tagState.page = nextPage;
         tagState.jumpPage = String(tagState.page);
     } catch (error) {
-        tagState.items = [];
-        tagState.total = 0;
         tagState.error = error.message || '获取标签失败';
     } finally {
         tagState.loading = false;
@@ -728,8 +724,24 @@ onMounted(() => {
                 </div>
 
                 <div class="admin-resource-body">
-                    <p v-if="categoryState.loading" class="backend-state-text">分类数据加载中...</p>
-                    <p v-else-if="categoryState.error" class="backend-state-text error-text">{{ categoryState.error }}</p>
+                    <p v-if="categoryState.loading && categoryState.items.length" class="backend-state-text subtle">
+                        正在更新分类数据...
+                    </p>
+                    <p
+                        v-if="categoryState.error && categoryState.items.length"
+                        class="backend-state-text error-text subtle"
+                    >
+                        {{ categoryState.error }}
+                    </p>
+                    <p v-if="categoryState.loading && !categoryState.items.length" class="backend-state-text">
+                        分类数据加载中...
+                    </p>
+                    <p
+                        v-else-if="categoryState.error && !categoryState.items.length"
+                        class="backend-state-text error-text"
+                    >
+                        {{ categoryState.error }}
+                    </p>
                     <template v-else-if="categoryState.items.length">
                         <div class="admin-resource-table-wrap">
                             <table class="admin-resource-table">
@@ -856,8 +868,18 @@ onMounted(() => {
                 </div>
 
                 <div class="admin-resource-body">
-                    <p v-if="tagState.loading" class="backend-state-text">标签数据加载中...</p>
-                    <p v-else-if="tagState.error" class="backend-state-text error-text">{{ tagState.error }}</p>
+                    <p v-if="tagState.loading && tagState.items.length" class="backend-state-text subtle">
+                        正在更新标签数据...
+                    </p>
+                    <p v-if="tagState.error && tagState.items.length" class="backend-state-text error-text subtle">
+                        {{ tagState.error }}
+                    </p>
+                    <p v-if="tagState.loading && !tagState.items.length" class="backend-state-text">
+                        标签数据加载中...
+                    </p>
+                    <p v-else-if="tagState.error && !tagState.items.length" class="backend-state-text error-text">
+                        {{ tagState.error }}
+                    </p>
                     <template v-else-if="tagState.items.length">
                         <div class="admin-resource-table-wrap">
                             <table class="admin-resource-table">

@@ -24,8 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ArticleFavoriteAppService {
@@ -111,44 +115,55 @@ public class ArticleFavoriteAppService {
 
     public PageResult<ArticleDTO> getUserFavorites(Long userId, int page, int pageSize) {
         UserId currentUserId = new UserId(userId);
-        int rawTotal = articleFavoriteRepository.countByUserId(currentUserId);
-        if (rawTotal <= 0) {
-            return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), page, pageSize, 0);
+        int safePage = Math.max(page, 1);
+        int safePageSize = Math.max(pageSize, 1);
+        int total = articleFavoriteRepository.countPublishedByUserId(currentUserId);
+        if (total <= 0) {
+            return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), safePage, safePageSize, 0);
         }
 
-        List<ArticleFavorite> favorites = articleFavoriteRepository.findByUserId(currentUserId, 1, rawTotal);
-        List<ArticleDTO> visibleFavorites = new ArrayList<ArticleDTO>();
+        List<ArticleFavorite> favorites = articleFavoriteRepository.findPublishedByUserId(
+            currentUserId, safePage, safePageSize
+        );
+        if (favorites.isEmpty()) {
+            return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), safePage, safePageSize, total);
+        }
 
+        List<Long> articleIds = new ArrayList<Long>(favorites.size());
         for (ArticleFavorite favorite : favorites) {
-            Optional<Article> articleOpt = articleRepository.findById(favorite.getArticleId());
-            if (!articleOpt.isPresent()) {
+            articleIds.add(favorite.getArticleId().getValue());
+        }
+
+        Map<Long, Article> articleMap = new HashMap<Long, Article>();
+        Set<Long> authorIds = new HashSet<Long>();
+        for (Article article : articleRepository.findByIds(articleIds)) {
+            articleMap.put(article.getId().getValue(), article);
+            authorIds.add(article.getAuthorId().getValue());
+        }
+
+        Map<Long, User> authorMap = new HashMap<Long, User>();
+        for (User author : userRepository.findByIds(new ArrayList<Long>(authorIds))) {
+            authorMap.put(author.getId().getValue(), author);
+        }
+
+        List<ArticleDTO> result = new ArrayList<ArticleDTO>(favorites.size());
+        for (ArticleFavorite favorite : favorites) {
+            Article article = articleMap.get(favorite.getArticleId().getValue());
+            if (article == null || !ArticleStatus.PUBLISHED.equals(article.getStatus())) {
                 continue;
             }
-            Article article = articleOpt.get();
-            if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+            User author = authorMap.get(article.getAuthorId().getValue());
+            if (author == null) {
                 continue;
             }
-            Optional<User> userOpt = userRepository.findById(article.getAuthorId());
-            if (!userOpt.isPresent()) {
-                continue;
-            }
-            ArticleDTO articleDTO = articleAssembler.toDTO(article, userOpt.get());
+            ArticleDTO articleDTO = articleAssembler.toDTO(article, author);
+            articleDTO.setFavorited(true);
             if (favorite.getCreatedAt() != null) {
                 articleDTO.setFavoritedAt(FORMATTER.format(favorite.getCreatedAt()));
             }
-            visibleFavorites.add(articleDTO);
+            result.add(articleDTO);
         }
 
-        int safePage = Math.max(page, 1);
-        int safePageSize = Math.max(pageSize, 1);
-        int fromIndex = Math.min((safePage - 1) * safePageSize, visibleFavorites.size());
-        int toIndex = Math.min(fromIndex + safePageSize, visibleFavorites.size());
-        List<ArticleDTO> result = new ArrayList<ArticleDTO>(visibleFavorites.subList(fromIndex, toIndex));
-        return new PageResult<ArticleDTO>(
-            result,
-            safePage,
-            safePageSize,
-            visibleFavorites.size()
-        );
+        return new PageResult<ArticleDTO>(result, safePage, safePageSize, total);
     }
 }

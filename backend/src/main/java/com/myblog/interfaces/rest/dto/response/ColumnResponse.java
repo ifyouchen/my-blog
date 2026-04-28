@@ -1,5 +1,8 @@
 package com.myblog.interfaces.rest.dto.response;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+
 /**
  * 专栏响应。
  *
@@ -8,6 +11,7 @@ package com.myblog.interfaces.rest.dto.response;
  */
 public class ColumnResponse {
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     private String title;
     private String summary;

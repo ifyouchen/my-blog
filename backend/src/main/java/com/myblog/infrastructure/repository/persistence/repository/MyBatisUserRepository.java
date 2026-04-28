@@ -5,7 +5,6 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.infrastructure.repository.persistence.converter.UserPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.UserDO;
-import com.myblog.infrastructure.config.SnowflakeIdGenerator;
 import com.myblog.infrastructure.repository.persistence.mapper.UserMapper;
 import com.myblog.shared.enums.UserStatus;
 import org.springframework.context.annotation.Profile;
@@ -30,18 +29,14 @@ import java.util.Optional;
 public class MyBatisUserRepository implements UserRepository {
 
     private final UserMapper userMapper;
-    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     /**
      * 创建用户 MyBatis 仓储。
      *
      * @param userMapper 用户 Mapper
-     * @param snowflakeIdGenerator Snowflake ID 生成器
      */
-    public MyBatisUserRepository(UserMapper userMapper,
-                                 SnowflakeIdGenerator snowflakeIdGenerator) {
+    public MyBatisUserRepository(UserMapper userMapper) {
         this.userMapper = userMapper;
-        this.snowflakeIdGenerator = snowflakeIdGenerator;
     }
 
     /**
@@ -200,7 +195,7 @@ public class MyBatisUserRepository implements UserRepository {
      */
     @Override
     public Long nextId() {
-        return snowflakeIdGenerator.nextId();
+        return userMapper.selectNextId();
     }
 
     @Override

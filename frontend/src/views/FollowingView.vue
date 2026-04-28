@@ -10,6 +10,7 @@ import {getFollowingFeedApi, getMyFollowingApi} from '@/api/following';
 import {getAuthorRankingsApi} from '@/api/rankings';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, normalizeArticleSort} from '@/constants/articleSort';
 import {useSession} from '@/stores/session';
+import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const route = useRoute();
 const router = useRouter();
@@ -18,13 +19,21 @@ const { isLoggedIn, state } = useSession();
 const articles = ref([]);
 const followingUsers = ref([]);
 const recommendedAuthors = ref([]);
-const loading = ref(false);
 const sidebarLoading = ref(false);
-const errorMessage = ref('');
 const currentPage = ref(Number.parseInt(route.query.page || '1', 10) || 1);
 const activeSort = ref(normalizeArticleSort(route.query.sort || ARTICLE_SORT_LATEST));
 const total = ref(0);
 const pageSize = 10;
+const {
+    initialLoading,
+    refreshing,
+    hasLoadedOnce,
+    errorMessage,
+    inlineError,
+    loading,
+    runStableRequest,
+    resetStableRequest
+} = useStableListRequest();
 
 const hasFollowing = computed(() => followingUsers.value.length > 0);
 
@@ -61,27 +70,29 @@ const fetchMeta = async () => {
 
 const fetchFeed = async () => {
     if (!isLoggedIn.value) {
+        resetStableRequest();
         articles.value = [];
         total.value = 0;
         return;
     }
-    loading.value = true;
-    errorMessage.value = '';
-    try {
-        const pageResult = await getFollowingFeedApi({
+    const response = await runStableRequest(
+        () => getFollowingFeedApi({
             page: currentPage.value,
             pageSize,
             sort: activeSort.value
-        });
-        articles.value = pageResult.items || [];
-        total.value = pageResult.total || 0;
-    } catch (error) {
-        articles.value = [];
-        total.value = 0;
-        errorMessage.value = error.message || '关注流加载失败';
-    } finally {
-        loading.value = false;
+        }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '关注流加载失败',
+            refreshErrorMessage: '关注流刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
     }
+    const pageResult = response.result || {};
+    articles.value = pageResult.items || [];
+    total.value = pageResult.total || 0;
 };
 
 const refreshAll = async () => {
@@ -148,7 +159,11 @@ watch(() => route.query, async (query) => {
                         :page-size="pageSize"
                         :total="total"
                         :loading="loading"
+                        :initial-loading="initialLoading"
+                        :refreshing="refreshing"
+                        :has-loaded-once="hasLoadedOnce"
                         :error-message="errorMessage"
+                        :inline-error-message="inlineError"
                         :sort="activeSort"
                         :sort-items="ARTICLE_SORT_ITEMS"
                         eyebrow="关注动态"
