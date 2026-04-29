@@ -130,15 +130,19 @@
         AND deleted_at IS NULL
     </select>
 
-    <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
+    <!--
+      INSERT ... ON DUPLICATE KEY UPDATE(幂等写入)
+      关键修复: 加入 deleted_at = VALUES(deleted_at),
+      确保取消后重新收藏能正确清除 deleted_at
+    -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO">
         INSERT INTO blog_article_favorite
-        (id, article_id, user_id, created_at, updated_at)
+        (id, article_id, user_id, created_at, updated_at, deleted_at)
         VALUES
-        (#{id}, #{articleId}, #{userId}, #{createdAt}, #{updatedAt})
+        (#{id}, #{articleId}, #{userId}, #{createdAt}, #{updatedAt}, #{deletedAt})
         ON DUPLICATE KEY UPDATE
-            article_id = #{articleId},
-            user_id = #{userId},
-            updated_at = NOW()
+            deleted_at = VALUES(deleted_at),
+            updated_at = NOW(),
+            version = version + 1
     </insert>
 </mapper>

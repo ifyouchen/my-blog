@@ -369,6 +369,27 @@ public class MyBatisArticleRepository implements ArticleRepository {
         articleMapper.insertTag(articleId, tagName);
     }
 
+    @Override
+    public void incrementLikeCount(Long articleId) { articleMapper.incrementLikeCount(articleId); }
+
+    @Override
+    public void decrementLikeCount(Long articleId) { articleMapper.decrementLikeCount(articleId); }
+
+    @Override
+    public void incrementFavoriteCount(Long articleId) { articleMapper.incrementFavoriteCount(articleId); }
+
+    @Override
+    public void decrementFavoriteCount(Long articleId) { articleMapper.decrementFavoriteCount(articleId); }
+
+    @Override
+    public void incrementCommentCount(Long articleId) { articleMapper.incrementCommentCount(articleId); }
+
+    @Override
+    public void decrementCommentCount(Long articleId, int decrement) { articleMapper.decrementCommentCount(articleId, decrement); }
+
+    @Override
+    public void incrementViewCount(Long articleId) { articleMapper.incrementViewCount(articleId); }
+
     private List<Article> toDomainList(List<ArticleDO> articleDOList) {
         List<Article> articles = new ArrayList<Article>(articleDOList.size());
         Map<Long, List<String>> tagMap = loadTags(articleDOList);

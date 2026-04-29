@@ -288,4 +288,25 @@ public interface ArticleMapper {
      * @return 作者文章统计列表
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> selectAuthorArticleStats(@Param("limit") int limit);
+
+    /** 原子递增点赞数（避免并发 Read-Modify-Write 丢失更新）。 */
+    int incrementLikeCount(@Param("articleId") Long articleId);
+
+    /** 原子递减点赞数（防止降为负数）。 */
+    int decrementLikeCount(@Param("articleId") Long articleId);
+
+    /** 原子递增收藏数。 */
+    int incrementFavoriteCount(@Param("articleId") Long articleId);
+
+    /** 原子递减收藏数（防止降为负数）。 */
+    int decrementFavoriteCount(@Param("articleId") Long articleId);
+
+    /** 原子递增评论数。 */
+    int incrementCommentCount(@Param("articleId") Long articleId);
+
+    /** 原子递减评论数（支持批量，删除楼层时同时减去回复数）。 */
+    int decrementCommentCount(@Param("articleId") Long articleId, @Param("decrement") int decrement);
+
+    /** 原子递增阅读数。 */
+    int incrementViewCount(@Param("articleId") Long articleId);
 }

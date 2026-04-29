@@ -55,6 +55,16 @@ public class ArticleFavoriteAppService {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * 收藏文章。
+     *
+     * <p><b>并发安全说明：</b><br>
+     * 先查询包含已软删除的记录，若当前有效收藏存在则快速返回 CONFLICT；
+     * 否则构造激活状态的收藏对象并 save()，底层 {@code insertOrUpdate} 的
+     * {@code ON DUPLICATE KEY UPDATE deleted_at = VALUES(deleted_at)}
+     * 保证唯一键约束下的幂等写入，彻底消除并发重复收藏时的唯一键冲突。
+     * </p>
+     */
     @Transactional(rollbackFor = Exception.class)
     public void favoriteArticle(Long articleId, Long userId) {
         log.info("User {} favoriting article {}", userId, articleId);
@@ -65,38 +75,41 @@ public class ArticleFavoriteAppService {
             throw new ApplicationException(ErrorCode.CONFLICT, "不能在未发布的文章下收藏");
         }
 
-        Optional<ArticleFavorite> existingFavorite = articleFavoriteRepository.findByArticleAndUserIncludingDeleted(
+        Optional<ArticleFavorite> existing = articleFavoriteRepository.findByArticleAndUserIncludingDeleted(
             new ArticleId(articleId), new UserId(userId)
         );
-        if (existingFavorite.isPresent()) {
-            ArticleFavorite favorite = existingFavorite.get();
-            if (!favorite.isDeleted()) {
-                throw new ApplicationException(ErrorCode.CONFLICT, "已经收藏过了");
-            }
-            favorite.reactivate();
-            articleFavoriteRepository.save(favorite);
-            eventPublisher.publishEvent(new ArticleFavoritedEvent(articleId, userId));
-            log.info("User {} re-favorited article {}", userId, articleId);
-            return;
+
+        if (existing.isPresent() && !existing.get().isDeleted()) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "已经收藏过了");
         }
 
-        ArticleFavorite favorite = ArticleFavorite.create(
-            articleFavoriteRepository.nextId(),
-            article.getId(),
-            new UserId(userId)
-        );
-        articleFavoriteRepository.save(favorite);
+        ArticleFavorite favoriteToSave;
+        if (existing.isPresent()) {
+            // 重新激活已取消的收藏
+            ArticleFavorite old = existing.get();
+            old.reactivate();
+            favoriteToSave = old;
+        } else {
+            favoriteToSave = ArticleFavorite.create(
+                articleFavoriteRepository.nextId(),
+                article.getId(),
+                new UserId(userId)
+            );
+        }
+
+        articleFavoriteRepository.save(favoriteToSave);
         eventPublisher.publishEvent(new ArticleFavoritedEvent(articleId, userId));
-        log.info("User {} favorited article {} (new)", userId, articleId);
+        log.info("User {} favorited article {}", userId, articleId);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void unfavoriteArticle(Long articleId, Long userId) {
         log.info("User {} unfavoriting article {}", userId, articleId);
-        Article article = articleRepository.findById(new ArticleId(articleId))
+        articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
-        ArticleFavorite favorite = articleFavoriteRepository.findByArticleAndUser(new ArticleId(articleId), new UserId(userId))
+        ArticleFavorite favorite = articleFavoriteRepository.findByArticleAndUser(
+            new ArticleId(articleId), new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "收藏记录不存在"));
 
         if (favorite.isDeleted()) {

@@ -308,4 +308,25 @@ public interface ArticleRepository {
      * @return 作者文章统计列表
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(int limit);
+
+    /** 原子递增文章点赞数。 */
+    void incrementLikeCount(Long articleId);
+
+    /** 原子递减文章点赞数。 */
+    void decrementLikeCount(Long articleId);
+
+    /** 原子递增文章收藏数。 */
+    void incrementFavoriteCount(Long articleId);
+
+    /** 原子递减文章收藏数。 */
+    void decrementFavoriteCount(Long articleId);
+
+    /** 原子递增文章评论数。 */
+    void incrementCommentCount(Long articleId);
+
+    /** 原子递减文章评论数（支持批量）。 */
+    void decrementCommentCount(Long articleId, int decrement);
+
+    /** 原子递增文章阅读数。 */
+    void incrementViewCount(Long articleId);
 }

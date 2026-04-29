@@ -106,6 +106,7 @@
             updated_at = #{updatedAt},
             version = version + 1
         WHERE id = #{id}
+        AND version = #{version}
     </update>
 
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->

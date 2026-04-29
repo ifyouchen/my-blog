@@ -77,4 +77,10 @@ public interface CommentMapper {
     int clearPinnedByArticleId(@Param("articleId") Long articleId);
 
     int deleteById(@Param("id") Long id);
+
+    /** 原子递增评论点赞数（避免并发丢失更新）。 */
+    int incrementLikeCount(@Param("commentId") Long commentId);
+
+    /** 原子递减评论点赞数（防止降为负数）。 */
+    int decrementLikeCount(@Param("commentId") Long commentId);
 }

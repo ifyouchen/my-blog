@@ -182,4 +182,10 @@ public interface CommentRepository {
      * @return 评论 ID
      */
     Long nextId();
+
+    /** 原子递增评论点赞数。 */
+    void incrementLikeCount(Long commentId);
+
+    /** 原子递减评论点赞数。 */
+    void decrementLikeCount(Long commentId);
 }

@@ -237,4 +237,10 @@ public class MyBatisCommentRepository implements CommentRepository {
     public Long nextId() {
         return commentMapper.selectNextId();
     }
+
+    @Override
+    public void incrementLikeCount(Long commentId) { commentMapper.incrementLikeCount(commentId); }
+
+    @Override
+    public void decrementLikeCount(Long commentId) { commentMapper.decrementLikeCount(commentId); }
 }

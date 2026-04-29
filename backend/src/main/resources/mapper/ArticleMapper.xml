@@ -688,4 +688,67 @@
         <result column="offline_count" property="offlineCount"/>
         <result column="deleted_count" property="deletedCount"/>
     </resultMap>
+
+    <!-- 原子递增点赞数，避免并发 Read-Modify-Write 丢失更新 -->
+    <update id="incrementLikeCount">
+        UPDATE blog_article
+        SET like_count = like_count + 1,
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <!-- 原子递减点赞数，防止降为负数 -->
+    <update id="decrementLikeCount">
+        UPDATE blog_article
+        SET like_count = GREATEST(like_count - 1, 0),
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <!-- 原子递增收藏数 -->
+    <update id="incrementFavoriteCount">
+        UPDATE blog_article
+        SET favorite_count = favorite_count + 1,
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <!-- 原子递减收藏数，防止降为负数 -->
+    <update id="decrementFavoriteCount">
+        UPDATE blog_article
+        SET favorite_count = GREATEST(favorite_count - 1, 0),
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <!-- 原子递增评论数 -->
+    <update id="incrementCommentCount">
+        UPDATE blog_article
+        SET comment_count = comment_count + 1,
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <!-- 原子递减评论数，支持批量（删除楼层时同时减去回复数） -->
+    <update id="decrementCommentCount">
+        UPDATE blog_article
+        SET comment_count = GREATEST(comment_count - #{decrement}, 0),
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <!-- 原子递增阅读数 -->
+    <update id="incrementViewCount">
+        UPDATE blog_article
+        SET view_count = view_count + 1,
+            updated_at = NOW()
+        WHERE id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
 </mapper>
