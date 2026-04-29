@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
@@ -86,6 +87,13 @@ public class CacheConfig {
 
     @Bean
     public Cache<Integer, List<String>> hotKeywordsCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean
+    public Cache<Long, AtomicInteger> reportCreateRateCache() {
         return Caffeine.newBuilder()
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .build();

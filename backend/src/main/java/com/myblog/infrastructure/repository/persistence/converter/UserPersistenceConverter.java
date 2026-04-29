@@ -34,6 +34,7 @@ public final class UserPersistenceConverter {
             userDO.getNickname(),
             userDO.getAvatarUrl(),
             userDO.getBio(),
+            userDO.getDisableReason(),
             UserRole.valueOf(userDO.getRole()),
             UserStatus.valueOf(userDO.getStatus()),
             userDO.getCreatedAt(),
@@ -56,6 +57,7 @@ public final class UserPersistenceConverter {
         userDO.setNickname(user.getNickname());
         userDO.setAvatarUrl(user.getAvatarUrl());
         userDO.setBio(user.getBio());
+        userDO.setDisableReason(user.getDisableReason());
         userDO.setRole(user.getRole().name());
         userDO.setStatus(user.getStatus().name());
         userDO.setCreatedAt(user.getCreatedAt());

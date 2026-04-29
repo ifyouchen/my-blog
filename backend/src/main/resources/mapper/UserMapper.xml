@@ -11,6 +11,7 @@
         <result column="nickname" property="nickname"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="bio" property="bio"/>
+        <result column="disable_reason" property="disableReason"/>
         <result column="role" property="role"/>
         <result column="status" property="status"/>
         <result column="created_at" property="createdAt"/>
@@ -20,7 +21,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, username, email, password_hash, nickname, avatar_url, bio, role, status,
+        id, username, email, password_hash, nickname, avatar_url, bio, disable_reason, role, status,
         created_at, updated_at, deleted_at, version
     </sql>
 
@@ -154,6 +155,7 @@
             nickname,
             avatar_url,
             bio,
+            disable_reason,
             role,
             status,
             created_at,
@@ -167,6 +169,7 @@
             #{nickname},
             #{avatarUrl},
             #{bio},
+            #{disableReason},
             #{role},
             #{status},
             #{createdAt},
@@ -182,6 +185,7 @@
             nickname = #{nickname},
             avatar_url = #{avatarUrl},
             bio = #{bio},
+            disable_reason = #{disableReason},
             role = #{role},
             status = #{status},
             updated_at = #{updatedAt},
@@ -191,7 +195,7 @@
     </update>
 
     <select id="searchUsers" resultMap="BaseResultMap">
-        SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.avatar_url, u.bio, u.role, u.status,
+        SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.avatar_url, u.bio, u.disable_reason, u.role, u.status,
                u.created_at, u.updated_at, u.deleted_at, u.version
         FROM blog_user u
         LEFT JOIN (
@@ -278,9 +282,9 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
         INSERT INTO blog_user
-        (id, username, email, password_hash, nickname, avatar_url, bio, role, status, created_at, updated_at)
+        (id, username, email, password_hash, nickname, avatar_url, bio, disable_reason, role, status, created_at, updated_at)
         VALUES
-        (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio}, #{role}, #{status}, #{createdAt}, #{updatedAt})
+        (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio}, #{disableReason}, #{role}, #{status}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
             username = #{username},
             email = #{email},
@@ -288,6 +292,7 @@
             nickname = #{nickname},
             avatar_url = #{avatarUrl},
             bio = #{bio},
+            disable_reason = #{disableReason},
             role = #{role},
             status = #{status},
             updated_at = NOW()

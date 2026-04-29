@@ -782,18 +782,18 @@ onMounted(fetchBootstrap);
                     class="column-card"
                     @click="goToColumn(column.id)"
                 >
-                    <img :src="column.coverUrl || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=300&q=80'" :alt="column.name" class="column-cover">
+                    <img :src="column.coverUrl || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=300&q=80'" :alt="column.title" class="column-cover">
                     <div class="column-info">
-                        <div class="column-name">{{ column.name }}</div>
+                        <div class="column-name">{{ column.title }}</div>
                         <div class="column-summary">{{ column.summary || column.description || '' }}</div>
                         <div class="column-author" @click.stop="goToUser(column.author?.id)">
                             <img
-                                v-if="column.author?.avatar"
-                                :src="column.author.avatar"
-                                :alt="column.author?.name"
+                                v-if="column.author?.avatarUrl"
+                                :src="column.author.avatarUrl"
+                                :alt="column.author?.nickname"
                                 class="column-author-avatar"
                             >
-                            <span>{{ column.author?.name || '' }}</span>
+                            <span>{{ column.author?.nickname || '' }}</span>
                         </div>
                         <div class="column-stats">
                             <span>订阅 {{ column.subscriberCount || 0 }}</span>

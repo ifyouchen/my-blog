@@ -3,6 +3,7 @@ package com.myblog.domain.repository;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
+import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -119,6 +120,26 @@ public interface ArticleRepository {
      * @return 热门文章列表
      */
     List<Article> findHotPublishedByAuthorId(Long authorId, int limit);
+
+    /**
+     * 查询作者文章表现列表。
+     *
+     * @param authorId 作者 ID
+     * @param sort 排序方式
+     * @param limit 限制数量
+     * @return 文章列表
+     */
+    List<Article> findAuthorPerformance(Long authorId, String sort, int limit);
+
+    /**
+     * 查询作者趋势聚合。
+     *
+     * @param authorId 作者 ID
+     * @param startDate 起始日期
+     * @param endDate 结束日期
+     * @return 趋势聚合列表
+     */
+    List<DashboardTrendPointDO> findAuthorTrendPoints(Long authorId, LocalDate startDate, LocalDate endDate);
 
     /**
      * 分页查询关注作者的已发布文章。

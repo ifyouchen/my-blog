@@ -39,6 +39,7 @@ public final class ArticlePersistenceConverter {
             articleDO.getContent(),
             articleDO.getCoverUrl(),
             articleDO.getCategory(),
+            articleDO.getOfflineReason(),
             safeTags,
             ArticleStatus.valueOf(articleDO.getStatus()),
             intValue(articleDO.getViewCount()),
@@ -67,6 +68,7 @@ public final class ArticlePersistenceConverter {
         articleDO.setContent(article.getContent());
         articleDO.setCoverUrl(article.getCoverUrl());
         articleDO.setCategory(article.getCategory());
+        articleDO.setOfflineReason(article.getOfflineReason());
         articleDO.setStatus(article.getStatus().name());
         articleDO.setViewCount(article.getViewCount());
         articleDO.setLikeCount(article.getLikeCount());

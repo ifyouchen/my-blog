@@ -140,6 +140,31 @@ public class AdminAppService {
     }
 
     /**
+     * 禁用用户并记录禁用原因。
+     *
+     * @param userId 用户 ID
+     * @param reason 禁用原因
+     * @return 变更结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> disableUser(Long userId, String reason) {
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+
+        UserStatus previousStatus = user.getStatus();
+        user.disable(reason);
+        userRepository.save(user);
+
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("id", user.getId().getValue());
+        result.put("username", user.getUsername());
+        result.put("previousStatus", previousStatus.name());
+        result.put("status", UserStatus.DISABLED.name());
+        result.put("disableReason", user.getDisableReason());
+        return result;
+    }
+
+    /**
      * 分页查询后台文章列表。
      *
      * @param page 页码
@@ -210,6 +235,31 @@ public class AdminAppService {
         result.put("title", article.getTitle());
         result.put("previousStatus", previousStatus.name());
         result.put("status", newStatus.name());
+        return result;
+    }
+
+    /**
+     * 下架文章并记录下架原因。
+     *
+     * @param articleId 文章 ID
+     * @param reason 下架原因
+     * @return 变更结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> offlineArticle(Long articleId, String reason) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+
+        ArticleStatus previousStatus = article.getStatus();
+        article.offline(reason);
+        articleRepository.save(article);
+
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("id", article.getId().getValue());
+        result.put("title", article.getTitle());
+        result.put("previousStatus", previousStatus.name());
+        result.put("status", ArticleStatus.OFFLINE.name());
+        result.put("offlineReason", article.getOfflineReason());
         return result;
     }
 

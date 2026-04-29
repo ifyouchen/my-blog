@@ -267,8 +267,9 @@ public class CommentAppService {
         int deleteCount;
 
         if (comment.isRootComment()) {
-            // 批量软删除整个楼层（根评论 + 所有回复），一条 SQL 搞定
-            deleteCount = commentRepository.deleteThreadByRootCommentId(comment.getId());
+            comment.delete();
+            commentRepository.save(comment);
+            deleteCount = 1 + commentRepository.deleteThreadByRootCommentId(comment.getId());
         } else {
             comment.delete();
             commentRepository.save(comment);
@@ -393,7 +394,7 @@ public class CommentAppService {
     }
 
     private String normalizeSort(String sort) {
-        return "latest".equalsIgnoreCase(sort) ? "latest" : "hot";
+        return "hot".equalsIgnoreCase(sort) ? "hot" : "latest";
     }
 
     private List<Long> toCommentIds(List<Comment> comments) {

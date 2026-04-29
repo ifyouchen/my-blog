@@ -3,6 +3,7 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleDO;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleTagRowDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
+import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
@@ -131,6 +132,14 @@ public interface ArticleMapper {
      */
     List<ArticleDO> selectHotPublishedByAuthorId(@Param("authorId") Long authorId,
                                                  @Param("limit") int limit);
+
+    List<ArticleDO> selectAuthorPerformance(@Param("authorId") Long authorId,
+                                            @Param("sort") String sort,
+                                            @Param("limit") int limit);
+
+    List<DashboardTrendPointDO> selectAuthorTrendPoints(@Param("authorId") Long authorId,
+                                                        @Param("startDate") LocalDate startDate,
+                                                        @Param("endDate") LocalDate endDate);
 
     List<ArticleDO> selectPublishedByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                                @Param("sort") String sort,

@@ -8,6 +8,7 @@ import com.myblog.infrastructure.repository.persistence.entity.ArticleDO;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleTagRowDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
+import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -160,6 +161,16 @@ public class MyBatisArticleRepository implements ArticleRepository {
     @Override
     public List<Article> findHotPublishedByAuthorId(Long authorId, int limit) {
         return toDomainList(articleMapper.selectHotPublishedByAuthorId(authorId, limit));
+    }
+
+    @Override
+    public List<Article> findAuthorPerformance(Long authorId, String sort, int limit) {
+        return toDomainList(articleMapper.selectAuthorPerformance(authorId, sort, Math.max(1, limit)));
+    }
+
+    @Override
+    public List<DashboardTrendPointDO> findAuthorTrendPoints(Long authorId, LocalDate startDate, LocalDate endDate) {
+        return articleMapper.selectAuthorTrendPoints(authorId, startDate, endDate);
     }
 
     @Override

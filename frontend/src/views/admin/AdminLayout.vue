@@ -12,6 +12,7 @@ const navItems = [
     { to: '/admin/users', label: '用户', icon: '用户' },
     { to: '/admin/articles', label: '文章', icon: '文章' },
     { to: '/admin/comments', label: '评论', icon: '评论' },
+    { to: '/admin/reports', label: '举报', icon: '举报' },
     { to: '/admin/categories', label: '分类', icon: '分类' },
     { to: '/admin/tags', label: '标签', icon: '标签' },
     { to: '/admin/columns', label: '专栏', icon: '专栏' },

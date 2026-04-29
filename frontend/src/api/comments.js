@@ -1,7 +1,7 @@
 import { request } from './http';
 import { normalizeComment, normalizeCommentPage } from './transformers';
 
-export const pageCommentsApi = async (articleId, { page = 1, pageSize = 20, sort = 'hot' } = {}) => {
+export const pageCommentsApi = async (articleId, { page = 1, pageSize = 20, sort = 'latest' } = {}) => {
     const data = await request(`/articles/${articleId}/comments?page=${page}&pageSize=${pageSize}&sort=${sort}`);
     return normalizeCommentPage(data);
 };

@@ -53,10 +53,10 @@ export const useConfirmDialog = () => {
         dialog.loading = true;
         try {
             await dialog.onConfirm();
-            closeConfirmDialog();
         } finally {
             dialog.loading = false;
         }
+        closeConfirmDialog();
     };
 
     return {

@@ -9,12 +9,13 @@ import ArticleToc from '@/components/ArticleToc.vue';
 import CommentList from '@/components/CommentList.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import {articles} from '@/data/home';
 import {useSession} from '@/stores/session';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
-const toast = inject('toast', { error: () => {} });
+const toast = inject('toast', { error: () => {}, success: () => {} });
 const { state } = useSession();
 
 const remoteArticle = ref(null);
@@ -50,8 +51,15 @@ const commentCount = ref(0);
 const showBackToTop = ref(false);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
+const reportDialogVisible = ref(false);
 const currentUserId = computed(() => state.user?.id || null);
 const showAuthorFollow = computed(() => {
+    if (!article.value?.author?.id) {
+        return false;
+    }
+    return currentUserId.value !== article.value.author.id;
+});
+const showArticleReport = computed(() => {
     if (!article.value?.author?.id) {
         return false;
     }
@@ -225,6 +233,25 @@ const toggleFavorite = async () => {
     }
 };
 
+const openReportArticle = () => {
+    if (!article.value) {
+        return;
+    }
+    const canContinue = loginModal.requireLogin(() => openReportArticle(), {
+        title: '登录后举报',
+        message: '登录后可以提交内容举报，管理员会在后台处理。',
+        actionText: '登录并举报'
+    });
+    if (!canContinue) {
+        return;
+    }
+    reportDialogVisible.value = true;
+};
+
+const handleReportSuccess = () => {
+    toast.success('举报已提交，管理员会尽快处理');
+};
+
 const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -321,6 +348,14 @@ onUnmounted(() => {
                                 detail
                                 @change="handleAuthorFollowChange"
                             />
+                            <button
+                                v-if="showArticleReport"
+                                type="button"
+                                class="article-quick-button subtle"
+                                @click="openReportArticle"
+                            >
+                                <span class="article-quick-label">举报</span>
+                            </button>
                         </div>
                     </div>
                 </section>
@@ -369,6 +404,15 @@ onUnmounted(() => {
     >
         ↑
     </button>
+    <ReportDialog
+        v-if="article"
+        :visible="reportDialogVisible"
+        target-type="ARTICLE"
+        :target-id="article.id"
+        :target-title="article.title"
+        @close="reportDialogVisible = false"
+        @success="handleReportSuccess"
+    />
 </template>
 
 <style scoped>
@@ -474,6 +518,10 @@ onUnmounted(() => {
     color: var(--brand);
     background: var(--brand-soft);
     border-color: var(--brand);
+}
+
+.article-quick-button.subtle {
+    color: var(--muted);
 }
 
 .article-quick-label {

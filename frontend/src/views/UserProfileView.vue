@@ -4,6 +4,7 @@ import {RouterLink, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
@@ -14,9 +15,11 @@ import {buildProfileSummaryStats} from '@/utils/profileSummary';
 
 const route = useRoute();
 const { state } = useSession();
-const toast = inject('toast', { error: () => {} });
+const toast = inject('toast', { error: () => {}, success: () => {} });
+const loginModal = inject('loginModal', { requireLogin: () => false });
 const profile = ref(null);
 const articles = ref([]);
+const reportDialogVisible = ref(false);
 const page = ref(1);
 const pageSize = 10;
 const total = ref(0);
@@ -86,6 +89,25 @@ const handleFollowChange = (followed, error) => {
     profile.value.followerCount = Math.max(0, (profile.value.followerCount || 0) + (followed ? 1 : -1));
 };
 
+const openReportUser = () => {
+    if (!profile.value?.user?.id) {
+        return;
+    }
+    const canContinue = loginModal.requireLogin(() => openReportUser(), {
+        title: '登录后举报用户',
+        message: '登录后可以提交用户举报，管理员会在后台处理。',
+        actionText: '登录并举报'
+    });
+    if (!canContinue) {
+        return;
+    }
+    reportDialogVisible.value = true;
+};
+
+const handleReportSuccess = () => {
+    toast.success('举报已提交，管理员会尽快处理');
+};
+
 watch(() => route.params.id, () => {
     page.value = 1;
     loadProfile({ reset: true });
@@ -119,6 +141,14 @@ watch(() => route.params.id, () => {
                     :followed="profile.following"
                     @change="handleFollowChange"
                 />
+                <button
+                    v-if="!isOwnProfile"
+                    type="button"
+                    class="profile-report-action"
+                    @click="openReportUser"
+                >
+                    举报
+                </button>
             </template>
         </UserProfileSummary>
 
@@ -157,6 +187,15 @@ watch(() => route.params.id, () => {
             @page-change="changePage"
         />
     </main>
+    <ReportDialog
+        v-if="profile"
+        :visible="reportDialogVisible"
+        target-type="USER"
+        :target-id="profile.user.id"
+        :target-title="profile.user.nickname || profile.user.username"
+        @close="reportDialogVisible = false"
+        @success="handleReportSuccess"
+    />
 </template>
 
 <style scoped>
@@ -180,6 +219,27 @@ watch(() => route.params.id, () => {
     color: var(--brand);
     border-color: var(--brand);
     background: var(--brand-soft);
+}
+
+.profile-report-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.profile-report-action:hover {
+    color: var(--accent);
+    border-color: rgba(220, 38, 38, 0.24);
+    background: rgba(220, 38, 38, 0.06);
 }
 
 .profile-summary-loading {

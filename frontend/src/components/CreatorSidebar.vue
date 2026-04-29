@@ -3,6 +3,10 @@ import { RouterLink } from 'vue-router';
 
 const navItems = [
     {
+        label: '创作概览',
+        path: '/dashboard/overview'
+    },
+    {
         label: '我的文章',
         path: '/dashboard/articles'
     },

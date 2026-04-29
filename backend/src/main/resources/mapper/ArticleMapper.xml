@@ -11,6 +11,7 @@
         <result column="content" property="content"/>
         <result column="cover_url" property="coverUrl"/>
         <result column="category" property="category"/>
+        <result column="offline_reason" property="offlineReason"/>
         <result column="status" property="status"/>
         <result column="view_count" property="viewCount"/>
         <result column="like_count" property="likeCount"/>
@@ -24,19 +25,19 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, author_id, title, summary, content, cover_url, category, status,
+        id, author_id, title, summary, content, cover_url, category, offline_reason, status,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Column_List">
-        id, author_id, title, summary, cover_url, category, status,
+        id, author_id, title, summary, cover_url, category, offline_reason, status,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Alias_Column_List">
-        a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.status,
+        a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.offline_reason, a.status,
         a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
         a.created_at, a.updated_at, a.deleted_at, a.version
     </sql>
@@ -218,6 +219,107 @@
         LIMIT #{limit}
     </select>
 
+    <select id="selectAuthorPerformance" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND deleted_at IS NULL
+        AND status != 'DELETED'
+        <choose>
+            <when test="sort == 'like'">
+                ORDER BY like_count DESC, view_count DESC, updated_at DESC, id DESC
+            </when>
+            <when test="sort == 'favorite'">
+                ORDER BY favorite_count DESC, view_count DESC, updated_at DESC, id DESC
+            </when>
+            <when test="sort == 'comment'">
+                ORDER BY comment_count DESC, view_count DESC, updated_at DESC, id DESC
+            </when>
+            <when test="sort == 'updated'">
+                ORDER BY updated_at DESC, id DESC
+            </when>
+            <otherwise>
+                ORDER BY view_count DESC, like_count DESC, updated_at DESC, id DESC
+            </otherwise>
+        </choose>
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectAuthorTrendPoints" resultType="com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO">
+        SELECT
+            stat_date AS statDate,
+            COALESCE(SUM(view_count), 0) AS viewCount,
+            COALESCE(SUM(like_count), 0) AS likeCount,
+            COALESCE(SUM(favorite_count), 0) AS favoriteCount,
+            COALESCE(SUM(comment_count), 0) AS commentCount
+        FROM (
+            SELECT DATE(v.created_at) AS stat_date,
+                   COUNT(1) AS view_count,
+                   0 AS like_count,
+                   0 AS favorite_count,
+                   0 AS comment_count
+            FROM blog_article_view v
+            INNER JOIN blog_article a ON a.id = v.article_id
+            WHERE a.author_id = #{authorId}
+            AND a.deleted_at IS NULL
+            AND v.deleted_at IS NULL
+            AND v.created_at &gt;= #{startDate}
+            AND v.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(v.created_at)
+
+            UNION ALL
+
+            SELECT DATE(l.created_at) AS stat_date,
+                   0 AS view_count,
+                   COUNT(1) AS like_count,
+                   0 AS favorite_count,
+                   0 AS comment_count
+            FROM blog_article_like l
+            INNER JOIN blog_article a ON a.id = l.article_id
+            WHERE a.author_id = #{authorId}
+            AND a.deleted_at IS NULL
+            AND l.deleted_at IS NULL
+            AND l.created_at &gt;= #{startDate}
+            AND l.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(l.created_at)
+
+            UNION ALL
+
+            SELECT DATE(f.created_at) AS stat_date,
+                   0 AS view_count,
+                   0 AS like_count,
+                   COUNT(1) AS favorite_count,
+                   0 AS comment_count
+            FROM blog_article_favorite f
+            INNER JOIN blog_article a ON a.id = f.article_id
+            WHERE a.author_id = #{authorId}
+            AND a.deleted_at IS NULL
+            AND f.deleted_at IS NULL
+            AND f.created_at &gt;= #{startDate}
+            AND f.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(f.created_at)
+
+            UNION ALL
+
+            SELECT DATE(c.created_at) AS stat_date,
+                   0 AS view_count,
+                   0 AS like_count,
+                   0 AS favorite_count,
+                   COUNT(1) AS comment_count
+            FROM blog_comment c
+            INNER JOIN blog_article a ON a.id = c.article_id
+            WHERE a.author_id = #{authorId}
+            AND a.deleted_at IS NULL
+            AND c.deleted_at IS NULL
+            AND c.status = 'PUBLISHED'
+            AND c.created_at &gt;= #{startDate}
+            AND c.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(c.created_at)
+        ) trend_rows
+        GROUP BY stat_date
+        ORDER BY stat_date ASC
+    </select>
+
     <select id="selectPublishedByAuthorIds" resultMap="BaseResultMap">
         SELECT <include refid="List_Column_List"/>
         FROM blog_article
@@ -274,6 +376,7 @@
             content,
             cover_url,
             category,
+            offline_reason,
             status,
             view_count,
             like_count,
@@ -291,6 +394,7 @@
             #{content},
             #{coverUrl},
             #{category},
+            #{offlineReason},
             #{status},
             #{viewCount},
             #{likeCount},
@@ -309,6 +413,7 @@
             content = #{content},
             cover_url = #{coverUrl},
             category = #{category},
+            offline_reason = #{offlineReason},
             status = #{status},
             view_count = #{viewCount},
             like_count = #{likeCount},
@@ -325,11 +430,11 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article (
-            id, author_id, title, summary, content, cover_url, category, status,
+            id, author_id, title, summary, content, cover_url, category, offline_reason, status,
             view_count, like_count, favorite_count, comment_count, published_at,
             created_at, updated_at
         ) VALUES (
-            #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{status},
+            #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{offlineReason}, #{status},
             #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
             #{createdAt}, #{updatedAt}
         )
@@ -339,6 +444,7 @@
             content = #{content},
             cover_url = #{coverUrl},
             category = #{category},
+            offline_reason = #{offlineReason},
             status = #{status},
             view_count = #{viewCount},
             like_count = #{likeCount},

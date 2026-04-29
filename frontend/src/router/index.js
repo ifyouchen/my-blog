@@ -18,6 +18,7 @@ const AdminOverviewView = () => import('@/views/admin/AdminOverviewView.vue');
 const AdminUsersView = () => import('@/views/admin/AdminUsersView.vue');
 const AdminArticlesView = () => import('@/views/admin/AdminArticlesView.vue');
 const AdminCommentsView = () => import('@/views/admin/AdminCommentsView.vue');
+const AdminReportsView = () => import('@/views/admin/AdminReportsView.vue');
 const AdminCategoriesView = () => import('@/views/admin/AdminCategoriesView.vue');
 const AdminTagsView = () => import('@/views/admin/AdminTagsView.vue');
 const AdminColumnsView = () => import('@/views/admin/AdminColumnsView.vue');
@@ -129,6 +130,14 @@ const routes = [
         }
     },
     {
+        path: '/dashboard/overview',
+        name: 'dashboardOverview',
+        component: DashboardView,
+        meta: {
+            title: '创作概览'
+        }
+    },
+    {
         path: '/dashboard/articles',
         name: 'dashboardArticles',
         component: DashboardView,
@@ -204,6 +213,16 @@ const routes = [
                 }
             },
             {
+                path: 'reports',
+                name: 'adminReports',
+                component: AdminReportsView,
+                meta: {
+                    title: '举报管理',
+                    adminTitle: '举报管理',
+                    adminDescription: '处理用户举报，联动文章下架、评论删除和用户禁用。'
+                }
+            },
+            {
                 path: 'categories',
                 name: 'adminCategories',
                 component: AdminCategoriesView,
@@ -258,7 +277,7 @@ const router = createRouter({
         if (savedPosition) {
             return savedPosition;
         }
-        const samePathNoScroll = ['/', '/dashboard/articles', '/dashboard/favorites', '/search'];
+        const samePathNoScroll = ['/', '/dashboard/overview', '/dashboard/articles', '/dashboard/favorites', '/search'];
         if (to.path === from.path && samePathNoScroll.includes(to.path)) {
             return false;
         }

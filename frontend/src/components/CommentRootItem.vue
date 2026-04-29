@@ -2,6 +2,7 @@
 import {computed, inject, ref, watch} from 'vue';
 import CommentComposer from '@/components/CommentComposer.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import {createCommentApi, deleteCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
@@ -24,6 +25,7 @@ const props = defineProps({
 const emit = defineEmits(['refresh', 'count-change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const toast = inject('toast', { success: () => {} });
 const {
     confirmDialog,
     openConfirmDialog,
@@ -41,6 +43,7 @@ const replyDraft = ref('');
 const replyFeedback = ref('');
 const replySubmitting = ref(false);
 const activeReplyTarget = ref(null);
+const reportTarget = ref(null);
 const localComment = ref(createCommentSnapshot(props.comment));
 
 watch(() => props.comment, (value) => {
@@ -242,6 +245,31 @@ async function removeComment(target) {
     });
 }
 
+function openReport(target) {
+    const canContinue = loginModal.requireLogin(() => openReport(target), {
+        title: '登录后举报评论',
+        message: '登录后可以提交评论举报，管理员会在后台处理。',
+        actionText: '登录并举报'
+    });
+    if (!canContinue) {
+        replyFeedback.value = '登录后可以举报评论';
+        return;
+    }
+    reportTarget.value = {
+        id: target.id,
+        title: `评论 #${target.id}`
+    };
+}
+
+function closeReportDialog() {
+    reportTarget.value = null;
+}
+
+function handleReportSuccess() {
+    toast.success('举报已提交，管理员会尽快处理');
+    closeReportDialog();
+}
+
 function goReplyPage(step) {
     const nextPage = replyPage.value + step;
     if (nextPage < 1) {
@@ -290,6 +318,9 @@ function goReplyPage(step) {
                 <button v-if="localComment.canDelete" type="button" class="danger" data-testid="comment-delete-button" @click="removeComment(localComment)">
                     删除
                 </button>
+                <button type="button" data-testid="comment-report-button" @click="openReport(localComment)">
+                    举报
+                </button>
             </div>
 
             <section v-if="displayedReplyCount > 0 || activeReplyTarget" class="comment-reply-shell">
@@ -327,6 +358,9 @@ function goReplyPage(step) {
                                 <button type="button" data-testid="reply-reply-button" @click="startReply(reply)">回复</button>
                                 <button v-if="reply.canDelete" type="button" class="danger" data-testid="reply-delete-button" @click="removeComment(reply)">
                                     删除
+                                </button>
+                                <button type="button" data-testid="reply-report-button" @click="openReport(reply)">
+                                    举报
                                 </button>
                             </div>
                         </div>
@@ -399,6 +433,15 @@ function goReplyPage(step) {
             :loading="confirmDialog.loading"
             @close="closeConfirmDialog"
             @confirm="executeConfirmDialog"
+        />
+        <ReportDialog
+            v-if="reportTarget"
+            :visible="Boolean(reportTarget)"
+            target-type="COMMENT"
+            :target-id="reportTarget.id"
+            :target-title="reportTarget.title"
+            @close="closeReportDialog"
+            @success="handleReportSuccess"
         />
     </article>
 </template>

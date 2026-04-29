@@ -26,6 +26,7 @@ public class Article {
     private String content;
     private String coverUrl;
     private String category;
+    private String offlineReason;
     private List<String> tags;
     private ArticleStatus status;
     private int viewCount;
@@ -104,7 +105,7 @@ public class Article {
      * @return 文章聚合根
      */
     public static Article restore(Long id, UserId authorId, String title, String summary, String content,
-                                  String coverUrl, String category, List<String> tags, ArticleStatus status,
+                                  String coverUrl, String category, String offlineReason, List<String> tags, ArticleStatus status,
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
                                   LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
                                   Integer version) {
@@ -116,6 +117,7 @@ public class Article {
         article.content = content;
         article.coverUrl = coverUrl;
         article.category = category;
+        article.offlineReason = offlineReason;
         article.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
         article.status = status;
         article.viewCount = viewCount;
@@ -200,6 +202,7 @@ public class Article {
         }
         validatePublishable();
         this.status = ArticleStatus.PUBLISHED;
+        this.offlineReason = null;
         if (this.publishedAt == null) {
             this.publishedAt = LocalDateTime.now();
         }
@@ -214,6 +217,7 @@ public class Article {
             throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能保存为草稿");
         }
         this.status = ArticleStatus.DRAFT;
+        this.offlineReason = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -221,10 +225,20 @@ public class Article {
      * 下架文章。
      */
     public void offline() {
+        offline(null);
+    }
+
+    /**
+     * 下架文章。
+     *
+     * @param reason 下架原因
+     */
+    public void offline(String reason) {
         if (ArticleStatus.DELETED.equals(status)) {
             throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能下架");
         }
         this.status = ArticleStatus.OFFLINE;
+        this.offlineReason = normalizeNullableText(reason);
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -269,6 +283,14 @@ public class Article {
         return value == null ? "" : value.trim();
     }
 
+    private static String normalizeNullableText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     /**
      * 删除文章。
      */
@@ -284,6 +306,9 @@ public class Article {
         this.status = status;
         if (ArticleStatus.PUBLISHED.equals(status) && this.publishedAt == null) {
             this.publishedAt = LocalDateTime.now();
+        }
+        if (!ArticleStatus.OFFLINE.equals(status)) {
+            this.offlineReason = null;
         }
         this.updatedAt = LocalDateTime.now();
     }
@@ -349,6 +374,15 @@ public class Article {
      */
     public String getCategory() {
         return category;
+    }
+
+    /**
+     * 获取下架原因。
+     *
+     * @return 下架原因
+     */
+    public String getOfflineReason() {
+        return offlineReason;
     }
 
     /**

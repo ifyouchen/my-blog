@@ -64,7 +64,7 @@ public class CommentController {
     public Result<PageResult<CommentResponse>> pageArticleComments(@PathVariable Long articleId,
                                                                   @RequestParam(defaultValue = "1") int page,
                                                                   @RequestParam(defaultValue = "20") int pageSize,
-                                                                  @RequestParam(defaultValue = "hot") String sort) {
+                                                                  @RequestParam(defaultValue = "latest") String sort) {
         PageResult<CommentDTO> result = commentAppService.pageArticleComments(
             articleId,
             page,

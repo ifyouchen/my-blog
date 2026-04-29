@@ -1,5 +1,9 @@
 package com.myblog.infrastructure.security;
 
+import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.valueobject.UserId;
+import com.myblog.domain.repository.UserRepository;
+import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import org.springframework.stereotype.Component;
@@ -21,14 +25,16 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     /**
      * 创建 JWT 认证拦截器。
      *
      * @param jwtTokenProvider JWT 工具
      */
-    public JwtAuthenticationInterceptor(JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationInterceptor(JwtTokenProvider jwtTokenProvider, UserRepository userRepository) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -47,6 +53,7 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         String header = request.getHeader(AUTHORIZATION);
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             JwtPayload payload = jwtTokenProvider.parseToken(header.substring(BEARER_PREFIX.length()));
+            ensureUserAvailable(payload.getUserId());
             AuthContext.set(payload);
             return true;
         }
@@ -57,6 +64,14 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
         return true;
+    }
+
+    private void ensureUserAvailable(Long userId) {
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录"));
+        if (!UserStatus.NORMAL.equals(user.getStatus())) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "账号不可用");
+        }
     }
 
     private boolean isPublicRequest(HttpServletRequest request) {

@@ -24,6 +24,7 @@ public class User {
     private String nickname;
     private String avatarUrl;
     private String bio;
+    private String disableReason;
     private UserRole role;
     private UserStatus status;
     private LocalDateTime createdAt;
@@ -81,7 +82,7 @@ public class User {
      * @return 用户聚合根
      */
     public static User restore(Long id, String username, String email, String passwordHash, String nickname,
-                               String avatarUrl, String bio, UserRole role, UserStatus status,
+                               String avatarUrl, String bio, String disableReason, UserRole role, UserStatus status,
                                LocalDateTime createdAt, LocalDateTime updatedAt) {
         User user = new User();
         user.id = new UserId(id);
@@ -91,6 +92,7 @@ public class User {
         user.nickname = nickname;
         user.avatarUrl = avatarUrl;
         user.bio = bio;
+        user.disableReason = disableReason;
         user.role = role;
         user.status = status;
         user.createdAt = createdAt;
@@ -112,6 +114,20 @@ public class User {
      */
     public void updateStatus(UserStatus status) {
         this.status = status;
+        if (!UserStatus.DISABLED.equals(status)) {
+            this.disableReason = null;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 禁用用户。
+     *
+     * @param reason 禁用原因
+     */
+    public void disable(String reason) {
+        this.status = UserStatus.DISABLED;
+        this.disableReason = normalizeNullableText(reason);
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -196,6 +212,15 @@ public class User {
     }
 
     /**
+     * 获取禁用原因。
+     *
+     * @return 禁用原因
+     */
+    public String getDisableReason() {
+        return disableReason;
+    }
+
+    /**
      * 获取用户角色。
      *
      * @return 用户角色
@@ -236,5 +261,13 @@ public class User {
      */
     public boolean isDeleted() {
         return this.deletedAt != null;
+    }
+
+    private static String normalizeNullableText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

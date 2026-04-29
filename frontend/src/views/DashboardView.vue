@@ -6,10 +6,17 @@ import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
-import {deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
+import {deleteArticleApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
+import {
+    getDashboardArticlePerformanceApi,
+    getDashboardInteractionsApi,
+    getDashboardOverviewApi,
+    getDashboardTrendsApi
+} from '@/api/dashboard';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import {getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,6 +29,8 @@ const {
 } = useConfirmDialog();
 
 const isFavorites = computed(() => route.name === 'favorites');
+const isOverview = computed(() => route.name === 'dashboardOverview');
+const isArticles = computed(() => route.name === 'dashboardArticles');
 const articleStatus = ref(String(route.query.status || ''));
 const currentPage = ref(Number.parseInt(route.query.page || '1', 10) || 1);
 const pageSize = 10;
@@ -38,6 +47,7 @@ const overview = ref({
     totalLikeCount: 0,
     totalFavoriteCount: 0,
     totalCommentCount: 0,
+    followerCount: 0,
     latestArticleId: null,
     latestArticleTitle: '',
     latestArticleStatus: '',
@@ -47,6 +57,13 @@ const overview = ref({
     recommendedActionRoute: '',
     latestUpdatedAt: ''
 });
+const trends = ref([]);
+const trendRange = ref(String(route.query.range || '7d') === '30d' ? '30d' : '7d');
+const performanceSort = ref(String(route.query.sort || 'view'));
+const performanceArticles = ref([]);
+const interactions = ref([]);
+const dashboardLoading = ref(false);
+const dashboardError = ref('');
 const {
     initialLoading,
     refreshing,
@@ -77,6 +94,27 @@ const articleStatusLabels = {
     DELETED: '已删除'
 };
 
+const emptyOverview = () => ({
+    totalCount: 0,
+    draftCount: 0,
+    publishedCount: 0,
+    offlineCount: 0,
+    deletedCount: 0,
+    totalViewCount: 0,
+    totalLikeCount: 0,
+    totalFavoriteCount: 0,
+    totalCommentCount: 0,
+    followerCount: 0,
+    latestArticleId: null,
+    latestArticleTitle: '',
+    latestArticleStatus: '',
+    recommendedActionType: '',
+    recommendedActionText: '',
+    recommendedActionHint: '',
+    recommendedActionRoute: '',
+    latestUpdatedAt: ''
+});
+
 const resolveArticleActionError = (nextStatus, message) => {
     const source = String(message || '').trim();
     if (nextStatus === 'PUBLISHED') {
@@ -97,11 +135,16 @@ const resolveArticleActionError = (nextStatus, message) => {
 const syncRoute = (overrides = {}) => {
     const nextPage = String(overrides.page ?? currentPage.value);
     const nextStatus = overrides.status ?? articleStatus.value;
+    const path = isFavorites.value
+        ? '/dashboard/favorites'
+        : (isOverview.value ? '/dashboard/overview' : '/dashboard/articles');
     router.replace({
-        path: isFavorites.value ? '/dashboard/favorites' : '/dashboard/articles',
+        path,
         query: {
-            page: nextPage === '1' ? undefined : nextPage,
-            status: isFavorites.value ? undefined : (nextStatus || undefined)
+            page: isOverview.value || nextPage === '1' ? undefined : nextPage,
+            status: isArticles.value ? (nextStatus || undefined) : undefined,
+            range: isOverview.value && trendRange.value !== '7d' ? trendRange.value : undefined,
+            sort: isOverview.value && performanceSort.value !== 'view' ? performanceSort.value : undefined
         }
     });
 };
@@ -130,49 +173,13 @@ const fetchArticles = async (options = {}) => {
 
 const fetchOverview = async () => {
     if (!isLoggedIn.value || isFavorites.value) {
-        overview.value = {
-            totalCount: 0,
-            draftCount: 0,
-            publishedCount: 0,
-            offlineCount: 0,
-            deletedCount: 0,
-            totalViewCount: 0,
-            totalLikeCount: 0,
-            totalFavoriteCount: 0,
-            totalCommentCount: 0,
-            latestArticleId: null,
-            latestArticleTitle: '',
-            latestArticleStatus: '',
-            recommendedActionType: '',
-            recommendedActionText: '',
-            recommendedActionHint: '',
-            recommendedActionRoute: '',
-            latestUpdatedAt: ''
-        };
+        overview.value = emptyOverview();
         return;
     }
     try {
-        overview.value = await getMyArticleOverviewApi();
+        overview.value = await getDashboardOverviewApi();
     } catch (error) {
-        overview.value = {
-            totalCount: 0,
-            draftCount: 0,
-            publishedCount: 0,
-            offlineCount: 0,
-            deletedCount: 0,
-            totalViewCount: 0,
-            totalLikeCount: 0,
-            totalFavoriteCount: 0,
-            totalCommentCount: 0,
-            latestArticleId: null,
-            latestArticleTitle: '',
-            latestArticleStatus: '',
-            recommendedActionType: '',
-            recommendedActionText: '',
-            recommendedActionHint: '',
-            recommendedActionRoute: '',
-            latestUpdatedAt: ''
-        };
+        overview.value = emptyOverview();
     }
 };
 
@@ -192,6 +199,49 @@ const fetchFavorites = async (options = {}) => {
 
     favorites.value = result.items || [];
     total.value = result.total || 0;
+};
+
+const fetchDashboardAnalytics = async () => {
+    if (!isLoggedIn.value) {
+        trends.value = [];
+        performanceArticles.value = [];
+        interactions.value = [];
+        return;
+    }
+    dashboardLoading.value = true;
+    dashboardError.value = '';
+    try {
+        const [overviewResult, trendResult, performanceResult, interactionResult] = await Promise.all([
+            getDashboardOverviewApi(),
+            getDashboardTrendsApi(trendRange.value),
+            getDashboardArticlePerformanceApi(performanceSort.value),
+            getDashboardInteractionsApi()
+        ]);
+        overview.value = overviewResult;
+        trends.value = trendResult || [];
+        performanceArticles.value = performanceResult || [];
+        interactions.value = interactionResult || [];
+    } catch (error) {
+        dashboardError.value = error.message || '创作台数据加载失败';
+    } finally {
+        dashboardLoading.value = false;
+    }
+};
+
+const fetchDashboardTrends = async () => {
+    try {
+        trends.value = await getDashboardTrendsApi(trendRange.value);
+    } catch (error) {
+        dashboardError.value = error.message || '趋势数据加载失败';
+    }
+};
+
+const fetchDashboardPerformance = async () => {
+    try {
+        performanceArticles.value = await getDashboardArticlePerformanceApi(performanceSort.value);
+    } catch (error) {
+        dashboardError.value = error.message || '文章表现加载失败';
+    }
 };
 
 const removeFavorite = async (article) => {
@@ -224,6 +274,10 @@ const fetchCurrentTab = async () => {
         articles.value = [];
         favorites.value = [];
         total.value = 0;
+        return;
+    }
+    if (isOverview.value) {
+        await fetchDashboardAnalytics();
         return;
     }
     if (isFavorites.value) {
@@ -303,8 +357,44 @@ const metricCards = computed(() => ([
     { label: '总阅读', value: overview.value.totalViewCount, hint: '累计阅读量' },
     { label: '总获赞', value: overview.value.totalLikeCount, hint: '累计点赞数' },
     { label: '总收藏', value: overview.value.totalFavoriteCount, hint: '累计收藏数' },
-    { label: '总评论', value: overview.value.totalCommentCount, hint: '累计评论互动' }
+    { label: '总评论', value: overview.value.totalCommentCount, hint: '累计评论互动' },
+    { label: '粉丝数', value: overview.value.followerCount, hint: '关注你的读者' }
 ]));
+
+const performanceSortOptions = [
+    { label: '阅读', value: 'view' },
+    { label: '点赞', value: 'like' },
+    { label: '收藏', value: 'favorite' },
+    { label: '评论', value: 'comment' },
+    { label: '更新', value: 'updated' }
+];
+
+const trendMax = computed(() => Math.max(
+    1,
+    ...trends.value.map((point) => Math.max(point.viewCount || 0, point.interactionCount || 0))
+));
+
+const changeTrendRange = async (range) => {
+    if (trendRange.value === range) {
+        return;
+    }
+    trendRange.value = range;
+    syncRoute();
+    await fetchDashboardTrends();
+};
+
+const changePerformanceSort = async (sort) => {
+    if (performanceSort.value === sort) {
+        return;
+    }
+    performanceSort.value = sort;
+    syncRoute();
+    await fetchDashboardPerformance();
+};
+
+const formatTrendDate = (date) => String(date || '').slice(5) || '--';
+const getInteractionText = (notification) => getNotificationText(notification.type);
+const getInteractionDetail = (notification) => getNotificationDetail(notification);
 
 const getArticleStatusLabel = (status) => articleStatusLabels[status] || status || '未知状态';
 const latestArticleStatusLabel = computed(() => getArticleStatusLabel(overview.value.latestArticleStatus));
@@ -395,7 +485,7 @@ const submitJump = () => {
 };
 
 watch(
-    () => [route.name, route.query.page, route.query.status],
+    () => [route.name, route.query.page, route.query.status, route.query.range, route.query.sort],
     (next, prev) => {
         if (prev && next[0] !== prev[0]) {
             resetStableRequest();
@@ -405,6 +495,8 @@ watch(
         }
         currentPage.value = Number.parseInt(route.query.page || '1', 10) || 1;
         articleStatus.value = String(route.query.status || '');
+        trendRange.value = String(route.query.range || '7d') === '30d' ? '30d' : '7d';
+        performanceSort.value = String(route.query.sort || 'view');
         jumpPage.value = String(currentPage.value);
         fetchCurrentTab();
     },
@@ -418,14 +510,17 @@ watch(isLoggedIn, () => {
 
 <template>
     <SiteHeader />
-    <main class="page-shell dashboard-layout" :data-testid="isFavorites ? 'dashboard-favorites-page' : 'dashboard-articles-page'">
+    <main
+        class="page-shell dashboard-layout"
+        :data-testid="isFavorites ? 'dashboard-favorites-page' : (isOverview ? 'dashboard-overview-page' : 'dashboard-articles-page')"
+    >
         <CreatorSidebar />
 
         <section class="dashboard-main">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow">{{ isFavorites ? '收藏夹' : '内容管理' }}</p>
-                    <h1>{{ isFavorites ? '我的收藏' : '我的文章' }}</h1>
+                    <p class="eyebrow">{{ isFavorites ? '收藏夹' : (isOverview ? '创作者工作台' : '内容管理') }}</p>
+                    <h1>{{ isFavorites ? '我的收藏' : (isOverview ? '创作概览' : '我的文章') }}</h1>
                 </div>
                 <RouterLink v-if="!isFavorites" class="primary-action" to="/editor/new">新建文章</RouterLink>
             </div>
@@ -478,7 +573,132 @@ watch(isLoggedIn, () => {
                 </div>
             </section>
 
-            <div v-if="!isFavorites" class="dashboard-toolbar">
+            <section v-if="isOverview" class="dashboard-analytics">
+                <p v-if="dashboardLoading" class="loading-text">创作台数据加载中...</p>
+                <p v-else-if="dashboardError" class="error-text">{{ dashboardError }}</p>
+                <template v-else>
+                    <div class="dashboard-analytics-panel trend-panel">
+                        <header class="dashboard-panel-header">
+                            <div>
+                                <p class="eyebrow">趋势</p>
+                                <h2>阅读与互动</h2>
+                            </div>
+                            <div class="status-tabs compact">
+                                <button
+                                    type="button"
+                                    :class="{ active: trendRange === '7d' }"
+                                    @click="changeTrendRange('7d')"
+                                >
+                                    7 天
+                                </button>
+                                <button
+                                    type="button"
+                                    :class="{ active: trendRange === '30d' }"
+                                    @click="changeTrendRange('30d')"
+                                >
+                                    30 天
+                                </button>
+                            </div>
+                        </header>
+                        <div v-if="trends.length" class="trend-chart" aria-label="阅读和互动趋势">
+                            <div v-for="point in trends" :key="point.date" class="trend-column">
+                                <div class="trend-bars">
+                                    <span
+                                        class="trend-bar views"
+                                        :style="{ height: `${Math.max(4, ((point.viewCount || 0) / trendMax) * 100)}%` }"
+                                        :title="`阅读 ${point.viewCount || 0}`"
+                                    ></span>
+                                    <span
+                                        class="trend-bar interactions"
+                                        :style="{ height: `${Math.max(4, ((point.interactionCount || 0) / trendMax) * 100)}%` }"
+                                        :title="`互动 ${point.interactionCount || 0}`"
+                                    ></span>
+                                </div>
+                                <span>{{ formatTrendDate(point.date) }}</span>
+                            </div>
+                        </div>
+                        <div class="trend-legend">
+                            <span><i class="views"></i>阅读</span>
+                            <span><i class="interactions"></i>互动</span>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-analytics-grid">
+                        <section class="dashboard-analytics-panel">
+                            <header class="dashboard-panel-header">
+                                <div>
+                                    <p class="eyebrow">文章表现</p>
+                                    <h2>表现最佳文章</h2>
+                                </div>
+                                <div class="status-tabs compact">
+                                    <button
+                                        v-for="option in performanceSortOptions"
+                                        :key="option.value"
+                                        type="button"
+                                        :class="{ active: performanceSort === option.value }"
+                                        @click="changePerformanceSort(option.value)"
+                                    >
+                                        {{ option.label }}
+                                    </button>
+                                </div>
+                            </header>
+                            <div v-if="performanceArticles.length" class="performance-list">
+                                <RouterLink
+                                    v-for="article in performanceArticles"
+                                    :key="article.id"
+                                    class="performance-item"
+                                    :to="`/articles/${article.id}`"
+                                >
+                                    <strong>{{ article.title }}</strong>
+                                    <span>{{ getArticleStatusLabel(article.status) }} · {{ article.updatedAt || '-' }}</span>
+                                    <small>
+                                        {{ article.viewCount }} 阅读 / {{ article.likeCount }} 赞 /
+                                        {{ article.favoriteCount }} 收藏 / {{ article.commentCount }} 评论
+                                    </small>
+                                </RouterLink>
+                            </div>
+                            <EmptyState
+                                v-else
+                                eyebrow="文章表现"
+                                title="暂无文章数据"
+                                description="发布文章后，这里会展示阅读、点赞、收藏和评论表现。"
+                                compact
+                            />
+                        </section>
+
+                        <section class="dashboard-analytics-panel">
+                            <header class="dashboard-panel-header">
+                                <div>
+                                    <p class="eyebrow">互动反馈</p>
+                                    <h2>最近互动</h2>
+                                </div>
+                                <RouterLink class="creator-overview-inline-link" to="/notifications">通知中心</RouterLink>
+                            </header>
+                            <div v-if="interactions.length" class="interaction-list">
+                                <RouterLink
+                                    v-for="notification in interactions"
+                                    :key="notification.id"
+                                    class="interaction-item"
+                                    :to="notification.targetUrl || '/notifications'"
+                                >
+                                    <strong>{{ notification.actor?.nickname || notification.actor?.username || '读者' }}</strong>
+                                    <span>{{ getInteractionText(notification) }}</span>
+                                    <small>{{ getInteractionDetail(notification) || notification.createdAt }}</small>
+                                </RouterLink>
+                            </div>
+                            <EmptyState
+                                v-else
+                                eyebrow="互动反馈"
+                                title="暂时还没有互动"
+                                description="新的点赞、收藏、评论和关注会汇总在这里。"
+                                compact
+                            />
+                        </section>
+                    </div>
+                </template>
+            </section>
+
+            <div v-if="isArticles" class="dashboard-toolbar">
                 <div class="status-tabs">
                     <button
                         v-for="option in statusOptions"
@@ -536,7 +756,7 @@ watch(isLoggedIn, () => {
                 />
             </section>
 
-            <section v-else class="dashboard-content-panel table-panel" data-testid="dashboard-articles-panel">
+            <section v-else-if="isArticles" class="dashboard-content-panel table-panel" data-testid="dashboard-articles-panel">
                 <p v-if="refreshing && articles.length" class="loading-text subtle">正在更新文章...</p>
                 <p v-if="inlineError" class="error-text">{{ inlineError }}</p>
                 <p v-if="showListLoading" class="loading-text">正在加载文章...</p>
@@ -630,7 +850,7 @@ watch(isLoggedIn, () => {
                 />
             </section>
 
-            <nav v-if="totalPages > 1" class="dashboard-pagination" aria-label="后台分页">
+            <nav v-if="!isOverview && totalPages > 1" class="dashboard-pagination" aria-label="后台分页">
                 <p>
                     第 {{ currentPage }} / {{ totalPages }} 页，
                     共 {{ total }} 条，当前 {{ pageStart }}-{{ pageEnd }} 条
@@ -694,6 +914,10 @@ watch(isLoggedIn, () => {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+}
+
+.creator-overview-grid.secondary {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .creator-overview-card,
@@ -848,6 +1072,156 @@ watch(isLoggedIn, () => {
     color: #ffffff;
     border-color: var(--brand);
     background: var(--brand);
+}
+
+.status-tabs.compact {
+    justify-content: flex-end;
+}
+
+.status-tabs.compact button {
+    min-height: 30px;
+    padding: 0 10px;
+}
+
+.dashboard-analytics {
+    display: grid;
+    gap: 18px;
+    margin-bottom: 26px;
+}
+
+.dashboard-analytics-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+    gap: 18px;
+}
+
+.dashboard-analytics-panel {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.dashboard-panel-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.dashboard-panel-header h2 {
+    margin: 4px 0 0;
+    color: var(--text);
+    font-size: 18px;
+}
+
+.trend-chart {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(18px, 1fr);
+    gap: 8px;
+    min-height: 172px;
+    align-items: end;
+    overflow-x: auto;
+    padding: 6px 0 2px;
+}
+
+.trend-column {
+    display: grid;
+    gap: 8px;
+    min-width: 18px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+}
+
+.trend-bars {
+    display: flex;
+    gap: 4px;
+    align-items: end;
+    justify-content: center;
+    height: 132px;
+    padding-top: 8px;
+    border-bottom: 1px solid var(--line);
+}
+
+.trend-bar {
+    display: block;
+    width: 7px;
+    min-height: 4px;
+    border-radius: 999px 999px 0 0;
+}
+
+.trend-bar.views,
+.trend-legend i.views {
+    background: var(--brand);
+}
+
+.trend-bar.interactions,
+.trend-legend i.interactions {
+    background: var(--success);
+}
+
+.trend-legend {
+    display: flex;
+    gap: 14px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.trend-legend span {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.trend-legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+}
+
+.performance-list,
+.interaction-list {
+    display: grid;
+    gap: 10px;
+}
+
+.performance-item,
+.interaction-item {
+    display: grid;
+    gap: 4px;
+    padding: 12px 0;
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+}
+
+.performance-item:last-child,
+.interaction-item:last-child {
+    border-bottom: 0;
+}
+
+.performance-item strong,
+.interaction-item strong {
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.performance-item span,
+.interaction-item span,
+.performance-item small,
+.interaction-item small {
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.performance-item small,
+.interaction-item small {
+    font-size: 12px;
 }
 
 .dashboard-feedback {
@@ -1164,8 +1538,22 @@ watch(isLoggedIn, () => {
 }
 
 @media (max-width: 760px) {
-    .creator-overview-grid {
+    .creator-overview-grid,
+    .creator-overview-grid.secondary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-analytics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-panel-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .status-tabs.compact {
+        justify-content: flex-start;
     }
 
     .creator-overview-latest {
@@ -1199,7 +1587,8 @@ watch(isLoggedIn, () => {
 }
 
 @media (max-width: 560px) {
-    .creator-overview-grid {
+    .creator-overview-grid,
+    .creator-overview-grid.secondary {
         grid-template-columns: 1fr;
     }
 }

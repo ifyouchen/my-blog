@@ -17,6 +17,7 @@ public class UserDO {
     private String nickname;
     private String avatarUrl;
     private String bio;
+    private String disableReason;
     private String role;
     private String status;
     private LocalDateTime createdAt;
@@ -148,6 +149,24 @@ public class UserDO {
      */
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    /**
+     * 获取禁用原因。
+     *
+     * @return 禁用原因
+     */
+    public String getDisableReason() {
+        return disableReason;
+    }
+
+    /**
+     * 设置禁用原因。
+     *
+     * @param disableReason 禁用原因
+     */
+    public void setDisableReason(String disableReason) {
+        this.disableReason = disableReason;
     }
 
     /**

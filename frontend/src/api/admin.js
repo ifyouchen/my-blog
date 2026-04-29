@@ -75,6 +75,25 @@ export const getAdminLogsApi = async (page = 1, pageSize = 10, filters = {}) => 
     return await request(`/admin/logs?${params}`);
 };
 
+export const getAdminReportsApi = async (page = 1, pageSize = 10, filters = {}) => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (filters.status) params.append('status', filters.status);
+    if (filters.targetType) params.append('targetType', filters.targetType);
+    if (filters.reasonType) params.append('reasonType', filters.reasonType);
+    return await request(`/admin/reports?${params}`);
+};
+
+export const getAdminReportDetailApi = async (reportId) => {
+    return await request(`/admin/reports/${reportId}`);
+};
+
+export const resolveAdminReportApi = async (reportId, payload) => {
+    return await request(`/admin/reports/${reportId}/resolve`, {
+        method: 'POST',
+        body: payload
+    });
+};
+
 export const deleteAdminCommentApi = async (commentId) => {
     return await request(`/admin/comments/${commentId}`, {
         method: 'DELETE'

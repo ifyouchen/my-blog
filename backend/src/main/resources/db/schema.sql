@@ -24,6 +24,7 @@ CREATE TABLE `blog_user`  (
                               `nickname` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '昵称',
                               `avatar_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '头像地址',
                               `bio` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '个人简介',
+                              `disable_reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '禁用原因',
                               `role` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'USER' COMMENT '角色：USER-普通用户 ADMIN-管理员',
                               `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NORMAL' COMMENT '状态：NORMAL-正常 DISABLED-禁用 DELETED-删除',
                               `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -88,6 +89,7 @@ CREATE TABLE `blog_article`  (
                                  `content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '文章正文',
                                  `cover_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '封面地址',
                                  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '文章分类',
+                                 `offline_reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '下架原因',
                                  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 PUBLISHED-已发布 OFFLINE-已下架 DELETED-已删除',
                                  `view_count` int(0) NOT NULL DEFAULT 0 COMMENT '阅读数',
                                  `like_count` int(0) NOT NULL DEFAULT 0 COMMENT '点赞数',
@@ -337,6 +339,75 @@ CREATE TABLE `blog_user_search_history`  (
                                              INDEX `idx_search_history_last_searched`(`last_searched_at`) USING BTREE,
                                              INDEX `idx_search_history_recent_v2`(`user_id`, `deleted_at`, `last_searched_at` DESC, `id` DESC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户搜索历史表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for blog_report
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_report`;
+CREATE TABLE `blog_report`  (
+                                `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                                `reporter_user_id` bigint unsigned NOT NULL COMMENT '举报用户ID',
+                                `target_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '目标类型：ARTICLE COMMENT USER',
+                                `target_id` bigint unsigned NOT NULL COMMENT '目标ID',
+                                `reason_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '原因类型：SPAM INFRINGEMENT ABUSE ILLEGAL OTHER',
+                                `reason_detail` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '原因详情',
+                                `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING RESOLVED REJECTED',
+                                `handler_user_id` bigint unsigned NULL DEFAULT NULL COMMENT '处理人ID',
+                                `handle_note` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '处理备注',
+                                `handled_at` datetime(0) NULL DEFAULT NULL COMMENT '处理时间',
+                                `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                `updated_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+                                `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
+                                `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
+                                PRIMARY KEY (`id`) USING BTREE,
+                                INDEX `idx_blog_report_status_created`(`status`, `created_at` DESC, `id` DESC) USING BTREE,
+                                INDEX `idx_blog_report_target`(`target_type`, `target_id`) USING BTREE,
+                                INDEX `idx_blog_report_reporter_created`(`reporter_user_id`, `created_at` DESC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客举报表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for blog_article_daily_stats
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_article_daily_stats`;
+CREATE TABLE `blog_article_daily_stats`  (
+                                             `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                                             `article_id` bigint unsigned NOT NULL COMMENT '文章ID',
+                                             `stat_date` date NOT NULL COMMENT '统计日期',
+                                             `view_count` int(0) NOT NULL DEFAULT 0 COMMENT '阅读数',
+                                             `like_count` int(0) NOT NULL DEFAULT 0 COMMENT '点赞数',
+                                             `favorite_count` int(0) NOT NULL DEFAULT 0 COMMENT '收藏数',
+                                             `comment_count` int(0) NOT NULL DEFAULT 0 COMMENT '评论数',
+                                             `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                             `updated_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+                                             `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
+                                             `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
+                                             PRIMARY KEY (`id`) USING BTREE,
+                                             UNIQUE INDEX `uk_article_daily_stats_article_date`(`article_id`, `stat_date`) USING BTREE,
+                                             INDEX `idx_article_daily_stats_date`(`stat_date`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '文章日统计表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for blog_creator_daily_stats
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_creator_daily_stats`;
+CREATE TABLE `blog_creator_daily_stats`  (
+                                             `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                                             `user_id` bigint unsigned NOT NULL COMMENT '创作者用户ID',
+                                             `stat_date` date NOT NULL COMMENT '统计日期',
+                                             `view_count` int(0) NOT NULL DEFAULT 0 COMMENT '阅读数',
+                                             `like_count` int(0) NOT NULL DEFAULT 0 COMMENT '点赞数',
+                                             `favorite_count` int(0) NOT NULL DEFAULT 0 COMMENT '收藏数',
+                                             `comment_count` int(0) NOT NULL DEFAULT 0 COMMENT '评论数',
+                                             `follower_count` int(0) NOT NULL DEFAULT 0 COMMENT '粉丝数',
+                                             `article_count` int(0) NOT NULL DEFAULT 0 COMMENT '文章数',
+                                             `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                             `updated_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+                                             `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
+                                             `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
+                                             PRIMARY KEY (`id`) USING BTREE,
+                                             UNIQUE INDEX `uk_creator_daily_stats_user_date`(`user_id`, `stat_date`) USING BTREE,
+                                             INDEX `idx_creator_daily_stats_date`(`stat_date`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '创作者日统计表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for blog_admin_log

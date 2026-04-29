@@ -17,6 +17,7 @@ public class ArticleDO {
     private String content;
     private String coverUrl;
     private String category;
+    private String offlineReason;
     private String status;
     private Integer viewCount;
     private Integer likeCount;
@@ -152,6 +153,24 @@ public class ArticleDO {
      */
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    /**
+     * 获取下架原因。
+     *
+     * @return 下架原因
+     */
+    public String getOfflineReason() {
+        return offlineReason;
+    }
+
+    /**
+     * 设置下架原因。
+     *
+     * @param offlineReason 下架原因
+     */
+    public void setOfflineReason(String offlineReason) {
+        this.offlineReason = offlineReason;
     }
 
     /**
