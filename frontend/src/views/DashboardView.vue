@@ -138,15 +138,21 @@ const syncRoute = (overrides = {}) => {
     const path = isFavorites.value
         ? '/dashboard/favorites'
         : (isOverview.value ? '/dashboard/overview' : '/dashboard/articles');
-    router.replace({
-        path,
-        query: {
-            page: isOverview.value || nextPage === '1' ? undefined : nextPage,
-            status: isArticles.value ? (nextStatus || undefined) : undefined,
-            range: isOverview.value && trendRange.value !== '7d' ? trendRange.value : undefined,
-            sort: isOverview.value && performanceSort.value !== 'view' ? performanceSort.value : undefined
+    const query = {
+        page: isOverview.value || nextPage === '1' ? undefined : nextPage,
+        status: isArticles.value ? (nextStatus || undefined) : undefined,
+        range: isOverview.value && trendRange.value !== '7d' ? trendRange.value : undefined,
+        sort: isOverview.value && performanceSort.value !== 'view' ? performanceSort.value : undefined
+    };
+    // Use history.replaceState to avoid Vue Router scrollBehavior triggering on query changes
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined && value !== null && value !== '') {
+            params.set(key, String(value));
         }
-    });
+    }
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `${path}?${qs}` : path);
 };
 
 const fetchArticles = async (options = {}) => {
@@ -303,6 +309,7 @@ const changeStatus = (status) => {
     articleStatus.value = status;
     currentPage.value = 1;
     syncRoute({ page: 1, status });
+    fetchArticles();
 };
 
 const editArticle = (articleId) => {
@@ -393,6 +400,7 @@ const changePerformanceSort = async (sort) => {
 };
 
 const formatTrendDate = (date) => String(date || '').slice(5) || '--';
+const formatDate = (date) => date ? String(date).slice(0, 10) : '-';
 const getInteractionText = (notification) => getNotificationText(notification.type);
 const getInteractionDetail = (notification) => getNotificationDetail(notification);
 
@@ -525,7 +533,7 @@ watch(isLoggedIn, () => {
                 <RouterLink v-if="!isFavorites" class="primary-action" to="/editor/new">新建文章</RouterLink>
             </div>
 
-            <section v-if="!isFavorites" class="creator-overview">
+            <section v-if="isOverview" class="creator-overview">
                 <div class="creator-overview-grid">
                     <article v-for="card in overviewCards" :key="card.label" class="creator-overview-card">
                         <span>{{ card.label }}</span>
@@ -577,7 +585,7 @@ watch(isLoggedIn, () => {
                 <p v-if="dashboardLoading" class="loading-text">创作台数据加载中...</p>
                 <p v-else-if="dashboardError" class="error-text">{{ dashboardError }}</p>
                 <template v-else>
-                    <div class="dashboard-analytics-panel trend-panel">
+                    <div>
                         <header class="dashboard-panel-header">
                             <div>
                                 <p class="eyebrow">趋势</p>
@@ -624,7 +632,7 @@ watch(isLoggedIn, () => {
                     </div>
 
                     <div class="dashboard-analytics-grid">
-                        <section class="dashboard-analytics-panel">
+                        <section>
                             <header class="dashboard-panel-header">
                                 <div>
                                     <p class="eyebrow">文章表现</p>
@@ -649,12 +657,16 @@ watch(isLoggedIn, () => {
                                     class="performance-item"
                                     :to="`/articles/${article.id}`"
                                 >
-                                    <strong>{{ article.title }}</strong>
-                                    <span>{{ getArticleStatusLabel(article.status) }} · {{ article.updatedAt || '-' }}</span>
-                                    <small>
-                                        {{ article.viewCount }} 阅读 / {{ article.likeCount }} 赞 /
-                                        {{ article.favoriteCount }} 收藏 / {{ article.commentCount }} 评论
-                                    </small>
+                                    <div class="performance-head">
+                                        <strong>{{ article.title }}</strong>
+                                        <span class="performance-meta">{{ getArticleStatusLabel(article.status) }} · {{ formatDate(article.updatedAt) }}</span>
+                                    </div>
+                                    <div class="performance-metrics">
+                                        <i>阅读 {{ article.viewCount }}</i>
+                                        <i>赞 {{ article.likeCount }}</i>
+                                        <i>收藏 {{ article.favoriteCount }}</i>
+                                        <i>评论 {{ article.commentCount }}</i>
+                                    </div>
                                 </RouterLink>
                             </div>
                             <EmptyState
@@ -666,7 +678,7 @@ watch(isLoggedIn, () => {
                             />
                         </section>
 
-                        <section class="dashboard-analytics-panel">
+                        <section>
                             <header class="dashboard-panel-header">
                                 <div>
                                     <p class="eyebrow">互动反馈</p>
@@ -833,7 +845,12 @@ watch(isLoggedIn, () => {
                                             {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
                                         </button>
                                     </div>
-                                    <button type="button" class="action-link action-link-danger" @click="removeArticle(article)">
+                                    <button
+                                        v-if="article.status !== 'DELETED'"
+                                        type="button"
+                                        class="action-link action-link-danger"
+                                        @click="removeArticle(article)"
+                                    >
                                         删除
                                     </button>
                                 </div>
@@ -1085,43 +1102,36 @@ watch(isLoggedIn, () => {
 
 .dashboard-analytics {
     display: grid;
-    gap: 18px;
+    gap: 20px;
     margin-bottom: 26px;
 }
 
 .dashboard-analytics-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 18px;
-}
-
-.dashboard-analytics-panel {
-    display: grid;
-    gap: 16px;
-    padding: 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
 }
 
 .dashboard-panel-header {
     display: flex;
-    gap: 16px;
-    align-items: flex-start;
+    gap: 12px;
+    align-items: center;
     justify-content: space-between;
+    margin-bottom: 6px;
 }
 
 .dashboard-panel-header h2 {
-    margin: 4px 0 0;
+    margin: 0;
     color: var(--text);
-    font-size: 18px;
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .trend-chart {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(18px, 1fr);
-    gap: 8px;
+    grid-auto-columns: minmax(24px, 1fr);
+    gap: 6px;
     min-height: 172px;
     align-items: end;
     overflow-x: auto;
@@ -1130,8 +1140,8 @@ watch(isLoggedIn, () => {
 
 .trend-column {
     display: grid;
-    gap: 8px;
-    min-width: 18px;
+    gap: 6px;
+    min-width: 24px;
     color: var(--muted);
     font-size: 11px;
     text-align: center;
@@ -1139,7 +1149,7 @@ watch(isLoggedIn, () => {
 
 .trend-bars {
     display: flex;
-    gap: 4px;
+    gap: 5px;
     align-items: end;
     justify-content: center;
     height: 132px;
@@ -1149,19 +1159,30 @@ watch(isLoggedIn, () => {
 
 .trend-bar {
     display: block;
-    width: 7px;
+    width: 9px;
     min-height: 4px;
-    border-radius: 999px 999px 0 0;
+    border-radius: 3px 3px 0 0;
+    transition: opacity 0.15s, transform 0.15s;
+    cursor: default;
+}
+
+.trend-column:hover .trend-bar {
+    opacity: 0.7;
+}
+
+.trend-column:hover .trend-bar:first-child {
+    opacity: 1;
+    transform: scaleX(1.15);
 }
 
 .trend-bar.views,
 .trend-legend i.views {
-    background: var(--brand);
+    background: linear-gradient(180deg, var(--brand), color-mix(in srgb, var(--brand) 80%, transparent));
 }
 
 .trend-bar.interactions,
 .trend-legend i.interactions {
-    background: var(--success);
+    background: linear-gradient(180deg, var(--success), color-mix(in srgb, var(--success) 80%, transparent));
 }
 
 .trend-legend {
@@ -1178,25 +1199,42 @@ watch(isLoggedIn, () => {
 }
 
 .trend-legend i {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
 }
 
 .performance-list,
 .interaction-list {
     display: grid;
-    gap: 10px;
+    gap: 6px;
 }
 
 .performance-item,
 .interaction-item {
     display: grid;
-    gap: 4px;
-    padding: 12px 0;
+    gap: 2px;
+    padding: 8px 10px;
+    margin: 0 -10px;
     color: inherit;
     text-decoration: none;
+    border-radius: var(--radius-sm);
     border-bottom: 1px solid var(--line);
+    transition: background 0.15s;
+}
+
+.performance-item {
+    padding-left: 12px;
+    border-left: 3px solid transparent;
+}
+
+.performance-item:hover {
+    border-left-color: var(--brand);
+}
+
+.performance-item:hover,
+.interaction-item:hover {
+    background: var(--surface-soft);
 }
 
 .performance-item:last-child,
@@ -1208,20 +1246,52 @@ watch(isLoggedIn, () => {
 .interaction-item strong {
     color: var(--text);
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.45;
 }
 
-.performance-item span,
+.performance-meta,
 .interaction-item span,
-.performance-item small,
 .interaction-item small {
     color: var(--muted);
+    line-height: 1.4;
+}
+
+.performance-head {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.performance-head strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.performance-meta {
+    flex: none;
+    font-size: 12px;
+}
+
+.performance-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.performance-metrics i {
+    font-style: normal;
     line-height: 1.5;
 }
 
-.performance-item small,
-.interaction-item small {
-    font-size: 12px;
+.performance-metrics i + i::before {
+    content: "·";
+    margin: 0 6px;
+    color: var(--line-strong);
 }
 
 .dashboard-feedback {
@@ -1550,6 +1620,7 @@ watch(isLoggedIn, () => {
     .dashboard-panel-header {
         align-items: stretch;
         flex-direction: column;
+        margin-bottom: 4px;
     }
 
     .status-tabs.compact {

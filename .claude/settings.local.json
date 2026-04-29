@@ -47,7 +47,8 @@
       "Bash(findstr /I java)",
       "Bash(netstat -ano)",
       "Bash(findstr \":5173\")",
-      "Bash(findstr LISTEN)"
+      "Bash(findstr LISTEN)",
+      "WebFetch(domain:refactoringguru.cn)"
     ]
   }
 }
