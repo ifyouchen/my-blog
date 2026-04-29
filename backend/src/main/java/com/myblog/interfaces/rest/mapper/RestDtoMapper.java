@@ -70,6 +70,9 @@ public class RestDtoMapper {
         command.setCategory(request.getCategory());
         command.setTags(request.getTags());
         command.setStatus(request.getStatus());
+        command.setSlug(request.getSlug());
+        command.setSeoTitle(request.getSeoTitle());
+        command.setSeoDescription(request.getSeoDescription());
         return command;
     }
 
@@ -201,6 +204,9 @@ public class RestDtoMapper {
         response.setLiked(dto.isLiked());
         response.setFavorited(dto.isFavorited());
         response.setFeatured(dto.isFeatured());
+        response.setSlug(dto.getSlug());
+        response.setSeoTitle(dto.getSeoTitle());
+        response.setSeoDescription(dto.getSeoDescription());
         response.setAuthor(toResponse(dto.getAuthor()));
         return response;
     }

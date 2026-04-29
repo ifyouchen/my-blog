@@ -325,4 +325,12 @@ public interface ArticleMapper {
 
     /** 统计精选文章数量。 */
     long countFeatured();
+
+    /**
+     * 根据 Slug 查询文章。
+     *
+     * @param slug URL Slug
+     * @return 文章数据对象
+     */
+    ArticleDO selectBySlug(@Param("slug") String slug);
 }

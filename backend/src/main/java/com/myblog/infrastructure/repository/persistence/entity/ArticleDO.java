@@ -20,6 +20,9 @@ public class ArticleDO {
     private String offlineReason;
     private Boolean featured;
     private LocalDateTime featuredAt;
+    private String slug;
+    private String seoTitle;
+    private String seoDescription;
     private String status;
     private Integer viewCount;
     private Integer likeCount;
@@ -189,6 +192,30 @@ public class ArticleDO {
 
     public void setFeaturedAt(LocalDateTime featuredAt) {
         this.featuredAt = featuredAt;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    public String getSeoTitle() {
+        return seoTitle;
+    }
+
+    public void setSeoTitle(String seoTitle) {
+        this.seoTitle = seoTitle;
+    }
+
+    public String getSeoDescription() {
+        return seoDescription;
+    }
+
+    public void setSeoDescription(String seoDescription) {
+        this.seoDescription = seoDescription;
     }
 
     /**

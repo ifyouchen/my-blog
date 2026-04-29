@@ -1,6 +1,7 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
+import {useHead} from '@unhead/vue';
 import {listArticlesApi} from '@/api/articles';
 import {clearRecentKeywordsApi, getSearchBootstrapApi, saveRecentKeywordApi, searchColumnsApi, searchUsersApi} from '@/api/search';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
@@ -53,6 +54,10 @@ const {
 
 // Guest recent searches
 const guestRecentSearches = ref([]);
+
+useHead({
+    title: computed(() => keyword.value ? `搜索: ${keyword.value} - my-blog` : '搜索 - my-blog')
+});
 
 // Expand/collapse state for filters
 const categoriesExpanded = ref(false);

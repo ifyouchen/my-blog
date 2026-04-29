@@ -14,6 +14,9 @@
         <result column="offline_reason" property="offlineReason"/>
         <result column="featured" property="featured"/>
         <result column="featured_at" property="featuredAt"/>
+        <result column="slug" property="slug"/>
+        <result column="seo_title" property="seoTitle"/>
+        <result column="seo_description" property="seoDescription"/>
         <result column="status" property="status"/>
         <result column="view_count" property="viewCount"/>
         <result column="like_count" property="likeCount"/>
@@ -27,22 +30,32 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, author_id, title, summary, content, cover_url, category, offline_reason, status,
-        view_count, like_count, favorite_count, comment_count, featured, featured_at, published_at,
+        id, author_id, title, summary, content, cover_url, category, offline_reason, featured, featured_at,
+        slug, seo_title, seo_description, status,
+        view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Column_List">
-        id, author_id, title, summary, cover_url, category, offline_reason, status,
-        view_count, like_count, favorite_count, comment_count, featured, featured_at, published_at,
+        id, author_id, title, summary, cover_url, category, offline_reason, featured, featured_at,
+        slug, seo_title, seo_description, status,
+        view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Alias_Column_List">
-        a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.offline_reason, a.status,
+        a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.offline_reason,
+        a.featured, a.featured_at, a.slug, a.seo_title, a.seo_description, a.status,
         a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
         a.created_at, a.updated_at, a.deleted_at, a.version
     </sql>
+
+    <select id="selectBySlug" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE slug = #{slug}
+        AND deleted_at IS NULL
+    </select>
 
     <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
@@ -382,6 +395,9 @@
             status,
             featured,
             featured_at,
+            slug,
+            seo_title,
+            seo_description,
             view_count,
             like_count,
             favorite_count,
@@ -402,6 +418,9 @@
             #{status},
             #{featured},
             #{featuredAt},
+            #{slug},
+            #{seoTitle},
+            #{seoDescription},
             #{viewCount},
             #{likeCount},
             #{favoriteCount},
@@ -423,6 +442,9 @@
             status = #{status},
             featured = #{featured},
             featured_at = #{featuredAt},
+            slug = #{slug},
+            seo_title = #{seoTitle},
+            seo_description = #{seoDescription},
             view_count = #{viewCount},
             like_count = #{likeCount},
             favorite_count = #{favoriteCount},
@@ -439,12 +461,12 @@
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article (
             id, author_id, title, summary, content, cover_url, category, offline_reason, status,
-            featured, featured_at,
+            featured, featured_at, slug, seo_title, seo_description,
             view_count, like_count, favorite_count, comment_count, published_at,
             created_at, updated_at
         ) VALUES (
             #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{offlineReason}, #{status},
-            #{featured}, #{featuredAt},
+            #{featured}, #{featuredAt}, #{slug}, #{seoTitle}, #{seoDescription},
             #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
             #{createdAt}, #{updatedAt}
         )
@@ -458,6 +480,9 @@
             status = #{status},
             featured = #{featured},
             featured_at = #{featuredAt},
+            slug = #{slug},
+            seo_title = #{seoTitle},
+            seo_description = #{seoDescription},
             view_count = #{viewCount},
             like_count = #{likeCount},
             favorite_count = #{favoriteCount},

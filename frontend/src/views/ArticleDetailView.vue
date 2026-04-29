@@ -1,6 +1,7 @@
 <script setup>
 import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
+import {useHead} from '@unhead/vue';
 import {getArticleApi} from '@/api/articles';
 import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
 import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
@@ -22,8 +23,30 @@ const remoteArticle = ref(null);
 const isLoading = ref(false);
 const loadError = ref('');
 const useLocalFallback = ref(false);
-const articleId = computed(() => String(route.params.id || ''));
+const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
+const pageTitle = computed(() => {
+    if (article.value?.title) {
+        return `${article.value.title} - my-blog`;
+    }
+    if (isLoading.value) {
+        return '加载中 - my-blog';
+    }
+    return '文章详情 - my-blog';
+});
+
+useHead({
+    title: pageTitle,
+    meta: computed(() => {
+        if (!article.value?.seoDescription && !article.value?.summary) {
+            return [];
+        }
+        return [{
+            name: 'description',
+            content: article.value.seoDescription || article.value.summary
+        }];
+    })
+});
 const article = computed(() => {
     if (remoteArticle.value) {
         return remoteArticle.value;

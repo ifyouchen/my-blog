@@ -19,7 +19,7 @@ defineProps({
             <RouterLink
                 v-for="article in articles"
                 :key="article.id"
-                :to="`/articles/${article.id}`"
+                :to="article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`"
                 class="featured-card"
             >
                 <div class="featured-card-cover">

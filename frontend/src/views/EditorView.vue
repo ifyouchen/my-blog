@@ -1,6 +1,7 @@
 <script setup>
 import {computed, inject, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
 import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
+import {useHead} from '@unhead/vue';
 import {createArticleApi, getEditableArticleApi, updateArticleApi, validateArticleForPublishApi} from '@/api/articles';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
 import {uploadImageApi} from '@/api/uploads';
@@ -24,7 +25,10 @@ const defaultDraft = {
 用一篇文章把你最近解决的问题写清楚。`,
     category: 'Spring Boot',
     tags: 'Spring Boot, JWT',
-    coverUrl: ''
+    coverUrl: '',
+    slug: '',
+    seoTitle: '',
+    seoDescription: ''
 };
 
 const route = useRoute();
@@ -41,6 +45,10 @@ const pendingLeaveTarget = ref(null);
 const isEditMode = computed(() => route.name === 'editorEdit');
 const editorArticleId = computed(() => (isEditMode.value ? String(route.params.id || '') : 'new'));
 const storageKey = computed(() => `${DRAFT_STORAGE_PREFIX}:${editorArticleId.value}`);
+
+useHead({
+    title: computed(() => isEditMode.value ? '编辑文章 - my-blog' : '写文章 - my-blog')
+});
 
 const draft = reactive({ ...defaultDraft });
 const statusMessage = ref('');
@@ -87,6 +95,17 @@ watch(() => draft.coverUrl, () => {
     coverPreviewFailed.value = false;
 });
 
+function generateSlug(text) {
+    if (!text) {
+        return '';
+    }
+    return text
+        .toLowerCase()
+        .replace(/[^\w一-鿿]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 200);
+}
+
 function createDefaultDraft() {
     return { ...defaultDraft };
 }
@@ -98,9 +117,18 @@ function createDraftSnapshot(currentDraft) {
         content: currentDraft.content || '',
         category: currentDraft.category || '',
         tags: currentDraft.tags || '',
-        coverUrl: currentDraft.coverUrl || ''
+        coverUrl: currentDraft.coverUrl || '',
+        slug: currentDraft.slug || '',
+        seoTitle: currentDraft.seoTitle || '',
+        seoDescription: currentDraft.seoDescription || ''
     });
 }
+
+watch(() => draft.title, (newTitle) => {
+    if (!draft.slug && newTitle) {
+        draft.slug = generateSlug(newTitle);
+    }
+});
 
 function parseTags(sourceTags) {
     const source = Array.isArray(sourceTags) ? sourceTags : String(sourceTags || '').split(',');
@@ -114,6 +142,9 @@ function applyDraft(source = {}) {
     draft.category = source.category || categoryOptions.value[0] || '';
     draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
     draft.coverUrl = source.coverUrl || '';
+    draft.slug = source.slug || '';
+    draft.seoTitle = source.seoTitle || '';
+    draft.seoDescription = source.seoDescription || '';
 }
 
 function syncSavedSnapshot() {
@@ -226,7 +257,10 @@ async function fetchArticle() {
             content: article.rawContent || '',
             category: article.category || categoryOptions.value[0] || '',
             tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
-            coverUrl: article.coverUrl || defaultDraft.coverUrl
+            coverUrl: article.coverUrl || defaultDraft.coverUrl,
+            slug: article.slug || '',
+            seoTitle: article.seoTitle || '',
+            seoDescription: article.seoDescription || ''
         };
         const storedDraft = readStoredDraft(storageKey.value);
 
@@ -331,7 +365,10 @@ async function persistArticle(status) {
             content: article.rawContent,
             category: article.category,
             tags: article.tags,
-            coverUrl: article.coverUrl
+            coverUrl: article.coverUrl,
+            slug: article.slug || '',
+            seoTitle: article.seoTitle || '',
+            seoDescription: article.seoDescription || ''
         });
         hydratingDraft.value = false;
         if (!isEditMode.value) {
@@ -414,7 +451,9 @@ function handleCoverPreviewError() {
 function viewPublishedArticle() {
     if (publishedArticle.value?.id) {
         allowRouteLeave.value = true;
-        router.push(`/articles/${publishedArticle.value.id}`);
+        const slug = publishedArticle.value.slug;
+        const url = slug ? `/articles/${publishedArticle.value.id}-${slug}` : `/articles/${publishedArticle.value.id}`;
+        router.push(url);
     }
 }
 
@@ -703,6 +742,31 @@ onUnmounted(() => {
                     {{ coverUploading ? '上传中...' : (isUsingDefaultCover ? '上传封面' : '更换封面') }}
                 </button>
             </section>
+            <details class="editor-seo-section">
+                <summary class="editor-seo-summary">
+                    <span>SEO 设置</span>
+                    <span class="editor-seo-summary-hint">Slug、标题与描述</span>
+                </summary>
+                <div class="editor-seo-body">
+                    <label class="editor-seo-field">
+                        <span>URL Slug</span>
+                        <small>URL 中标识这篇文章的友好名称，用于搜索引擎和分享链接。</small>
+                        <input v-model="draft.slug" type="text" placeholder="my-article-slug">
+                        <code class="editor-seo-preview">/articles/{{ editorArticleId }}{{ draft.slug ? '-' + draft.slug : '' }}</code>
+                    </label>
+                    <label class="editor-seo-field">
+                        <span>SEO 标题</span>
+                        <small>显示在搜索引擎结果中的标题。留空则使用文章标题。</small>
+                        <input v-model="draft.seoTitle" type="text" :placeholder="draft.title || '文章标题'">
+                    </label>
+                    <label class="editor-seo-field">
+                        <span>SEO 描述</span>
+                        <small>显示在搜索引擎结果中的描述文本。推荐 50&#x2013;160 个字符。</small>
+                        <textarea v-model="draft.seoDescription" placeholder="用一句话概括这篇文章的内容..." rows="3"></textarea>
+                        <span class="editor-seo-charcount">{{ draft.seoDescription.length }} / 160</span>
+                    </label>
+                </div>
+            </details>
         </aside>
     </main>
 
@@ -955,6 +1019,75 @@ onUnmounted(() => {
     transform: none;
     filter: none;
     box-shadow: none;
+}
+
+.editor-seo-section {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.editor-seo-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text);
+    list-style: none;
+}
+
+.editor-seo-summary::-webkit-details-marker {
+    display: none;
+}
+
+.editor-seo-summary-hint {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 12px;
+}
+
+.editor-seo-body {
+    display: grid;
+    gap: 14px;
+    padding: 0 18px 18px;
+    border-top: 1px solid var(--line);
+}
+
+.editor-seo-field {
+    display: grid;
+    gap: 6px;
+    padding-top: 14px;
+}
+
+.editor-seo-field span {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.editor-seo-field small {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.editor-seo-preview {
+    padding: 8px 10px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--muted);
+    word-break: break-all;
+}
+
+.editor-seo-charcount {
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
 }
 
 .editor-status-inline {

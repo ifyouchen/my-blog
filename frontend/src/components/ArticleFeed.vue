@@ -151,8 +151,9 @@ const submitJump = () => {
     goToPage(targetPage);
 };
 
-const openArticle = (articleId) => {
-    router.push(`/articles/${articleId}`);
+const openArticle = (article) => {
+    const url = article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`;
+    router.push(url);
 };
 
 watch(
@@ -207,9 +208,9 @@ watch(
                 :class="{ 'featured-post': article.featured, 'interactive-post': true }"
                 role="link"
                 tabindex="0"
-                @click="openArticle(article.id)"
-                @keydown.enter="openArticle(article.id)"
-                @keydown.space.prevent="openArticle(article.id)"
+                @click="openArticle(article)"
+                @keydown.enter="openArticle(article)"
+                @keydown.space.prevent="openArticle(article)"
             >
                 <div class="post-cover" :aria-label="`查看文章：${article.title}`">
                     <img :src="article.cover" :alt="article.coverAlt" loading="lazy">

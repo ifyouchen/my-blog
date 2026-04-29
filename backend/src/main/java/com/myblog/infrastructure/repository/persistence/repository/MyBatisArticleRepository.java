@@ -402,6 +402,16 @@ public class MyBatisArticleRepository implements ArticleRepository {
     public void incrementViewCount(Long articleId) { articleMapper.incrementViewCount(articleId); }
 
     @Override
+    public Optional<Article> findBySlug(String slug) {
+        ArticleDO articleDO = articleMapper.selectBySlug(slug);
+        if (articleDO == null) {
+            return Optional.empty();
+        }
+        List<String> tags = articleMapper.selectTagNamesByArticleId(articleDO.getId());
+        return Optional.of(ArticlePersistenceConverter.toDomain(articleDO, tags));
+    }
+
+    @Override
     public List<Article> findFeatured(int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);

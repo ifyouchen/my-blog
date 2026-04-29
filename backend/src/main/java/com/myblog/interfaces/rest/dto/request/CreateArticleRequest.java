@@ -24,6 +24,12 @@ public class CreateArticleRequest {
 
     private String status;
 
+    private String slug;
+
+    private String seoTitle;
+
+    private String seoDescription;
+
     /**
      * 获取文章标题。
      *
@@ -148,5 +154,29 @@ public class CreateArticleRequest {
      */
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    public String getSeoTitle() {
+        return seoTitle;
+    }
+
+    public void setSeoTitle(String seoTitle) {
+        this.seoTitle = seoTitle;
+    }
+
+    public String getSeoDescription() {
+        return seoDescription;
+    }
+
+    public void setSeoDescription(String seoDescription) {
+        this.seoDescription = seoDescription;
     }
 }

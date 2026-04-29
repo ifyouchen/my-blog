@@ -52,6 +52,9 @@ public class ArticleAssembler {
         dto.setFavoriteCount(article.getFavoriteCount());
         dto.setCommentCount(article.getCommentCount());
         dto.setFeatured(article.isFeatured());
+        dto.setSlug(article.getSlug());
+        dto.setSeoTitle(article.getSeoTitle());
+        dto.setSeoDescription(article.getSeoDescription());
         if (article.getPublishedAt() != null) {
             dto.setPublishedAt(FORMATTER.format(article.getPublishedAt()));
         }

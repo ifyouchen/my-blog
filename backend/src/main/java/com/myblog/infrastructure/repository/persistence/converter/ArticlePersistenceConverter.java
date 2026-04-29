@@ -48,6 +48,9 @@ public final class ArticlePersistenceConverter {
             intValue(articleDO.getCommentCount()),
             boolValue(articleDO.getFeatured()),
             articleDO.getFeaturedAt(),
+            articleDO.getSlug(),
+            articleDO.getSeoTitle(),
+            articleDO.getSeoDescription(),
             articleDO.getPublishedAt(),
             articleDO.getCreatedAt(),
             articleDO.getUpdatedAt(),
@@ -78,6 +81,9 @@ public final class ArticlePersistenceConverter {
         articleDO.setCommentCount(article.getCommentCount());
         articleDO.setFeatured(article.isFeatured());
         articleDO.setFeaturedAt(article.getFeaturedAt());
+        articleDO.setSlug(article.getSlug());
+        articleDO.setSeoTitle(article.getSeoTitle());
+        articleDO.setSeoDescription(article.getSeoDescription());
         articleDO.setPublishedAt(article.getPublishedAt());
         articleDO.setCreatedAt(article.getCreatedAt());
         articleDO.setUpdatedAt(article.getUpdatedAt());

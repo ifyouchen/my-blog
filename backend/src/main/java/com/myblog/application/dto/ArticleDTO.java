@@ -28,6 +28,9 @@ public class ArticleDTO {
     private boolean liked;
     private boolean favorited;
     private boolean featured;
+    private String slug;
+    private String seoTitle;
+    private String seoDescription;
     private UserDTO author;
 
     /**
@@ -322,6 +325,30 @@ public class ArticleDTO {
 
     public void setFeatured(boolean featured) {
         this.featured = featured;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    public String getSeoTitle() {
+        return seoTitle;
+    }
+
+    public void setSeoTitle(String seoTitle) {
+        this.seoTitle = seoTitle;
+    }
+
+    public String getSeoDescription() {
+        return seoDescription;
+    }
+
+    public void setSeoDescription(String seoDescription) {
+        this.seoDescription = seoDescription;
     }
 
     /**

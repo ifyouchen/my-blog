@@ -1,6 +1,7 @@
 <script setup>
 import {computed, inject, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
+import {useHead} from '@unhead/vue';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -21,6 +22,15 @@ const profile = ref(null);
 const articles = ref([]);
 const reportDialogVisible = ref(false);
 const page = ref(1);
+
+useHead({
+    title: computed(() => {
+        if (profile.value?.user?.username) {
+            return `${profile.value.user.username} 的个人主页 - my-blog`;
+        }
+        return '用户主页 - my-blog';
+    })
+});
 const pageSize = 10;
 const total = ref(0);
 const {

@@ -86,6 +86,9 @@ export const normalizeArticle = (article) => {
         favoritedAt: article.favoritedAt || '',
         liked: Boolean(article.liked),
         favorited: Boolean(article.favorited),
+        slug: article.slug || '',
+        seoTitle: article.seoTitle || '',
+        seoDescription: article.seoDescription || '',
         stats: {
             views: `${article.viewCount || 0} 阅读`,
             likes: `${article.likeCount || 0} 赞`,

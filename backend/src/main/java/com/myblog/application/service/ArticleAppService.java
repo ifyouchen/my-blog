@@ -265,7 +265,10 @@ public class ArticleAppService {
             resolveCoverUrl(command.getCoverUrl()),
             command.getCategory(),
             command.getTags(),
-            resolveCreateStatus(command.getStatus())
+            resolveCreateStatus(command.getStatus()),
+            command.getSlug(),
+            command.getSeoTitle(),
+            command.getSeoDescription()
         );
         articleRepository.save(article);
         return buildDetailDto(article, author, command.getAuthorId());
@@ -307,7 +310,10 @@ public class ArticleAppService {
             command.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
             command.getCategory(),
-            command.getTags()
+            command.getTags(),
+            command.getSlug(),
+            command.getSeoTitle(),
+            command.getSeoDescription()
         );
         applyStatus(article, command.getStatus());
         articleRepository.save(article);

@@ -90,6 +90,11 @@ CREATE TABLE `blog_article`  (
                                  `cover_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '封面地址',
                                  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '文章分类',
                                  `offline_reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '下架原因',
+                                 `featured` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否精选：1-精选 0-非精选',
+                                 `featured_at` datetime(0) NULL DEFAULT NULL COMMENT '精选时间',
+                                 `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'URL 友好标识，唯一索引',
+                                 `seo_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'SEO 标题',
+                                 `seo_description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'SEO 描述',
                                  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 PUBLISHED-已发布 OFFLINE-已下架 DELETED-已删除',
                                  `view_count` int(0) NOT NULL DEFAULT 0 COMMENT '阅读数',
                                  `like_count` int(0) NOT NULL DEFAULT 0 COMMENT '点赞数',
@@ -105,7 +110,8 @@ CREATE TABLE `blog_article`  (
                                  INDEX `idx_article_category_latest`(`status`, `deleted_at`, `category`, `published_at` DESC, `id` DESC) USING BTREE,
                                  INDEX `idx_article_author_status_updated_v2`(`author_id`, `deleted_at`, `status`, `updated_at` DESC, `id` DESC) USING BTREE,
                                  INDEX `idx_article_hot_v2`(`status`, `deleted_at`, `view_count` DESC, `published_at` DESC, `id` DESC) USING BTREE,
-                                 INDEX `idx_article_featured_v2`(`status`, `deleted_at`, `like_count` DESC, `published_at` DESC, `id` DESC) USING BTREE
+                                 INDEX `idx_article_featured_v2`(`status`, `deleted_at`, `like_count` DESC, `published_at` DESC, `id` DESC) USING BTREE,
+                                 UNIQUE INDEX `uk_article_slug`(`slug`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 9004 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客文章表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -492,3 +498,9 @@ ALTER TABLE `blog_article`
     ADD COLUMN `featured` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否精选：1-精选 0-非精选' AFTER `offline_reason`,
     ADD COLUMN `featured_at` datetime(0) NULL DEFAULT NULL COMMENT '精选时间' AFTER `featured`,
     ADD INDEX `idx_article_featured`(`featured`, `status`, `deleted_at`, `featured_at` DESC, `id` DESC) USING BTREE;
+
+ALTER TABLE `blog_article`
+    ADD COLUMN `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'URL 友好标识，唯一索引' AFTER `featured_at`,
+    ADD COLUMN `seo_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'SEO 标题' AFTER `slug`,
+    ADD COLUMN `seo_description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'SEO 描述' AFTER `seo_title`,
+    ADD UNIQUE INDEX `uk_article_slug`(`slug`) USING BTREE;

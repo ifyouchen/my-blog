@@ -354,6 +354,14 @@ public interface ArticleRepository {
     /** 查询精选文章。 */
     List<Article> findFeatured(int page, int pageSize);
 
+    /**
+     * 根据 Slug 查询文章。
+     *
+     * @param slug URL Slug
+     * @return 文章 Optional
+     */
+    Optional<Article> findBySlug(String slug);
+
     /** 统计精选文章数量。 */
     long countFeatured();
 }

@@ -35,6 +35,9 @@ public class Article {
     private int commentCount;
     private boolean featured;
     private LocalDateTime featuredAt;
+    private String slug;
+    private String seoTitle;
+    private String seoDescription;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -58,7 +61,8 @@ public class Article {
      * @return 文章聚合根
      */
     public static Article create(Long id, UserId authorId, String title, String summary, String content,
-                                 String coverUrl, String category, List<String> tags, ArticleStatus status) {
+                                 String coverUrl, String category, List<String> tags, ArticleStatus status,
+                                 String slug, String seoTitle, String seoDescription) {
         Article article = new Article();
         article.id = new ArticleId(id);
         article.authorId = authorId;
@@ -75,6 +79,9 @@ public class Article {
         article.commentCount = 0;
         article.featured = false;
         article.featuredAt = null;
+        article.slug = normalizeNullableText(slug);
+        article.seoTitle = normalizeNullableText(seoTitle);
+        article.seoDescription = normalizeNullableText(seoDescription);
         article.createdAt = LocalDateTime.now();
         article.updatedAt = article.createdAt;
         article.version = 0;
@@ -112,6 +119,7 @@ public class Article {
                                   String coverUrl, String category, String offlineReason, List<String> tags, ArticleStatus status,
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
                                   boolean featured, LocalDateTime featuredAt,
+                                  String slug, String seoTitle, String seoDescription,
                                   LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
                                   Integer version) {
         Article article = new Article();
@@ -131,6 +139,9 @@ public class Article {
         article.commentCount = commentCount;
         article.featured = featured;
         article.featuredAt = featuredAt;
+        article.slug = slug;
+        article.seoTitle = seoTitle;
+        article.seoDescription = seoDescription;
         article.publishedAt = publishedAt;
         article.createdAt = createdAt;
         article.updatedAt = updatedAt;
@@ -260,13 +271,17 @@ public class Article {
      * @param tags 标签列表
      */
     public void updateContent(String title, String summary, String content, String coverUrl,
-                              String category, List<String> tags) {
+                              String category, List<String> tags,
+                              String slug, String seoTitle, String seoDescription) {
         this.title = normalizeText(title);
         this.summary = summary == null ? "" : summary.trim();
         this.content = normalizeText(content);
         this.coverUrl = coverUrl;
         this.category = normalizeText(category);
         this.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
+        this.slug = normalizeNullableText(slug);
+        this.seoTitle = normalizeNullableText(seoTitle);
+        this.seoDescription = normalizeNullableText(seoDescription);
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -482,6 +497,33 @@ public class Article {
      */
     public LocalDateTime getFeaturedAt() {
         return featuredAt;
+    }
+
+    /**
+     * 获取 URL Slug。
+     *
+     * @return URL Slug
+     */
+    public String getSlug() {
+        return slug;
+    }
+
+    /**
+     * 获取 SEO 标题。
+     *
+     * @return SEO 标题
+     */
+    public String getSeoTitle() {
+        return seoTitle;
+    }
+
+    /**
+     * 获取 SEO 描述。
+     *
+     * @return SEO 描述
+     */
+    public String getSeoDescription() {
+        return seoDescription;
     }
 
     /**

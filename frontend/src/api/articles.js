@@ -93,6 +93,9 @@ const buildArticlePayload = (draft, status) => {
         coverUrl: draft.coverUrl,
         category: draft.category,
         tags,
-        status
+        status,
+        slug: draft.slug || '',
+        seoTitle: draft.seoTitle || '',
+        seoDescription: draft.seoDescription || ''
     };
 };
