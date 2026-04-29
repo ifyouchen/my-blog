@@ -1,4 +1,4 @@
-import { request } from './http';
+import {request} from './http';
 
 export const getAdminStatsApi = async () => {
     return await request(`/admin/stats`);
@@ -125,6 +125,34 @@ export const updateTagApi = async (tagId, payload) => {
 
 export const deleteTagApi = async (tagId) => {
     return await request(`/admin/tags/${tagId}`, {
+        method: 'DELETE'
+    });
+};
+
+// ===== 专栏管理 =====
+
+export const getAdminColumnsApi = async (page = 1, pageSize = 10, keyword = null) => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (keyword) params.append('keyword', keyword);
+    return await request(`/admin/columns?${params}`);
+};
+
+export const createAdminColumnApi = async (payload) => {
+    return await request('/admin/columns', {
+        method: 'POST',
+        body: payload
+    });
+};
+
+export const updateAdminColumnApi = async (columnId, payload) => {
+    return await request(`/admin/columns/${columnId}`, {
+        method: 'PUT',
+        body: payload
+    });
+};
+
+export const deleteAdminColumnApi = async (columnId) => {
+    return await request(`/admin/columns/${columnId}`, {
         method: 'DELETE'
     });
 };

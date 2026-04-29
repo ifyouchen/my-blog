@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import {createRouter, createWebHistory} from 'vue-router';
 
 const HomeView = () => import('@/views/HomeView.vue');
 const AuthView = () => import('@/views/AuthView.vue');
@@ -20,6 +20,7 @@ const AdminArticlesView = () => import('@/views/admin/AdminArticlesView.vue');
 const AdminCommentsView = () => import('@/views/admin/AdminCommentsView.vue');
 const AdminCategoriesView = () => import('@/views/admin/AdminCategoriesView.vue');
 const AdminTagsView = () => import('@/views/admin/AdminTagsView.vue');
+const AdminColumnsView = () => import('@/views/admin/AdminColumnsView.vue');
 const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 
 const routes = [
@@ -224,6 +225,16 @@ const routes = [
                     title: '标签管理',
                     adminTitle: '标签管理',
                     adminDescription: '维护标签体系，保证搜索、编辑器和后台数据一致。'
+                }
+            },
+            {
+                path: 'columns',
+                name: 'adminColumns',
+                component: AdminColumnsView,
+                meta: {
+                    title: '专栏管理',
+                    adminTitle: '专栏管理',
+                    adminDescription: '新增、编辑、删除专栏，管理专栏状态和排序。'
                 }
             },
             {

@@ -24,7 +24,6 @@ import java.util.Optional;
 public class MyBatisColumnRepository implements ColumnRepository {
 
     private final ColumnMapper columnMapper;
-
     public MyBatisColumnRepository(ColumnMapper columnMapper) {
         this.columnMapper = columnMapper;
     }
@@ -108,6 +107,27 @@ public class MyBatisColumnRepository implements ColumnRepository {
     @Override
     public long countSearchPublished(String keyword) {
         return columnMapper.countSearchPublished(keyword);
+    }
+
+    @Override
+    public List<Column> findAll(String keyword, int page, int pageSize) {
+        int p = Math.max(page, 1);
+        int ps = Math.max(pageSize, 1);
+        List<ColumnDO> list = columnMapper.selectAll(keyword, (p - 1) * ps, ps);
+        List<Column> cols = new ArrayList<Column>(list.size());
+        for (ColumnDO d : list) { cols.add(toDomain(d)); }
+        return cols;
+    }
+
+    @Override
+    public long countAll(String keyword) {
+        return columnMapper.countAll(keyword);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void softDelete(ColumnId columnId) {
+        columnMapper.softDelete(columnId.getValue());
     }
 
     private Column toDomain(ColumnDO columnDO) {

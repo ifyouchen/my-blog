@@ -1,12 +1,14 @@
 package com.myblog.interfaces.rest.controller;
 
+import com.myblog.application.command.RecordAdminLogCommand;
+import com.myblog.application.dto.CategoryDTO;
+import com.myblog.application.dto.ColumnDTO;
+import com.myblog.application.dto.TagDTO;
 import com.myblog.application.service.AdminAppService;
 import com.myblog.application.service.AdminLogAppService;
 import com.myblog.application.service.CategoryAppService;
+import com.myblog.application.service.ColumnAppService;
 import com.myblog.application.service.TagAppService;
-import com.myblog.application.command.RecordAdminLogCommand;
-import com.myblog.application.dto.CategoryDTO;
-import com.myblog.application.dto.TagDTO;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
@@ -17,8 +19,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,13 +38,16 @@ public class AdminController {
     private final AdminLogAppService adminLogAppService;
     private final CategoryAppService categoryAppService;
     private final TagAppService tagAppService;
+    private final ColumnAppService columnAppService;
 
     public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService,
-                           CategoryAppService categoryAppService, TagAppService tagAppService) {
+                           CategoryAppService categoryAppService, TagAppService tagAppService,
+                           ColumnAppService columnAppService) {
         this.adminAppService = adminAppService;
         this.adminLogAppService = adminLogAppService;
         this.categoryAppService = categoryAppService;
         this.tagAppService = tagAppService;
+        this.columnAppService = columnAppService;
     }
 
     private void ensureAdmin() {
@@ -398,6 +403,98 @@ public class AdminController {
             request
         ));
         return result;
+    }
+
+    // ==================== 专栏管理 ====================
+
+    /**
+     * 分页查询专栏列表（管理后台）。
+     */
+    @GetMapping("/columns")
+    public Result<PageResult<ColumnDTO>> getColumns(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String keyword) {
+        ensureAdmin();
+        return Result.success(columnAppService.adminPageColumns(keyword, page, pageSize));
+    }
+
+    /**
+     * 创建专栏。
+     */
+    @PostMapping("/columns")
+    public Result<ColumnDTO> createColumn(@RequestBody Map<String, Object> request,
+                                          @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        Long authorId = parseLong(request.get("authorId"), null);
+        String title = (String) request.get("title");
+        String summary = (String) request.get("summary");
+        String coverUrl = (String) request.get("coverUrl");
+        Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
+        ColumnDTO dto = columnAppService.adminCreateColumn(authorId, title, summary, coverUrl, sortOrder);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_COLUMN", "COLUMN", dto.getId(),
+            "创建专栏 " + dto.getTitle(), null, toColumnSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 更新专栏。
+     */
+    @PutMapping("/columns/{id}")
+    public Result<ColumnDTO> updateColumn(@PathVariable Long id,
+                                          @RequestBody Map<String, Object> request,
+                                          @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        ColumnDTO before = columnAppService.adminPageColumns(null, 1, Integer.MAX_VALUE)
+            .getItems().stream().filter(c -> c.getId().equals(id)).findFirst().orElse(null);
+        String title = (String) request.get("title");
+        String summary = (String) request.get("summary");
+        String coverUrl = (String) request.get("coverUrl");
+        Integer sortOrder = parseInteger(request.get("sortOrder"), null);
+        String status = (String) request.get("status");
+        ColumnDTO dto = columnAppService.adminUpdateColumn(id, title, summary, coverUrl, sortOrder, status);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_COLUMN", "COLUMN", id,
+            "更新专栏 " + dto.getTitle(), toColumnSnapshot(before), toColumnSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 删除专栏（软删除）。
+     */
+    @DeleteMapping("/columns/{id}")
+    public Result<Map<String, Object>> deleteColumn(@PathVariable Long id,
+                                                    @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        columnAppService.adminDeleteColumn(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_COLUMN", "COLUMN", id, "删除专栏 " + id, null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
+    private Map<String, Object> toColumnSnapshot(ColumnDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Map<String, Object> s = new LinkedHashMap<String, Object>();
+        s.put("id", dto.getId());
+        s.put("title", dto.getTitle());
+        s.put("status", dto.getStatus());
+        s.put("sortOrder", dto.getSortOrder());
+        return s;
+    }
+
+    private Long parseLong(Object value, Long fallback) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+            return Long.parseLong(((String) value).trim());
+        }
+        return fallback;
     }
 
     /**

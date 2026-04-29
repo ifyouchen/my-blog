@@ -14,6 +14,7 @@ const navItems = [
     { to: '/admin/comments', label: '评论', icon: '评论' },
     { to: '/admin/categories', label: '分类', icon: '分类' },
     { to: '/admin/tags', label: '标签', icon: '标签' },
+    { to: '/admin/columns', label: '专栏', icon: '专栏' },
     { to: '/admin/logs', label: '日志', icon: '日志' }
 ];
 

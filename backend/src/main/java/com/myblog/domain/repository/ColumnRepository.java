@@ -33,4 +33,12 @@ public interface ColumnRepository {
     List<Column> searchPublished(String keyword, String sort, int page, int pageSize);
 
     long countSearchPublished(String keyword);
+
+    /** 后台管理：分页查询所有专栏（含草稿、已删除除外） */
+    List<Column> findAll(String keyword, int page, int pageSize);
+
+    long countAll(String keyword);
+
+    /** 后台管理：软删除专栏 */
+    void softDelete(ColumnId columnId);
 }

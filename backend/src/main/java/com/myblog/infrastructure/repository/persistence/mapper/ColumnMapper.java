@@ -28,7 +28,6 @@ public interface ColumnMapper {
     int insert(ColumnDO columnDO);
     int insertOrUpdate(ColumnDO columnDO);
 
-
     int update(ColumnDO columnDO);
 
     List<Long> selectArticleIds(@Param("columnId") Long columnId);
@@ -50,4 +49,15 @@ public interface ColumnMapper {
                                    @Param("offset") int offset, @Param("limit") int limit);
 
     long countSearchPublished(@Param("keyword") String keyword);
+
+
+    /** 后台管理：分页查询所有专栏（不含软删除） */
+    List<ColumnDO> selectAll(@Param("keyword") String keyword,
+                             @Param("offset") int offset,
+                             @Param("limit") int limit);
+
+    long countAll(@Param("keyword") String keyword);
+
+    /** 后台管理：软删除专栏 */
+    int softDelete(@Param("id") Long id);
 }

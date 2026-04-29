@@ -211,6 +211,80 @@ public class ColumnAppService {
         return column;
     }
 
+    // ==================== 管理后台方法 ====================
+
+    /**
+     * 后台：分页查询所有专栏（含草稿）。
+     */
+    public PageResult<ColumnDTO> adminPageColumns(String keyword, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        List<Column> columns = columnRepository.findAll(keyword, currentPage, currentPageSize);
+        List<ColumnDTO> items = new ArrayList<>(columns.size());
+        for (Column column : columns) {
+            items.add(toAdminDTO(column));
+        }
+        return new PageResult<>(items, currentPage, currentPageSize, columnRepository.countAll(keyword));
+    }
+
+    /**
+     * 后台：创建专栏。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ColumnDTO adminCreateColumn(Long authorId, String title, String summary,
+                                       String coverUrl, Integer sortOrder) {
+        userRepository.findById(new UserId(authorId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "作者不存在"));
+        Column column = Column.create(
+            columnRepository.nextId(),
+            new UserId(authorId),
+            title, summary, coverUrl, sortOrder
+        );
+        columnRepository.save(column);
+        return toAdminDTO(column);
+    }
+
+    /**
+     * 后台：更新专栏。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ColumnDTO adminUpdateColumn(Long columnId, String title, String summary,
+                                       String coverUrl, Integer sortOrder, String status) {
+        Column column = columnRepository.findById(new ColumnId(columnId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
+        column.update(title, summary, coverUrl, sortOrder, status);
+        columnRepository.save(column);
+        return toAdminDTO(column);
+    }
+
+    /**
+     * 后台：删除专栏（软删除）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void adminDeleteColumn(Long columnId) {
+        Column column = columnRepository.findById(new ColumnId(columnId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
+        column.delete();
+        columnRepository.save(column);
+    }
+
+    private ColumnDTO toAdminDTO(Column column) {
+        ColumnDTO dto = new ColumnDTO();
+        dto.setId(column.getId().getValue());
+        dto.setTitle(column.getTitle());
+        dto.setSummary(column.getSummary());
+        dto.setCoverUrl(column.getCoverUrl());
+        dto.setSubscriberCount(column.getSubscriberCount());
+        dto.setArticleCount(column.getArticleCount());
+        dto.setStatus(column.getStatus());
+        dto.setSortOrder(column.getSortOrder());
+        dto.setAuthorId(column.getAuthorId().getValue());
+        dto.setCreatedAt(column.getCreatedAt());
+        dto.setSubscribed(false);
+        userRepository.findById(column.getAuthorId()).ifPresent(u -> dto.setAuthor(UserAssembler.toDTO(u)));
+        return dto;
+    }
+
     private ColumnDTO toDTO(Column column, Long currentUserId) {
         User author = userRepository.findById(column.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏作者不存在"));

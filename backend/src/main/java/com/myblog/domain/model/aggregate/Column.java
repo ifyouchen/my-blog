@@ -71,6 +71,30 @@ public class Column {
         return column;
     }
 
+    /**
+     * 更新专栏基本信息。
+     */
+    public void update(String title, String summary, String coverUrl, Integer sortOrder, String status) {
+        this.title = title;
+        this.summary = summary;
+        this.coverUrl = coverUrl;
+        if (sortOrder != null) {
+            this.sortOrder = sortOrder;
+        }
+        if (status != null) {
+            this.status = status;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 软删除专栏。
+     */
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
+        this.updatedAt = this.deletedAt;
+    }
+
     public void increaseSubscriberCount() {
         this.subscriberCount = getSubscriberCount() + 1;
         this.updatedAt = LocalDateTime.now();
