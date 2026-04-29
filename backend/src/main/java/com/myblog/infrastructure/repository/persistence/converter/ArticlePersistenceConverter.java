@@ -46,6 +46,8 @@ public final class ArticlePersistenceConverter {
             intValue(articleDO.getLikeCount()),
             intValue(articleDO.getFavoriteCount()),
             intValue(articleDO.getCommentCount()),
+            boolValue(articleDO.getFeatured()),
+            articleDO.getFeaturedAt(),
             articleDO.getPublishedAt(),
             articleDO.getCreatedAt(),
             articleDO.getUpdatedAt(),
@@ -74,6 +76,8 @@ public final class ArticlePersistenceConverter {
         articleDO.setLikeCount(article.getLikeCount());
         articleDO.setFavoriteCount(article.getFavoriteCount());
         articleDO.setCommentCount(article.getCommentCount());
+        articleDO.setFeatured(article.isFeatured());
+        articleDO.setFeaturedAt(article.getFeaturedAt());
         articleDO.setPublishedAt(article.getPublishedAt());
         articleDO.setCreatedAt(article.getCreatedAt());
         articleDO.setUpdatedAt(article.getUpdatedAt());
@@ -83,5 +87,9 @@ public final class ArticlePersistenceConverter {
 
     private static int intValue(Integer value) {
         return value == null ? 0 : value.intValue();
+    }
+
+    private static boolean boolValue(Boolean value) {
+        return value != null && value;
     }
 }

@@ -108,6 +108,18 @@ export const normalizeColumn = (column) => ({
     author: normalizeUser(column.author || {})
 });
 
+export const normalizeTopic = (topic) => ({
+    id: topic.id,
+    title: topic.title,
+    summary: topic.summary,
+    coverUrl: resolveMediaUrl(
+        topic.coverUrl,
+        'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=900&q=80'
+    ),
+    articleCount: topic.articleCount || 0,
+    status: topic.status
+});
+
 export const normalizeAuthorRanking = (item) => ({
     rank: item.rank || 0,
     user: normalizeUser(item.user || {}),

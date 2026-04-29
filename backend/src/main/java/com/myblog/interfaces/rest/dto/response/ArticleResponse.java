@@ -31,6 +31,7 @@ public class ArticleResponse {
     private String favoritedAt;
     private boolean liked;
     private boolean favorited;
+    private boolean featured;
     private UserResponse author;
 
     /**
@@ -317,6 +318,14 @@ public class ArticleResponse {
 
     public void setFavorited(boolean favorited) {
         this.favorited = favorited;
+    }
+
+    public boolean isFeatured() {
+        return featured;
+    }
+
+    public void setFeatured(boolean featured) {
+        this.featured = featured;
     }
 
     /**

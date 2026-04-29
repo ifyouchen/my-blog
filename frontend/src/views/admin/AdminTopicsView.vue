@@ -3,15 +3,15 @@ import {reactive, watch} from 'vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
-    addAdminColumnArticleApi,
-    createAdminColumnApi,
-    deleteAdminColumnApi,
+    addAdminTopicArticleApi,
+    createAdminTopicApi,
+    deleteAdminTopicApi,
     getAdminArticlesApi,
-    getAdminColumnsApi,
-    removeAdminColumnArticleApi,
-    updateAdminColumnApi
+    getAdminTopicsApi,
+    removeAdminTopicArticleApi,
+    updateAdminTopicApi
 } from '@/api/admin';
-import {getColumnArticlesApi} from '@/api/columns';
+import {getTopicArticlesApi} from '@/api/topic';
 import {createPagedState, readPositiveInt, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useRoute, useRouter} from 'vue-router';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
@@ -26,7 +26,6 @@ const {
 } = useConfirmDialog();
 
 const form = reactive({
-    authorId: '',
     title: '',
     summary: '',
     coverUrl: '',
@@ -48,9 +47,9 @@ const state = reactive({
         status: 'PUBLISHED'
     },
     // 文章管理
-    managingColumn: null,
-    columnArticles: [],
-    columnArticlesLoading: false,
+    managingTopic: null,
+    topicArticles: [],
+    topicArticlesLoading: false,
     searchKeyword: '',
     searchResults: [],
     searching: false,
@@ -68,11 +67,11 @@ const applyRouteState = () => {
     state.jumpPage = String(state.page);
 };
 
-const loadColumns = async () => {
+const loadTopics = async () => {
     state.loading = true;
     state.error = '';
     try {
-        const result = await getAdminColumnsApi(
+        const result = await getAdminTopicsApi(
             state.page,
             state.pageSize,
             state.keyword || null
@@ -89,7 +88,7 @@ const loadColumns = async () => {
         state.page = result.page || state.page;
         state.jumpPage = String(state.page);
     } catch (error) {
-        state.error = error.message || '专栏列表加载失败';
+        state.error = error.message || '专题列表加载失败';
     } finally {
         state.loading = false;
     }
@@ -112,51 +111,49 @@ const changeFilter = async () => {
     await syncQuery({ page: undefined, keyword: state.keyword || undefined });
 };
 
-const submitColumn = async () => {
-    if (!form.authorId) {
-        setFeedback('请填写作者 ID', 'error');
+const submitTopic = async () => {
+    if (!form.title) {
+        setFeedback('请填写专题标题', 'error');
         return;
     }
     state.submitting = true;
     try {
-        await createAdminColumnApi({
-            authorId: Number(form.authorId),
+        await createAdminTopicApi({
             title: form.title,
             summary: form.summary,
             coverUrl: form.coverUrl,
             sortOrder: Number(form.sortOrder || 0)
         });
-        form.authorId = '';
         form.title = '';
         form.summary = '';
         form.coverUrl = '';
         form.sortOrder = 0;
-        setFeedback('专栏已创建');
-        await loadColumns();
+        setFeedback('专题已创建');
+        await loadTopics();
     } catch (error) {
-        setFeedback(error.message || '专栏创建失败', 'error');
+        setFeedback(error.message || '专题创建失败', 'error');
     } finally {
         state.submitting = false;
     }
 };
 
-const startEdit = (column) => {
-    state.editingId = column.id;
-    state.editForm.title = column.title || '';
-    state.editForm.summary = column.summary || '';
-    state.editForm.coverUrl = column.coverUrl || '';
-    state.editForm.sortOrder = column.sortOrder ?? 0;
-    state.editForm.status = column.status || 'PUBLISHED';
+const startEdit = (topic) => {
+    state.editingId = topic.id;
+    state.editForm.title = topic.title || '';
+    state.editForm.summary = topic.summary || '';
+    state.editForm.coverUrl = topic.coverUrl || '';
+    state.editForm.sortOrder = topic.sortOrder ?? 0;
+    state.editForm.status = topic.status || 'PUBLISHED';
 };
 
 const cancelEdit = () => {
     state.editingId = null;
 };
 
-const saveEdit = async (columnId) => {
+const saveEdit = async (topicId) => {
     state.submitting = true;
     try {
-        await updateAdminColumnApi(columnId, {
+        await updateAdminTopicApi(topicId, {
             title: state.editForm.title,
             summary: state.editForm.summary,
             coverUrl: state.editForm.coverUrl,
@@ -164,45 +161,45 @@ const saveEdit = async (columnId) => {
             status: state.editForm.status
         });
         state.editingId = null;
-        setFeedback('专栏已更新');
-        await loadColumns();
+        setFeedback('专题已更新');
+        await loadTopics();
     } catch (error) {
-        setFeedback(error.message || '专栏更新失败', 'error');
+        setFeedback(error.message || '专题更新失败', 'error');
     } finally {
         state.submitting = false;
     }
 };
 
-// ===== 专栏文章管理 =====
+// ===== 专题文章管理 =====
 
-const startManageArticles = async (column) => {
-    state.managingColumn = column;
-    state.columnArticles = [];
+const startManageArticles = async (topic) => {
+    state.managingTopic = topic;
+    state.topicArticles = [];
     state.searchKeyword = '';
     state.searchResults = [];
     state.articleActionLoadingId = null;
-    await loadColumnArticles();
+    await loadTopicArticles();
 };
 
 const stopManageArticles = async () => {
-    state.managingColumn = null;
-    state.columnArticles = [];
+    state.managingTopic = null;
+    state.topicArticles = [];
     state.searchKeyword = '';
     state.searchResults = [];
-    await loadColumns();
+    await loadTopics();
 };
 
-const loadColumnArticles = async () => {
-    if (!state.managingColumn) return;
-    state.columnArticlesLoading = true;
+const loadTopicArticles = async () => {
+    if (!state.managingTopic) return;
+    state.topicArticlesLoading = true;
     try {
-        const result = await getColumnArticlesApi(state.managingColumn.id, { page: 1, pageSize: 100 });
-        state.columnArticles = result.items || [];
+        const result = await getTopicArticlesApi(state.managingTopic.id, { page: 1, pageSize: 100 });
+        state.topicArticles = result.items || [];
     } catch (error) {
-        state.columnArticles = [];
-        setFeedback('加载专栏文章失败', 'error');
+        state.topicArticles = [];
+        setFeedback('加载专题文章失败', 'error');
     } finally {
-        state.columnArticlesLoading = false;
+        state.topicArticlesLoading = false;
     }
 };
 
@@ -215,7 +212,7 @@ const handleSearchArticles = async () => {
     try {
         const result = await getAdminArticlesApi(1, 20, 'PUBLISHED', state.searchKeyword.trim(), null);
         state.searchResults = (result.items || []).filter(
-            (a) => !state.columnArticles.some((ca) => ca.id === a.id)
+            (a) => !state.topicArticles.some((ta) => ta.id === a.id)
         );
     } catch (error) {
         setFeedback('搜索文章失败', 'error');
@@ -226,12 +223,12 @@ const handleSearchArticles = async () => {
 };
 
 const handleAddArticle = async (articleId) => {
-    if (!state.managingColumn) return;
+    if (!state.managingTopic) return;
     state.articleActionLoadingId = articleId;
     try {
-        await addAdminColumnArticleApi(state.managingColumn.id, { articleId, sortOrder: 0 });
-        setFeedback('文章已添加到专栏');
-        await loadColumnArticles();
+        await addAdminTopicArticleApi(state.managingTopic.id, { articleId, sortOrder: 0 });
+        setFeedback('文章已添加到专题');
+        await loadTopicArticles();
         state.searchResults = state.searchResults.filter((a) => a.id !== articleId);
     } catch (error) {
         setFeedback(error.message || '添加失败', 'error');
@@ -241,12 +238,12 @@ const handleAddArticle = async (articleId) => {
 };
 
 const handleRemoveArticle = async (articleId) => {
-    if (!state.managingColumn) return;
+    if (!state.managingTopic) return;
     state.articleActionLoadingId = articleId;
     try {
-        await removeAdminColumnArticleApi(state.managingColumn.id, articleId);
-        setFeedback('文章已从专栏移除');
-        state.columnArticles = state.columnArticles.filter((a) => a.id !== articleId);
+        await removeAdminTopicArticleApi(state.managingTopic.id, articleId);
+        setFeedback('文章已从专题移除');
+        state.topicArticles = state.topicArticles.filter((a) => a.id !== articleId);
     } catch (error) {
         setFeedback(error.message || '移除失败', 'error');
     } finally {
@@ -254,21 +251,21 @@ const handleRemoveArticle = async (articleId) => {
     }
 };
 
-const removeColumn = async (column) => {
+const removeTopic = async (topic) => {
     openConfirmDialog({
-        eyebrow: '专栏治理确认',
-        title: '删除专栏',
-        message: `确定删除专栏「${column.title}」吗？删除后该专栏将不再对外展示。`,
+        eyebrow: '专题治理确认',
+        title: '删除专题',
+        message: `确定删除专题「${topic.title}」吗？删除后该专题将不再对外展示。`,
         confirmText: '确认删除',
         tone: 'danger',
         onConfirm: async () => {
             state.submitting = true;
             try {
-                await deleteAdminColumnApi(column.id);
-                setFeedback('专栏已删除');
-                await loadColumns();
+                await deleteAdminTopicApi(topic.id);
+                setFeedback('专题已删除');
+                await loadTopics();
             } catch (error) {
-                setFeedback(error.message || '专栏删除失败', 'error');
+                setFeedback(error.message || '专题删除失败', 'error');
             } finally {
                 state.submitting = false;
             }
@@ -276,13 +273,13 @@ const removeColumn = async (column) => {
     });
 };
 
-useAdminRefresh(loadColumns);
+useAdminRefresh(loadTopics);
 
 watch(
     () => [route.query.page, route.query.keyword],
     () => {
         applyRouteState();
-        loadColumns();
+        loadTopics();
     },
     { immediate: true }
 );
@@ -291,19 +288,14 @@ watch(
 <template>
     <section class="dashboard-content-panel admin-resource-page">
         <div class="admin-toolbar">
-            <!-- 新增专栏表单 -->
-            <form class="admin-filter-toolbar admin-create-toolbar" @submit.prevent="submitColumn">
+            <form class="admin-filter-toolbar admin-create-toolbar" @submit.prevent="submitTopic">
                 <label>
-                    <span>作者 ID</span>
-                    <input v-model.trim="form.authorId" type="number" placeholder="用户 ID" required>
-                </label>
-                <label>
-                    <span>专栏标题</span>
-                    <input v-model.trim="form.title" type="text" placeholder="专栏标题" required>
+                    <span>专题标题</span>
+                    <input v-model.trim="form.title" type="text" placeholder="专题标题" required>
                 </label>
                 <label>
                     <span>简介</span>
-                    <input v-model.trim="form.summary" type="text" placeholder="专栏简介">
+                    <input v-model.trim="form.summary" type="text" placeholder="专题简介">
                 </label>
                 <label>
                     <span>封面 URL</span>
@@ -315,12 +307,11 @@ watch(
                 </label>
                 <div class="admin-filter-actions">
                     <button type="submit" :disabled="state.submitting">
-                        {{ state.submitting ? '提交中...' : '新增专栏' }}
+                        {{ state.submitting ? '提交中...' : '新增专题' }}
                     </button>
                 </div>
             </form>
 
-            <!-- 关键字搜索 -->
             <div class="admin-filter-toolbar">
                 <label>
                     <span>关键字搜索</span>
@@ -340,113 +331,98 @@ watch(
 
         <div class="admin-table-shell">
             <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新专栏数据...
+                正在更新专题数据...
             </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
             </p>
             <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                专栏数据加载中...
+                专题数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
             </p>
             <template v-else>
-                <div class="admin-table-wrap" data-testid="admin-columns-table">
+                <div class="admin-table-wrap" data-testid="admin-topics-table">
                     <table class="admin-table">
                         <colgroup>
                             <col style="width: 8%">
-                            <col style="width: 14%">
-                            <col style="width: 18%">
+                            <col style="width: 16%">
+                            <col style="width: 22%">
                             <col style="width: 9%">
-                            <col style="width: 9%">
                             <col style="width: 10%">
                             <col style="width: 10%">
-                            <col style="width: 10%">
-                            <col style="width: 12%">
+                            <col style="width: 13%">
                         </colgroup>
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>标题</th>
                                 <th>简介</th>
-                                <th>作者ID</th>
                                 <th>排序</th>
-                                <th>订阅数</th>
                                 <th>文章数</th>
                                 <th>状态</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="column in state.items" :key="column.id">
-                                <td>#{{ column.id }}</td>
+                            <tr v-for="topic in state.items" :key="topic.id">
+                                <td>#{{ topic.id }}</td>
 
-                                <!-- 标题 -->
-                                <td v-if="state.editingId === column.id" class="admin-edit-cell">
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell">
                                     <input v-model.trim="state.editForm.title" class="admin-edit-input" type="text">
                                 </td>
-                                <td v-else><span class="admin-cell-text">{{ column.title }}</span></td>
+                                <td v-else><span class="admin-cell-text">{{ topic.title }}</span></td>
 
-                                <!-- 简介 -->
-                                <td v-if="state.editingId === column.id" class="admin-edit-cell admin-edit-cell-wide">
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell-wide">
                                     <input v-model.trim="state.editForm.summary" class="admin-edit-input" type="text">
                                 </td>
-                                <td v-else class="summary-cell">{{ column.summary || '-' }}</td>
+                                <td v-else class="summary-cell">{{ topic.summary || '-' }}</td>
 
-                                <!-- 作者 ID -->
-                                <td>{{ column.authorId }}</td>
-
-                                <!-- 排序 -->
-                                <td v-if="state.editingId === column.id" class="admin-edit-cell admin-edit-cell-narrow">
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell-narrow">
                                     <input v-model.number="state.editForm.sortOrder" class="admin-edit-input" type="number">
                                 </td>
-                                <td v-else>{{ column.sortOrder ?? 0 }}</td>
+                                <td v-else>{{ topic.sortOrder ?? 0 }}</td>
 
-                                <td>{{ column.subscriberCount }}</td>
-                                <td>{{ column.articleCount }}</td>
+                                <td>{{ topic.articleCount }}</td>
 
-                                <!-- 状态 -->
-                                <td v-if="state.editingId === column.id">
+                                <td v-if="state.editingId === topic.id">
                                     <select v-model="state.editForm.status" class="admin-edit-select">
                                         <option value="PUBLISHED">已发布</option>
                                         <option value="DRAFT">草稿</option>
                                     </select>
                                 </td>
                                 <td v-else>
-                                    <span class="status-pill" :class="{ danger: column.status !== 'PUBLISHED' }">
-                                        {{ column.status === 'PUBLISHED' ? '已发布' : '草稿' }}
+                                    <span class="status-pill" :class="{ danger: topic.status !== 'PUBLISHED' }">
+                                        {{ topic.status === 'PUBLISHED' ? '已发布' : '草稿' }}
                                     </span>
                                 </td>
 
-                                <!-- 操作 -->
                                 <td class="table-actions">
-                                    <template v-if="state.editingId === column.id">
+                                    <template v-if="state.editingId === topic.id">
                                         <button type="button" class="admin-edit-btn primary" :disabled="state.submitting"
-                                                @click="saveEdit(column.id)">
-                                            {{ state.submitting ? '保存中...' : '保存' }}
-                                        </button>
+                                                @click="saveEdit(topic.id)">{{ state.submitting ? '保存中...' : '保存' }}</button>
                                         <button type="button" class="admin-edit-btn secondary" :disabled="state.submitting"
                                                 @click="cancelEdit">取消</button>
                                     </template>
                                     <template v-else>
                                         <button type="button" :disabled="state.submitting"
-                                                @click="startEdit(column)">编辑</button>
-                                        <button type="button" :disabled="state.submitting || state.managingColumn"
-                                                @click="startManageArticles(column)">管理文章</button>
+                                                @click="startEdit(topic)">编辑</button>
+                                        <button type="button" :disabled="state.submitting || state.managingTopic"
+                                                @click="startManageArticles(topic)">管理文章</button>
                                         <button type="button" class="danger-link" :disabled="state.submitting"
-                                                @click="removeColumn(column)">删除</button>
+                                                @click="removeTopic(topic)">删除</button>
                                     </template>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <p v-if="!state.items.length" class="backend-state-text">当前筛选条件下没有专栏</p>
+                <p v-if="!state.items.length" class="backend-state-text">当前筛选条件下没有专题</p>
             </template>
         </div>
 
-        <AdminPagination :state="state" label="专栏分页" @page-change="changePage" />
+        <AdminPagination :state="state" label="专题分页" @page-change="changePage" />
         <ConfirmDialog
             :visible="confirmDialog.visible"
             :eyebrow="confirmDialog.eyebrow"
@@ -459,17 +435,16 @@ watch(
             @confirm="executeConfirmDialog"
         />
 
-        <!-- 专栏文章管理弹窗 -->
+        <!-- 专题文章管理弹窗 -->
         <Teleport to="body">
-            <div v-if="state.managingColumn" class="modal-overlay" @click.self="stopManageArticles">
+            <div v-if="state.managingTopic" class="modal-overlay" @click.self="stopManageArticles">
                 <div class="modal-container">
                     <div class="modal-header">
-                        <h2>管理专栏文章</h2>
-                        <p class="modal-subtitle">专栏：{{ state.managingColumn.title }}</p>
+                        <h2>管理专题文章</h2>
+                        <p class="modal-subtitle">专题：{{ state.managingTopic.title }}</p>
                         <button type="button" class="modal-close-btn" @click="stopManageArticles">&times;</button>
                     </div>
 
-                    <!-- 搜索文章 -->
                     <div class="modal-search">
                         <input v-model.trim="state.searchKeyword" type="text"
                                placeholder="搜索已发布文章标题，输入后按回车搜索"
@@ -479,7 +454,6 @@ watch(
                         </button>
                     </div>
 
-                    <!-- 搜索结果 -->
                     <div v-if="state.searchResults.length" class="modal-section">
                         <p class="modal-section-title">搜索结果（点击添加）</p>
                         <div class="modal-article-list">
@@ -500,14 +474,11 @@ watch(
                         没有搜索到符合条件的已发布文章
                     </p>
 
-                    <!-- 当前专栏文章 -->
                     <div class="modal-section" style="flex:1; min-height:0; display:flex; flex-direction:column;">
-                        <p class="modal-section-title">
-                            已有文章（{{ state.columnArticles.length }} 篇）
-                        </p>
-                        <div v-if="state.columnArticlesLoading" class="modal-hint">加载中...</div>
-                        <div v-else-if="state.columnArticles.length" class="modal-article-list" style="flex:1; overflow-y:auto;">
-                            <div v-for="article in state.columnArticles" :key="'c-' + article.id" class="modal-article-row">
+                        <p class="modal-section-title">已有文章（{{ state.topicArticles.length }} 篇）</p>
+                        <div v-if="state.topicArticlesLoading" class="modal-hint">加载中...</div>
+                        <div v-else-if="state.topicArticles.length" class="modal-article-list" style="flex:1; overflow-y:auto;">
+                            <div v-for="article in state.topicArticles" :key="'c-' + article.id" class="modal-article-row">
                                 <div class="modal-article-info">
                                     <span class="modal-article-id">#{{ article.id }}</span>
                                     <span class="modal-article-title">{{ article.title }}</span>
@@ -520,7 +491,7 @@ watch(
                                 </button>
                             </div>
                         </div>
-                        <p v-else class="modal-hint">该专栏暂无文章</p>
+                        <p v-else class="modal-hint">该专题暂无文章</p>
                     </div>
                 </div>
             </div>
@@ -602,225 +573,4 @@ watch(
     color: var(--brand);
     border-color: var(--brand);
 }
-
-/* 弹窗样式 */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(2px);
-    padding: 24px;
-}
-
-.modal-container {
-    display: flex;
-    flex-direction: column;
-    width: min(680px, 100%);
-    height: min(600px, 85vh);
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-    padding: 24px;
-    gap: 16px;
-}
-
-.modal-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding-right: 32px;
-    position: relative;
-}
-
-.modal-header h2 {
-    margin: 0;
-    font-size: 18px;
-    color: var(--text-strong);
-}
-
-.modal-subtitle {
-    margin: 0;
-    font-size: 13px;
-    color: var(--muted);
-}
-
-.modal-close-btn {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    font-size: 22px;
-    color: var(--muted);
-    cursor: pointer;
-    border-radius: 6px;
-    line-height: 1;
-}
-
-.modal-close-btn:hover {
-    background: var(--surface-soft);
-    color: var(--text);
-}
-
-.modal-search {
-    display: flex;
-    gap: 10px;
-}
-
-.modal-search input {
-    flex: 1;
-    min-height: 40px;
-    padding: 0 14px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    font: inherit;
-    font-size: 14px;
-    outline: 0;
-    background: var(--surface-soft);
-}
-
-.modal-search input:focus {
-    border-color: var(--brand);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
-}
-
-.modal-search button {
-    display: inline-flex;
-    align-items: center;
-    min-height: 40px;
-    padding: 0 18px;
-    border: 0;
-    border-radius: 8px;
-    background: var(--brand);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.modal-search button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.modal-search button:hover:not(:disabled) {
-    filter: brightness(1.05);
-}
-
-.modal-section-title {
-    margin: 0 0 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.modal-article-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.modal-article-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: var(--surface-soft);
-    border: 1px solid var(--line);
-}
-
-.modal-article-info {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-}
-
-.modal-article-id {
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.modal-article-title {
-    color: var(--text);
-    font-size: 14px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.modal-article-category {
-    font-size: 12px;
-    color: var(--muted);
-    background: var(--surface);
-    padding: 2px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
-}
-
-.modal-article-row button {
-    min-height: 32px;
-    padding: 0 14px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: #fff;
-    color: var(--brand);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.modal-article-row button:hover:not(:disabled) {
-    background: var(--brand);
-    color: #fff;
-    border-color: var(--brand);
-}
-
-.modal-article-row button.danger-link {
-    color: var(--danger, #dc2626);
-    border-color: var(--danger, #dc2626);
-    background: #fff;
-}
-
-.modal-article-row button.danger-link:hover:not(:disabled) {
-    background: var(--danger, #dc2626);
-    color: #fff;
-}
-
-.modal-article-row button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.modal-hint {
-    margin: 0;
-    color: var(--muted);
-    font-size: 13px;
-    text-align: center;
-    padding: 16px 0;
-}
-
-.modal-section {
-    border-top: 1px solid var(--line);
-    padding-top: 14px;
-}
 </style>
-

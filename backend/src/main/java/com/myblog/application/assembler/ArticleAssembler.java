@@ -51,6 +51,7 @@ public class ArticleAssembler {
         dto.setLikeCount(article.getLikeCount());
         dto.setFavoriteCount(article.getFavoriteCount());
         dto.setCommentCount(article.getCommentCount());
+        dto.setFeatured(article.isFeatured());
         if (article.getPublishedAt() != null) {
             dto.setPublishedAt(FORMATTER.format(article.getPublishedAt()));
         }

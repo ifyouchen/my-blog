@@ -1,0 +1,45 @@
+package com.myblog.infrastructure.repository.persistence.converter;
+
+import com.myblog.domain.model.aggregate.Topic;
+import com.myblog.infrastructure.repository.persistence.entity.TopicDO;
+
+public class TopicPersistenceConverter {
+
+    public static Topic toDomain(TopicDO topicDO) {
+        if (topicDO == null) {
+            return null;
+        }
+        return Topic.restore(
+            topicDO.getId(),
+            topicDO.getTitle(),
+            topicDO.getSummary(),
+            topicDO.getCoverUrl(),
+            topicDO.getStatus(),
+            topicDO.getSortOrder(),
+            topicDO.getArticleCount(),
+            topicDO.getCreatedAt(),
+            topicDO.getUpdatedAt(),
+            topicDO.getDeletedAt(),
+            topicDO.getVersion()
+        );
+    }
+
+    public static TopicDO toData(Topic topic) {
+        if (topic == null) {
+            return null;
+        }
+        TopicDO topicDO = new TopicDO();
+        topicDO.setId(topic.getId().getValue());
+        topicDO.setTitle(topic.getTitle());
+        topicDO.setSummary(topic.getSummary());
+        topicDO.setCoverUrl(topic.getCoverUrl());
+        topicDO.setStatus(topic.getStatus());
+        topicDO.setSortOrder(topic.getSortOrder());
+        topicDO.setArticleCount(topic.getArticleCount());
+        topicDO.setCreatedAt(topic.getCreatedAt());
+        topicDO.setUpdatedAt(topic.getUpdatedAt());
+        topicDO.setDeletedAt(topic.getDeletedAt());
+        topicDO.setVersion(topic.getVersion());
+        return topicDO;
+    }
+}

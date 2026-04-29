@@ -189,3 +189,71 @@ export const deleteAdminColumnApi = async (columnId) => {
         method: 'DELETE'
     });
 };
+
+export const addAdminColumnArticleApi = async (columnId, payload) => {
+    return await request(`/admin/columns/${columnId}/articles`, {
+        method: 'POST',
+        body: payload
+    });
+};
+
+export const removeAdminColumnArticleApi = async (columnId, articleId) => {
+    return await request(`/admin/columns/${columnId}/articles/${articleId}`, {
+        method: 'DELETE'
+    });
+};
+
+// ===== 专题管理 =====
+
+export const getAdminTopicsApi = async (page = 1, pageSize = 10, keyword = null) => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (keyword) params.append('keyword', keyword);
+    return await request(`/admin/topics?${params}`);
+};
+
+export const createAdminTopicApi = async (payload) => {
+    return await request('/admin/topics', {
+        method: 'POST',
+        body: payload
+    });
+};
+
+export const updateAdminTopicApi = async (topicId, payload) => {
+    return await request(`/admin/topics/${topicId}`, {
+        method: 'PUT',
+        body: payload
+    });
+};
+
+export const deleteAdminTopicApi = async (topicId) => {
+    return await request(`/admin/topics/${topicId}`, {
+        method: 'DELETE'
+    });
+};
+
+export const addAdminTopicArticleApi = async (topicId, payload) => {
+    return await request(`/admin/topics/${topicId}/articles`, {
+        method: 'POST',
+        body: payload
+    });
+};
+
+export const removeAdminTopicArticleApi = async (topicId, articleId) => {
+    return await request(`/admin/topics/${topicId}/articles/${articleId}`, {
+        method: 'DELETE'
+    });
+};
+
+// ===== 精选文章 =====
+
+export const featureAdminArticleApi = async (articleId) => {
+    return await request(`/admin/articles/${articleId}/feature`, {
+        method: 'POST'
+    });
+};
+
+export const unfeatureAdminArticleApi = async (articleId) => {
+    return await request(`/admin/articles/${articleId}/unfeature`, {
+        method: 'POST'
+    });
+};

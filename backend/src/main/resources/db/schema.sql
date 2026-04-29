@@ -435,3 +435,60 @@ CREATE TABLE `blog_admin_log`  (
                                    PRIMARY KEY (`id`) USING BTREE,
                                    INDEX `idx_blog_admin_log_admin_created`(`admin_user_id`, `created_at`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客管理员操作日志表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for blog_topic
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_topic`;
+CREATE TABLE `blog_topic` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `title` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '专题标题',
+    `summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT '' COMMENT '专题简介',
+    `cover_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '专题封面',
+    `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PUBLISHED' COMMENT '状态：PUBLISHED-已发布 OFFLINE-已下架',
+    `sort_order` int(0) NOT NULL DEFAULT 0 COMMENT '排序值',
+    `article_count` int(0) NOT NULL DEFAULT 0 COMMENT '专题内文章数',
+    `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+    `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
+    `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_topic_status_sort`(`status`, `deleted_at`, `sort_order` ASC, `id` DESC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客专题表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for blog_topic_article
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_topic_article`;
+CREATE TABLE `blog_topic_article` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `topic_id` bigint unsigned NOT NULL COMMENT '专题ID',
+    `article_id` bigint unsigned NOT NULL COMMENT '文章ID',
+    `sort_order` int(0) NOT NULL DEFAULT 0 COMMENT '排序值',
+    `created_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+    `deleted_at` datetime(0) NULL DEFAULT NULL COMMENT '删除时间',
+    `version` int(0) NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_topic_article_pair`(`topic_id`, `article_id`) USING BTREE,
+    INDEX `idx_topic_article_article`(`article_id`) USING BTREE,
+    INDEX `idx_topic_article_sort`(`topic_id`, `deleted_at`, `sort_order` ASC, `id` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '博客专题文章关联表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Extensions for Phase 3: Recommendations & Featured
+-- ----------------------------
+ALTER TABLE `blog_column`
+    ADD COLUMN `recommended` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否推荐：1-推荐 0-不推荐' AFTER `article_count`,
+    ADD COLUMN `recommend_weight` int(0) NOT NULL DEFAULT 0 COMMENT '推荐权重，值越大越靠前' AFTER `recommended`,
+    ADD INDEX `idx_column_recommended`(`recommended`, `deleted_at`, `recommend_weight` DESC, `subscriber_count` DESC) USING BTREE;
+
+ALTER TABLE `blog_user`
+    ADD COLUMN `recommended` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否推荐：1-推荐 0-不推荐' AFTER `disable_reason`,
+    ADD COLUMN `recommend_weight` int(0) NOT NULL DEFAULT 0 COMMENT '推荐权重，值越大越靠前' AFTER `recommended`,
+    ADD INDEX `idx_user_recommended`(`recommended`, `deleted_at`, `recommend_weight` DESC, `created_at` DESC) USING BTREE;
+
+ALTER TABLE `blog_article`
+    ADD COLUMN `featured` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否精选：1-精选 0-非精选' AFTER `offline_reason`,
+    ADD COLUMN `featured_at` datetime(0) NULL DEFAULT NULL COMMENT '精选时间' AFTER `featured`,
+    ADD INDEX `idx_article_featured`(`featured`, `status`, `deleted_at`, `featured_at` DESC, `id` DESC) USING BTREE;

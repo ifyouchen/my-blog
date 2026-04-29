@@ -16,6 +16,7 @@ public class HomeBootstrapDTO {
     private List<CategoryDTO> categories;
     private List<ColumnDTO> recommendedColumns;
     private List<AuthorRankingDTO> authorRankings;
+    private List<ArticleDTO> featuredArticles;
 
     public HomeStats getStats() {
         return stats;
@@ -47,5 +48,13 @@ public class HomeBootstrapDTO {
 
     public void setAuthorRankings(List<AuthorRankingDTO> authorRankings) {
         this.authorRankings = authorRankings;
+    }
+
+    public List<ArticleDTO> getFeaturedArticles() {
+        return featuredArticles;
+    }
+
+    public void setFeaturedArticles(List<ArticleDTO> featuredArticles) {
+        this.featuredArticles = featuredArticles;
     }
 }

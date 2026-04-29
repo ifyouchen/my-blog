@@ -245,6 +245,16 @@ public class MyBatisUserRepository implements UserRepository {
     }
 
     @Override
+    public List<User> findRecommended(int limit) {
+        List<UserDO> userDOList = userMapper.selectRecommended(limit);
+        List<User> users = new ArrayList<>(userDOList.size());
+        for (UserDO userDO : userDOList) {
+            users.add(UserPersistenceConverter.toDomain(userDO));
+        }
+        return users;
+    }
+
+    @Override
     public Map<Long, Integer> countPublishedArticlesBatchByIds(List<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return new HashMap<Long, Integer>();

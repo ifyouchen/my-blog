@@ -530,7 +530,6 @@ watch(isLoggedIn, () => {
                     <p class="eyebrow">{{ isFavorites ? '收藏夹' : (isOverview ? '创作者工作台' : '内容管理') }}</p>
                     <h1>{{ isFavorites ? '我的收藏' : (isOverview ? '创作概览' : '我的文章') }}</h1>
                 </div>
-                <RouterLink v-if="!isFavorites" class="primary-action" to="/editor/new">新建文章</RouterLink>
             </div>
 
             <section v-if="isOverview" class="creator-overview">

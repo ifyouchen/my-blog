@@ -200,6 +200,7 @@ public class RestDtoMapper {
         response.setFavoritedAt(dto.getFavoritedAt());
         response.setLiked(dto.isLiked());
         response.setFavorited(dto.isFavorited());
+        response.setFeatured(dto.isFeatured());
         response.setAuthor(toResponse(dto.getAuthor()));
         return response;
     }

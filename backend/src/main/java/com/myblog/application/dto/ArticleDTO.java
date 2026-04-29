@@ -27,6 +27,7 @@ public class ArticleDTO {
     private String favoritedAt;
     private boolean liked;
     private boolean favorited;
+    private boolean featured;
     private UserDTO author;
 
     /**
@@ -313,6 +314,14 @@ public class ArticleDTO {
 
     public void setFavorited(boolean favorited) {
         this.favorited = favorited;
+    }
+
+    public boolean isFeatured() {
+        return featured;
+    }
+
+    public void setFeatured(boolean featured) {
+        this.featured = featured;
     }
 
     /**

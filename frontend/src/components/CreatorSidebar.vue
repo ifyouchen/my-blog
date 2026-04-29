@@ -13,10 +13,6 @@ const navItems = [
     {
         label: '我的收藏',
         path: '/dashboard/favorites'
-    },
-    {
-        label: '写文章',
-        path: '/editor/new'
     }
 ];
 </script>

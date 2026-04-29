@@ -45,6 +45,13 @@ public interface ColumnMapper {
      */
     int incrementArticleCount(@Param("columnId") Long columnId);
 
+    /**
+     * 将专栏的 article_count -1（移除文章时维护冗余字段）。
+     */
+    int decrementArticleCount(@Param("columnId") Long columnId);
+
+    int deleteColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId);
+
     List<ColumnDO> searchPublished(@Param("keyword") String keyword, @Param("sort") String sort,
                                    @Param("offset") int offset, @Param("limit") int limit);
 

@@ -11,6 +11,7 @@ import {
     isDefaultArticleSort,
     normalizeArticleSort
 } from '@/constants/articleSort';
+import FeaturedArticlesStrip from '@/components/FeaturedArticlesStrip.vue';
 import HomeIntro from '@/components/HomeIntro.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -27,6 +28,7 @@ const currentPage = ref(1);
 const pageSize = 10;
 const total = ref(0);
 const topicItems = ref([]);
+const featuredArticles = ref([]);
 const sidebarColumns = ref([]);
 const sidebarAuthors = ref([]);
 const activeSort = ref(ARTICLE_SORT_LATEST);
@@ -77,6 +79,7 @@ const loadHomeBootstrap = async () => {
         }
         const categoryNames = (bootstrap?.categories || []).map((item) => item.name).filter(Boolean);
         topicItems.value = ['全部', ...categoryNames];
+        featuredArticles.value = bootstrap?.featuredArticles || [];
         sidebarColumns.value = bootstrap?.recommendedColumns || [];
         sidebarAuthors.value = bootstrap?.authorRankings || [];
     } catch (error) {
@@ -195,6 +198,10 @@ onMounted(() => {
             :total-columns="homeStats.totalColumns"
         />
         <TopicStrip :topics="topicItems" />
+        <FeaturedArticlesStrip
+            v-if="featuredArticles.length"
+            :articles="featuredArticles"
+        />
         <div class="content-grid">
             <ArticleFeed
                 :articles="articles"

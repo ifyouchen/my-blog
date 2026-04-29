@@ -202,6 +202,8 @@ public class AdminAppService {
             map.put("likeCount", article.getLikeCount());
             map.put("favoriteCount", article.getFavoriteCount());
             map.put("commentCount", article.getCommentCount());
+            map.put("featured", article.isFeatured());
+            map.put("featuredAt", article.getFeaturedAt());
             map.put("publishedAt", article.getPublishedAt());
             map.put("createdAt", article.getCreatedAt());
             map.put("updatedAt", article.getUpdatedAt());
@@ -536,6 +538,40 @@ public class AdminAppService {
             articleMap.put(article.getId().getValue(), article);
         }
         return articleMap;
+    }
+
+    /**
+     * 设为精选。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> featureArticle(Long articleId) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        article.feature();
+        articleRepository.save(article);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", article.getId().getValue());
+        result.put("title", article.getTitle());
+        result.put("featured", article.isFeatured());
+        return result;
+    }
+
+    /**
+     * 取消精选。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> unfeatureArticle(Long articleId) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        article.unfeature();
+        articleRepository.save(article);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", article.getId().getValue());
+        result.put("title", article.getTitle());
+        result.put("featured", article.isFeatured());
+        return result;
     }
 
     /**

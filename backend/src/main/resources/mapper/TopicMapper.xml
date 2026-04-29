@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.TopicMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.TopicDO">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="summary" property="summary"/>
+        <result column="cover_url" property="coverUrl"/>
+        <result column="status" property="status"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="article_count" property="articleCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        t.id, t.title, t.summary, t.cover_url, t.status, t.sort_order,
+        t.article_count,
+        t.created_at, t.updated_at, t.deleted_at, t.version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_topic t
+        WHERE t.id = #{id}
+        AND t.deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectPublished" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_topic t
+        WHERE t.deleted_at IS NULL
+        AND t.status = 'PUBLISHED'
+        ORDER BY t.sort_order ASC, t.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countPublished" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_topic
+        WHERE deleted_at IS NULL
+        AND status = 'PUBLISHED'
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_topic
+    </select>
+
+    <select id="countById" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_topic
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.TopicDO">
+        INSERT INTO blog_topic (
+            id, title, summary, cover_url, status, sort_order, article_count,
+            created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{id}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder},
+            #{articleCount}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.TopicDO">
+        UPDATE blog_topic
+        SET title = #{title},
+            summary = #{summary},
+            cover_url = #{coverUrl},
+            status = #{status},
+            sort_order = #{sortOrder},
+            article_count = #{articleCount},
+            updated_at = #{updatedAt},
+            deleted_at = #{deletedAt},
+            version = version + 1
+        WHERE id = #{id}
+    </update>
+
+    <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.TopicDO">
+        INSERT INTO blog_topic
+        (id, title, summary, cover_url, status, sort_order, article_count, created_at, updated_at, deleted_at, version)
+        VALUES
+        (#{id}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{articleCount}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
+        ON DUPLICATE KEY UPDATE
+            title = #{title},
+            summary = #{summary},
+            cover_url = #{coverUrl},
+            status = #{status},
+            sort_order = #{sortOrder},
+            article_count = #{articleCount},
+            updated_at = NOW(),
+            deleted_at = #{deletedAt},
+            version = version + 1
+    </insert>
+
+    <select id="selectArticleIds" resultType="long">
+        SELECT ta.article_id
+        FROM blog_topic_article ta
+        INNER JOIN blog_article a ON a.id = ta.article_id
+        WHERE ta.topic_id = #{topicId}
+        AND ta.deleted_at IS NULL
+        AND a.deleted_at IS NULL
+        AND a.status = 'PUBLISHED'
+        ORDER BY ta.sort_order ASC, ta.id ASC
+    </select>
+
+    <select id="countTopicArticle" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_topic_article
+        WHERE topic_id = #{topicId}
+        AND article_id = #{articleId}
+    </select>
+
+    <insert id="insertTopicArticle">
+        INSERT INTO blog_topic_article (topic_id, article_id, sort_order)
+        VALUES (#{topicId}, #{articleId}, #{sortOrder})
+    </insert>
+
+    <update id="deleteTopicArticle">
+        UPDATE blog_topic_article
+        SET deleted_at = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE topic_id = #{topicId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="incrementArticleCount">
+        UPDATE blog_topic
+        SET article_count = article_count + 1,
+            updated_at = NOW()
+        WHERE id = #{topicId}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="decrementArticleCount">
+        UPDATE blog_topic
+        SET article_count = GREATEST(0, article_count - 1),
+            updated_at = NOW()
+        WHERE id = #{topicId}
+        AND deleted_at IS NULL
+    </update>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_topic t
+        WHERE t.deleted_at IS NULL
+        ORDER BY t.sort_order ASC, t.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1) FROM blog_topic WHERE deleted_at IS NULL
+    </select>
+
+    <update id="softDelete">
+        UPDATE blog_topic
+        SET deleted_at = NOW(), updated_at = NOW(), version = version + 1
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+</mapper>

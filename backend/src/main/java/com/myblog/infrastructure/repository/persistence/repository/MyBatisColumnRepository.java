@@ -92,6 +92,13 @@ public class MyBatisColumnRepository implements ColumnRepository {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unbindArticle(ColumnId columnId, Long articleId) {
+        columnMapper.deleteColumnArticle(columnId.getValue(), articleId);
+        columnMapper.decrementArticleCount(columnId.getValue());
+    }
+
+    @Override
     public List<Column> searchPublished(String keyword, String sort, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);

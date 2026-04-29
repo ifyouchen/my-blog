@@ -350,4 +350,10 @@ public interface ArticleRepository {
 
     /** 原子递增文章阅读数。 */
     void incrementViewCount(Long articleId);
+
+    /** 查询精选文章。 */
+    List<Article> findFeatured(int page, int pageSize);
+
+    /** 统计精选文章数量。 */
+    long countFeatured();
 }

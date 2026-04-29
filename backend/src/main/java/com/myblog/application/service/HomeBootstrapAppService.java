@@ -1,6 +1,7 @@
 package com.myblog.application.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.ColumnDTO;
@@ -29,6 +30,7 @@ public class HomeBootstrapAppService {
     private final CategoryAppService categoryAppService;
     private final ColumnAppService columnAppService;
     private final RankingAppService rankingAppService;
+    private final RecommendationAppService recommendationAppService;
     private final Executor taskExecutor;
 
     public HomeBootstrapAppService(@Qualifier("homeBootstrapCache") Cache<String, HomeBootstrapDTO> homeBootstrapCache,
@@ -36,12 +38,14 @@ public class HomeBootstrapAppService {
                                    CategoryAppService categoryAppService,
                                    ColumnAppService columnAppService,
                                    RankingAppService rankingAppService,
+                                   RecommendationAppService recommendationAppService,
                                    Executor taskExecutor) {
         this.homeBootstrapCache = homeBootstrapCache;
         this.homeStatsAppService = homeStatsAppService;
         this.categoryAppService = categoryAppService;
         this.columnAppService = columnAppService;
         this.rankingAppService = rankingAppService;
+        this.recommendationAppService = recommendationAppService;
         this.taskExecutor = taskExecutor;
     }
 
@@ -56,7 +60,7 @@ public class HomeBootstrapAppService {
             return cached;
         }
 
-        // 并行加载 4 路数据，总耗时取决于最慢的那一路
+        // 并行加载 5 路数据，总耗时取决于最慢的那一路
         CompletableFuture<HomeStats> statsFuture =
             CompletableFuture.supplyAsync(() -> homeStatsAppService.getStats(), taskExecutor);
 
@@ -69,12 +73,16 @@ public class HomeBootstrapAppService {
         CompletableFuture<List<AuthorRankingDTO>> rankingsFuture =
             CompletableFuture.supplyAsync(() -> rankingAppService.listAuthorRankings(3, null), taskExecutor);
 
+        CompletableFuture<List<ArticleDTO>> featuredFuture =
+            CompletableFuture.supplyAsync(() -> recommendationAppService.listFeaturedArticles(1, 5), taskExecutor);
+
         // 等待所有完成并组装结果
         HomeBootstrapDTO bootstrap = new HomeBootstrapDTO();
         bootstrap.setStats(statsFuture.join());
         bootstrap.setCategories(categoriesFuture.join());
         bootstrap.setRecommendedColumns(columnsFuture.join());
         bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
+        bootstrap.setFeaturedArticles(featuredFuture.join());
 
         homeBootstrapCache.put(BOOTSTRAP_CACHE_KEY, bootstrap);
         return bootstrap;

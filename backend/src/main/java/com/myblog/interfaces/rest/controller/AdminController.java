@@ -4,16 +4,19 @@ import com.myblog.application.command.RecordAdminLogCommand;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.TagDTO;
+import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.AdminAppService;
 import com.myblog.application.service.AdminLogAppService;
 import com.myblog.application.service.CategoryAppService;
 import com.myblog.application.service.ColumnAppService;
 import com.myblog.application.service.TagAppService;
+import com.myblog.application.service.TopicAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
+import com.myblog.interfaces.rest.dto.request.AddColumnArticleRequest;
 import com.myblog.interfaces.rest.dto.request.AdminBatchArticleRequest;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,15 +43,17 @@ public class AdminController {
     private final CategoryAppService categoryAppService;
     private final TagAppService tagAppService;
     private final ColumnAppService columnAppService;
+    private final TopicAppService topicAppService;
 
     public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService,
                            CategoryAppService categoryAppService, TagAppService tagAppService,
-                           ColumnAppService columnAppService) {
+                           ColumnAppService columnAppService, TopicAppService topicAppService) {
         this.adminAppService = adminAppService;
         this.adminLogAppService = adminLogAppService;
         this.categoryAppService = categoryAppService;
         this.tagAppService = tagAppService;
         this.columnAppService = columnAppService;
+        this.topicAppService = topicAppService;
     }
 
     private void ensureAdmin() {
@@ -527,7 +532,186 @@ public class AdminController {
         return Result.success(result);
     }
 
+    /**
+     * 向专栏添加文章。
+     */
+    @PostMapping("/columns/{id}/articles")
+    public Result<Map<String, Object>> addColumnArticle(@PathVariable Long id,
+                                                         @RequestBody AddColumnArticleRequest request,
+                                                         @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        columnAppService.addColumnArticle(id, request.getArticleId(), request.getSortOrder());
+        adminLogAppService.recordOperation(buildLogCommand(
+            "ADD_COLUMN_ARTICLE", "COLUMN_ARTICLE", id,
+            "向专栏 " + id + " 添加文章 " + request.getArticleId(), null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("bound", true);
+        return Result.success(result);
+    }
+
+    /**
+     * 从专栏移除文章。
+     */
+    @DeleteMapping("/columns/{columnId}/articles/{articleId}")
+    public Result<Map<String, Object>> removeColumnArticle(@PathVariable Long columnId,
+                                                           @PathVariable Long articleId,
+                                                           @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        columnAppService.removeColumnArticle(columnId, articleId);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "REMOVE_COLUMN_ARTICLE", "COLUMN_ARTICLE", columnId,
+            "从专栏 " + columnId + " 移除文章 " + articleId, null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("removed", true);
+        return Result.success(result);
+    }
+
+    // ==================== 专题管理 ====================
+
+    /**
+     * 分页查询专题列表（管理后台）。
+     */
+    @GetMapping("/topics")
+    public Result<PageResult<TopicDTO>> getTopics(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String keyword) {
+        ensureAdmin();
+        return Result.success(topicAppService.adminPageTopics(keyword, page, pageSize));
+    }
+
+    /**
+     * 创建专题。
+     */
+    @PostMapping("/topics")
+    public Result<TopicDTO> createTopic(@RequestBody Map<String, Object> request,
+                                        @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        String title = (String) request.get("title");
+        String summary = (String) request.get("summary");
+        String coverUrl = (String) request.get("coverUrl");
+        Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
+        TopicDTO dto = topicAppService.adminCreateTopic(title, summary, coverUrl, sortOrder);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_TOPIC", "TOPIC", dto.getId(),
+            "创建专题 " + dto.getTitle(), null, toTopicSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 更新专题。
+     */
+    @PutMapping("/topics/{id}")
+    public Result<TopicDTO> updateTopic(@PathVariable Long id,
+                                         @RequestBody Map<String, Object> request,
+                                         @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        String title = (String) request.get("title");
+        String summary = (String) request.get("summary");
+        String coverUrl = (String) request.get("coverUrl");
+        Integer sortOrder = parseInteger(request.get("sortOrder"), null);
+        String status = (String) request.get("status");
+        TopicDTO dto = topicAppService.adminUpdateTopic(id, title, summary, coverUrl, sortOrder, status);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_TOPIC", "TOPIC", id,
+            "更新专题 " + dto.getTitle(), null, toTopicSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 删除专题（软删除）。
+     */
+    @DeleteMapping("/topics/{id}")
+    public Result<Map<String, Object>> deleteTopic(@PathVariable Long id,
+                                                    @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        topicAppService.adminDeleteTopic(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_TOPIC", "TOPIC", id, "删除专题 " + id, null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
+    /**
+     * 专题绑定文章。
+     */
+    @PostMapping("/topics/{id}/articles")
+    public Result<Map<String, Object>> bindTopicArticle(@PathVariable Long id,
+                                                         @RequestBody Map<String, Object> request,
+                                                         @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        Long articleId = parseLong(request.get("articleId"), null);
+        Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
+        topicAppService.adminBindArticle(id, articleId, sortOrder);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "BIND_TOPIC_ARTICLE", "TOPIC_ARTICLE", id,
+            "专题 " + id + " 绑定文章 " + articleId, null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("bound", true);
+        return Result.success(result);
+    }
+
+    /**
+     * 专题解绑文章。
+     */
+    @DeleteMapping("/topics/{topicId}/articles/{articleId}")
+    public Result<Map<String, Object>> unbindTopicArticle(@PathVariable Long topicId,
+                                                           @PathVariable Long articleId,
+                                                           @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        topicAppService.adminUnbindArticle(topicId, articleId);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UNBIND_TOPIC_ARTICLE", "TOPIC_ARTICLE", topicId,
+            "专题 " + topicId + " 解绑文章 " + articleId, null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("removed", true);
+        return Result.success(result);
+    }
+
+    // ==================== 文章精选 ====================
+
+    /**
+     * 设为精选。
+     */
+    @PostMapping("/articles/{id}/feature")
+    public Result<Map<String, Object>> featureArticle(@PathVariable Long id,
+                                                      @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.featureArticle(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "FEATURE_ARTICLE", "ARTICLE", id,
+            "精选文章 " + id, null, result.getData(), httpServletRequest));
+        return result;
+    }
+
+    /**
+     * 取消精选。
+     */
+    @PostMapping("/articles/{id}/unfeature")
+    public Result<Map<String, Object>> unfeatureArticle(@PathVariable Long id,
+                                                        @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.unfeatureArticle(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UNFEATURE_ARTICLE", "ARTICLE", id,
+            "取消精选文章 " + id, null, result.getData(), httpServletRequest));
+        return result;
+    }
+
     private Map<String, Object> toColumnSnapshot(ColumnDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Map<String, Object> s = new LinkedHashMap<String, Object>();
+        s.put("id", dto.getId());
+        s.put("title", dto.getTitle());
+        s.put("status", dto.getStatus());
+        s.put("sortOrder", dto.getSortOrder());
+        return s;
+    }
+
+    private Map<String, Object> toTopicSnapshot(TopicDTO dto) {
         if (dto == null) {
             return null;
         }

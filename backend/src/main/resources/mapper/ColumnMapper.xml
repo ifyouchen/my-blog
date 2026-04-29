@@ -138,6 +138,24 @@
         AND deleted_at IS NULL
     </update>
 
+    <update id="decrementArticleCount">
+        UPDATE blog_column
+        SET article_count = GREATEST(0, article_count - 1),
+            updated_at = NOW()
+        WHERE id = #{columnId}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteColumnArticle">
+        UPDATE blog_column_article
+        SET deleted_at = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE column_id = #{columnId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
     <select id="searchPublished" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_column c

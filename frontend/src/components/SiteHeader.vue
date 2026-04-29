@@ -9,9 +9,9 @@ const route = useRoute();
 const router = useRouter();
 const keyword = ref('');
 const userMenuOpen = ref(false);
-// 在 dashboard / editor 页面时，页面内已有「新建文章」按钮，隐藏 header 里的「写文章」
+// 在 editor 页面时隐藏 header 里的「写文章」（编辑器内已有导航）
 const hideWriteButton = computed(() =>
-    route.path.startsWith('/dashboard') || route.path.startsWith('/editor')
+    route.path.startsWith('/editor')
 );
 const mobileMenuOpen = ref(false);
 const userMenuRef = ref(null);

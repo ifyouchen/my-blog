@@ -401,6 +401,19 @@ public class MyBatisArticleRepository implements ArticleRepository {
     @Override
     public void incrementViewCount(Long articleId) { articleMapper.incrementViewCount(articleId); }
 
+    @Override
+    public List<Article> findFeatured(int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        return toDomainList(articleMapper.selectFeatured(offset, currentPageSize));
+    }
+
+    @Override
+    public long countFeatured() {
+        return articleMapper.countFeatured();
+    }
+
     private List<Article> toDomainList(List<ArticleDO> articleDOList) {
         List<Article> articles = new ArrayList<Article>(articleDOList.size());
         Map<Long, List<String>> tagMap = loadTags(articleDOList);

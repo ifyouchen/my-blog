@@ -33,6 +33,8 @@ public class Article {
     private int likeCount;
     private int favoriteCount;
     private int commentCount;
+    private boolean featured;
+    private LocalDateTime featuredAt;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -71,6 +73,8 @@ public class Article {
         article.likeCount = 0;
         article.favoriteCount = 0;
         article.commentCount = 0;
+        article.featured = false;
+        article.featuredAt = null;
         article.createdAt = LocalDateTime.now();
         article.updatedAt = article.createdAt;
         article.version = 0;
@@ -107,6 +111,7 @@ public class Article {
     public static Article restore(Long id, UserId authorId, String title, String summary, String content,
                                   String coverUrl, String category, String offlineReason, List<String> tags, ArticleStatus status,
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
+                                  boolean featured, LocalDateTime featuredAt,
                                   LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
                                   Integer version) {
         Article article = new Article();
@@ -124,6 +129,8 @@ public class Article {
         article.likeCount = likeCount;
         article.favoriteCount = favoriteCount;
         article.commentCount = commentCount;
+        article.featured = featured;
+        article.featuredAt = featuredAt;
         article.publishedAt = publishedAt;
         article.createdAt = createdAt;
         article.updatedAt = updatedAt;
@@ -292,6 +299,26 @@ public class Article {
     }
 
     /**
+     * 设为精选。
+     */
+    public void feature() {
+        this.featured = true;
+        if (this.featuredAt == null) {
+            this.featuredAt = LocalDateTime.now();
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 取消精选。
+     */
+    public void unfeature() {
+        this.featured = false;
+        this.featuredAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 删除文章。
      */
     public void delete() {
@@ -437,6 +464,24 @@ public class Article {
      */
     public int getCommentCount() {
         return commentCount;
+    }
+
+    /**
+     * 是否精选。
+     *
+     * @return 是否精选
+     */
+    public boolean isFeatured() {
+        return featured;
+    }
+
+    /**
+     * 获取精选时间。
+     *
+     * @return 精选时间
+     */
+    public LocalDateTime getFeaturedAt() {
+        return featuredAt;
     }
 
     /**

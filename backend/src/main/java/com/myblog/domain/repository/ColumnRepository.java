@@ -30,6 +30,8 @@ public interface ColumnRepository {
 
     void bindArticle(ColumnId columnId, Long articleId, int sortOrder);
 
+    void unbindArticle(ColumnId columnId, Long articleId);
+
     List<Column> searchPublished(String keyword, String sort, int page, int pageSize);
 
     long countSearchPublished(String keyword);

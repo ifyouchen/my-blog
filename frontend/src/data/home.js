@@ -1,6 +1,7 @@
 export const navItems = [
     { label: '推荐', path: '/' },
     { label: '关注', path: '/following' },
+    { label: '专题', path: '/topics' },
     { label: '专栏', path: '/columns' },
     { label: '排行榜', path: '/ranking' }
 ];

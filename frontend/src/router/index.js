@@ -6,6 +6,8 @@ const EditorView = () => import('@/views/EditorView.vue');
 const FollowingView = () => import('@/views/FollowingView.vue');
 const ColumnsView = () => import('@/views/ColumnsView.vue');
 const ColumnDetailView = () => import('@/views/ColumnDetailView.vue');
+const TopicsView = () => import('@/views/TopicsView.vue');
+const TopicDetailView = () => import('@/views/TopicDetailView.vue');
 const RankingView = () => import('@/views/RankingView.vue');
 const SearchView = () => import('@/views/SearchView.vue');
 const NotificationsView = () => import('@/views/NotificationsView.vue');
@@ -22,6 +24,7 @@ const AdminReportsView = () => import('@/views/admin/AdminReportsView.vue');
 const AdminCategoriesView = () => import('@/views/admin/AdminCategoriesView.vue');
 const AdminTagsView = () => import('@/views/admin/AdminTagsView.vue');
 const AdminColumnsView = () => import('@/views/admin/AdminColumnsView.vue');
+const AdminTopicsView = () => import('@/views/admin/AdminTopicsView.vue');
 const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 
 const routes = [
@@ -87,6 +90,22 @@ const routes = [
         component: ColumnDetailView,
         meta: {
             title: '专栏详情'
+        }
+    },
+    {
+        path: '/topics',
+        name: 'topics',
+        component: TopicsView,
+        meta: {
+            title: '专题'
+        }
+    },
+    {
+        path: '/topics/:id',
+        name: 'topicDetail',
+        component: TopicDetailView,
+        meta: {
+            title: '专题详情'
         }
     },
     {
@@ -254,6 +273,16 @@ const routes = [
                     title: '专栏管理',
                     adminTitle: '专栏管理',
                     adminDescription: '新增、编辑、删除专栏，管理专栏状态和排序。'
+                }
+            },
+            {
+                path: 'topics',
+                name: 'adminTopics',
+                component: AdminTopicsView,
+                meta: {
+                    title: '专题管理',
+                    adminTitle: '专题管理',
+                    adminDescription: '新增、编辑、删除专题，管理专题文章归属。'
                 }
             },
             {

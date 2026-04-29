@@ -5,9 +5,11 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
     deleteAdminArticleApi,
+    featureAdminArticleApi,
     getAdminArticlesApi,
     getAdminStatsApi,
     getCategoriesApi,
+    unfeatureAdminArticleApi,
     updateAdminArticleStatusApi
 } from '@/api/admin';
 import {
@@ -198,6 +200,24 @@ const deleteArticle = async (article) => {
     });
 };
 
+const toggleFeatured = async (article) => {
+    const newFeatured = !article.featured;
+    state.actionLoadingId = article.id;
+    try {
+        if (newFeatured) {
+            await featureAdminArticleApi(article.id);
+        } else {
+            await unfeatureAdminArticleApi(article.id);
+        }
+        article.featured = newFeatured;
+        setFeedback(newFeatured ? '文章已设为精选' : '文章已取消精选');
+    } catch (error) {
+        setFeedback(error.message || '精选操作失败', 'error');
+    } finally {
+        state.actionLoadingId = null;
+    }
+};
+
 const loadPageResources = async () => {
     await Promise.all([loadArticles(), loadStats()]);
 };
@@ -290,6 +310,7 @@ watch(
                                 <th>作者</th>
                                 <th>分类</th>
                                 <th>状态</th>
+                                <th>精选</th>
                                 <th>阅读 / 点赞 / 收藏 / 评论</th>
                                 <th>发布时间</th>
                                 <th>创建时间</th>
@@ -312,6 +333,10 @@ watch(
                                     </span>
                                 </td>
                                 <td>
+                                    <span v-if="article.featured" class="status-pill brand">精选</span>
+                                    <span v-else class="admin-subtext">—</span>
+                                </td>
+                                <td>
                                     {{ article.viewCount }} / {{ article.likeCount }} / {{ article.favoriteCount }} / {{ article.commentCount }}
                                 </td>
                                 <td>{{ article.publishedAt || '-' }}</td>
@@ -326,6 +351,14 @@ watch(
                                         {{ state.actionLoadingId === article.id ? '处理中...' : (article.status === 'PUBLISHED' ? '下架' : '发布') }}
                                     </button>
                                     <span v-else class="admin-subtext">已删除</span>
+                                    <button
+                                        v-if="article.status === 'PUBLISHED'"
+                                        type="button"
+                                        :disabled="state.actionLoadingId === article.id"
+                                        @click="toggleFeatured(article)"
+                                    >
+                                        {{ state.actionLoadingId === article.id ? '处理中...' : (article.featured ? '取消精选' : '精选') }}
+                                    </button>
                                     <button
                                         type="button"
                                         class="danger-link"

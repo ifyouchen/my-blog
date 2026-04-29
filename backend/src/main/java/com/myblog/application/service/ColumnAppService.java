@@ -211,6 +211,37 @@ public class ColumnAppService {
         return column;
     }
 
+    /**
+     * 向专栏添加文章。
+     *
+     * @param columnId  专栏 ID
+     * @param articleId 文章 ID
+     * @param sortOrder 排序值
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void addColumnArticle(Long columnId, Long articleId, int sortOrder) {
+        Column column = loadPublishedColumn(columnId);
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "只能将已发布文章添加到专栏");
+        }
+        columnRepository.bindArticle(column.getId(), articleId, sortOrder);
+    }
+
+    /**
+     * 从专栏移除文章。
+     *
+     * @param columnId  专栏 ID
+     * @param articleId 文章 ID
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void removeColumnArticle(Long columnId, Long articleId) {
+        Column column = columnRepository.findById(new ColumnId(columnId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
+        columnRepository.unbindArticle(column.getId(), articleId);
+    }
+
     // ==================== 管理后台方法 ====================
 
     /**

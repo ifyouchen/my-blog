@@ -180,4 +180,12 @@ public interface UserRepository {
      * @return userId -> articleCount 映射
      */
     Map<Long, Integer> countPublishedArticlesBatchByIds(List<Long> userIds);
+
+    /**
+     * 查询推荐作者。
+     *
+     * @param limit 限制数量
+     * @return 推荐作者列表
+     */
+    List<User> findRecommended(int limit);
 }

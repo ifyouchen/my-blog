@@ -18,6 +18,8 @@ public class ArticleDO {
     private String coverUrl;
     private String category;
     private String offlineReason;
+    private Boolean featured;
+    private LocalDateTime featuredAt;
     private String status;
     private Integer viewCount;
     private Integer likeCount;
@@ -171,6 +173,22 @@ public class ArticleDO {
      */
     public void setOfflineReason(String offlineReason) {
         this.offlineReason = offlineReason;
+    }
+
+    public Boolean getFeatured() {
+        return featured;
+    }
+
+    public void setFeatured(Boolean featured) {
+        this.featured = featured;
+    }
+
+    public LocalDateTime getFeaturedAt() {
+        return featuredAt;
+    }
+
+    public void setFeaturedAt(LocalDateTime featuredAt) {
+        this.featuredAt = featuredAt;
     }
 
     /**

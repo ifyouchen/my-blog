@@ -179,4 +179,7 @@ public interface UserMapper {
      * @return userId -> articleCount 映射列表
      */
     List<Map<String, Object>> countPublishedArticlesBatchByUserIds(@Param("userIds") List<Long> userIds);
+
+    /** 查询推荐作者。 */
+    List<UserDO> selectRecommended(@Param("limit") int limit);
 }

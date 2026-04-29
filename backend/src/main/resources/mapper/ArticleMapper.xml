@@ -12,6 +12,8 @@
         <result column="cover_url" property="coverUrl"/>
         <result column="category" property="category"/>
         <result column="offline_reason" property="offlineReason"/>
+        <result column="featured" property="featured"/>
+        <result column="featured_at" property="featuredAt"/>
         <result column="status" property="status"/>
         <result column="view_count" property="viewCount"/>
         <result column="like_count" property="likeCount"/>
@@ -26,13 +28,13 @@
 
     <sql id="Base_Column_List">
         id, author_id, title, summary, content, cover_url, category, offline_reason, status,
-        view_count, like_count, favorite_count, comment_count, published_at,
+        view_count, like_count, favorite_count, comment_count, featured, featured_at, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Column_List">
         id, author_id, title, summary, cover_url, category, offline_reason, status,
-        view_count, like_count, favorite_count, comment_count, published_at,
+        view_count, like_count, favorite_count, comment_count, featured, featured_at, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
@@ -378,6 +380,8 @@
             category,
             offline_reason,
             status,
+            featured,
+            featured_at,
             view_count,
             like_count,
             favorite_count,
@@ -396,6 +400,8 @@
             #{category},
             #{offlineReason},
             #{status},
+            #{featured},
+            #{featuredAt},
             #{viewCount},
             #{likeCount},
             #{favoriteCount},
@@ -415,6 +421,8 @@
             category = #{category},
             offline_reason = #{offlineReason},
             status = #{status},
+            featured = #{featured},
+            featured_at = #{featuredAt},
             view_count = #{viewCount},
             like_count = #{likeCount},
             favorite_count = #{favoriteCount},
@@ -431,10 +439,12 @@
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article (
             id, author_id, title, summary, content, cover_url, category, offline_reason, status,
+            featured, featured_at,
             view_count, like_count, favorite_count, comment_count, published_at,
             created_at, updated_at
         ) VALUES (
             #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{offlineReason}, #{status},
+            #{featured}, #{featuredAt},
             #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
             #{createdAt}, #{updatedAt}
         )
@@ -446,6 +456,8 @@
             category = #{category},
             offline_reason = #{offlineReason},
             status = #{status},
+            featured = #{featured},
+            featured_at = #{featuredAt},
             view_count = #{viewCount},
             like_count = #{likeCount},
             favorite_count = #{favoriteCount},
@@ -857,4 +869,23 @@
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
+
+    <!-- 查询精选文章 -->
+    <select id="selectFeatured" resultMap="BaseResultMap">
+        SELECT <include refid="List_Alias_Column_List"/>
+        FROM blog_article a
+        WHERE a.featured = 1
+        AND a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        ORDER BY a.featured_at DESC, a.published_at DESC, a.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countFeatured" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_article
+        WHERE featured = 1
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+    </select>
 </mapper>
