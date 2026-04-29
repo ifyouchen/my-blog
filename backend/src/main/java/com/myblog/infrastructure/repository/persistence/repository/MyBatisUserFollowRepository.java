@@ -44,23 +44,7 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
     @Transactional(rollbackFor = Exception.class)
     public UserFollow save(UserFollow userFollow) {
         UserFollowDO userFollowDO = toData(userFollow);
-        if (userFollowMapper.countByUsers(
-            userFollow.getFollowerUserId().getValue(),
-            userFollow.getFollowingUserId().getValue()
-        ) > 0 || userFollowMapper.selectAnyByUsers(
-            userFollow.getFollowerUserId().getValue(),
-            userFollow.getFollowingUserId().getValue()
-        ) != null) {
-            int rows = userFollowMapper.update(userFollowDO);
-            if (rows == 0) {
-                throw new com.myblog.shared.exception.ApplicationException(
-                    com.myblog.shared.exception.ErrorCode.CONFLICT,
-                    "关注关系已被其他操作修改，请重试"
-                );
-            }
-        } else {
-            userFollowMapper.insert(userFollowDO);
-        }
+        userFollowMapper.insertOrUpdate(userFollowDO);
         return userFollow;
     }
 
