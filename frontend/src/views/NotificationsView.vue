@@ -4,6 +4,7 @@ import {useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import {getNotificationsApi, markNotificationReadApi} from '@/api/notifications';
+import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -41,41 +42,6 @@ const getEmptyText = () => {
         return '暂无已读通知';
     }
     return '暂无通知';
-};
-
-const getNotificationText = (type) => {
-    const textMap = {
-        ARTICLE_LIKE: '点赞了你的文章',
-        ARTICLE_FAVORITE: '收藏了你的文章',
-        ARTICLE_COMMENT: '评论了你的文章',
-        COMMENT_REPLY: '回复了你的评论',
-        COMMENT_LIKE: '点赞了你的评论',
-        USER_FOLLOW: '关注了你'
-    };
-    return textMap[type] || '有一条新通知';
-};
-
-const getNotificationDetail = (notification) => {
-    const payload = notification.payload || {};
-    if (payload.articleTitle) {
-        return payload.articleTitle;
-    }
-    if (payload.commentExcerpt) {
-        return payload.commentExcerpt;
-    }
-    return '点击查看详情';
-};
-
-const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    const date = new Date(timeStr);
-    const now = new Date();
-    const diff = now - date;
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-    return date.toLocaleDateString();
 };
 
 const totalPages = computed(() => (total.value > 0 ? Math.ceil(total.value / pageSize) : 1));
@@ -338,7 +304,7 @@ watch(
                             <div class="notification-detail">
                                 {{ getNotificationDetail(notification) }}
                             </div>
-                            <div class="notification-time">{{ formatTime(notification.createdAt) }}</div>
+                            <div class="notification-time">{{ formatNotificationTime(notification.createdAt) }}</div>
                         </div>
                         <div class="notification-meta">
                             <span v-if="!notification.read" class="unread-dot"></span>

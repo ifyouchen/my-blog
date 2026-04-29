@@ -125,9 +125,12 @@ public class UserAppService {
         overviewDTO.setTotalFavoriteCount(safeLong(metrics != null ? metrics.getTotalFavorites() : null));
         overviewDTO.setTotalCommentCount(safeLong(metrics != null ? metrics.getTotalComments() : null));
         if (latestArticle != null) {
+            overviewDTO.setLatestArticleId(latestArticle.getId().getValue());
             overviewDTO.setLatestArticleTitle(latestArticle.getTitle());
+            overviewDTO.setLatestArticleStatus(latestArticle.getStatus().name());
             overviewDTO.setLatestUpdatedAt(DATETIME_FORMATTER.format(latestArticle.getUpdatedAt()));
         }
+        populateRecommendedAction(overviewDTO);
         return overviewDTO;
     }
 
@@ -196,5 +199,33 @@ public class UserAppService {
 
     private long safeLong(Number value) {
         return value == null ? 0L : value.longValue();
+    }
+
+    private void populateRecommendedAction(MyArticleOverviewDTO overviewDTO) {
+        if (overviewDTO.getTotalCount() <= 0) {
+            overviewDTO.setRecommendedActionType("CREATE");
+            overviewDTO.setRecommendedActionText("开始写第一篇文章");
+            overviewDTO.setRecommendedActionHint("先完成一篇草稿，创作台会在这里持续给你下一步建议。");
+            overviewDTO.setRecommendedActionRoute("/editor/new");
+            return;
+        }
+        if (overviewDTO.getDraftCount() > 0) {
+            overviewDTO.setRecommendedActionType("DRAFT");
+            overviewDTO.setRecommendedActionText("继续处理草稿");
+            overviewDTO.setRecommendedActionHint("当前还有 " + overviewDTO.getDraftCount() + " 篇草稿待整理，优先补全后再发布。");
+            overviewDTO.setRecommendedActionRoute("/dashboard/articles?status=DRAFT");
+            return;
+        }
+        if (overviewDTO.getOfflineCount() > 0) {
+            overviewDTO.setRecommendedActionType("OFFLINE");
+            overviewDTO.setRecommendedActionText("检查已下架内容");
+            overviewDTO.setRecommendedActionHint("有 " + overviewDTO.getOfflineCount() + " 篇文章处于下架状态，可以评估是否重新发布。");
+            overviewDTO.setRecommendedActionRoute("/dashboard/articles?status=OFFLINE");
+            return;
+        }
+        overviewDTO.setRecommendedActionType("PUBLISHED");
+        overviewDTO.setRecommendedActionText("查看已发布文章");
+        overviewDTO.setRecommendedActionHint("你的内容已经在线，继续优化标题、摘要和互动表现会更有效。");
+        overviewDTO.setRecommendedActionRoute("/dashboard/articles?status=PUBLISHED");
     }
 }

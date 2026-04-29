@@ -3,6 +3,8 @@ package com.myblog.application.service;
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.command.CreateArticleCommand;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticlePublishValidationDTO;
+import com.myblog.application.dto.ArticleValidationItemDTO;
 import com.myblog.application.event.ArticleViewedEvent;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.domain.model.aggregate.Article;
@@ -453,5 +455,116 @@ public class ArticleAppService {
             return false;
         }
         return userFollowRepository.exists(new UserId(currentUserId), article.getAuthorId());
+    }
+
+    /**
+     * 校验文章是否满足发布条件。
+     *
+     * @param command 当前编辑内容
+     * @return 发布校验结果
+     */
+    public ArticlePublishValidationDTO validateDraftForPublish(CreateArticleCommand command) {
+        ArticlePublishValidationDTO validation = new ArticlePublishValidationDTO();
+        List<String> errors = new ArrayList<String>();
+        List<String> warnings = new ArrayList<String>();
+        List<ArticleValidationItemDTO> checks = new ArrayList<ArticleValidationItemDTO>();
+
+        String title = normalizeValue(command.getTitle());
+        String summary = normalizeValue(command.getSummary());
+        String content = normalizeValue(command.getContent());
+        String category = normalizeValue(command.getCategory());
+        List<String> tags = command.getTags() == null ? Collections.<String>emptyList() : command.getTags();
+        String coverUrl = resolveCoverUrl(command.getCoverUrl());
+
+        appendCheck(
+            checks,
+            errors,
+            "title",
+            "文章标题",
+            StringUtils.hasText(title),
+            "error",
+            "标题已填写",
+            "发布前请先填写文章标题"
+        );
+        appendCheck(
+            checks,
+            errors,
+            "content",
+            "文章正文",
+            StringUtils.hasText(content),
+            "error",
+            "正文内容已准备好",
+            "发布前请先补全文章正文"
+        );
+        appendCheck(
+            checks,
+            errors,
+            "category",
+            "文章分类",
+            StringUtils.hasText(category),
+            "error",
+            "文章分类已选择",
+            "发布前请先选择文章分类"
+        );
+        appendCheck(
+            checks,
+            warnings,
+            "summary",
+            "文章摘要",
+            StringUtils.hasText(summary),
+            "warning",
+            "摘要已填写",
+            "建议补充一段摘要，方便首页、搜索和专栏页展示"
+        );
+        appendCheck(
+            checks,
+            warnings,
+            "tags",
+            "文章标签",
+            !tags.isEmpty(),
+            "warning",
+            "标签已设置",
+            "建议至少补充一个标签，方便读者发现内容"
+        );
+        appendCheck(
+            checks,
+            warnings,
+            "cover",
+            "文章封面",
+            StringUtils.hasText(coverUrl) && !defaultArticleCoverUrl.equals(coverUrl),
+            "warning",
+            "已设置自定义封面",
+            "当前会使用系统默认封面，建议上传更贴合主题的封面图"
+        );
+
+        validation.setPublishable(errors.isEmpty());
+        validation.setErrors(errors);
+        validation.setWarnings(warnings);
+        validation.setChecks(checks);
+        return validation;
+    }
+
+    private void appendCheck(List<ArticleValidationItemDTO> checks,
+                             List<String> messages,
+                             String key,
+                             String label,
+                             boolean passed,
+                             String level,
+                             String passedMessage,
+                             String failedMessage) {
+        ArticleValidationItemDTO item = new ArticleValidationItemDTO();
+        item.setKey(key);
+        item.setLabel(label);
+        item.setPassed(passed);
+        item.setLevel(level);
+        item.setMessage(passed ? passedMessage : failedMessage);
+        checks.add(item);
+        if (!passed) {
+            messages.add(failedMessage);
+        }
+    }
+
+    private String normalizeValue(String source) {
+        return source == null ? "" : source.trim();
     }
 }

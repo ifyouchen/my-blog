@@ -1,15 +1,17 @@
 <script setup>
 import {computed, inject, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
 import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
-import {createArticleApi, getEditableArticleApi, updateArticleApi} from '@/api/articles';
+import {createArticleApi, getEditableArticleApi, updateArticleApi, validateArticleForPublishApi} from '@/api/articles';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
 import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import RichMarkdownEditor from '@/components/RichMarkdownEditor.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import {topics} from '@/data/home';
 import {resolveMediaUrl} from '@/utils/media';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
@@ -28,6 +30,13 @@ const defaultDraft = {
 const route = useRoute();
 const router = useRouter();
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
+const pendingLeaveTarget = ref(null);
 
 const isEditMode = computed(() => route.name === 'editorEdit');
 const editorArticleId = computed(() => (isEditMode.value ? String(route.params.id || '') : 'new'));
@@ -52,11 +61,22 @@ const coverInputRef = ref(null);
 const richEditorRef = ref(null);
 const coverPreviewFailed = ref(false);
 const showBackToTop = ref(false);
+const publishValidation = ref({
+    publishable: false,
+    errors: [],
+    warnings: [],
+    checks: []
+});
+const publishValidationLoading = ref(false);
+const publishValidationError = ref('');
+let publishValidationTimer = null;
 
 const wordCount = computed(() => draft.content.trim().length);
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
 const previewTags = computed(() => parseTags(draft.tags));
 const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编辑内容' : '预览待发布内容'));
+const showPersistentStatus = computed(() => ['warning', 'error'].includes(feedbackType.value));
+const showQuietStatus = computed(() => !showPersistentStatus.value && Boolean(statusMessage.value));
 const displayCoverUrl = computed(() => {
     const source = draft.coverUrl || DEFAULT_ARTICLE_COVER_URL;
     return coverPreviewFailed.value ? resolveMediaUrl(DEFAULT_ARTICLE_COVER_URL, '') : resolveMediaUrl(source, '');
@@ -159,24 +179,6 @@ function discardRecoveredDraft() {
     feedbackType.value = 'info';
 }
 
-function validatePublishDraft() {
-    const errors = [];
-    if (!draft.title.trim()) {
-        errors.push('标题不能为空');
-    }
-    if (!draft.summary.trim()) {
-        errors.push('摘要不能为空');
-    }
-    if (!draft.content.trim()) {
-        errors.push('正文不能为空');
-    }
-    if (!draft.category) {
-        errors.push('请选择分类');
-    }
-    validationErrors.value = errors;
-    return errors.length === 0;
-}
-
 async function fetchMetadata() {
     try {
         const [categories, tags] = await Promise.all([
@@ -252,6 +254,45 @@ async function fetchArticle() {
     }
 }
 
+async function refreshPublishValidation(options = {}) {
+    const silent = options.silent === true;
+    publishValidationLoading.value = !silent;
+    publishValidationError.value = '';
+    try {
+        const result = await validateArticleForPublishApi(draft);
+        publishValidation.value = {
+            publishable: Boolean(result?.publishable),
+            errors: result?.errors || [],
+            warnings: result?.warnings || [],
+            checks: result?.checks || []
+        };
+        validationErrors.value = publishValidation.value.errors;
+    } catch (error) {
+        publishValidationError.value = error.message || '发布检查暂时不可用';
+    } finally {
+        publishValidationLoading.value = false;
+    }
+}
+
+function schedulePublishValidation() {
+    if (publishValidationTimer) {
+        window.clearTimeout(publishValidationTimer);
+    }
+    publishValidationTimer = window.setTimeout(() => {
+        refreshPublishValidation({ silent: true });
+    }, 450);
+}
+
+async function ensurePublishValidationPassed() {
+    await refreshPublishValidation();
+    if (!publishValidation.value.publishable) {
+        statusMessage.value = '发布前请先处理校验项中的阻塞问题';
+        feedbackType.value = 'warning';
+        return false;
+    }
+    return true;
+}
+
 async function persistArticle(status) {
     if (publishLoading.value) {
         return null;
@@ -267,10 +308,11 @@ async function persistArticle(status) {
         feedbackType.value = 'warning';
         return null;
     }
-    if (status === 'PUBLISHED' && !validatePublishDraft()) {
-        statusMessage.value = `${actionText}前请补齐必要信息`;
-        feedbackType.value = 'warning';
-        return null;
+    if (status === 'PUBLISHED') {
+        const canPublish = await ensurePublishValidationPassed();
+        if (!canPublish) {
+            return null;
+        }
     }
 
     publishLoading.value = true;
@@ -382,8 +424,11 @@ function continueWriting() {
     feedbackType.value = 'info';
 }
 
-function togglePreview() {
+async function togglePreview() {
     previewVisible.value = !previewVisible.value;
+    if (previewVisible.value) {
+        await refreshPublishValidation({ silent: true });
+    }
 }
 
 function handleTocNavigate({ index }) {
@@ -399,10 +444,6 @@ function scrollToTop() {
 
 function handleScroll() {
     showBackToTop.value = window.scrollY > 500;
-}
-
-function confirmDiscardChanges() {
-    return window.confirm('当前还有未保存改动，确定要离开当前编辑页吗？');
 }
 
 function handleBeforeUnload(event) {
@@ -425,14 +466,31 @@ watch(
 watch(draft, () => {
     if (!pageLoading.value) {
         persistLocalDraft();
+        schedulePublishValidation();
     }
 }, { deep: true });
 
-onBeforeRouteLeave(() => {
+onBeforeRouteLeave((to) => {
     if (allowRouteLeave.value || !hasUnsavedChanges.value) {
         return true;
     }
-    return confirmDiscardChanges();
+    pendingLeaveTarget.value = to.fullPath;
+    openConfirmDialog({
+        eyebrow: '离开编辑页确认',
+        title: '还有未保存改动',
+        message: '当前内容还没有保存，离开后可能丢失刚刚的修改。确定继续离开吗？',
+        confirmText: '仍然离开',
+        tone: 'warning',
+        onConfirm: async () => {
+            allowRouteLeave.value = true;
+            if (pendingLeaveTarget.value) {
+                await router.push(pendingLeaveTarget.value);
+            } else {
+                await router.back();
+            }
+        }
+    });
+    return false;
 });
 
 onMounted(async () => {
@@ -440,11 +498,15 @@ onMounted(async () => {
     window.addEventListener('scroll', handleScroll);
     await fetchMetadata();
     await fetchArticle();
+    await refreshPublishValidation({ silent: true });
 });
 
 onUnmounted(() => {
     window.removeEventListener('beforeunload', handleBeforeUnload);
     window.removeEventListener('scroll', handleScroll);
+    if (publishValidationTimer) {
+        window.clearTimeout(publishValidationTimer);
+    }
 });
 </script>
 
@@ -474,7 +536,7 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <p v-if="statusMessage" :class="['editor-action-status', feedbackType]">
+            <p v-if="statusMessage && showPersistentStatus" :class="['editor-action-status', feedbackType]">
                 {{ statusMessage }}
             </p>
 
@@ -512,6 +574,11 @@ onUnmounted(() => {
                     <button type="button" @click="continueWriting">继续编辑</button>
                 </div>
             </section>
+
+            <div v-else-if="showQuietStatus" class="editor-status-inline" :class="feedbackType">
+                <span class="editor-status-dot"></span>
+                <span>{{ statusMessage }}</span>
+            </div>
 
             <section v-if="previewVisible" class="editor-preview-panel">
                 <div class="editor-preview-head">
@@ -572,7 +639,7 @@ onUnmounted(() => {
                 :refresh-on-content-change="!previewVisible"
                 @navigate="handleTocNavigate"
             />
-            <section class="side-section editor-category-section">
+            <section class="editor-category-section">
                 <div class="editor-category-head">
                     <p class="eyebrow">分类</p>
                     <span class="editor-category-value">{{ draft.category || '请选择分类' }}</span>
@@ -583,11 +650,11 @@ onUnmounted(() => {
                     </select>
                 </div>
             </section>
-            <section class="side-section">
+            <section class="editor-side-block">
                 <p class="eyebrow">标签</p>
                 <input v-model="draft.tags" type="text" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
             </section>
-            <section class="side-section upload-box">
+            <section class="upload-box">
                 <div class="cover-card-head">
                     <div>
                         <p class="eyebrow">文章封面</p>
@@ -620,6 +687,7 @@ onUnmounted(() => {
                 </p>
                 <label class="cover-path-field">
                     <span>图片路径</span>
+                    <small>如果你已经有现成的封面地址，也可以直接填写公开图片链接。</small>
                     <input
                         v-model.trim="draft.coverUrl"
                         type="text"
@@ -646,6 +714,18 @@ onUnmounted(() => {
     >
         ↑
     </button>
+
+    <ConfirmDialog
+        :visible="confirmDialog.visible"
+        :eyebrow="confirmDialog.eyebrow"
+        :title="confirmDialog.title"
+        :message="confirmDialog.message"
+        :confirm-text="confirmDialog.confirmText"
+        :tone="confirmDialog.tone"
+        :loading="confirmDialog.loading"
+        @close="closeConfirmDialog"
+        @confirm="executeConfirmDialog"
+    />
 </template>
 
 <style scoped>
@@ -737,7 +817,17 @@ onUnmounted(() => {
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: none;
+}
+
+.editor-side {
+    display: grid;
+    gap: 14px;
+}
+
+.editor-side-block {
+    display: grid;
+    gap: 10px;
 }
 
 .cover-card-head {
@@ -784,7 +874,7 @@ onUnmounted(() => {
     border: 1px solid rgba(15, 23, 42, 0.08);
     background: var(--surface-soft);
     aspect-ratio: 16 / 10;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    box-shadow: none;
 }
 
 .cover-card-preview img {
@@ -797,7 +887,7 @@ onUnmounted(() => {
     position: absolute;
     inset: auto 0 0;
     padding: 14px 16px;
-    background: linear-gradient(180deg, rgba(16, 23, 31, 0), rgba(16, 23, 31, 0.78));
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.02), rgba(15, 23, 42, 0.46));
 }
 
 .cover-card-overlay span {
@@ -828,6 +918,12 @@ onUnmounted(() => {
     font-weight: 600;
 }
 
+.cover-path-field small {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
 .cover-path-field input {
     width: 100%;
 }
@@ -850,7 +946,6 @@ onUnmounted(() => {
 }
 
 .cover-upload-button:hover {
-    transform: translateY(-1px);
     filter: brightness(1.03);
 }
 
@@ -860,6 +955,32 @@ onUnmounted(() => {
     transform: none;
     filter: none;
     box-shadow: none;
+}
+
+.editor-status-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 6px 0 2px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.editor-status-inline.success {
+    color: var(--success);
+}
+
+.editor-status-inline.info {
+    color: var(--brand);
+}
+
+.editor-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.85;
 }
 
 @media (max-width: 760px) {

@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {
     createCategoryApi,
@@ -19,8 +20,17 @@ import {
     updateCategoryApi,
     updateTagApi
 } from '@/api/admin';
+import { useToast } from '@/composables/useToast';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const DEFAULT_PAGE_SIZE = 10;
+const toast = useToast();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const stats = ref({
     totalUsers: 0,
@@ -374,7 +384,7 @@ const toggleUserStatus = async (userId, currentStatus) => {
         await fetchUsers();
         await fetchLogs();
     } catch (error) {
-        alert(error.message || '操作失败');
+        toast.error(error.message || '操作失败');
     }
 };
 
@@ -392,7 +402,7 @@ const toggleArticleStatus = async (articleId, currentStatus) => {
         await fetchArticles();
         await fetchLogs();
     } catch (error) {
-        alert(error.message || '操作失败');
+        toast.error(error.message || '操作失败');
     }
 };
 
@@ -403,16 +413,22 @@ const toggleArticleStatus = async (articleId, currentStatus) => {
  * @returns {Promise<void>}
  */
 const handleDeleteComment = async (commentId) => {
-    if (!confirm('确定删除这条评论吗？')) {
-        return;
-    }
-    try {
-        await deleteAdminCommentApi(commentId);
-        await fetchComments();
-        await fetchLogs();
-    } catch (error) {
-        alert(error.message || '删除失败');
-    }
+    openConfirmDialog({
+        eyebrow: '评论治理确认',
+        title: '删除评论',
+        message: '确定删除这条评论吗？删除后它会从文章评论区移除。',
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteAdminCommentApi(commentId);
+                await fetchComments();
+                await fetchLogs();
+            } catch (error) {
+                toast.error(error.message || '删除失败');
+            }
+        }
+    });
 };
 
 /**
@@ -433,7 +449,7 @@ const submitCategory = async () => {
         await fetchCategories(categoryState.page);
         await fetchLogs();
     } catch (error) {
-        alert(error.message || '分类创建失败');
+        toast.error(error.message || '分类创建失败');
     }
 };
 
@@ -454,7 +470,7 @@ const toggleCategory = async (category) => {
         await fetchCategories(categoryState.page);
         await fetchLogs();
     } catch (error) {
-        alert(error.message || '分类更新失败');
+        toast.error(error.message || '分类更新失败');
     }
 };
 
@@ -465,16 +481,22 @@ const toggleCategory = async (category) => {
  * @returns {Promise<void>}
  */
 const removeCategory = async (categoryId) => {
-    if (!confirm('确定删除这个分类吗？')) {
-        return;
-    }
-    try {
-        await deleteCategoryApi(categoryId);
-        await fetchCategories(categoryState.page);
-        await fetchLogs();
-    } catch (error) {
-        alert(error.message || '分类删除失败');
-    }
+    openConfirmDialog({
+        eyebrow: '分类治理确认',
+        title: '删除分类',
+        message: '确定删除这个分类吗？删除后相关文章的分类展示可能受影响。',
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteCategoryApi(categoryId);
+                await fetchCategories(categoryState.page);
+                await fetchLogs();
+            } catch (error) {
+                toast.error(error.message || '分类删除失败');
+            }
+        }
+    });
 };
 
 /**
@@ -493,7 +515,7 @@ const submitTag = async () => {
         await fetchTags(tagState.page);
         await fetchLogs();
     } catch (error) {
-        alert(error.message || '标签创建失败');
+        toast.error(error.message || '标签创建失败');
     }
 };
 
@@ -513,7 +535,7 @@ const toggleTag = async (tag) => {
         await fetchTags(tagState.page);
         await fetchLogs();
     } catch (error) {
-        alert(error.message || '标签更新失败');
+        toast.error(error.message || '标签更新失败');
     }
 };
 
@@ -524,16 +546,22 @@ const toggleTag = async (tag) => {
  * @returns {Promise<void>}
  */
 const removeTag = async (tagId) => {
-    if (!confirm('确定删除这个标签吗？')) {
-        return;
-    }
-    try {
-        await deleteTagApi(tagId);
-        await fetchTags(tagState.page);
-        await fetchLogs();
-    } catch (error) {
-        alert(error.message || '标签删除失败');
-    }
+    openConfirmDialog({
+        eyebrow: '标签治理确认',
+        title: '删除标签',
+        message: '确定删除这个标签吗？删除后相关文章的标签关联会同步调整。',
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteTagApi(tagId);
+                await fetchTags(tagState.page);
+                await fetchLogs();
+            } catch (error) {
+                toast.error(error.message || '标签删除失败');
+            }
+        }
+    });
 };
 
 onMounted(() => {
@@ -1010,6 +1038,17 @@ onMounted(() => {
                     </tbody>
                 </table>
             </section>
+            <ConfirmDialog
+                :visible="confirmDialog.visible"
+                :eyebrow="confirmDialog.eyebrow"
+                :title="confirmDialog.title"
+                :message="confirmDialog.message"
+                :confirm-text="confirmDialog.confirmText"
+                :tone="confirmDialog.tone"
+                :loading="confirmDialog.loading"
+                @close="closeConfirmDialog"
+                @confirm="executeConfirmDialog"
+            />
         </section>
     </main>
 </template>

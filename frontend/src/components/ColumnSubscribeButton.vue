@@ -20,7 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
-const toast = inject('toast', { success: () => {}, error: () => {} });
+const toast = inject('toast', { error: () => {} });
 const submitting = ref(false);
 const localSubscribed = ref(Boolean(props.subscribed));
 
@@ -49,7 +49,6 @@ const toggleSubscribe = async () => {
         } else {
             await subscribeColumnApi(props.columnId);
         }
-        toast.success(localSubscribed.value ? '已订阅专栏' : '已取消订阅');
         emit('change', localSubscribed.value);
     } catch (error) {
         localSubscribed.value = previous;
@@ -78,24 +77,32 @@ const toggleSubscribe = async () => {
 .column-subscribe-button {
     min-height: 36px;
     padding: 0 16px;
-    color: #ffffff;
+    color: var(--brand);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    background: var(--brand-strong);
-    border: 1px solid var(--brand-strong);
+    background: var(--surface);
+    border: 1px solid rgba(37, 99, 235, 0.24);
     border-radius: var(--radius-md);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
 }
 
 .column-subscribe-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 22px rgba(17, 153, 132, 0.18);
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: rgba(37, 99, 235, 0.34);
 }
 
 .column-subscribe-button.active {
-    color: var(--brand-strong);
-    background: rgba(17, 153, 132, 0.08);
+    color: var(--muted);
+    background: var(--surface-soft);
+    border-color: var(--line);
+}
+
+.column-subscribe-button.active:hover:not(:disabled) {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: rgba(37, 99, 235, 0.24);
 }
 
 .column-subscribe-button.compact {
@@ -105,6 +112,6 @@ const toggleSubscribe = async () => {
 
 .column-subscribe-button:disabled {
     cursor: not-allowed;
-    opacity: 0.72;
+    opacity: 0.62;
 }
 </style>

@@ -1,0 +1,246 @@
+<script setup>
+const props = defineProps({
+    visible: {
+        type: Boolean,
+        default: false
+    },
+    eyebrow: {
+        type: String,
+        default: '操作确认'
+    },
+    title: {
+        type: String,
+        default: ''
+    },
+    message: {
+        type: String,
+        default: ''
+    },
+    confirmText: {
+        type: String,
+        default: '确认'
+    },
+    cancelText: {
+        type: String,
+        default: '取消'
+    },
+    tone: {
+        type: String,
+        default: 'primary'
+    },
+    loading: {
+        type: Boolean,
+        default: false
+    }
+});
+
+const emit = defineEmits(['close', 'confirm']);
+
+const close = () => {
+    if (props.loading) {
+        return;
+    }
+    emit('close');
+};
+
+const confirm = () => {
+    if (props.loading) {
+        return;
+    }
+    emit('confirm');
+};
+</script>
+
+<template>
+    <Teleport to="body">
+        <div
+            v-if="visible"
+            class="confirm-dialog-overlay"
+            @click.self="close"
+        >
+            <div class="confirm-dialog-card">
+                <button
+                    type="button"
+                    class="confirm-dialog-close"
+                    aria-label="关闭确认弹窗"
+                    :disabled="loading"
+                    @click="close"
+                >
+                    ×
+                </button>
+                <p class="confirm-dialog-eyebrow">{{ eyebrow }}</p>
+                <h3 v-if="title">{{ title }}</h3>
+                <p v-if="message" class="confirm-dialog-message">{{ message }}</p>
+                <slot />
+                <div class="confirm-dialog-actions">
+                    <button
+                        type="button"
+                        class="confirm-dialog-btn secondary"
+                        :disabled="loading"
+                        @click="close"
+                    >
+                        {{ cancelText }}
+                    </button>
+                    <button
+                        type="button"
+                        class="confirm-dialog-btn"
+                        :class="tone"
+                        :disabled="loading"
+                        @click="confirm"
+                    >
+                        {{ loading ? '处理中...' : confirmText }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+</template>
+
+<style scoped>
+.confirm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.42);
+}
+
+.confirm-dialog-card {
+    position: relative;
+    width: min(440px, 100%);
+    padding: 30px 28px 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+
+.confirm-dialog-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.confirm-dialog-close:hover:not(:disabled) {
+    color: var(--text);
+    background: var(--surface-soft);
+}
+
+.confirm-dialog-close:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.confirm-dialog-eyebrow {
+    margin: 0 0 8px;
+    color: var(--brand-strong);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.confirm-dialog-card h3 {
+    margin: 0 0 10px;
+    color: var(--text);
+    font-size: 22px;
+}
+
+.confirm-dialog-message {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.confirm-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.confirm-dialog-btn {
+    min-width: 108px;
+    min-height: 38px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--brand);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.confirm-dialog-btn.primary {
+    color: #ffffff;
+    background: var(--brand);
+}
+
+.confirm-dialog-btn.primary:hover:not(:disabled) {
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+}
+
+.confirm-dialog-btn.warning {
+    color: #ffffff;
+    background: #d97706;
+    border-color: #d97706;
+}
+
+.confirm-dialog-btn.warning:hover:not(:disabled) {
+    background: #b45309;
+    border-color: #b45309;
+}
+
+.confirm-dialog-btn.danger {
+    color: #ffffff;
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.confirm-dialog-btn.danger:hover:not(:disabled) {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.confirm-dialog-btn.secondary {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--line);
+}
+
+.confirm-dialog-btn.secondary:hover:not(:disabled) {
+    background: var(--surface-soft);
+    border-color: var(--line-strong);
+}
+
+.confirm-dialog-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+    .confirm-dialog-card {
+        padding: 28px 20px 20px;
+    }
+
+    .confirm-dialog-actions {
+        flex-direction: column-reverse;
+    }
+
+    .confirm-dialog-btn {
+        width: 100%;
+    }
+}
+</style>

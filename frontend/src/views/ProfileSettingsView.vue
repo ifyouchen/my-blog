@@ -16,8 +16,6 @@ const loading = ref(false);
 const statsLoading = ref(false);
 const hotArticlesLoading = ref(false);
 const hotArticlesError = ref('');
-const feedback = ref('');
-const feedbackType = ref('info');
 const activeField = ref('');
 const fieldFeedback = ref('');
 const fieldFeedbackType = ref('info');
@@ -209,15 +207,14 @@ const saveField = async (field) => {
         return;
     }
     loading.value = true;
-    feedback.value = '';
     fieldFeedback.value = '';
     try {
         const user = await updateProfileApi(buildPayload());
         updateCurrentUser(user);
         syncFromSession();
         activeField.value = '';
-        feedback.value = `${FIELD_LABELS[field]}已更新`;
-        feedbackType.value = 'success';
+        fieldFeedback.value = `${FIELD_LABELS[field]}已更新，公开形象会同步刷新`;
+        fieldFeedbackType.value = 'success';
         await Promise.all([loadProfileStats(), loadHotArticles()]);
     } catch (error) {
         fieldFeedback.value = error.message || `${FIELD_LABELS[field]}保存失败`;
@@ -370,7 +367,7 @@ onMounted(async () => {
                         <div class="profile-field-head">
                             <div>
                                 <h3>头像</h3>
-                                <p>可以上传头像图片，也可以继续保留图片链接形式。</p>
+                                <p>建议优先上传头像图片，必要时也可以补充公开图片链接。</p>
                             </div>
                             <button
                                 v-if="!isEditingField('avatarUrl')"
@@ -411,11 +408,14 @@ onMounted(async () => {
                                     </button>
                                     <span class="profile-upload-tip">支持 jpg、png、gif、webp，头像建议不超过 2MB。</span>
                                 </div>
-                                <input
-                                    v-model.trim="draft.avatarUrl"
-                                    type="url"
-                                    placeholder="/api/uploads/files/2026/04/avatar.png 或 https://example.com/avatar.png"
-                                >
+                                <label class="profile-secondary-field">
+                                    <span>公开图片链接（可选）</span>
+                                    <input
+                                        v-model.trim="draft.avatarUrl"
+                                        type="url"
+                                        placeholder="/api/uploads/files/2026/04/avatar.png 或 https://example.com/avatar.png"
+                                    >
+                                </label>
                                 <div class="profile-field-actions">
                                     <button class="primary-action profile-action-with-icon" type="button" :disabled="loading || avatarUploading" @click="saveField('avatarUrl')">
                                         <span class="profile-action-icon" aria-hidden="true">
@@ -495,7 +495,6 @@ onMounted(async () => {
                 <div class="profile-settings-panel-footer">
                     <p v-if="fieldFeedback" :class="['form-message', fieldFeedbackType]">{{ fieldFeedback }}</p>
                     <p v-else class="profile-settings-panel-tip">修改后会同步显示在文章作者信息、评论区和个人主页。</p>
-                    <p v-if="feedback" :class="['form-message', feedbackType]">{{ feedback }}</p>
                 </div>
             </section>
 
@@ -580,7 +579,7 @@ onMounted(async () => {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: none;
 }
 
 .profile-secondary-action {
@@ -648,7 +647,7 @@ onMounted(async () => {
 
 .profile-field-card:hover {
     border-color: var(--brand);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
 }
 
 .profile-field-head {
@@ -753,6 +752,17 @@ onMounted(async () => {
     animation: fade-slide-up 0.24s ease;
 }
 
+.profile-secondary-field {
+    display: grid;
+    gap: 8px;
+}
+
+.profile-secondary-field span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .profile-field-actions {
     display: flex;
     gap: 12px;
@@ -820,7 +830,7 @@ onMounted(async () => {
 }
 
 .profile-hot-item:hover {
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
     border-color: var(--brand);
 }
 

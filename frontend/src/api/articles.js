@@ -28,6 +28,13 @@ export const createArticleApi = async (draft, status) => {
     }));
 };
 
+export const validateArticleForPublishApi = async (draft) => {
+    return await request('/articles/validate', {
+        method: 'POST',
+        body: buildArticlePayload(draft, 'PUBLISHED')
+    });
+};
+
 export const updateArticleApi = async (articleId, draft, status) => {
     return normalizeArticle(await request(`/articles/${articleId}`, {
         method: 'PUT',

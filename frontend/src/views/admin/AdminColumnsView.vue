@@ -1,12 +1,20 @@
 <script setup>
 import {reactive, watch} from 'vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {createAdminColumnApi, deleteAdminColumnApi, getAdminColumnsApi, updateAdminColumnApi} from '@/api/admin';
 import {createPagedState, readPositiveInt, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useRoute, useRouter} from 'vue-router';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const form = reactive({
     authorId: '',
@@ -149,19 +157,25 @@ const saveEdit = async (columnId) => {
 };
 
 const removeColumn = async (column) => {
-    if (!window.confirm(`确定删除专栏「${column.title}」吗？`)) {
-        return;
-    }
-    state.submitting = true;
-    try {
-        await deleteAdminColumnApi(column.id);
-        setFeedback('专栏已删除');
-        await loadColumns();
-    } catch (error) {
-        setFeedback(error.message || '专栏删除失败', 'error');
-    } finally {
-        state.submitting = false;
-    }
+    openConfirmDialog({
+        eyebrow: '专栏治理确认',
+        title: '删除专栏',
+        message: `确定删除专栏「${column.title}」吗？删除后该专栏将不再对外展示。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            state.submitting = true;
+            try {
+                await deleteAdminColumnApi(column.id);
+                setFeedback('专栏已删除');
+                await loadColumns();
+            } catch (error) {
+                setFeedback(error.message || '专栏删除失败', 'error');
+            } finally {
+                state.submitting = false;
+            }
+        }
+    });
 };
 
 useAdminRefresh(loadColumns);
@@ -242,6 +256,17 @@ watch(
             <template v-else>
                 <div class="admin-table-wrap" data-testid="admin-columns-table">
                     <table class="admin-table">
+                        <colgroup>
+                            <col style="width: 8%">
+                            <col style="width: 14%">
+                            <col style="width: 18%">
+                            <col style="width: 9%">
+                            <col style="width: 9%">
+                            <col style="width: 10%">
+                            <col style="width: 10%">
+                            <col style="width: 10%">
+                            <col style="width: 12%">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -260,14 +285,14 @@ watch(
                                 <td>#{{ column.id }}</td>
 
                                 <!-- 标题 -->
-                                <td v-if="state.editingId === column.id">
-                                    <input v-model.trim="state.editForm.title" type="text">
+                                <td v-if="state.editingId === column.id" class="admin-edit-cell">
+                                    <input v-model.trim="state.editForm.title" class="admin-edit-input" type="text">
                                 </td>
-                                <td v-else>{{ column.title }}</td>
+                                <td v-else><span class="admin-cell-text">{{ column.title }}</span></td>
 
                                 <!-- 简介 -->
-                                <td v-if="state.editingId === column.id">
-                                    <input v-model.trim="state.editForm.summary" type="text">
+                                <td v-if="state.editingId === column.id" class="admin-edit-cell admin-edit-cell-wide">
+                                    <input v-model.trim="state.editForm.summary" class="admin-edit-input" type="text">
                                 </td>
                                 <td v-else class="summary-cell">{{ column.summary || '-' }}</td>
 
@@ -275,8 +300,8 @@ watch(
                                 <td>{{ column.authorId }}</td>
 
                                 <!-- 排序 -->
-                                <td v-if="state.editingId === column.id">
-                                    <input v-model.number="state.editForm.sortOrder" type="number" style="width:70px">
+                                <td v-if="state.editingId === column.id" class="admin-edit-cell admin-edit-cell-narrow">
+                                    <input v-model.number="state.editForm.sortOrder" class="admin-edit-input" type="number">
                                 </td>
                                 <td v-else>{{ column.sortOrder ?? 0 }}</td>
 
@@ -285,7 +310,7 @@ watch(
 
                                 <!-- 状态 -->
                                 <td v-if="state.editingId === column.id">
-                                    <select v-model="state.editForm.status">
+                                    <select v-model="state.editForm.status" class="admin-edit-select">
                                         <option value="PUBLISHED">已发布</option>
                                         <option value="DRAFT">草稿</option>
                                     </select>
@@ -299,11 +324,11 @@ watch(
                                 <!-- 操作 -->
                                 <td class="table-actions">
                                     <template v-if="state.editingId === column.id">
-                                        <button type="button" :disabled="state.submitting"
+                                        <button type="button" class="admin-edit-btn primary" :disabled="state.submitting"
                                                 @click="saveEdit(column.id)">
                                             {{ state.submitting ? '保存中...' : '保存' }}
                                         </button>
-                                        <button type="button" :disabled="state.submitting"
+                                        <button type="button" class="admin-edit-btn secondary" :disabled="state.submitting"
                                                 @click="cancelEdit">取消</button>
                                     </template>
                                     <template v-else>
@@ -322,15 +347,93 @@ watch(
         </div>
 
         <AdminPagination :state="state" label="专栏分页" @page-change="changePage" />
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
 
 <style scoped>
+.admin-table {
+    table-layout: fixed;
+}
+
 .summary-cell {
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.admin-edit-cell {
+    min-width: 160px;
+}
+
+.admin-edit-cell-wide {
+    min-width: 220px;
+}
+
+.admin-edit-cell-narrow {
+    min-width: 96px;
+}
+
+.admin-edit-input,
+.admin-edit-select {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 12px;
+    color: var(--text);
+    font: inherit;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    outline: 0;
+    box-sizing: border-box;
+}
+
+.admin-edit-input:focus,
+.admin-edit-select:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.admin-edit-btn {
+    min-width: 72px;
+}
+
+.admin-edit-btn.primary {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.admin-edit-btn.primary:hover:not(:disabled) {
+    color: #ffffff;
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+}
+
+.admin-edit-btn.primary:focus-visible {
+    color: #ffffff;
+}
+
+.admin-edit-btn.secondary {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--line);
+}
+
+.admin-edit-btn.secondary:hover:not(:disabled) {
+    color: var(--brand);
+    border-color: var(--brand);
 }
 </style>
 

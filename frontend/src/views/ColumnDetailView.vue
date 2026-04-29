@@ -79,23 +79,42 @@ watch(() => route.params.id, async () => {
 
 <template>
     <SiteHeader />
-    <main class="page-shell">
+    <main class="page-shell column-detail-page">
         <section v-if="column" class="column-detail-hero">
-            <img :src="column.coverUrl" :alt="`${column.title} 封面`">
             <div class="column-detail-content">
-                <p class="eyebrow">专栏</p>
-                <h1>{{ column.title }}</h1>
-                <p>{{ column.summary }}</p>
-                <div class="column-detail-meta">
-                    <RouterLink :to="`/users/${column.author.id}`">{{ column.author.name }}</RouterLink>
-                    <span>{{ column.articleCount }} 篇文章</span>
-                    <span>{{ column.subscriberCount }} 人订阅</span>
+                <div class="column-detail-copy">
+                    <p class="eyebrow">专栏</p>
+                    <h1>{{ column.title }}</h1>
+                    <p class="column-detail-summary">{{ column.summary }}</p>
                 </div>
-                <ColumnSubscribeButton
-                    :column-id="column.id"
-                    :subscribed="column.subscribed"
-                    @change="handleSubscribeChange"
-                />
+                <div class="column-detail-meta">
+                    <RouterLink class="column-detail-author" :to="`/users/${column.author.id}`">
+                        <img :src="column.author.avatar" alt="作者头像" loading="lazy">
+                        <div>
+                            <strong>{{ column.author.name }}</strong>
+                            <span>专栏作者</span>
+                        </div>
+                    </RouterLink>
+                    <div class="column-detail-stats">
+                        <span>{{ column.articleCount }} 篇文章</span>
+                        <span>{{ column.subscriberCount }} 人订阅</span>
+                    </div>
+                </div>
+                <div class="column-detail-actions">
+                    <ColumnSubscribeButton
+                        :column-id="column.id"
+                        :subscribed="column.subscribed"
+                        @change="handleSubscribeChange"
+                    />
+                    <span class="column-detail-helper">订阅后会持续追踪这个主题下的新文章更新。</span>
+                </div>
+            </div>
+            <div class="column-detail-cover-panel">
+                <img :src="column.coverUrl" :alt="`${column.title} 封面`">
+                <div class="column-detail-cover-note">
+                    <span>内容主题</span>
+                    <strong>{{ column.title }}</strong>
+                </div>
             </div>
         </section>
 
@@ -139,22 +158,41 @@ watch(() => route.params.id, async () => {
 <style scoped>
 .column-detail-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-    gap: 24px;
-    padding: 24px;
+    grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+    gap: 26px;
+    padding: 28px;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    border-radius: var(--radius-md);
 }
 
-.column-detail-hero img {
+.column-detail-page {
+    display: grid;
+    gap: 20px;
+}
+
+.column-detail-copy {
+    display: grid;
+    gap: 10px;
+}
+
+.column-detail-cover-panel {
+    position: relative;
+    overflow: hidden;
+    align-self: start;
+    aspect-ratio: 4 / 3;
+    min-height: 280px;
+    max-height: 360px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: var(--surface-soft);
+}
+
+.column-detail-cover-panel img {
     width: 100%;
     height: 100%;
-    min-height: 280px;
     object-fit: cover;
-    border-radius: var(--radius-sm);
-    box-shadow: none;
+    display: block;
 }
 
 .column-detail-loading {
@@ -172,7 +210,7 @@ watch(() => route.params.id, async () => {
 .column-detail-content {
     display: grid;
     align-content: start;
-    gap: 14px;
+    gap: 18px;
 }
 
 @keyframes column-skeleton {
@@ -190,22 +228,99 @@ watch(() => route.params.id, async () => {
     margin: 0;
 }
 
+.column-detail-content h1 {
+    font-size: clamp(28px, 3vw, 38px);
+    line-height: 1.2;
+}
+
+.column-detail-summary {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.8;
+}
+
 .column-detail-meta {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+    display: grid;
+    gap: 16px;
+}
+
+.column-detail-author {
+    display: inline-flex;
+    gap: 14px;
+    align-items: center;
+    width: fit-content;
+    color: inherit;
+}
+
+.column-detail-author img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.column-detail-author strong,
+.column-detail-cover-note strong {
+    color: var(--text-strong);
+}
+
+.column-detail-author div {
+    display: grid;
+    gap: 4px;
+}
+
+.column-detail-author span,
+.column-detail-helper {
     color: var(--muted);
     font-size: 13px;
+    line-height: 1.7;
 }
 
-.column-detail-meta a {
-    color: var(--text);
-    text-decoration: none;
-    font-weight: 700;
+.column-detail-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.column-detail-meta a:hover,
-.column-detail-meta a:focus-visible {
+.column-detail-stats span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.column-detail-actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.column-detail-cover-note {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: var(--radius-sm);
+    backdrop-filter: blur(10px);
+}
+
+.column-detail-cover-note span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.column-detail-author:hover,
+.column-detail-author:focus-visible {
     color: var(--brand-strong);
 }
 
@@ -214,8 +329,13 @@ watch(() => route.params.id, async () => {
         grid-template-columns: 1fr;
     }
 
-    .column-detail-hero img {
+    .column-detail-cover-panel {
         min-height: 220px;
+        max-height: none;
+    }
+
+    .column-detail-actions {
+        align-items: stretch;
     }
 }
 </style>

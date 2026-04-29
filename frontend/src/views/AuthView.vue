@@ -97,6 +97,11 @@ watch(isRegister, () => {
             <p class="eyebrow">my-blog</p>
             <h1>把工程经验沉淀成作品</h1>
             <p>登录后可以发布文章、保存草稿、评论互动、收藏文章，并进入自己的创作者中心。</p>
+            <div class="auth-highlights">
+                <span class="auth-highlight">文章发布与草稿管理</span>
+                <span class="auth-highlight">评论、点赞、收藏互动</span>
+                <span class="auth-highlight">创作者中心与数据看板</span>
+            </div>
         </section>
 
         <section class="auth-panel" :aria-labelledby="isRegister ? 'register-title' : 'login-title'">
@@ -104,6 +109,9 @@ watch(isRegister, () => {
             <h2 :id="isRegister ? 'register-title' : 'login-title'">
                 {{ isRegister ? '注册 my-blog' : '登录 my-blog' }}
             </h2>
+            <p class="auth-panel-copy">
+                {{ isRegister ? '创建账号后即可进入创作中心，搭建自己的内容主页。' : '登录后继续写作、管理内容，并查看站内互动。' }}
+            </p>
 
             <form class="form-stack" :data-testid="isRegister ? 'register-form' : 'login-form'" @submit.prevent="submit">
                 <label v-if="isRegister">

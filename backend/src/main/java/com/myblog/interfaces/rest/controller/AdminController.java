@@ -14,6 +14,7 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
+import com.myblog.interfaces.rest.dto.request.AdminBatchArticleRequest;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -365,6 +366,33 @@ public class AdminController {
         return result;
     }
 
+    /**
+     * 批量更新文章状态。
+     *
+     * @param requestPayload 批量请求
+     * @param request HTTP 请求
+     * @return 更新结果
+     */
+    @PostMapping("/articles/batch/status")
+    public Result<Map<String, Object>> batchUpdateArticleStatus(
+            @RequestBody AdminBatchArticleRequest requestPayload,
+            @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(
+            adminAppService.batchUpdateArticleStatus(requestPayload.getIds(), requestPayload.getStatus())
+        );
+        adminLogAppService.recordOperation(buildLogCommand(
+            "BATCH_UPDATE_ARTICLE_STATUS",
+            "ARTICLE",
+            null,
+            "批量更新文章状态为 " + requestPayload.getStatus() + "，数量 " + result.getData().get("processedCount"),
+            null,
+            result.getData(),
+            request
+        ));
+        return result;
+    }
+
     @DeleteMapping("/articles/{id}")
     public Result<Map<String, Object>> deleteArticle(@PathVariable Long id,
                                                      @Nullable HttpServletRequest request) {
@@ -377,6 +405,30 @@ public class AdminController {
             "删除文章 " + result.getData().get("title"),
             buildArticleStatusBeforeSnapshot(result.getData()),
             buildArticleStatusAfterSnapshot(result.getData()),
+            request
+        ));
+        return result;
+    }
+
+    /**
+     * 批量删除文章。
+     *
+     * @param requestPayload 批量请求
+     * @param request HTTP 请求
+     * @return 删除结果
+     */
+    @PostMapping("/articles/batch/delete")
+    public Result<Map<String, Object>> batchDeleteArticles(@RequestBody AdminBatchArticleRequest requestPayload,
+                                                           @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.batchDeleteArticles(requestPayload.getIds()));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "BATCH_DELETE_ARTICLE",
+            "ARTICLE",
+            null,
+            "批量删除文章，数量 " + result.getData().get("processedCount"),
+            null,
+            result.getData(),
             request
         ));
         return result;

@@ -1,6 +1,7 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticlePublishValidationDTO;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.service.ArticleAppService;
 import com.myblog.infrastructure.security.AuthContext;
@@ -119,6 +120,17 @@ public class ArticleController {
         return Result.success(restDtoMapper.toResponse(
             articleAppService.createArticle(restDtoMapper.toCommand(request, AuthContext.getRequiredUserId()))
         ));
+    }
+
+    /**
+     * 发布前校验文章内容。
+     *
+     * @param request 当前编辑内容
+     * @return 校验结果
+     */
+    @PostMapping("/validate")
+    public Result<ArticlePublishValidationDTO> validateArticle(@RequestBody CreateArticleRequest request) {
+        return Result.success(articleAppService.validateDraftForPublish(restDtoMapper.toCommand(request, null)));
     }
 
     /**

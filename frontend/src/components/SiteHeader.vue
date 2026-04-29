@@ -3,6 +3,7 @@ import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {navItems} from '@/data/home';
 import {useSession} from '@/stores/session';
 import {getNotificationUnreadCountApi, getRecentNotificationsApi, markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
+import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -18,6 +19,7 @@ const notificationOpen = ref(false);
 const notificationRef = ref(null);
 const { isLoggedIn, logout, state } = useSession();
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const toast = inject('toast', { error: () => {} });
 const displayName = computed(() => state.user?.nickname || state.user?.username || '用户');
 const avatarUrl = computed(() => (
     state.user?.avatar
@@ -27,6 +29,9 @@ const avatarUrl = computed(() => (
 
 const unreadCount = ref(0);
 const recentNotifications = ref([]);
+const notificationsLoading = ref(false);
+const notificationError = ref('');
+const markingAllRead = ref(false);
 let notificationPollInterval = null;
 
 const submitSearch = () => {
@@ -94,13 +99,18 @@ const fetchUnreadCount = async () => {
 const fetchRecentNotifications = async () => {
     if (!isLoggedIn.value) {
         recentNotifications.value = [];
+        notificationError.value = '';
         return;
     }
+    notificationsLoading.value = true;
+    notificationError.value = '';
     try {
         const result = await getRecentNotificationsApi(5);
         recentNotifications.value = result || [];
     } catch (e) {
-        console.error('Failed to fetch recent notifications:', e);
+        notificationError.value = e.message || '通知加载失败，请稍后重试';
+    } finally {
+        notificationsLoading.value = false;
     }
 };
 
@@ -126,7 +136,8 @@ const handleNotificationClick = async (notification) => {
                 recentNotifications.value.splice(index, 1);
             }
         } catch (e) {
-            console.error('Failed to mark notification as read:', e);
+            toast.error(e.message || '标记通知已读失败，请稍后重试');
+            return;
         }
     }
     notificationOpen.value = false;
@@ -134,37 +145,19 @@ const handleNotificationClick = async (notification) => {
 };
 
 const handleMarkAllRead = async () => {
+    if (markingAllRead.value) {
+        return;
+    }
+    markingAllRead.value = true;
     try {
         await markAllNotificationsReadApi();
         unreadCount.value = 0;
         recentNotifications.value = [];
     } catch (e) {
-        console.error('Failed to mark all as read:', e);
+        toast.error(e.message || '全部标记已读失败，请稍后重试');
+    } finally {
+        markingAllRead.value = false;
     }
-};
-
-const getNotificationText = (type) => {
-    const textMap = {
-        'ARTICLE_LIKE': '点赞了你的文章',
-        'ARTICLE_FAVORITE': '收藏了你的文章',
-        'ARTICLE_COMMENT': '评论了你的文章',
-        'COMMENT_REPLY': '回复了你的评论',
-        'COMMENT_LIKE': '点赞了你的评论',
-        'USER_FOLLOW': '关注了你'
-    };
-    return textMap[type] || '有一条新通知';
-};
-
-const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    const date = new Date(timeStr);
-    const now = new Date();
-    const diff = now - date;
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-    return date.toLocaleDateString();
 };
 
 const displayUnreadCount = computed(() => {
@@ -270,26 +263,43 @@ const handleNotificationsRefresh = () => {
                             data-testid="header-notification-bell"
                             @click.stop="toggleNotifications"
                         >
-                            <span class="bell-icon">🔔</span>
+                            <span class="bell-icon" aria-hidden="true">
+                                <svg viewBox="0 0 20 20" fill="none">
+                                    <path d="M6.75 7.5a3.25 3.25 0 1 1 6.5 0v1.42c0 .63.2 1.24.58 1.74l.67.9c.52.7.03 1.69-.84 1.69H5.34c-.87 0-1.36-.99-.84-1.69l.67-.9c.38-.5.58-1.11.58-1.74V7.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                    <path d="M8.25 15a1.75 1.75 0 0 0 3.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </span>
                             <span v-if="displayUnreadCount" class="unread-badge">{{ displayUnreadCount }}</span>
                         </button>
                         <div v-if="notificationOpen" class="notification-dropdown" data-testid="header-notification-dropdown">
                             <div class="notification-header">
-                                <span class="notification-title">通知</span>
+                                <div class="notification-header-copy">
+                                    <span class="notification-title">最近通知</span>
+                                    <span class="notification-subtitle">
+                                        {{ unreadCount > 0 ? `${displayUnreadCount} 条未读` : '保持关注最新互动' }}
+                                    </span>
+                                </div>
                                 <button
                                     v-if="unreadCount > 0"
                                     class="mark-all-read"
                                     type="button"
+                                    :disabled="markingAllRead"
                                     @click.stop="handleMarkAllRead"
                                 >
-                                    全部已读
+                                    {{ markingAllRead ? '处理中...' : '全部已读' }}
                                 </button>
                             </div>
-                            <div v-if="recentNotifications.length === 0" class="notification-empty">
+                            <div v-if="notificationsLoading" class="notification-empty notification-empty-loading">
+                                正在同步通知...
+                            </div>
+                            <div v-else-if="notificationError" class="notification-empty notification-empty-error">
+                                {{ notificationError }}
+                            </div>
+                            <div v-else-if="recentNotifications.length === 0" class="notification-empty">
                                 暂无通知
                             </div>
                             <div v-else class="notification-list">
-                                <div
+                                <article
                                     v-for="notification in recentNotifications"
                                     :key="notification.id"
                                     class="notification-item"
@@ -311,12 +321,16 @@ const handleNotificationsRefresh = () => {
                                     <div class="notification-content">
                                         <div class="notification-text">
                                             <span class="notification-actor">{{ notification.actor?.nickname || notification.actor?.username }}</span>
-                                            {{ getNotificationText(notification.type) }}
+                                            <span class="notification-action">{{ getNotificationText(notification.type) }}</span>
                                         </div>
-                                        <div class="notification-time">{{ formatTime(notification.createdAt) }}</div>
+                                        <div class="notification-detail">{{ getNotificationDetail(notification) }}</div>
+                                        <div class="notification-time">{{ formatNotificationTime(notification.createdAt) }}</div>
                                     </div>
-                                    <span v-if="!notification.read" class="unread-dot"></span>
-                                </div>
+                                    <div class="notification-meta">
+                                        <span v-if="!notification.read" class="unread-dot"></span>
+                                        <span class="notification-arrow">›</span>
+                                    </div>
+                                </article>
                             </div>
                             <div class="notification-footer">
                                 <button class="view-all-btn" type="button" @click.stop="goToNotifications">

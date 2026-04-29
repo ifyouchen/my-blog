@@ -22,6 +22,14 @@ const props = defineProps({
     nameClass: {
         type: String,
         default: ''
+    },
+    triggerClass: {
+        type: String,
+        default: ''
+    },
+    namePrefix: {
+        type: String,
+        default: ''
     }
 });
 
@@ -121,9 +129,10 @@ onBeforeUnmount(() => {
         <RouterLink
             v-else
             class="user-hover-card-trigger name-trigger"
-            :class="nameClass"
+            :class="[triggerClass, nameClass]"
             :to="profilePath"
         >
+            <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
             {{ displayName }}
         </RouterLink>
 
@@ -145,7 +154,6 @@ onBeforeUnmount(() => {
                     <small>{{ stat.label }}</small>
                 </span>
             </span>
-            <RouterLink class="user-hover-panel-link" :to="profilePath">查看个人主页</RouterLink>
         </span>
     </span>
 </template>
@@ -167,6 +175,10 @@ onBeforeUnmount(() => {
 
 .name-trigger {
     font-weight: 700;
+}
+
+.user-hover-card-prefix {
+    margin-right: 2px;
 }
 
 .user-hover-card-trigger:hover,
@@ -273,17 +285,6 @@ onBeforeUnmount(() => {
 
 .user-hover-panel-stats small {
     font-size: 12px;
-}
-
-.user-hover-panel-link {
-    color: var(--brand-strong);
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.user-hover-panel-link:hover {
-    text-decoration: underline;
 }
 
 @media (max-width: 640px) {

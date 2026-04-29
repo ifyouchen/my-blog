@@ -1,8 +1,10 @@
 <script setup>
 import {computed, inject, ref, watch} from 'vue';
 import CommentComposer from '@/components/CommentComposer.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import {createCommentApi, deleteCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     articleId: {
@@ -22,6 +24,12 @@ const props = defineProps({
 const emit = defineEmits(['refresh', 'count-change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const expandedReplies = ref(false);
 const repliesLoading = ref(false);
@@ -203,29 +211,35 @@ async function removeComment(target) {
         replyFeedback.value = '登录后可以管理评论';
         return;
     }
-    if (!window.confirm('确定要删除这条评论吗？')) {
-        return;
-    }
-    try {
-        await deleteCommentApi(target.id);
-        if (target.id === localComment.value.id) {
-            emit('count-change', -(1 + (localComment.value.replyCount || 0)));
-            emit('refresh');
-            return;
+    openConfirmDialog({
+        eyebrow: '评论删除确认',
+        title: '删除评论',
+        message: '确定要删除这条评论吗？删除后该评论及其关联展示将从当前讨论区移除。',
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteCommentApi(target.id);
+                if (target.id === localComment.value.id) {
+                    emit('count-change', -(1 + (localComment.value.replyCount || 0)));
+                    emit('refresh');
+                    return;
+                }
+                localComment.value.replyCount = Math.max(0, (localComment.value.replyCount || 0) - 1);
+                emit('count-change', -1);
+                emit('refresh');
+                if (expandedReplies.value) {
+                    const nextTotal = Math.max(0, replyTotal.value - 1);
+                    const nextPage = Math.max(1, Math.min(replyPage.value, Math.ceil(Math.max(nextTotal, 1) / replyPageSize)));
+                    await fetchReplies(nextPage);
+                } else {
+                    localComment.value.replyPreview = localComment.value.replyPreview.filter((item) => item.id !== target.id);
+                }
+            } catch (error) {
+                replyFeedback.value = error.message || '删除失败';
+            }
         }
-        localComment.value.replyCount = Math.max(0, (localComment.value.replyCount || 0) - 1);
-        emit('count-change', -1);
-        emit('refresh');
-        if (expandedReplies.value) {
-            const nextTotal = Math.max(0, replyTotal.value - 1);
-            const nextPage = Math.max(1, Math.min(replyPage.value, Math.ceil(Math.max(nextTotal, 1) / replyPageSize)));
-            await fetchReplies(nextPage);
-        } else {
-            localComment.value.replyPreview = localComment.value.replyPreview.filter((item) => item.id !== target.id);
-        }
-    } catch (error) {
-        replyFeedback.value = error.message || '删除失败';
-    }
+    });
 }
 
 function goReplyPage(step) {
@@ -297,7 +311,12 @@ function goReplyPage(step) {
                             </div>
                             <p class="comment-reply-content">
                                 <template v-if="reply.replyToUser">
-                                    <span class="reply-target">@{{ reply.replyToUser.name }}</span>
+                                    <UserHoverCard
+                                        :user="reply.replyToUser"
+                                        trigger-class="reply-target-trigger"
+                                        name-class="reply-target"
+                                        name-prefix="@"
+                                    />
                                 </template>
                                 {{ reply.content }}
                             </p>
@@ -370,6 +389,17 @@ function goReplyPage(step) {
                 />
             </section>
         </div>
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </article>
 </template>
 
@@ -508,7 +538,11 @@ color: var(--brand-strong);
     height: 32px;
 }
 
-.reply-target {
+:deep(.reply-target-trigger) {
+    margin-right: 6px;
+}
+
+:deep(.reply-target) {
     margin-right: 6px;
     color: var(--brand-strong);
 }

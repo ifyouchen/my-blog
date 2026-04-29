@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import { getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
 import {
@@ -11,9 +12,16 @@ import {
     syncAdminQuery,
     useAdminRefresh
 } from '@/views/admin/adminShared';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const state = reactive({
     ...createPagedState(),
@@ -98,27 +106,29 @@ const changePage = async (targetPage) => {
 
 const toggleUserStatus = async (user) => {
     const nextStatus = user.status === 'NORMAL' ? 'DISABLED' : 'NORMAL';
-    const confirmed = window.confirm(
-        nextStatus === 'DISABLED'
-            ? `确定禁用用户 ${user.username} 吗？`
-            : `确定启用用户 ${user.username} 吗？`
-    );
-    if (!confirmed) {
-        return;
-    }
-
-    state.actionLoadingId = user.id;
-    try {
-        await updateAdminUserStatusApi(user.id, nextStatus);
-        state.feedback = nextStatus === 'DISABLED' ? '用户已禁用' : '用户已启用';
-        state.feedbackType = 'success';
-        await loadUsers();
-    } catch (error) {
-        state.feedback = error.message || '用户状态更新失败';
-        state.feedbackType = 'error';
-    } finally {
-        state.actionLoadingId = null;
-    }
+    openConfirmDialog({
+        eyebrow: '用户状态确认',
+        title: nextStatus === 'DISABLED' ? '禁用用户' : '启用用户',
+        message: nextStatus === 'DISABLED'
+            ? `确定禁用用户 ${user.username} 吗？禁用后该账号将无法正常使用站内能力。`
+            : `确定启用用户 ${user.username} 吗？启用后该账号会恢复正常访问权限。`,
+        confirmText: nextStatus === 'DISABLED' ? '确认禁用' : '确认启用',
+        tone: nextStatus === 'DISABLED' ? 'warning' : 'primary',
+        onConfirm: async () => {
+            state.actionLoadingId = user.id;
+            try {
+                await updateAdminUserStatusApi(user.id, nextStatus);
+                state.feedback = nextStatus === 'DISABLED' ? '用户已禁用' : '用户已启用';
+                state.feedbackType = 'success';
+                await loadUsers();
+            } catch (error) {
+                state.feedback = error.message || '用户状态更新失败';
+                state.feedbackType = 'error';
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
 };
 
 useAdminRefresh(loadUsers);
@@ -215,5 +225,16 @@ watch(
         </div>
 
         <AdminPagination :state="state" label="用户分页" @page-change="changePage" />
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>

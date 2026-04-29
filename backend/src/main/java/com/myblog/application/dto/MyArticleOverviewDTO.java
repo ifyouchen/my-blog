@@ -17,8 +17,14 @@ public class MyArticleOverviewDTO {
     private long totalLikeCount;
     private long totalFavoriteCount;
     private long totalCommentCount;
+    private Long latestArticleId;
     private String latestArticleTitle;
+    private String latestArticleStatus;
     private String latestUpdatedAt;
+    private String recommendedActionType;
+    private String recommendedActionText;
+    private String recommendedActionHint;
+    private String recommendedActionRoute;
 
     public int getTotalCount() {
         return totalCount;
@@ -100,11 +106,59 @@ public class MyArticleOverviewDTO {
         this.latestArticleTitle = latestArticleTitle;
     }
 
+    public Long getLatestArticleId() {
+        return latestArticleId;
+    }
+
+    public void setLatestArticleId(Long latestArticleId) {
+        this.latestArticleId = latestArticleId;
+    }
+
+    public String getLatestArticleStatus() {
+        return latestArticleStatus;
+    }
+
+    public void setLatestArticleStatus(String latestArticleStatus) {
+        this.latestArticleStatus = latestArticleStatus;
+    }
+
     public String getLatestUpdatedAt() {
         return latestUpdatedAt;
     }
 
     public void setLatestUpdatedAt(String latestUpdatedAt) {
         this.latestUpdatedAt = latestUpdatedAt;
+    }
+
+    public String getRecommendedActionType() {
+        return recommendedActionType;
+    }
+
+    public void setRecommendedActionType(String recommendedActionType) {
+        this.recommendedActionType = recommendedActionType;
+    }
+
+    public String getRecommendedActionText() {
+        return recommendedActionText;
+    }
+
+    public void setRecommendedActionText(String recommendedActionText) {
+        this.recommendedActionText = recommendedActionText;
+    }
+
+    public String getRecommendedActionHint() {
+        return recommendedActionHint;
+    }
+
+    public void setRecommendedActionHint(String recommendedActionHint) {
+        this.recommendedActionHint = recommendedActionHint;
+    }
+
+    public String getRecommendedActionRoute() {
+        return recommendedActionRoute;
+    }
+
+    public void setRecommendedActionRoute(String recommendedActionRoute) {
+        this.recommendedActionRoute = recommendedActionRoute;
     }
 }

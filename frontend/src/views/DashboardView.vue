@@ -1,6 +1,7 @@
 <script setup>
 import {computed, ref, watch} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
@@ -8,10 +9,17 @@ import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {deleteArticleApi, getMyArticleOverviewApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn } = useSession();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const isFavorites = computed(() => route.name === 'favorites');
 const articleStatus = ref(String(route.query.status || ''));
@@ -30,7 +38,13 @@ const overview = ref({
     totalLikeCount: 0,
     totalFavoriteCount: 0,
     totalCommentCount: 0,
+    latestArticleId: null,
     latestArticleTitle: '',
+    latestArticleStatus: '',
+    recommendedActionType: '',
+    recommendedActionText: '',
+    recommendedActionHint: '',
+    recommendedActionRoute: '',
     latestUpdatedAt: ''
 });
 const {
@@ -126,7 +140,13 @@ const fetchOverview = async () => {
             totalLikeCount: 0,
             totalFavoriteCount: 0,
             totalCommentCount: 0,
+            latestArticleId: null,
             latestArticleTitle: '',
+            latestArticleStatus: '',
+            recommendedActionType: '',
+            recommendedActionText: '',
+            recommendedActionHint: '',
+            recommendedActionRoute: '',
             latestUpdatedAt: ''
         };
         return;
@@ -144,7 +164,13 @@ const fetchOverview = async () => {
             totalLikeCount: 0,
             totalFavoriteCount: 0,
             totalCommentCount: 0,
+            latestArticleId: null,
             latestArticleTitle: '',
+            latestArticleStatus: '',
+            recommendedActionType: '',
+            recommendedActionText: '',
+            recommendedActionHint: '',
+            recommendedActionRoute: '',
             latestUpdatedAt: ''
         };
     }
@@ -245,19 +271,25 @@ const publishOrOfflineArticle = async (article, nextStatus) => {
     }
 };
 
-const removeArticle = async (articleId) => {
-    if (!confirm('确定删除这篇文章吗？')) {
-        return;
-    }
-    try {
-        await deleteArticleApi(articleId);
-        feedback.value = '文章已删除';
-        feedbackType.value = 'success';
-        await Promise.all([fetchCurrentTab(), fetchOverview()]);
-    } catch (error) {
-        feedback.value = error.message || '删除失败';
-        feedbackType.value = 'error';
-    }
+const removeArticle = async (article) => {
+    openConfirmDialog({
+        eyebrow: '文章操作确认',
+        title: '删除文章',
+        message: `确定删除《${article.title}》吗？删除后它会从前台移除，并从你的文章列表中隐藏。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteArticleApi(article.id);
+                feedback.value = '文章已删除';
+                feedbackType.value = 'success';
+                await Promise.all([fetchCurrentTab(), fetchOverview()]);
+            } catch (error) {
+                feedback.value = error.message || '删除失败';
+                feedbackType.value = 'error';
+            }
+        }
+    });
 };
 
 const overviewCards = computed(() => ([
@@ -275,6 +307,10 @@ const metricCards = computed(() => ([
 ]));
 
 const getArticleStatusLabel = (status) => articleStatusLabels[status] || status || '未知状态';
+const latestArticleStatusLabel = computed(() => getArticleStatusLabel(overview.value.latestArticleStatus));
+const latestArticleEditorRoute = computed(() => (
+    overview.value.latestArticleId ? `/editor/${overview.value.latestArticleId}` : ''
+));
 
 const getArticleStatusClass = (status) => ({
     published: status === 'PUBLISHED',
@@ -410,14 +446,35 @@ watch(isLoggedIn, () => {
                     </article>
                 </div>
                 <div class="creator-overview-latest">
-                    <div>
+                    <div class="creator-overview-latest-copy">
                         <p class="eyebrow">最近修改</p>
-                        <strong>{{ overview.latestArticleTitle || '还没有内容更新' }}</strong>
+                        <div class="creator-overview-latest-main">
+                            <strong>{{ overview.latestArticleTitle || '还没有内容更新' }}</strong>
+                            <span
+                                v-if="overview.latestArticleStatus"
+                                class="creator-overview-status"
+                                :class="overview.latestArticleStatus.toLowerCase()"
+                            >
+                                {{ latestArticleStatusLabel }}
+                            </span>
+                        </div>
                         <span>{{ overview.latestUpdatedAt || '创建或编辑一篇文章后，这里会显示最近的更新时间。' }}</span>
+                        <RouterLink
+                            v-if="latestArticleEditorRoute"
+                            class="creator-overview-inline-link"
+                            :to="latestArticleEditorRoute"
+                        >
+                            继续编辑最近一篇
+                        </RouterLink>
                     </div>
-                    <RouterLink v-if="overview.draftCount > 0" class="creator-overview-link" to="/dashboard/articles?status=DRAFT">
-                        继续处理草稿
-                    </RouterLink>
+                    <div class="creator-overview-next-step">
+                        <p class="eyebrow">建议下一步</p>
+                        <strong>{{ overview.recommendedActionText || '继续创作' }}</strong>
+                        <span>{{ overview.recommendedActionHint || '创作台会根据你的内容状态持续给出下一步建议。' }}</span>
+                        <RouterLink class="creator-overview-link" :to="overview.recommendedActionRoute || '/editor/new'">
+                            {{ overview.recommendedActionText || '马上前往' }}
+                        </RouterLink>
+                    </div>
                 </div>
             </section>
 
@@ -556,7 +613,7 @@ watch(isLoggedIn, () => {
                                             {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
                                         </button>
                                     </div>
-                                    <button type="button" class="action-link action-link-danger" @click="removeArticle(article.id)">
+                                    <button type="button" class="action-link action-link-danger" @click="removeArticle(article)">
                                         删除
                                     </button>
                                 </div>
@@ -611,6 +668,17 @@ watch(isLoggedIn, () => {
                     <button type="submit" :disabled="isLoading">跳转</button>
                 </form>
             </nav>
+            <ConfirmDialog
+                :visible="confirmDialog.visible"
+                :eyebrow="confirmDialog.eyebrow"
+                :title="confirmDialog.title"
+                :message="confirmDialog.message"
+                :confirm-text="confirmDialog.confirmText"
+                :tone="confirmDialog.tone"
+                :loading="confirmDialog.loading"
+                @close="closeConfirmDialog"
+                @confirm="executeConfirmDialog"
+            />
         </section>
     </main>
 </template>
@@ -666,8 +734,71 @@ watch(isLoggedIn, () => {
 .creator-overview-latest {
     display: flex;
     gap: 16px;
-    align-items: center;
+    align-items: stretch;
     justify-content: space-between;
+}
+
+.creator-overview-latest-copy,
+.creator-overview-next-step {
+    display: grid;
+    gap: 8px;
+}
+
+.creator-overview-latest-copy {
+    min-width: 0;
+}
+
+.creator-overview-latest-main {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.creator-overview-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.creator-overview-status.published {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: rgba(37, 99, 235, 0.16);
+}
+
+.creator-overview-status.draft {
+    color: #9a6700;
+    background: rgba(240, 201, 73, 0.12);
+    border-color: rgba(212, 160, 23, 0.24);
+}
+
+.creator-overview-status.offline {
+    color: #8b5e00;
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(217, 119, 6, 0.18);
+}
+
+.creator-overview-inline-link {
+    width: fit-content;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.creator-overview-next-step {
+    min-width: 280px;
+    padding: 16px 18px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
 .creator-overview-link {

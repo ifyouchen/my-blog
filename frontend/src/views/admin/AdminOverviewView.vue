@@ -14,8 +14,10 @@ const statCards = computed(() => {
     return [
         { label: '用户总数', value: data.totalUsers || 0, helper: `今日新增 ${data.todayNewUsers || 0}` },
         { label: '正常用户', value: data.normalUsers || 0, helper: `已禁用 ${data.disabledUsers || 0}` },
-        { label: '文章总数', value: data.totalArticles || 0, helper: `近 7 天 ${data.sevenDayArticles || 0}` },
-        { label: '已发布文章', value: data.publishedArticles || 0, helper: `待下架关注 ${data.offlineArticles || 0}` },
+        { label: '文章总数', value: data.totalArticles || 0, helper: `近 7 天新增 ${data.sevenDayArticles || 0}` },
+        { label: '草稿文章', value: data.draftArticles || 0, helper: '待继续编辑的内容池' },
+        { label: '已发布文章', value: data.publishedArticles || 0, helper: `已下架 ${data.offlineArticles || 0}` },
+        { label: '已删除文章', value: data.deletedArticles || 0, helper: '重点关注误删与回收策略' },
         { label: '评论总数', value: data.totalComments || 0, helper: `今日新增 ${data.todayNewComments || 0}` },
         { label: '近 7 天用户', value: data.sevenDayUsers || 0, helper: `近 7 天评论 ${data.sevenDayComments || 0}` }
     ];

@@ -1,10 +1,12 @@
 <script setup>
 import { onMounted, reactive, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
     deleteAdminArticleApi,
     getAdminArticlesApi,
+    getAdminStatsApi,
     getCategoriesApi,
     updateAdminArticleStatusApi
 } from '@/api/admin';
@@ -16,9 +18,16 @@ import {
     syncAdminQuery,
     useAdminRefresh
 } from '@/views/admin/adminShared';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const state = reactive({
     ...createPagedState(),
@@ -26,6 +35,7 @@ const state = reactive({
     keyword: '',
     category: '',
     categoryOptions: [],
+    stats: null,
     feedback: '',
     feedbackType: 'success',
     actionLoadingId: null
@@ -45,6 +55,14 @@ const loadCategories = async () => {
         state.categoryOptions = (categories || []).map((item) => item.name).filter(Boolean);
     } catch (error) {
         state.categoryOptions = [];
+    }
+};
+
+const loadStats = async () => {
+    try {
+        state.stats = await getAdminStatsApi();
+    } catch (error) {
+        state.stats = null;
     }
 };
 
@@ -106,6 +124,15 @@ const resetFilters = async () => {
     await syncQuery({ page: undefined, status: undefined, keyword: undefined, category: undefined });
 };
 
+const applyQuickStatus = async (status) => {
+    state.status = status;
+    state.page = 1;
+    await syncQuery({
+        page: undefined,
+        status: status || undefined
+    });
+};
+
 const changePage = async (targetPage) => {
     state.page = targetPage;
     await syncQuery({
@@ -118,47 +145,68 @@ const setFeedback = (message, type = 'success') => {
     state.feedbackType = type;
 };
 
+const quickStatusCards = [
+    { label: '全部文章', key: 'ALL', status: '', value: () => state.stats?.totalArticles || 0 },
+    { label: '草稿', key: 'DRAFT', status: 'DRAFT', value: () => state.stats?.draftArticles || 0 },
+    { label: '已发布', key: 'PUBLISHED', status: 'PUBLISHED', value: () => state.stats?.publishedArticles || 0 },
+    { label: '已下架', key: 'OFFLINE', status: 'OFFLINE', value: () => state.stats?.offlineArticles || 0 },
+    { label: '已删除', key: 'DELETED', status: 'DELETED', value: () => state.stats?.deletedArticles || 0 }
+];
+
 const toggleArticleStatus = async (article) => {
     const nextStatus = article.status === 'PUBLISHED' ? 'OFFLINE' : 'PUBLISHED';
-    const confirmed = window.confirm(
-        nextStatus === 'OFFLINE'
-            ? `确定下架文章《${article.title}》吗？`
-            : `确定重新发布文章《${article.title}》吗？`
-    );
-    if (!confirmed) {
-        return;
-    }
-    state.actionLoadingId = article.id;
-    try {
-        await updateAdminArticleStatusApi(article.id, nextStatus);
-        setFeedback(nextStatus === 'OFFLINE' ? '文章已下架' : '文章已重新发布');
-        await loadArticles();
-    } catch (error) {
-        setFeedback(error.message || '文章状态更新失败', 'error');
-    } finally {
-        state.actionLoadingId = null;
-    }
+    openConfirmDialog({
+        title: nextStatus === 'OFFLINE' ? '下架文章' : '重新发布',
+        message: nextStatus === 'OFFLINE'
+            ? `确定下架文章《${article.title}》吗？下架后前台将暂时不可见。`
+            : `确定重新发布文章《${article.title}》吗？发布后会重新出现在前台内容流中。`,
+        confirmText: nextStatus === 'OFFLINE' ? '确认下架' : '确认发布',
+        tone: nextStatus === 'OFFLINE' ? 'warning' : 'primary',
+        onConfirm: async () => {
+            state.actionLoadingId = article.id;
+            try {
+                await updateAdminArticleStatusApi(article.id, nextStatus);
+                setFeedback(nextStatus === 'OFFLINE' ? '文章已下架' : '文章已重新发布');
+                await Promise.all([loadArticles(), loadStats()]);
+            } catch (error) {
+                setFeedback(error.message || '文章状态更新失败', 'error');
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
 };
 
 const deleteArticle = async (article) => {
-    if (!window.confirm(`确定删除文章《${article.title}》吗？删除后将从前台移除。`)) {
-        return;
-    }
-    state.actionLoadingId = article.id;
-    try {
-        await deleteAdminArticleApi(article.id);
-        setFeedback('文章已删除');
-        await loadArticles();
-    } catch (error) {
-        setFeedback(error.message || '文章删除失败', 'error');
-    } finally {
-        state.actionLoadingId = null;
-    }
+    openConfirmDialog({
+        title: '删除文章',
+        message: `确定删除文章《${article.title}》吗？删除后会从前台移除，但仍保留后台治理记录。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            state.actionLoadingId = article.id;
+            try {
+                await deleteAdminArticleApi(article.id);
+                setFeedback('文章已删除');
+                await Promise.all([loadArticles(), loadStats()]);
+            } catch (error) {
+                setFeedback(error.message || '文章删除失败', 'error');
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
 };
 
-useAdminRefresh(loadArticles);
+const loadPageResources = async () => {
+    await Promise.all([loadArticles(), loadStats()]);
+};
 
-onMounted(loadCategories);
+useAdminRefresh(loadPageResources);
+
+onMounted(async () => {
+    await Promise.all([loadCategories(), loadStats()]);
+});
 
 watch(
     () => [route.query.page, route.query.status, route.query.keyword, route.query.category],
@@ -173,6 +221,19 @@ watch(
 <template>
     <section class="dashboard-content-panel">
         <div class="admin-toolbar">
+            <div class="admin-status-overview">
+                <button
+                    v-for="card in quickStatusCards"
+                    :key="card.key"
+                    type="button"
+                    class="admin-status-card"
+                    :class="{ active: state.status === card.status }"
+                    @click="applyQuickStatus(card.status)"
+                >
+                    <span>{{ card.label }}</span>
+                    <strong>{{ card.value() }}</strong>
+                </button>
+            </div>
             <form class="admin-filter-toolbar" @submit.prevent="submitFilters">
                 <label>
                     <span>文章状态</span>
@@ -181,6 +242,7 @@ watch(
                         <option value="PUBLISHED">已发布</option>
                         <option value="DRAFT">草稿</option>
                         <option value="OFFLINE">已下架</option>
+                        <option value="DELETED">已删除</option>
                     </select>
                 </label>
                 <label>
@@ -256,12 +318,14 @@ watch(
                                 <td>{{ article.createdAt }}</td>
                                 <td class="table-actions">
                                     <button
+                                        v-if="article.status !== 'DELETED'"
                                         type="button"
                                         :disabled="state.actionLoadingId === article.id"
                                         @click="toggleArticleStatus(article)"
                                     >
                                         {{ state.actionLoadingId === article.id ? '处理中...' : (article.status === 'PUBLISHED' ? '下架' : '发布') }}
                                     </button>
+                                    <span v-else class="admin-subtext">已删除</span>
                                     <button
                                         type="button"
                                         class="danger-link"
@@ -280,5 +344,67 @@ watch(
         </div>
 
         <AdminPagination :state="state" label="文章分页" @page-change="changePage" />
+
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            eyebrow="文章操作确认"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
+
+<style scoped>
+.admin-status-overview {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.admin-status-card {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    color: var(--text);
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.admin-status-card span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.admin-status-card strong {
+    font-size: 22px;
+    line-height: 1.1;
+}
+
+.admin-status-card:hover,
+.admin-status-card.active {
+    border-color: rgba(37, 99, 235, 0.22);
+    background: var(--brand-soft);
+}
+
+@media (max-width: 980px) {
+    .admin-status-overview {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-status-overview {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

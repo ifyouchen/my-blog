@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import { deleteAdminCommentApi, getAdminCommentsApi } from '@/api/admin';
 import {
@@ -11,9 +12,16 @@ import {
     syncAdminQuery,
     useAdminRefresh
 } from '@/views/admin/adminShared';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const state = reactive({
     ...createPagedState(),
@@ -94,22 +102,27 @@ const changePage = async (targetPage) => {
 };
 
 const removeComment = async (comment) => {
-    const confirmed = window.confirm(`确定删除评论 #${comment.id} 吗？`);
-    if (!confirmed) {
-        return;
-    }
-    state.actionLoadingId = comment.id;
-    try {
-        await deleteAdminCommentApi(comment.id);
-        state.feedback = '评论已删除';
-        state.feedbackType = 'success';
-        await loadComments();
-    } catch (error) {
-        state.feedback = error.message || '评论删除失败';
-        state.feedbackType = 'error';
-    } finally {
-        state.actionLoadingId = null;
-    }
+    openConfirmDialog({
+        eyebrow: '评论治理确认',
+        title: '删除评论',
+        message: `确定删除评论 #${comment.id} 吗？删除后这条评论将从文章互动区移除。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            state.actionLoadingId = comment.id;
+            try {
+                await deleteAdminCommentApi(comment.id);
+                state.feedback = '评论已删除';
+                state.feedbackType = 'success';
+                await loadComments();
+            } catch (error) {
+                state.feedback = error.message || '评论删除失败';
+                state.feedbackType = 'error';
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
 };
 
 useAdminRefresh(loadComments);
@@ -212,5 +225,16 @@ watch(
         </div>
 
         <AdminPagination :state="state" label="评论分页" @page-change="changePage" />
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>

@@ -1,5 +1,6 @@
 <script setup>
 import { reactive, watch } from 'vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
     createCategoryApi,
@@ -16,9 +17,16 @@ import {
     useAdminRefresh
 } from '@/views/admin/adminShared';
 import { useRoute, useRouter } from 'vue-router';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const form = reactive({
     name: '',
@@ -179,19 +187,25 @@ const toggleCategory = async (category) => {
 };
 
 const removeCategory = async (category) => {
-    if (!window.confirm(`确定删除分类「${category.name}」吗？`)) {
-        return;
-    }
-    state.submitting = true;
-    try {
-        await deleteCategoryApi(category.id);
-        setFeedback('分类已删除');
-        await loadCategories();
-    } catch (error) {
-        setFeedback(error.message || '分类删除失败', 'error');
-    } finally {
-        state.submitting = false;
-    }
+    openConfirmDialog({
+        eyebrow: '分类治理确认',
+        title: '删除分类',
+        message: `确定删除分类「${category.name}」吗？删除后相关文章的分类展示会受到影响。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            state.submitting = true;
+            try {
+                await deleteCategoryApi(category.id);
+                setFeedback('分类已删除');
+                await loadCategories();
+            } catch (error) {
+                setFeedback(error.message || '分类删除失败', 'error');
+            } finally {
+                state.submitting = false;
+            }
+        }
+    });
 };
 
 useAdminRefresh(loadCategories);
@@ -259,6 +273,14 @@ watch(
             <template v-else>
                 <div class="admin-table-wrap" data-testid="admin-categories-table">
                     <table class="admin-table">
+                        <colgroup>
+                            <col style="width: 11%">
+                            <col style="width: 19%">
+                            <col style="width: 24%">
+                            <col style="width: 12%">
+                            <col style="width: 14%">
+                            <col style="width: 20%">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -272,21 +294,21 @@ watch(
                         <tbody>
                             <tr v-for="category in state.items" :key="category.id">
                                 <td>#{{ category.id }}</td>
-                                <td v-if="state.editingId === category.id">
-                                    <input v-model.trim="state.editForm.name" type="text">
+                                <td v-if="state.editingId === category.id" class="admin-edit-cell">
+                                    <input v-model.trim="state.editForm.name" class="admin-edit-input" type="text">
                                 </td>
-                                <td v-else>{{ category.name }}</td>
-                                <td v-if="state.editingId === category.id">
-                                    <input v-model.trim="state.editForm.description" type="text">
+                                <td v-else><span class="admin-cell-text">{{ category.name }}</span></td>
+                                <td v-if="state.editingId === category.id" class="admin-edit-cell">
+                                    <input v-model.trim="state.editForm.description" class="admin-edit-input" type="text">
                                 </td>
-                                <td v-else>{{ category.description || '-' }}</td>
-                                <td v-if="state.editingId === category.id">
-                                    <input v-model.number="state.editForm.sortOrder" type="number">
+                                <td v-else><span class="admin-cell-text muted">{{ category.description || '-' }}</span></td>
+                                <td v-if="state.editingId === category.id" class="admin-edit-cell admin-edit-cell-narrow">
+                                    <input v-model.number="state.editForm.sortOrder" class="admin-edit-input" type="number">
                                 </td>
                                 <td v-else>{{ category.sortOrder ?? 0 }}</td>
                                 <td>
                                     <template v-if="state.editingId === category.id">
-                                        <select v-model="state.editForm.enabled">
+                                        <select v-model="state.editForm.enabled" class="admin-edit-select">
                                             <option :value="true">启用</option>
                                             <option :value="false">禁用</option>
                                         </select>
@@ -297,10 +319,10 @@ watch(
                                 </td>
                                 <td class="table-actions">
                                     <template v-if="state.editingId === category.id">
-                                        <button type="button" :disabled="state.submitting" @click="saveEdit(category.id)">
+                                        <button type="button" class="admin-edit-btn primary" :disabled="state.submitting" @click="saveEdit(category.id)">
                                             {{ state.submitting ? '保存中...' : '保存' }}
                                         </button>
-                                        <button type="button" :disabled="state.submitting" @click="cancelEdit">取消</button>
+                                        <button type="button" class="admin-edit-btn secondary" :disabled="state.submitting" @click="cancelEdit">取消</button>
                                     </template>
                                     <template v-else>
                                         <button type="button" :disabled="state.submitting" @click="startEdit(category)">编辑</button>
@@ -321,5 +343,95 @@ watch(
         </div>
 
         <AdminPagination :state="state" label="分类分页" @page-change="changePage" />
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
+
+<style scoped>
+.admin-table {
+    table-layout: fixed;
+}
+
+.admin-edit-cell {
+    min-width: 160px;
+}
+
+.admin-edit-cell-narrow {
+    min-width: 96px;
+}
+
+.admin-edit-input,
+.admin-edit-select {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 12px;
+    color: var(--text);
+    font: inherit;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    outline: 0;
+    box-sizing: border-box;
+}
+
+.admin-edit-input:focus,
+.admin-edit-select:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.admin-edit-btn {
+    min-width: 72px;
+}
+
+.admin-edit-btn.primary {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.admin-edit-btn.primary:hover:not(:disabled) {
+    color: #ffffff;
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+}
+
+.admin-edit-btn.primary:focus-visible {
+    color: #ffffff;
+}
+
+.admin-edit-btn.secondary {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--line);
+}
+
+.admin-edit-btn.secondary:hover:not(:disabled) {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.admin-cell-text {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+
+.admin-cell-text.muted {
+    color: var(--muted);
+}
+</style>

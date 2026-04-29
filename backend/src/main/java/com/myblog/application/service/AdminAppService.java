@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,8 +54,10 @@ public class AdminAppService {
         long normalUserCount = userRepository.countByStatus(UserStatus.NORMAL);
         long disabledUserCount = userRepository.countByStatus(UserStatus.DISABLED);
         long articleCount = articleRepository.countVisible();
+        long draftCount = articleRepository.countByStatus(ArticleStatus.DRAFT.name());
         long publishedCount = articleRepository.countByStatus(ArticleStatus.PUBLISHED.name());
         long offlineCount = articleRepository.countByStatus(ArticleStatus.OFFLINE.name());
+        long deletedCount = articleRepository.countByStatus(ArticleStatus.DELETED.name());
         long commentCount = commentRepository.countAll();
         long todayNewUsers = userRepository.countCreatedOn(today);
         long todayNewArticles = articleRepository.countCreatedOn(today);
@@ -68,8 +71,10 @@ public class AdminAppService {
         stats.put("normalUsers", normalUserCount);
         stats.put("disabledUsers", disabledUserCount);
         stats.put("totalArticles", articleCount);
+        stats.put("draftArticles", draftCount);
         stats.put("publishedArticles", publishedCount);
         stats.put("offlineArticles", offlineCount);
+        stats.put("deletedArticles", deletedCount);
         stats.put("totalComments", commentCount);
         stats.put("todayNewUsers", todayNewUsers);
         stats.put("todayNewArticles", todayNewArticles);
@@ -197,7 +202,7 @@ public class AdminAppService {
 
         ArticleStatus newStatus = ArticleStatus.valueOf(status);
         ArticleStatus previousStatus = article.getStatus();
-        article.updateStatus(newStatus);
+        applyArticleStatus(article, newStatus);
         articleRepository.save(article);
 
         Map<String, Object> result = new HashMap<>();
@@ -228,6 +233,76 @@ public class AdminAppService {
         result.put("previousStatus", previousStatus);
         result.put("status", ArticleStatus.DELETED.name());
         result.put("deleted", true);
+        return result;
+    }
+
+    /**
+     * 批量更新文章状态。
+     *
+     * @param articleIds 文章 ID 列表
+     * @param status 目标状态
+     * @return 批量操作结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> batchUpdateArticleStatus(List<Long> articleIds, String status) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择至少一篇文章");
+        }
+        ArticleStatus newStatus = ArticleStatus.valueOf(status);
+        int processedCount = 0;
+        List<Long> processedIds = new ArrayList<Long>();
+        for (Long articleId : articleIds) {
+            if (articleId == null) {
+                continue;
+            }
+            Article article = articleRepository.findById(new ArticleId(articleId))
+                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+            if (ArticleStatus.DELETED.equals(article.getStatus())) {
+                continue;
+            }
+            applyArticleStatus(article, newStatus);
+            articleRepository.save(article);
+            processedCount++;
+            processedIds.add(articleId);
+        }
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("status", newStatus.name());
+        result.put("processedCount", processedCount);
+        result.put("ids", processedIds);
+        return result;
+    }
+
+    /**
+     * 批量删除文章。
+     *
+     * @param articleIds 文章 ID 列表
+     * @return 批量操作结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> batchDeleteArticles(List<Long> articleIds) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择至少一篇文章");
+        }
+        int processedCount = 0;
+        List<Long> processedIds = new ArrayList<Long>();
+        for (Long articleId : articleIds) {
+            if (articleId == null) {
+                continue;
+            }
+            Article article = articleRepository.findById(new ArticleId(articleId))
+                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+            if (ArticleStatus.DELETED.equals(article.getStatus())) {
+                continue;
+            }
+            article.delete();
+            articleRepository.save(article);
+            processedCount++;
+            processedIds.add(articleId);
+        }
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("deleted", true);
+        result.put("processedCount", processedCount);
+        result.put("ids", processedIds);
         return result;
     }
 
@@ -353,6 +428,26 @@ public class AdminAppService {
         return value != null
             && keyword != null
             && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private void applyArticleStatus(Article article, ArticleStatus status) {
+        if (ArticleStatus.PUBLISHED.equals(status)) {
+            article.publish();
+            return;
+        }
+        if (ArticleStatus.OFFLINE.equals(status)) {
+            article.offline();
+            return;
+        }
+        if (ArticleStatus.DRAFT.equals(status)) {
+            article.saveDraft();
+            return;
+        }
+        if (ArticleStatus.DELETED.equals(status)) {
+            article.delete();
+            return;
+        }
+        article.updateStatus(status);
     }
 
     private Map<Long, User> buildAuthorMap(List<Article> articles) {

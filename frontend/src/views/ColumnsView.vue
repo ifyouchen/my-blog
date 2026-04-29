@@ -166,6 +166,9 @@ onMounted(fetchColumns);
 }
 
 .column-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--line);
@@ -206,7 +209,9 @@ onMounted(fetchColumns);
 
 .column-card-body {
     display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 12px;
+    flex: 1;
     padding: 18px;
 }
 
@@ -225,12 +230,22 @@ onMounted(fetchColumns);
 
 .column-card h2 {
     color: var(--text);
+    line-height: 1.45;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     transition: color 0.18s ease;
 }
 
 .column-card p {
     color: var(--muted);
     line-height: 1.7;
+    display: -webkit-box;
+    min-height: calc(1.7em * 2);
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .column-card-footer {
@@ -238,6 +253,7 @@ onMounted(fetchColumns);
     gap: 12px;
     align-items: center;
     justify-content: space-between;
+    margin-top: auto;
 }
 
 .column-author {

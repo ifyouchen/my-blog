@@ -45,6 +45,20 @@ export const deleteAdminArticleApi = async (articleId) => {
     });
 };
 
+export const batchUpdateAdminArticleStatusApi = async (ids, status) => {
+    return await request('/admin/articles/batch/status', {
+        method: 'POST',
+        body: { ids, status }
+    });
+};
+
+export const batchDeleteAdminArticlesApi = async (ids) => {
+    return await request('/admin/articles/batch/delete', {
+        method: 'POST',
+        body: { ids }
+    });
+};
+
 export const getAdminCommentsApi = async (page = 1, pageSize = 10, articleId = null, keyword = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (articleId) params.append('articleId', articleId);
