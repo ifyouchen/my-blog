@@ -2,7 +2,15 @@
 import {computed, inject, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
 import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
-import {createArticleApi, getEditableArticleApi, updateArticleApi, validateArticleForPublishApi} from '@/api/articles';
+import {
+    createArticleApi,
+    getArticleVersionApi,
+    getEditableArticleApi,
+    listArticleVersionsApi,
+    restoreArticleVersionApi,
+    updateArticleApi,
+    validateArticleForPublishApi
+} from '@/api/articles';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
 import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -79,7 +87,52 @@ const publishValidationLoading = ref(false);
 const publishValidationError = ref('');
 let publishValidationTimer = null;
 
-const wordCount = computed(() => draft.content.trim().length);
+// ── 版本历史 ──────────────────────────────────────────────────────────
+const showVersionDrawer = ref(false);
+const versionList = ref([]);
+const versionListLoading = ref(false);
+const versionPreview = ref(null);
+const versionPreviewLoading = ref(false);
+const versionRestoring = ref(false);
+
+// ── 自动保存 ──────────────────────────────────────────────────────────
+const autoSaveStatus = ref(''); // '' | 'saving' | 'saved HH:mm' | 'error'
+let autoSaveTimer = null;
+
+function scheduleAutoSave() {
+    if (!isEditMode.value) return;
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(async () => {
+        if (!isEditMode.value || publishLoading.value) return;
+        autoSaveStatus.value = 'saving';
+        try {
+            await updateArticleApi(route.params.id, draft, 'DRAFT');
+            const now = new Date();
+            const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            autoSaveStatus.value = `saved ${hhmm}`;
+            syncSavedSnapshot();
+        } catch {
+            autoSaveStatus.value = 'error';
+        }
+    }, 30000);
+}
+
+const autoSaveLabel = computed(() => {
+    if (autoSaveStatus.value === 'saving') return '自动保存中...';
+    if (autoSaveStatus.value === 'error') return '自动保存失败';
+    if (autoSaveStatus.value.startsWith('saved ')) return `已自动保存 ${autoSaveStatus.value.replace('saved ', '')}`;
+    return '';
+});
+
+// ── 文章统计 ──────────────────────────────────────────────────────────
+const wordCount = computed(() => {
+    const text = draft.content.trim();
+    if (!text) return 0;
+    const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const englishWords = text.replace(/[\u4e00-\u9fa5]/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+    return chineseCount + englishWords;
+});
+const readingMinutes = computed(() => Math.max(1, Math.ceil(wordCount.value / 300)));
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
 const previewTags = computed(() => parseTags(draft.tags));
 const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编辑内容' : '预览待发布内容'));
@@ -477,6 +530,67 @@ function handleTocNavigate({ index }) {
     richEditorRef.value?.scrollToHeadingByIndex(index);
 }
 
+// ── 版本历史处理 ──────────────────────────────────────────────────────
+async function openVersionDrawer() {
+    if (!isEditMode.value) return;
+    showVersionDrawer.value = true;
+    versionPreview.value = null;
+    versionListLoading.value = true;
+    try {
+        versionList.value = await listArticleVersionsApi(route.params.id);
+    } catch {
+        versionList.value = [];
+    } finally {
+        versionListLoading.value = false;
+    }
+}
+
+function closeVersionDrawer() {
+    showVersionDrawer.value = false;
+    versionPreview.value = null;
+}
+
+async function previewVersion(versionNo) {
+    versionPreviewLoading.value = true;
+    versionPreview.value = null;
+    try {
+        versionPreview.value = await getArticleVersionApi(route.params.id, versionNo);
+    } catch {
+        versionPreview.value = null;
+    } finally {
+        versionPreviewLoading.value = false;
+    }
+}
+
+async function doRestoreVersion(versionNo) {
+    versionRestoring.value = true;
+    try {
+        const article = await restoreArticleVersionApi(route.params.id, versionNo);
+        hydratingDraft.value = true;
+        applyDraft({
+            title: article.title,
+            summary: article.summary,
+            content: article.rawContent,
+            category: article.category,
+            tags: article.tags,
+            coverUrl: article.coverUrl,
+            slug: article.slug || '',
+            seoTitle: article.seoTitle || '',
+            seoDescription: article.seoDescription || ''
+        });
+        hydratingDraft.value = false;
+        syncSavedSnapshot();
+        statusMessage.value = `已恢复为版本 v${versionNo} 的草稿，请确认后保存`;
+        feedbackType.value = 'success';
+        closeVersionDrawer();
+    } catch (err) {
+        statusMessage.value = err.message || '版本恢复失败';
+        feedbackType.value = 'error';
+    } finally {
+        versionRestoring.value = false;
+    }
+}
+
 function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -506,6 +620,7 @@ watch(draft, () => {
     if (!pageLoading.value) {
         persistLocalDraft();
         schedulePublishValidation();
+        scheduleAutoSave();
     }
 }, { deep: true });
 
@@ -546,6 +661,9 @@ onUnmounted(() => {
     if (publishValidationTimer) {
         window.clearTimeout(publishValidationTimer);
     }
+    if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+    }
 });
 </script>
 
@@ -559,6 +677,14 @@ onUnmounted(() => {
                     <h1>{{ isEditMode ? '编辑文章' : '发布文章' }}</h1>
                 </div>
                 <div class="editor-actions">
+                    <button
+                        v-if="isEditMode"
+                        type="button"
+                        class="editor-versions-btn"
+                        :disabled="publishLoading || pageLoading"
+                        data-testid="editor-versions-button"
+                        @click="openVersionDrawer"
+                    >历史版本</button>
                     <button type="button" :disabled="publishLoading || pageLoading" data-testid="editor-preview-button" @click="togglePreview">
                         {{ previewVisible ? '收起预览' : '发布前预览' }}
                     </button>
@@ -659,7 +785,8 @@ onUnmounted(() => {
 
             <RichMarkdownEditor ref="richEditorRef" v-model="draft.content" />
             <div class="editor-feedback">
-                <span>正文 {{ wordCount }} 字</span>
+                <span>正文 {{ wordCount }} 字 · 预计阅读 {{ readingMinutes }} 分钟</span>
+                <span v-if="autoSaveLabel" class="editor-autosave-status">{{ autoSaveLabel }}</span>
                 <span :class="['editor-dirty', hasUnsavedChanges ? 'warning' : 'saved']">
                     {{ hasUnsavedChanges ? '未保存改动，离开页面会提醒你' : '内容已同步到当前编辑态' }}
                 </span>
@@ -790,6 +917,66 @@ onUnmounted(() => {
         @close="closeConfirmDialog"
         @confirm="executeConfirmDialog"
     />
+
+    <!-- 版本历史抽屉 -->
+    <Teleport to="body">
+        <Transition name="version-drawer-fade">
+            <div v-if="showVersionDrawer" class="version-drawer-backdrop" data-testid="version-drawer" @click.self="closeVersionDrawer">
+                <div class="version-drawer">
+                    <div class="version-drawer-header">
+                        <div>
+                            <p class="eyebrow">历史版本</p>
+                            <h2>文章版本记录</h2>
+                        </div>
+                        <button type="button" class="version-drawer-close" @click="closeVersionDrawer">✕</button>
+                    </div>
+                    <div class="version-drawer-body">
+                        <div class="version-list">
+                            <p v-if="versionListLoading" class="version-list-tip">正在加载版本列表...</p>
+                            <p v-else-if="!versionList.length" class="version-list-tip">暂无历史版本，保存草稿或发布后会自动记录版本。</p>
+                            <ul v-else class="version-items">
+                                <li
+                                    v-for="v in versionList"
+                                    :key="v.versionNo"
+                                    :class="['version-item', versionPreview && versionPreview.versionNo === v.versionNo ? 'active' : '']"
+                                    @click="previewVersion(v.versionNo)"
+                                >
+                                    <div class="version-item-meta">
+                                        <span class="version-badge">v{{ v.versionNo }}</span>
+                                        <span class="version-time">{{ v.savedAt }}</span>
+                                    </div>
+                                    <p class="version-title">{{ v.title || '（无标题）' }}</p>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="version-preview-panel">
+                            <p v-if="!versionPreview && !versionPreviewLoading" class="version-list-tip">点击左侧版本可预览内容。</p>
+                            <p v-if="versionPreviewLoading" class="version-list-tip">加载版本内容...</p>
+                            <template v-if="versionPreview && !versionPreviewLoading">
+                                <div class="version-preview-header">
+                                    <div>
+                                        <span class="version-badge">v{{ versionPreview.versionNo }}</span>
+                                        <strong class="version-preview-title">{{ versionPreview.title }}</strong>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="primary-action version-restore-btn"
+                                        :disabled="versionRestoring"
+                                        @click="doRestoreVersion(versionPreview.versionNo)"
+                                    >{{ versionRestoring ? '恢复中...' : '恢复到此版本' }}</button>
+                                </div>
+                                <p v-if="versionPreview.summary" class="version-preview-summary">{{ versionPreview.summary }}</p>
+                                <div class="version-preview-content">
+                                    <MarkdownPreview v-if="versionPreview.content" :content="versionPreview.content" />
+                                    <p v-else class="version-list-tip">该版本无正文内容。</p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -1128,6 +1315,224 @@ onUnmounted(() => {
 
     .cover-card-head {
         flex-direction: column;
+    }
+}
+
+/* ── 版本历史按钮 ─────────────────────────────────────────────────────── */
+.editor-versions-btn {
+    color: var(--brand);
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    font-size: 13px;
+}
+
+.editor-versions-btn:hover {
+    background: rgba(37, 99, 235, 0.14);
+}
+
+/* ── 自动保存状态 ─────────────────────────────────────────────────────── */
+.editor-autosave-status {
+    color: var(--success, #16a34a);
+    font-size: 12px;
+}
+
+/* ── 版本历史抽屉 ─────────────────────────────────────────────────────── */
+.version-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(15, 23, 42, 0.36);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.version-drawer {
+    width: min(860px, 92vw);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    box-shadow: -4px 0 24px rgba(15, 23, 42, 0.12);
+}
+
+.version-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+}
+
+.version-drawer-header h2 {
+    margin: 4px 0 0;
+    font-size: 20px;
+    color: var(--text);
+}
+
+.version-drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.version-drawer-close:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+}
+
+.version-drawer-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    overflow: hidden;
+}
+
+.version-list {
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 14px 0;
+}
+
+.version-list-tip {
+    padding: 14px 18px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.version-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.version-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.14s ease;
+}
+
+.version-item:hover {
+    background: var(--surface-soft);
+}
+
+.version-item.active {
+    background: rgba(37, 99, 235, 0.06);
+    border-left-color: var(--brand);
+}
+
+.version-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.version-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 0 7px;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--brand-strong);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.version-time {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.version-title {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.version-preview-panel {
+    overflow-y: auto;
+    padding: 18px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.version-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.version-preview-title {
+    margin-left: 8px;
+    font-size: 18px;
+    color: var(--text);
+}
+
+.version-restore-btn {
+    flex-shrink: 0;
+}
+
+.version-preview-summary {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.version-preview-content {
+    flex: 1;
+}
+
+/* 抽屉入场动画 */
+.version-drawer-fade-enter-active,
+.version-drawer-fade-leave-active {
+    transition: opacity 0.22s ease;
+}
+
+.version-drawer-fade-enter-active .version-drawer,
+.version-drawer-fade-leave-active .version-drawer {
+    transition: transform 0.22s ease;
+}
+
+.version-drawer-fade-enter-from,
+.version-drawer-fade-leave-to {
+    opacity: 0;
+}
+
+.version-drawer-fade-enter-from .version-drawer,
+.version-drawer-fade-leave-to .version-drawer {
+    transform: translateX(40px);
+}
+
+@media (max-width: 640px) {
+    .version-drawer-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
+    .version-list {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        max-height: 200px;
     }
 }
 </style>

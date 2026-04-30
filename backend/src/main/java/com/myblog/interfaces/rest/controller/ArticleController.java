@@ -2,6 +2,7 @@ package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
+import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.service.ArticleAppService;
 import com.myblog.infrastructure.security.AuthContext;
@@ -214,5 +215,50 @@ public class ArticleController {
     public Result<Void> deleteArticle(@PathVariable Long id) {
         articleAppService.deleteArticle(id, AuthContext.getRequiredUserId(), AuthContext.getRole());
         return Result.success();
+    }
+
+    // ── 版本历史 ──────────────────────────────────────────────────────────
+
+    /**
+     * 获取文章版本列表。
+     *
+     * @param id 文章 ID
+     * @return 版本列表（不含正文）
+     */
+    @GetMapping("/{id}/versions")
+    public Result<List<ArticleVersionDTO>> listVersions(@PathVariable Long id) {
+        return Result.success(
+            articleAppService.listVersions(id, AuthContext.getRequiredUserId(), AuthContext.getRole())
+        );
+    }
+
+    /**
+     * 获取指定版本详情（含正文）。
+     *
+     * @param id        文章 ID
+     * @param versionNo 版本号
+     * @return 版本详情
+     */
+    @GetMapping("/{id}/versions/{versionNo}")
+    public Result<ArticleVersionDTO> getVersion(@PathVariable Long id,
+                                                @PathVariable Integer versionNo) {
+        return Result.success(
+            articleAppService.getVersion(id, versionNo, AuthContext.getRequiredUserId(), AuthContext.getRole())
+        );
+    }
+
+    /**
+     * 恢复指定版本为新草稿。
+     *
+     * @param id        文章 ID
+     * @param versionNo 版本号
+     * @return 恢复后的草稿文章
+     */
+    @PostMapping("/{id}/versions/{versionNo}/restore")
+    public Result<ArticleResponse> restoreVersion(@PathVariable Long id,
+                                                  @PathVariable Integer versionNo) {
+        return Result.success(restDtoMapper.toResponse(
+            articleAppService.restoreVersion(id, versionNo, AuthContext.getRequiredUserId(), AuthContext.getRole())
+        ));
     }
 }

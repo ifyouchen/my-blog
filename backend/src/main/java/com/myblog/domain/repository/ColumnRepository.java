@@ -43,4 +43,10 @@ public interface ColumnRepository {
 
     /** 后台管理：软删除专栏 */
     void softDelete(ColumnId columnId);
+
+    /** 创作者：查询自己的专栏列表（不含已删除） */
+    List<Column> findByAuthorId(Long authorId);
+
+    /** 创作者：统计自己的专栏数量（不含已删除） */
+    int countByAuthorId(Long authorId);
 }

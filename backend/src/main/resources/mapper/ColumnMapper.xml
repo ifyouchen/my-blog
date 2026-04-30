@@ -226,4 +226,21 @@
             deleted_at = #{deletedAt},
             version = version + 1
     </insert>
+
+    <!-- 创作者：查询自己的专栏列表（不含已删除） -->
+    <select id="selectByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column c
+        WHERE c.author_id = #{authorId}
+          AND c.deleted_at IS NULL
+        ORDER BY c.created_at DESC
+    </select>
+
+    <!-- 创作者：统计自己的专栏数量（不含已删除） -->
+    <select id="countByAuthorId" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_column
+        WHERE author_id = #{authorId}
+          AND deleted_at IS NULL
+    </select>
 </mapper>

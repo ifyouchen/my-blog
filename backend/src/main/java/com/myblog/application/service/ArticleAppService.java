@@ -5,6 +5,7 @@ import com.myblog.application.command.CreateArticleCommand;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
 import com.myblog.application.dto.ArticleValidationItemDTO;
+import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.event.ArticleViewedEvent;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.domain.model.aggregate.Article;
@@ -14,8 +15,10 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleFavoriteRepository;
 import com.myblog.domain.repository.ArticleLikeRepository;
 import com.myblog.domain.repository.ArticleRepository;
+import com.myblog.domain.repository.ArticleVersionRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
+import com.myblog.infrastructure.repository.persistence.entity.ArticleVersionDO;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
@@ -27,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +49,8 @@ public class ArticleAppService {
 
     private static final String LEGACY_DEFAULT_COVER_URL = "/api/uploads/files/default/article-cover.png";
     private static final String DEFAULT_COVER_URL = "/api/uploads/files/default/article-cover.svg";
+    private static final int MAX_VERSION_COUNT = 20;
+    private static final DateTimeFormatter VERSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ArticleRepository articleRepository;
     private final ArticleLikeRepository articleLikeRepository;
@@ -53,6 +59,7 @@ public class ArticleAppService {
     private final UserRepository userRepository;
     private final ArticleAssembler articleAssembler;
     private final ApplicationEventPublisher eventPublisher;
+    private final ArticleVersionRepository articleVersionRepository;
     private final String defaultArticleCoverUrl;
 
     public ArticleAppService(ArticleRepository articleRepository,
@@ -62,6 +69,7 @@ public class ArticleAppService {
                              UserRepository userRepository,
                              ArticleAssembler articleAssembler,
                              ApplicationEventPublisher eventPublisher,
+                             ArticleVersionRepository articleVersionRepository,
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl) {
         this.articleRepository = articleRepository;
         this.articleLikeRepository = articleLikeRepository;
@@ -70,6 +78,7 @@ public class ArticleAppService {
         this.userRepository = userRepository;
         this.articleAssembler = articleAssembler;
         this.eventPublisher = eventPublisher;
+        this.articleVersionRepository = articleVersionRepository;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
     }
@@ -293,6 +302,7 @@ public class ArticleAppService {
             command.getSeoDescription()
         );
         articleRepository.save(article);
+        saveVersionSnapshot(article, command.getAuthorId());
         return buildDetailDto(article, author, command.getAuthorId());
     }
 
@@ -339,6 +349,7 @@ public class ArticleAppService {
         );
         applyStatus(article, command.getStatus());
         articleRepository.save(article);
+        saveVersionSnapshot(article, userId);
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
     }
@@ -476,6 +487,113 @@ public class ArticleAppService {
         UserId currentUser = new UserId(currentUserId);
         dto.setLiked(articleLikeRepository.exists(article.getId(), currentUser));
         dto.setFavorited(articleFavoriteRepository.exists(article.getId(), currentUser));
+    }
+
+    // ── 版本历史 ──────────────────────────────────────────────────────────
+
+    /**
+     * 获取文章版本列表（仅返回元信息，不含正文）。
+     *
+     * @param articleId 文章 ID
+     * @param userId    当前登录用户 ID
+     * @param role      当前用户角色
+     * @return 版本列表
+     */
+    public List<ArticleVersionDTO> listVersions(Long articleId, Long userId, String role) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        ensureCanManage(article, userId, role);
+        return articleVersionRepository.findByArticleId(articleId).stream()
+            .map(this::toVersionDTO)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取指定版本内容。
+     *
+     * @param articleId 文章 ID
+     * @param versionNo 版本号
+     * @param userId    当前登录用户 ID
+     * @param role      当前用户角色
+     * @return 版本详情（含正文）
+     */
+    public ArticleVersionDTO getVersion(Long articleId, Integer versionNo, Long userId, String role) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        ensureCanManage(article, userId, role);
+        return articleVersionRepository.findByArticleIdAndVersionNo(articleId, versionNo)
+            .map(v -> {
+                ArticleVersionDTO dto = toVersionDTO(v);
+                dto.setContent(v.getContent());
+                return dto;
+            })
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "版本不存在"));
+    }
+
+    /**
+     * 将指定版本内容恢复为新草稿（不直接覆盖已发布版本）。
+     *
+     * @param articleId 文章 ID
+     * @param versionNo 版本号
+     * @param userId    当前登录用户 ID
+     * @param role      当前用户角色
+     * @return 恢复后的草稿 DTO
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ArticleDTO restoreVersion(Long articleId, Integer versionNo, Long userId, String role) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        ensureCanManage(article, userId, role);
+        ArticleVersionDO version = articleVersionRepository
+            .findByArticleIdAndVersionNo(articleId, versionNo)
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "版本不存在"));
+        // 用版本内容更新文章并保存为草稿
+        article.updateContent(
+            version.getTitle(),
+            version.getSummary(),
+            version.getContent(),
+            article.getCoverUrl(),
+            article.getCategory(),
+            article.getTags(),
+            article.getSlug(),
+            article.getSeoTitle(),
+            article.getSeoDescription()
+        );
+        article.saveDraft();
+        articleRepository.save(article);
+        // 恢复操作本身也生成一条新版本快照
+        saveVersionSnapshot(article, userId);
+        return buildDetailDto(article, userRepository.findById(article.getAuthorId())
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
+    }
+
+    /**
+     * 保存版本快照，并自动删除超出上限的旧版本。
+     */
+    private void saveVersionSnapshot(Article article, Long savedBy) {
+        int nextVersionNo = articleVersionRepository.findMaxVersionNo(article.getId().getValue()) + 1;
+        ArticleVersionDO version = new ArticleVersionDO();
+        version.setArticleId(article.getId().getValue());
+        version.setVersionNo(nextVersionNo);
+        version.setTitle(article.getTitle());
+        version.setSummary(article.getSummary());
+        version.setContent(article.getContent());
+        version.setSavedBy(savedBy);
+        articleVersionRepository.save(version);
+        // 超出上限时删除最旧版本
+        int total = articleVersionRepository.countByArticleId(article.getId().getValue());
+        if (total > MAX_VERSION_COUNT) {
+            articleVersionRepository.deleteOldestVersions(article.getId().getValue(), MAX_VERSION_COUNT);
+        }
+    }
+
+    private ArticleVersionDTO toVersionDTO(ArticleVersionDO v) {
+        ArticleVersionDTO dto = new ArticleVersionDTO();
+        dto.setVersionNo(v.getVersionNo());
+        dto.setTitle(v.getTitle());
+        dto.setSummary(v.getSummary());
+        dto.setSavedAt(v.getCreatedAt() != null ? v.getCreatedAt().format(VERSION_TIME_FORMATTER) : null);
+        return dto;
     }
 
     private boolean resolveAuthorFollowed(Article article, Long currentUserId) {

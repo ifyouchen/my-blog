@@ -126,6 +126,25 @@ CREATE TABLE `blog_article` (
   COMMENT = '博客文章表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- blog_article_version
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_article_version`;
+CREATE TABLE `blog_article_version` (
+    `id`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `article_id` bigint unsigned NOT NULL COMMENT '文章ID',
+    `version_no` int             NOT NULL COMMENT '版本号，从 1 开始递增',
+    `title`      varchar(500)    NOT NULL COMMENT '文章标题快照',
+    `content`    longtext        NOT NULL COMMENT '文章正文快照',
+    `summary`    varchar(500)    NULL DEFAULT NULL COMMENT '文章摘要快照',
+    `saved_by`   bigint unsigned NOT NULL COMMENT '保存操作的用户ID',
+    `created_at` datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_article_version` (`article_id`, `version_no` DESC) USING BTREE
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '文章版本历史表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- blog_article_favorite
 -- ----------------------------
 DROP TABLE IF EXISTS `blog_article_favorite`;

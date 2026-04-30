@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.ArticleVersionMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.ArticleVersionDO">
+        <id     column="id"         property="id"/>
+        <result column="article_id" property="articleId"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="title"      property="title"/>
+        <result column="content"    property="content"/>
+        <result column="summary"    property="summary"/>
+        <result column="saved_by"   property="savedBy"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <!-- 列表查询（不含 content，减少流量） -->
+    <resultMap id="ListResultMap" type="com.myblog.infrastructure.repository.persistence.entity.ArticleVersionDO">
+        <id     column="id"         property="id"/>
+        <result column="article_id" property="articleId"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="title"      property="title"/>
+        <result column="summary"    property="summary"/>
+        <result column="saved_by"   property="savedBy"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, article_id, version_no, title, content, summary, saved_by, created_at
+    </sql>
+
+    <sql id="List_Column_List">
+        id, article_id, version_no, title, summary, saved_by, created_at
+    </sql>
+
+    <!-- 按文章 ID 查询版本列表（不含 content） -->
+    <select id="selectByArticleId" resultMap="ListResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article_version
+        WHERE article_id = #{articleId}
+        ORDER BY version_no DESC
+    </select>
+
+    <!-- 查询指定版本（含 content） -->
+    <select id="selectByArticleIdAndVersionNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article_version
+        WHERE article_id = #{articleId}
+          AND version_no = #{versionNo}
+        LIMIT 1
+    </select>
+
+    <!-- 查询最新版本号 -->
+    <select id="selectMaxVersionNo" resultType="java.lang.Integer">
+        SELECT MAX(version_no)
+        FROM blog_article_version
+        WHERE article_id = #{articleId}
+    </select>
+
+    <!-- 插入版本快照 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO blog_article_version (article_id, version_no, title, content, summary, saved_by, created_at)
+        VALUES (#{articleId}, #{versionNo}, #{title}, #{content}, #{summary}, #{savedBy}, NOW())
+    </insert>
+
+    <!-- 删除最旧版本（保留最近 keepCount 条） -->
+    <delete id="deleteOldest">
+        DELETE FROM blog_article_version
+        WHERE article_id = #{articleId}
+          AND id NOT IN (
+            SELECT id FROM (
+                SELECT id FROM blog_article_version
+                WHERE article_id = #{articleId}
+                ORDER BY version_no DESC
+                LIMIT #{keepCount}
+            ) AS t
+          )
+    </delete>
+
+    <!-- 统计版本数量 -->
+    <select id="countByArticleId" resultType="int">
+        SELECT COUNT(*)
+        FROM blog_article_version
+        WHERE article_id = #{articleId}
+    </select>
+
+</mapper>
+

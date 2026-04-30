@@ -137,6 +137,21 @@ public class MyBatisColumnRepository implements ColumnRepository {
         columnMapper.softDelete(columnId.getValue());
     }
 
+    @Override
+    public List<Column> findByAuthorId(Long authorId) {
+        List<ColumnDO> list = columnMapper.selectByAuthorId(authorId);
+        List<Column> result = new ArrayList<>(list.size());
+        for (ColumnDO d : list) {
+            result.add(toDomain(d));
+        }
+        return result;
+    }
+
+    @Override
+    public int countByAuthorId(Long authorId) {
+        return columnMapper.countByAuthorId(authorId);
+    }
+
     private Column toDomain(ColumnDO columnDO) {
         return Column.restore(
             columnDO.getId(),

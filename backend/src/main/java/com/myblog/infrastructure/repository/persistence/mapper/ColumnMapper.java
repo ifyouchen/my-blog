@@ -67,4 +67,10 @@ public interface ColumnMapper {
 
     /** 后台管理：软删除专栏 */
     int softDelete(@Param("id") Long id);
+
+    /** 创作者：查询自己的专栏列表（不含已删除） */
+    List<ColumnDO> selectByAuthorId(@Param("authorId") Long authorId);
+
+    /** 创作者：统计自己的专栏数量（不含已删除） */
+    int countByAuthorId(@Param("authorId") Long authorId);
 }

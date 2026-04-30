@@ -84,6 +84,24 @@ export const getUserArticlesApi = async (userId, { page = 1, pageSize = 10 } = {
     };
 };
 
+export const listArticleVersionsApi = async (articleId) => {
+    return await request(`/articles/${articleId}/versions`);
+};
+
+export const getArticleVersionApi = async (articleId, versionNo) => {
+    return await request(`/articles/${articleId}/versions/${versionNo}`);
+};
+
+export const restoreArticleVersionApi = async (articleId, versionNo) => {
+    return normalizeArticle(await request(`/articles/${articleId}/versions/${versionNo}/restore`, {
+        method: 'POST'
+    }));
+};
+
+export const getArticleStatsApi = async (articleId) => {
+    return await request(`/dashboard/articles/${articleId}/stats`);
+};
+
 const buildArticlePayload = (draft, status) => {
     const sourceTags = Array.isArray(draft.tags) ? draft.tags : String(draft.tags || '')
         .split(',');
