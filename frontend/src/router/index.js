@@ -2,6 +2,8 @@ import {createRouter, createWebHistory} from 'vue-router';
 
 const HomeView = () => import('@/views/HomeView.vue');
 const AuthView = () => import('@/views/AuthView.vue');
+const ForgotPasswordView = () => import('@/views/ForgotPasswordView.vue');
+const ResetPasswordView = () => import('@/views/ResetPasswordView.vue');
 const EditorView = () => import('@/views/EditorView.vue');
 const FollowingView = () => import('@/views/FollowingView.vue');
 const ColumnsView = () => import('@/views/ColumnsView.vue');
@@ -51,6 +53,22 @@ const routes = [
         component: AuthView,
         meta: {
             title: '注册'
+        }
+    },
+    {
+        path: '/auth/forgot-password',
+        name: 'forgotPassword',
+        component: ForgotPasswordView,
+        meta: {
+            title: '忘记密码'
+        }
+    },
+    {
+        path: '/auth/reset-password',
+        name: 'resetPassword',
+        component: ResetPasswordView,
+        meta: {
+            title: '重置密码'
         }
     },
     {

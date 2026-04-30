@@ -3,6 +3,8 @@ package com.myblog.application.assembler;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.domain.model.aggregate.User;
 
+import java.time.format.DateTimeFormatter;
+
 /**
  * 用户应用组装器。
  *
@@ -10,6 +12,8 @@ import com.myblog.domain.model.aggregate.User;
  * @since 1.0.0
  */
 public final class UserAssembler {
+
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private UserAssembler() {
     }
@@ -28,6 +32,12 @@ public final class UserAssembler {
         dto.setNickname(user.getNickname());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
+        dto.setWebsite(user.getWebsite());
+        dto.setGithub(user.getGithub());
+        dto.setTwitter(user.getTwitter());
+        dto.setLocation(user.getLocation());
+        dto.setLastLoginAt(user.getLastLoginAt() != null ? user.getLastLoginAt().format(DATETIME_FORMATTER) : null);
+        dto.setLastLoginIp(user.getLastLoginIp());
         dto.setRole(user.getRole().name());
         return dto;
     }

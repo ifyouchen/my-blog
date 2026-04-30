@@ -17,7 +17,16 @@ public class UserDO {
     private String nickname;
     private String avatarUrl;
     private String bio;
+    private String website;
+    private String github;
+    private String twitter;
+    private String location;
     private String disableReason;
+    private String passwordResetToken;
+    private LocalDateTime passwordResetExpire;
+    private LocalDateTime lastLoginAt;
+    private String lastLoginIp;
+    private LocalDateTime lastUsernameChangedAt;
     private String role;
     private String status;
     private LocalDateTime createdAt;
@@ -149,6 +158,78 @@ public class UserDO {
      */
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getWebsite() {
+        return website;
+    }
+
+    public void setWebsite(String website) {
+        this.website = website;
+    }
+
+    public String getGithub() {
+        return github;
+    }
+
+    public void setGithub(String github) {
+        this.github = github;
+    }
+
+    public String getTwitter() {
+        return twitter;
+    }
+
+    public void setTwitter(String twitter) {
+        this.twitter = twitter;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getPasswordResetToken() {
+        return passwordResetToken;
+    }
+
+    public void setPasswordResetToken(String passwordResetToken) {
+        this.passwordResetToken = passwordResetToken;
+    }
+
+    public LocalDateTime getPasswordResetExpire() {
+        return passwordResetExpire;
+    }
+
+    public void setPasswordResetExpire(LocalDateTime passwordResetExpire) {
+        this.passwordResetExpire = passwordResetExpire;
+    }
+
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+    }
+
+    public String getLastLoginIp() {
+        return lastLoginIp;
+    }
+
+    public void setLastLoginIp(String lastLoginIp) {
+        this.lastLoginIp = lastLoginIp;
+    }
+
+    public LocalDateTime getLastUsernameChangedAt() {
+        return lastUsernameChangedAt;
+    }
+
+    public void setLastUsernameChangedAt(LocalDateTime lastUsernameChangedAt) {
+        this.lastUsernameChangedAt = lastUsernameChangedAt;
     }
 
     /**

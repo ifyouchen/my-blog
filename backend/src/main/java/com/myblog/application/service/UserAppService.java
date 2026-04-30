@@ -13,6 +13,7 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
+import com.myblog.domain.service.PasswordDomainService;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserRole;
@@ -44,23 +45,92 @@ public class UserAppService {
     private final ArticleRepository articleRepository;
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
+    private final PasswordDomainService passwordDomainService;
 
     public UserAppService(UserRepository userRepository,
                           ArticleRepository articleRepository,
                           UserFollowRepository userFollowRepository,
-                          ArticleAssembler articleAssembler) {
+                          ArticleAssembler articleAssembler,
+                          PasswordDomainService passwordDomainService) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
+        this.passwordDomainService = passwordDomainService;
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public UserDTO updateProfile(Long userId, String nickname, String avatarUrl, String bio) {
+    public UserDTO updateProfile(Long userId, String nickname, String avatarUrl, String bio,
+                                 String website, String github, String twitter, String location) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         user.updateProfile(nickname, avatarUrl, bio);
+        user.updateExtendedProfile(website, github, twitter, location);
         userRepository.save(user);
+        return UserAssembler.toDTO(user);
+    }
+
+    /**
+     * 修改密码。
+     *
+     * @param userId 用户 ID
+     * @param currentPassword 当前密码
+     * @param newPassword 新密码
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        if (!passwordDomainService.matches(currentPassword, user.getPasswordHash())) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "当前密码错误");
+        }
+        String newHash = passwordDomainService.encode(newPassword);
+        user.changePassword(newHash);
+        userRepository.save(user);
+    }
+
+    /**
+     * 忘记密码：生成重置 Token 并记录（控制台 log 代替发邮件）。
+     *
+     * @param email 邮箱
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public String forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "该邮箱未注册"));
+        String token = user.generatePasswordResetToken();
+        userRepository.save(user);
+        // 第一阶段：log 到控制台代替真实发送
+        org.slf4j.LoggerFactory.getLogger(UserAppService.class)
+            .info("[密码重置] 用户 {} 请求重置密码，Token: {}", user.getUsername(), token);
+        return token;
+    }
+
+    /**
+     * 通过 Token 重置密码。
+     *
+     * @param token 重置 Token
+     * @param newPassword 新密码
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByPasswordResetToken(token)
+            .orElseThrow(() -> new ApplicationException(ErrorCode.PARAM_ERROR, "重置链接无效或已过期"));
+        user.validatePasswordResetToken(token);
+        String newHash = passwordDomainService.encode(newPassword);
+        user.changePassword(newHash);
+        userRepository.save(user);
+    }
+
+    /**
+     * 获取用户安全信息。
+     *
+     * @param userId 用户 ID
+     * @return 用户 DTO（含 lastLoginAt/lastLoginIp）
+     */
+    public UserDTO getSecurityInfo(Long userId) {
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         return UserAssembler.toDTO(user);
     }
 

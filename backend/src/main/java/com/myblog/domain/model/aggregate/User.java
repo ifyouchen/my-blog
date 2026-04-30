@@ -8,6 +8,7 @@ import com.myblog.shared.exception.DomainException;
 import com.myblog.shared.exception.ErrorCode;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 用户聚合根。
@@ -24,7 +25,16 @@ public class User {
     private String nickname;
     private String avatarUrl;
     private String bio;
+    private String website;
+    private String github;
+    private String twitter;
+    private String location;
     private String disableReason;
+    private String passwordResetToken;
+    private LocalDateTime passwordResetExpire;
+    private LocalDateTime lastLoginAt;
+    private String lastLoginIp;
+    private LocalDateTime lastUsernameChangedAt;
     private UserRole role;
     private UserStatus status;
     private LocalDateTime createdAt;
@@ -75,6 +85,16 @@ public class User {
      * @param nickname 昵称
      * @param avatarUrl 头像地址
      * @param bio 个人简介
+     * @param website 个人网站
+     * @param github GitHub 用户名
+     * @param twitter Twitter/X 用户名
+     * @param location 所在地
+     * @param disableReason 禁用原因
+     * @param passwordResetToken 密码重置 Token
+     * @param passwordResetExpire 密码重置 Token 过期时间
+     * @param lastLoginAt 最近登录时间
+     * @param lastLoginIp 最近登录 IP
+     * @param lastUsernameChangedAt 最近修改用户名时间
      * @param role 用户角色
      * @param status 用户状态
      * @param createdAt 创建时间
@@ -82,7 +102,10 @@ public class User {
      * @return 用户聚合根
      */
     public static User restore(Long id, String username, String email, String passwordHash, String nickname,
-                               String avatarUrl, String bio, String disableReason, UserRole role, UserStatus status,
+                               String avatarUrl, String bio, String website, String github, String twitter,
+                               String location, String disableReason, String passwordResetToken,
+                               LocalDateTime passwordResetExpire, LocalDateTime lastLoginAt, String lastLoginIp,
+                               LocalDateTime lastUsernameChangedAt, UserRole role, UserStatus status,
                                LocalDateTime createdAt, LocalDateTime updatedAt) {
         User user = new User();
         user.id = new UserId(id);
@@ -92,7 +115,16 @@ public class User {
         user.nickname = nickname;
         user.avatarUrl = avatarUrl;
         user.bio = bio;
+        user.website = website;
+        user.github = github;
+        user.twitter = twitter;
+        user.location = location;
         user.disableReason = disableReason;
+        user.passwordResetToken = passwordResetToken;
+        user.passwordResetExpire = passwordResetExpire;
+        user.lastLoginAt = lastLoginAt;
+        user.lastLoginIp = lastLoginIp;
+        user.lastUsernameChangedAt = lastUsernameChangedAt;
         user.role = role;
         user.status = status;
         user.createdAt = createdAt;
@@ -145,6 +177,74 @@ public class User {
         this.nickname = nickname.trim();
         this.avatarUrl = avatarUrl == null ? null : avatarUrl.trim();
         this.bio = bio == null ? "" : bio.trim();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 更新扩展资料（社交链接）。
+     *
+     * @param website 个人网站
+     * @param github GitHub 用户名
+     * @param twitter Twitter/X 用户名
+     * @param location 所在地
+     */
+    public void updateExtendedProfile(String website, String github, String twitter, String location) {
+        this.website = normalizeNullableText(website);
+        this.github = normalizeNullableText(github);
+        this.twitter = normalizeNullableText(twitter);
+        this.location = normalizeNullableText(location);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 修改密码。
+     *
+     * @param newPasswordHash 新密码哈希
+     */
+    public void changePassword(String newPasswordHash) {
+        if (newPasswordHash == null || newPasswordHash.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "新密码不能为空");
+        }
+        this.passwordHash = newPasswordHash;
+        this.passwordResetToken = null;
+        this.passwordResetExpire = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 生成密码重置 Token（有效期 1 小时）。
+     *
+     * @return 重置 Token
+     */
+    public String generatePasswordResetToken() {
+        this.passwordResetToken = UUID.randomUUID().toString().replace("-", "");
+        this.passwordResetExpire = LocalDateTime.now().plusHours(1);
+        this.updatedAt = LocalDateTime.now();
+        return this.passwordResetToken;
+    }
+
+    /**
+     * 校验密码重置 Token 是否有效。
+     *
+     * @param token 待校验的 Token
+     */
+    public void validatePasswordResetToken(String token) {
+        if (this.passwordResetToken == null || !this.passwordResetToken.equals(token)) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "重置链接无效或已过期");
+        }
+        if (this.passwordResetExpire == null || LocalDateTime.now().isAfter(this.passwordResetExpire)) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "重置链接已过期，请重新申请");
+        }
+    }
+
+    /**
+     * 记录登录信息。
+     *
+     * @param ip 登录 IP
+     */
+    public void recordLogin(String ip) {
+        this.lastLoginAt = LocalDateTime.now();
+        this.lastLoginIp = ip;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -212,12 +312,93 @@ public class User {
     }
 
     /**
+     * 获取个人网站。
+     *
+     * @return 个人网站
+     */
+    public String getWebsite() {
+        return website;
+    }
+
+    /**
+     * 获取 GitHub 用户名。
+     *
+     * @return GitHub 用户名
+     */
+    public String getGithub() {
+        return github;
+    }
+
+    /**
+     * 获取 Twitter/X 用户名。
+     *
+     * @return Twitter/X 用户名
+     */
+    public String getTwitter() {
+        return twitter;
+    }
+
+    /**
+     * 获取所在地。
+     *
+     * @return 所在地
+     */
+    public String getLocation() {
+        return location;
+    }
+
+    /**
      * 获取禁用原因。
      *
      * @return 禁用原因
      */
     public String getDisableReason() {
         return disableReason;
+    }
+
+    /**
+     * 获取密码重置 Token。
+     *
+     * @return 密码重置 Token
+     */
+    public String getPasswordResetToken() {
+        return passwordResetToken;
+    }
+
+    /**
+     * 获取密码重置 Token 过期时间。
+     *
+     * @return 过期时间
+     */
+    public LocalDateTime getPasswordResetExpire() {
+        return passwordResetExpire;
+    }
+
+    /**
+     * 获取最近登录时间。
+     *
+     * @return 最近登录时间
+     */
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    /**
+     * 获取最近登录 IP。
+     *
+     * @return 最近登录 IP
+     */
+    public String getLastLoginIp() {
+        return lastLoginIp;
+    }
+
+    /**
+     * 获取最近修改用户名时间。
+     *
+     * @return 最近修改用户名时间
+     */
+    public LocalDateTime getLastUsernameChangedAt() {
+        return lastUsernameChangedAt;
     }
 
     /**

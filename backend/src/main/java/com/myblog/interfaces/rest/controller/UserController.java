@@ -6,6 +6,7 @@ import com.myblog.application.dto.UserProfileDTO;
 import com.myblog.application.service.FollowAppService;
 import com.myblog.application.service.UserAppService;
 import com.myblog.infrastructure.security.AuthContext;
+import com.myblog.interfaces.rest.dto.request.ChangePasswordRequest;
 import com.myblog.interfaces.rest.dto.request.UpdateProfileRequest;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
 import com.myblog.interfaces.rest.dto.response.UserResponse;
@@ -220,8 +221,42 @@ public class UserController {
             userId,
             request.getNickname(),
             request.getAvatarUrl(),
-            request.getBio()
+            request.getBio(),
+            request.getWebsite(),
+            request.getGithub(),
+            request.getTwitter(),
+            request.getLocation()
         )));
+    }
+
+    /**
+     * 获取当前用户安全信息。
+     *
+     * @return 用户信息（含 lastLoginAt/lastLoginIp）
+     */
+    @GetMapping("/me/security")
+    public Result<UserResponse> getSecurityInfo() {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        return Result.success(restDtoMapper.toResponse(userAppService.getSecurityInfo(userId)));
+    }
+
+    /**
+     * 修改当前用户密码。
+     *
+     * @param request 修改密码请求
+     * @return 成功响应
+     */
+    @PostMapping("/me/password")
+    public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        userAppService.changePassword(userId, request.getCurrentPassword(), request.getNewPassword());
+        return Result.success();
     }
 
     private PageResult<ArticleResponse> toArticlePage(PageResult<ArticleDTO> pageResult) {

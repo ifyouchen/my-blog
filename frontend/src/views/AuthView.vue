@@ -1,8 +1,8 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import {computed, reactive, ref, watch} from 'vue';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
-import { useSession } from '@/stores/session';
+import {useSession} from '@/stores/session';
 
 const route = useRoute();
 const router = useRouter();
@@ -19,6 +19,8 @@ const form = reactive({
 
 const errors = reactive({});
 const successMessage = ref('');
+const showWelcome = ref(false);
+const welcomeUsername = ref('');
 
 const resetFeedback = () => {
     Object.keys(errors).forEach((key) => {
@@ -67,22 +69,26 @@ const submit = async () => {
                 email: form.email.trim(),
                 password: form.password
             });
-            successMessage.value = '注册成功，已为你进入创作者后台';
+            welcomeUsername.value = form.username.trim();
+            showWelcome.value = true;
         } else {
             await login({
                 account: form.account.trim(),
                 password: form.password
             });
             successMessage.value = '登录成功，已为你进入创作者后台';
+            window.setTimeout(() => {
+                router.push('/dashboard/articles');
+            }, 500);
         }
     } catch (error) {
         errors.submit = error.message || '请求失败';
-        return;
     }
+};
 
-    window.setTimeout(() => {
-        router.push('/dashboard/articles');
-    }, 500);
+const closeWelcome = () => {
+    showWelcome.value = false;
+    router.push('/dashboard/articles');
 };
 
 watch(isRegister, () => {
@@ -152,6 +158,9 @@ watch(isRegister, () => {
                     {{ isRegister ? '注册' : '登录' }}
                 </button>
                 <small v-if="errors.submit">{{ errors.submit }}</small>
+                <div v-if="!isRegister" class="auth-forgot">
+                    <RouterLink to="/auth/forgot-password">忘记密码？</RouterLink>
+                </div>
             </form>
 
             <p v-if="successMessage" class="form-message success">{{ successMessage }}</p>
@@ -164,4 +173,192 @@ watch(isRegister, () => {
             </p>
         </section>
     </main>
+
+    <!-- 注册成功欢迎弹窗 -->
+    <Teleport to="body">
+        <Transition name="welcome-fade">
+            <div v-if="showWelcome" class="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title" @click.self="closeWelcome">
+                <div class="welcome-dialog">
+                    <div class="welcome-icon" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" fill="none">
+                            <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="2.5"/>
+                            <path d="M20 32l8 8 16-16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2 id="welcome-title">欢迎加入 my-blog 👋</h2>
+                    <p class="welcome-greeting">嗨，<strong>{{ welcomeUsername }}</strong>！你已成功创建账号。</p>
+                    <ul class="welcome-checklist">
+                        <li>
+                            <span class="welcome-check" aria-hidden="true">✓</span>
+                            前往「设置 → 个人资料」完善头像、简介和社交主页
+                        </li>
+                        <li>
+                            <span class="welcome-check" aria-hidden="true">✓</span>
+                            点击「写文章」开始发布你的第一篇技术文章
+                        </li>
+                        <li>
+                            <span class="welcome-check" aria-hidden="true">✓</span>
+                            在首页发现优质内容，关注感兴趣的作者
+                        </li>
+                    </ul>
+                    <div class="welcome-actions">
+                        <button class="primary-action" type="button" @click="closeWelcome">
+                            进入创作者中心
+                        </button>
+                        <RouterLink class="welcome-action-secondary" to="/settings/profile" @click="showWelcome = false">
+                            先完善个人资料
+                        </RouterLink>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
+
+<style scoped>
+.auth-forgot {
+    text-align: right;
+    margin-top: -4px;
+}
+
+.auth-forgot a {
+    font-size: 13px;
+    color: var(--brand);
+    text-decoration: none;
+}
+
+.auth-forgot a:hover {
+    text-decoration: underline;
+}
+
+/* ── 欢迎弹窗 ──────────────────────────────────────────────────────── */
+.welcome-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+.welcome-dialog {
+    display: grid;
+    gap: 20px;
+    width: 100%;
+    max-width: 480px;
+    padding: 36px 32px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
+    text-align: center;
+    animation: welcome-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.welcome-icon {
+    display: flex;
+    justify-content: center;
+    color: var(--brand);
+}
+
+.welcome-icon svg {
+    width: 64px;
+    height: 64px;
+}
+
+.welcome-dialog h2 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.welcome-greeting {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.welcome-checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+    text-align: left;
+}
+
+.welcome-checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.welcome-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.1);
+    border: 1px solid rgba(22, 163, 74, 0.25);
+    border-radius: 50%;
+    margin-top: 1px;
+}
+
+.welcome-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.welcome-action-secondary {
+    font-size: 14px;
+    color: var(--brand);
+    text-decoration: none;
+}
+
+.welcome-action-secondary:hover {
+    text-decoration: underline;
+}
+
+/* 动画 */
+.welcome-fade-enter-active,
+.welcome-fade-leave-active {
+    transition: opacity 0.22s ease;
+}
+
+.welcome-fade-enter-from,
+.welcome-fade-leave-to {
+    opacity: 0;
+}
+
+@keyframes welcome-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.88) translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-dialog {
+        padding: 28px 20px;
+    }
+}
+</style>

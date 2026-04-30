@@ -4,7 +4,8 @@ import com.myblog.application.dto.AdCampaignDTO;
 import com.myblog.application.dto.AdStatsDTO;
 import com.myblog.domain.model.aggregate.AdCampaign;
 import com.myblog.domain.repository.AdCampaignRepository;
-import com.myblog.shared.exception.BusinessException;
+import com.myblog.shared.exception.ApplicationException;
+import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,7 +57,7 @@ public class AdAppService {
     @Transactional(rollbackFor = Exception.class)
     public void recordImpression(Long campaignId, Long userId, String ipAddress, String userAgent) {
         adCampaignRepository.findById(campaignId).orElseThrow(
-            () -> new BusinessException("广告不存在")
+            () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         adCampaignRepository.recordEvent(campaignId, "IMPRESSION", userId, ipAddress, userAgent);
     }
@@ -67,7 +68,7 @@ public class AdAppService {
     @Transactional(rollbackFor = Exception.class)
     public void recordClick(Long campaignId, Long userId, String ipAddress, String userAgent) {
         adCampaignRepository.findById(campaignId).orElseThrow(
-            () -> new BusinessException("广告不存在")
+            () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         adCampaignRepository.recordEvent(campaignId, "CLICK", userId, ipAddress, userAgent);
     }
@@ -87,7 +88,7 @@ public class AdAppService {
             dto.setClickCount(adCampaignRepository.countEvents(campaign.getId(), "CLICK"));
             items.add(dto);
         }
-        return PageResult.of(items, total, page, pageSize);
+        return new PageResult<>(items, page, pageSize, total);
     }
 
     /**
@@ -95,7 +96,7 @@ public class AdAppService {
      */
     public AdCampaignDTO getForAdmin(Long id) {
         AdCampaign campaign = adCampaignRepository.findById(id).orElseThrow(
-            () -> new BusinessException("广告不存在")
+            () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         AdCampaignDTO dto = toAdminDTO(campaign);
         dto.setImpressionCount(adCampaignRepository.countEvents(id, "IMPRESSION"));
@@ -111,13 +112,13 @@ public class AdAppService {
                                  String label, LocalDateTime startAt, LocalDateTime endAt,
                                  Boolean enabled, Integer sortOrder) {
         if (slotCode == null || slotCode.trim().isEmpty()) {
-            throw new BusinessException("广告位编码不能为空");
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "广告位编码不能为空");
         }
         if (title == null || title.trim().isEmpty()) {
-            throw new BusinessException("广告标题不能为空");
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "广告标题不能为空");
         }
         if (targetUrl == null || targetUrl.trim().isEmpty()) {
-            throw new BusinessException("跳转链接不能为空");
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "跳转链接不能为空");
         }
         AdCampaign campaign = AdCampaign.create(
             slotCode.trim(), title.trim(), imageUrl, targetUrl.trim(),
@@ -135,13 +136,13 @@ public class AdAppService {
                                  String label, LocalDateTime startAt, LocalDateTime endAt,
                                  Boolean enabled, Integer sortOrder) {
         AdCampaign campaign = adCampaignRepository.findById(id).orElseThrow(
-            () -> new BusinessException("广告不存在")
+            () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         if (title == null || title.trim().isEmpty()) {
-            throw new BusinessException("广告标题不能为空");
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "广告标题不能为空");
         }
         if (targetUrl == null || targetUrl.trim().isEmpty()) {
-            throw new BusinessException("跳转链接不能为空");
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "跳转链接不能为空");
         }
         campaign.update(title.trim(), imageUrl, targetUrl.trim(), label, startAt, endAt, enabled, sortOrder);
         adCampaignRepository.save(campaign);
@@ -154,7 +155,7 @@ public class AdAppService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         AdCampaign campaign = adCampaignRepository.findById(id).orElseThrow(
-            () -> new BusinessException("广告不存在")
+            () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         campaign.delete();
         adCampaignRepository.save(campaign);

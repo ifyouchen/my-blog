@@ -14,6 +14,12 @@ public class UserDTO {
     private String nickname;
     private String avatarUrl;
     private String bio;
+    private String website;
+    private String github;
+    private String twitter;
+    private String location;
+    private String lastLoginAt;
+    private String lastLoginIp;
     private String role;
     private Boolean followed;
 
@@ -123,6 +129,54 @@ public class UserDTO {
      */
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getWebsite() {
+        return website;
+    }
+
+    public void setWebsite(String website) {
+        this.website = website;
+    }
+
+    public String getGithub() {
+        return github;
+    }
+
+    public void setGithub(String github) {
+        this.github = github;
+    }
+
+    public String getTwitter() {
+        return twitter;
+    }
+
+    public void setTwitter(String twitter) {
+        this.twitter = twitter;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(String lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+    }
+
+    public String getLastLoginIp() {
+        return lastLoginIp;
+    }
+
+    public void setLastLoginIp(String lastLoginIp) {
+        this.lastLoginIp = lastLoginIp;
     }
 
     /**

@@ -78,6 +78,22 @@ public interface UserMapper {
     UserDO selectByAccount(@Param("account") String account);
 
     /**
+     * 根据邮箱查询用户。
+     *
+     * @param email 邮箱
+     * @return 用户数据对象
+     */
+    UserDO selectByEmail(@Param("email") String email);
+
+    /**
+     * 根据密码重置 Token 查询用户。
+     *
+     * @param token 密码重置 Token
+     * @return 用户数据对象
+     */
+    UserDO selectByPasswordResetToken(@Param("token") String token);
+
+    /**
      * 根据用户名统计用户数量。
      *
      * @param username 用户名

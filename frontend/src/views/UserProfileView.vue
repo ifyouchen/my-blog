@@ -160,6 +160,38 @@ watch(() => route.params.id, () => {
                     举报
                 </button>
             </template>
+            <template
+                v-if="profile.user.location || profile.user.website || profile.user.github || profile.user.twitter"
+                #extra
+            >
+                <ul class="profile-social-links">
+                    <li v-if="profile.user.location" class="profile-social-item">
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M10 2a6 6 0 0 1 6 6c0 4-6 10-6 10S4 12 4 8a6 6 0 0 1 6-6Zm0 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" stroke="currentColor" stroke-width="1.4"/>
+                        </svg>
+                        <span>{{ profile.user.location }}</span>
+                    </li>
+                    <li v-if="profile.user.website" class="profile-social-item profile-social-link">
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/>
+                            <path d="M10 2.5c0 0-3 2.5-3 7.5s3 7.5 3 7.5 3-2.5 3-7.5-3-7.5-3-7.5ZM2.5 10h15" stroke="currentColor" stroke-width="1.4"/>
+                        </svg>
+                        <a :href="profile.user.website" target="_blank" rel="noopener noreferrer">{{ profile.user.website }}</a>
+                    </li>
+                    <li v-if="profile.user.github" class="profile-social-item profile-social-link">
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M10 2a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.37c-2.23.48-2.69-1.07-2.69-1.07-.36-.93-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.77-.2-3.63-.89-3.63-3.95 0-.87.31-1.58.83-2.14-.08-.2-.36-1.01.08-2.1 0 0 .67-.22 2.2.82A7.69 7.69 0 0 1 10 6.84c.68 0 1.36.09 2 .27 1.52-1.04 2.19-.82 2.19-.82.44 1.09.16 1.9.08 2.1.52.56.83 1.27.83 2.14 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.14.46.55.38A8 8 0 0 0 10 2Z" stroke="currentColor" stroke-width="1.2" fill="none"/>
+                        </svg>
+                        <a :href="`https://github.com/${profile.user.github}`" target="_blank" rel="noopener noreferrer">{{ profile.user.github }}</a>
+                    </li>
+                    <li v-if="profile.user.twitter" class="profile-social-item profile-social-link">
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M17.5 4.25a7.96 7.96 0 0 1-2.35.68 4.06 4.06 0 0 0 1.78-2.26 8.06 8.06 0 0 1-2.59 1 4.04 4.04 0 0 0-6.88 3.68A11.47 11.47 0 0 1 3.14 5.1a4.03 4.03 0 0 0 1.25 5.38 4 4 0 0 1-1.83-.5v.05a4.04 4.04 0 0 0 3.24 3.95 4.04 4.04 0 0 1-1.82.07 4.05 4.05 0 0 0 3.78 2.81A8.1 8.1 0 0 1 2.5 18a11.42 11.42 0 0 0 6.18 1.81c7.42 0 11.48-6.15 11.48-11.48l-.01-.52A8.22 8.22 0 0 0 22.5 5.5a8.07 8.07 0 0 1-2.35.64 4.07 4.07 0 0 0 1.78-2.27" stroke="currentColor" stroke-width="1.2"/>
+                        </svg>
+                        <a :href="`https://twitter.com/${profile.user.twitter}`" target="_blank" rel="noopener noreferrer">@{{ profile.user.twitter }}</a>
+                    </li>
+                </ul>
+            </template>
         </UserProfileSummary>
 
         <section v-else-if="initialLoading" class="profile-summary-loading">
@@ -310,5 +342,39 @@ watch(() => route.params.id, () => {
     100% {
         background-position: 0 0;
     }
+}
+
+.profile-social-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.profile-social-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+}
+
+.profile-social-item svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.profile-social-link a {
+    color: var(--brand);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+
+.profile-social-link a:hover {
+    text-decoration: underline;
 }
 </style>

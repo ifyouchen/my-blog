@@ -34,6 +34,22 @@ public interface UserRepository {
     Optional<User> findByAccount(String account);
 
     /**
+     * 根据邮箱查询用户。
+     *
+     * @param email 邮箱
+     * @return 用户 Optional
+     */
+    Optional<User> findByEmail(String email);
+
+    /**
+     * 根据密码重置 Token 查询用户。
+     *
+     * @param token 密码重置 Token
+     * @return 用户 Optional
+     */
+    Optional<User> findByPasswordResetToken(String token);
+
+    /**
      * 判断用户名是否已存在。
      *
      * @param username 用户名

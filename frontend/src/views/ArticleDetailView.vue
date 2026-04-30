@@ -75,6 +75,7 @@ const likeCount = ref(0);
 const favoriteCount = ref(0);
 const commentCount = ref(0);
 const showBackToTop = ref(false);
+const readingProgress = ref(0);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
 const reportDialogVisible = ref(false);
@@ -295,7 +296,10 @@ const scrollToTop = () => {
 };
 
 const handleScroll = () => {
-    showBackToTop.value = window.scrollY > 500;
+    const scrollY = window.scrollY;
+    showBackToTop.value = scrollY > 500;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    readingProgress.value = docHeight > 0 ? Math.min(100, Math.round((scrollY / docHeight) * 100)) : 0;
 };
 
 watch(article, syncArticleState, { immediate: true });
@@ -317,9 +321,18 @@ onUnmounted(() => {
 
 <template>
     <SiteHeader />
+    <div
+        v-if="article && readingProgress > 0"
+        class="reading-progress-bar"
+        role="progressbar"
+        :aria-valuenow="readingProgress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :style="{ width: `${readingProgress}%` }"
+    ></div>
     <main v-if="article" class="page-shell detail-layout" data-testid="article-detail-page">
         <article class="article-main" data-testid="article-detail-main">
-            <img class="article-hero" :src="article.cover" :alt="article.coverAlt">
+            <img class="article-hero" :src="article.cover" :alt="article.coverAlt" loading="eager">
             <div class="article-body">
                 <section class="article-heading-panel">
                     <div class="article-heading-top">
@@ -340,7 +353,7 @@ onUnmounted(() => {
                     <div class="article-heading-bottom">
                         <div class="article-heading-meta">
                             <RouterLink class="article-author" :to="`/users/${article.author.id}`">
-                                <img :src="article.author.avatar" alt="作者头像">
+                                <img :src="article.author.avatar" alt="作者头像" loading="lazy">
                                 <div>
                                     <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
                                     <span>{{ article.publishedText }} · {{ article.category }}</span>
@@ -463,10 +476,51 @@ onUnmounted(() => {
             <AdBanner :slot-code="'article_sidebar'" />
         </aside>
     </main>
+    <!-- 加载骨架屏 -->
+    <main v-else-if="isLoading" class="page-shell detail-layout" aria-busy="true" aria-label="文章加载中">
+        <div class="article-main">
+            <div class="article-skeleton">
+                <div class="skeleton-hero"></div>
+                <div class="article-body">
+                    <div class="skeleton-panel">
+                        <div class="skeleton-meta-row">
+                            <div class="skeleton-chip"></div>
+                            <div class="skeleton-chip"></div>
+                            <div class="skeleton-chip"></div>
+                        </div>
+                        <div class="skeleton-heading"></div>
+                        <div class="skeleton-heading skeleton-heading-short"></div>
+                        <div class="skeleton-summary"></div>
+                        <div class="skeleton-summary skeleton-summary-short"></div>
+                        <div class="skeleton-author-row">
+                            <div class="skeleton-avatar-sm"></div>
+                            <div class="skeleton-author-meta">
+                                <div class="skeleton-name"></div>
+                                <div class="skeleton-date"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="skeleton-content-block">
+                        <div v-for="i in 6" :key="i" class="skeleton-paragraph" :style="{ width: `${70 + (i % 3) * 10}%` }"></div>
+                        <div class="skeleton-paragraph skeleton-short"></div>
+                        <div v-for="i in 4" :key="`b${i}`" class="skeleton-paragraph" :style="{ width: `${65 + (i % 4) * 8}%` }"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <aside class="detail-side">
+            <div class="skeleton-toc">
+                <div class="skeleton-toc-title"></div>
+                <div v-for="i in 5" :key="i" class="skeleton-toc-item" :style="{ width: `${50 + (i % 3) * 15}%` }"></div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- 错误状态 -->
     <main v-else class="page-shell detail-layout">
         <section class="article-main empty-state">
-            <p class="eyebrow">{{ isLoading ? '加载中' : '未找到文章' }}</p>
-            <h1>{{ isLoading ? '正在加载文章内容' : '这篇文章暂时不可访问' }}</h1>
+            <p class="eyebrow">未找到文章</p>
+            <h1>这篇文章暂时不可访问</h1>
             <p>{{ loadError || '请稍后刷新，或返回首页继续浏览其他内容。' }}</p>
             <RouterLink to="/">返回首页</RouterLink>
         </section>
@@ -492,6 +546,155 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* 阅读进度条 */
+.reading-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand), #60a5fa);
+    border-radius: 0 2px 2px 0;
+    transition: width 0.1s linear;
+    pointer-events: none;
+}
+
+/* 骨架屏动画 */
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-hero,
+.skeleton-chip,
+.skeleton-heading,
+.skeleton-summary,
+.skeleton-avatar-sm,
+.skeleton-name,
+.skeleton-date,
+.skeleton-paragraph,
+.skeleton-toc-title,
+.skeleton-toc-item {
+    background: linear-gradient(90deg, var(--surface-muted, #f0f3f6) 25%, #e4eaf0 50%, var(--surface-muted, #f0f3f6) 75%);
+    background-size: 200% 100%;
+    border-radius: 6px;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-hero {
+    width: 100%;
+    aspect-ratio: 21 / 8;
+    border-radius: 0;
+}
+
+.skeleton-panel {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+}
+
+.skeleton-meta-row {
+    display: flex;
+    gap: 8px;
+}
+
+.skeleton-chip {
+    height: 20px;
+    width: 64px;
+    border-radius: 999px;
+}
+
+.skeleton-heading {
+    height: 36px;
+    width: 90%;
+}
+
+.skeleton-heading-short {
+    width: 60%;
+    height: 28px;
+}
+
+.skeleton-summary {
+    height: 16px;
+    width: 100%;
+}
+
+.skeleton-summary-short {
+    width: 72%;
+}
+
+.skeleton-author-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.skeleton-avatar-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.skeleton-author-meta {
+    display: grid;
+    gap: 8px;
+    flex: 1;
+}
+
+.skeleton-name {
+    height: 14px;
+    width: 120px;
+}
+
+.skeleton-date {
+    height: 12px;
+    width: 80px;
+}
+
+.skeleton-content-block {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-paragraph {
+    height: 14px;
+}
+
+.skeleton-short {
+    width: 40% !important;
+    height: 14px;
+    margin-bottom: 10px;
+}
+
+.skeleton-toc {
+    display: grid;
+    gap: 10px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-toc-title {
+    height: 18px;
+    width: 60%;
+    margin-bottom: 4px;
+}
+
+.skeleton-toc-item {
+    height: 12px;
+}
+
 .article-heading-panel {
     display: grid;
     gap: 16px;

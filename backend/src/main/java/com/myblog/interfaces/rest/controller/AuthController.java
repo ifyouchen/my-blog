@@ -2,9 +2,12 @@ package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.service.AuthAppService;
+import com.myblog.application.service.UserAppService;
 import com.myblog.infrastructure.security.AuthContext;
+import com.myblog.interfaces.rest.dto.request.ForgotPasswordRequest;
 import com.myblog.interfaces.rest.dto.request.LoginRequest;
 import com.myblog.interfaces.rest.dto.request.RegisterRequest;
+import com.myblog.interfaces.rest.dto.request.ResetPasswordRequest;
 import com.myblog.interfaces.rest.dto.response.AuthResponse;
 import com.myblog.interfaces.rest.dto.response.UserResponse;
 import com.myblog.interfaces.rest.mapper.RestDtoMapper;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 /**
@@ -30,16 +34,19 @@ import javax.validation.Valid;
 public class AuthController {
 
     private final AuthAppService authAppService;
+    private final UserAppService userAppService;
     private final RestDtoMapper restDtoMapper;
 
     /**
      * 创建认证接口。
      *
      * @param authAppService 认证应用服务
+     * @param userAppService 用户应用服务
      * @param restDtoMapper REST DTO 转换器
      */
-    public AuthController(AuthAppService authAppService, RestDtoMapper restDtoMapper) {
+    public AuthController(AuthAppService authAppService, UserAppService userAppService, RestDtoMapper restDtoMapper) {
         this.authAppService = authAppService;
+        this.userAppService = userAppService;
         this.restDtoMapper = restDtoMapper;
     }
 
@@ -74,6 +81,30 @@ public class AuthController {
      */
     @PostMapping("/auth/logout")
     public Result<Void> logout() {
+        return Result.success();
+    }
+
+    /**
+     * 忘记密码 - 发送重置链接（第一阶段：log 到控制台）。
+     *
+     * @param request 忘记密码请求
+     * @return 成功响应
+     */
+    @PostMapping("/auth/password/forgot")
+    public Result<Void> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+        userAppService.forgotPassword(request.getEmail());
+        return Result.success();
+    }
+
+    /**
+     * 重置密码。
+     *
+     * @param request 重置密码请求
+     * @return 成功响应
+     */
+    @PostMapping("/auth/password/reset")
+    public Result<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        userAppService.resetPassword(request.getToken(), request.getNewPassword());
         return Result.success();
     }
 

@@ -34,7 +34,16 @@ public final class UserPersistenceConverter {
             userDO.getNickname(),
             userDO.getAvatarUrl(),
             userDO.getBio(),
+            userDO.getWebsite(),
+            userDO.getGithub(),
+            userDO.getTwitter(),
+            userDO.getLocation(),
             userDO.getDisableReason(),
+            userDO.getPasswordResetToken(),
+            userDO.getPasswordResetExpire(),
+            userDO.getLastLoginAt(),
+            userDO.getLastLoginIp(),
+            userDO.getLastUsernameChangedAt(),
             UserRole.valueOf(userDO.getRole()),
             UserStatus.valueOf(userDO.getStatus()),
             userDO.getCreatedAt(),
@@ -57,7 +66,16 @@ public final class UserPersistenceConverter {
         userDO.setNickname(user.getNickname());
         userDO.setAvatarUrl(user.getAvatarUrl());
         userDO.setBio(user.getBio());
+        userDO.setWebsite(user.getWebsite());
+        userDO.setGithub(user.getGithub());
+        userDO.setTwitter(user.getTwitter());
+        userDO.setLocation(user.getLocation());
         userDO.setDisableReason(user.getDisableReason());
+        userDO.setPasswordResetToken(user.getPasswordResetToken());
+        userDO.setPasswordResetExpire(user.getPasswordResetExpire());
+        userDO.setLastLoginAt(user.getLastLoginAt());
+        userDO.setLastLoginIp(user.getLastLoginIp());
+        userDO.setLastUsernameChangedAt(user.getLastUsernameChangedAt());
         userDO.setRole(user.getRole().name());
         userDO.setStatus(user.getStatus().name());
         userDO.setCreatedAt(user.getCreatedAt());

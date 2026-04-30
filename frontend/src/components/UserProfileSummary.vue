@@ -54,6 +54,7 @@ const slots = useSlots();
 
 const displayBio = computed(() => props.bio || props.bioFallback);
 const hasActions = computed(() => Boolean(slots.actions));
+const hasExtra = computed(() => Boolean(slots.extra));
 </script>
 
 <template>
@@ -76,6 +77,10 @@ const hasActions = computed(() => Boolean(slots.actions));
                 <p class="profile-summary-bio">{{ displayBio }}</p>
                 <p v-if="helperText" class="profile-summary-helper">{{ helperText }}</p>
             </div>
+        </div>
+
+        <div v-if="hasExtra" class="profile-summary-extra">
+            <slot name="extra" />
         </div>
 
         <div v-if="stats.length || hasActions" class="profile-summary-footer">

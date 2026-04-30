@@ -11,7 +11,16 @@
         <result column="nickname" property="nickname"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="bio" property="bio"/>
+        <result column="website" property="website"/>
+        <result column="github" property="github"/>
+        <result column="twitter" property="twitter"/>
+        <result column="location" property="location"/>
         <result column="disable_reason" property="disableReason"/>
+        <result column="password_reset_token" property="passwordResetToken"/>
+        <result column="password_reset_expire" property="passwordResetExpire"/>
+        <result column="last_login_at" property="lastLoginAt"/>
+        <result column="last_login_ip" property="lastLoginIp"/>
+        <result column="last_username_changed_at" property="lastUsernameChangedAt"/>
         <result column="role" property="role"/>
         <result column="status" property="status"/>
         <result column="created_at" property="createdAt"/>
@@ -21,8 +30,9 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, username, email, password_hash, nickname, avatar_url, bio, disable_reason, role, status,
-        created_at, updated_at, deleted_at, version
+        id, username, email, password_hash, nickname, avatar_url, bio, website, github, twitter, location,
+        disable_reason, password_reset_token, password_reset_expire, last_login_at, last_login_ip,
+        last_username_changed_at, role, status, created_at, updated_at, deleted_at, version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -119,6 +129,22 @@
         LIMIT 1
     </select>
 
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE email = #{email}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectByPasswordResetToken" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE password_reset_token = #{token}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
     <select id="countByUsername" resultType="int">
         SELECT COUNT(1)
         FROM blog_user
@@ -147,34 +173,12 @@
 
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
         INSERT INTO blog_user
-        <trim prefix="(" suffix=")" suffixOverrides=",">
-            id,
-            username,
-            email,
-            password_hash,
-            nickname,
-            avatar_url,
-            bio,
-            disable_reason,
-            role,
-            status,
-            created_at,
-            updated_at,
-        </trim>
-        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
-            #{id},
-            #{username},
-            #{email},
-            #{passwordHash},
-            #{nickname},
-            #{avatarUrl},
-            #{bio},
-            #{disableReason},
-            #{role},
-            #{status},
-            #{createdAt},
-            #{updatedAt},
-        </trim>
+        (id, username, email, password_hash, nickname, avatar_url, bio, website, github, twitter, location,
+         disable_reason, role, status, created_at, updated_at)
+        VALUES
+        (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio},
+         #{website}, #{github}, #{twitter}, #{location}, #{disableReason}, #{role}, #{status},
+         #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
@@ -185,7 +189,16 @@
             nickname = #{nickname},
             avatar_url = #{avatarUrl},
             bio = #{bio},
+            website = #{website},
+            github = #{github},
+            twitter = #{twitter},
+            location = #{location},
             disable_reason = #{disableReason},
+            password_reset_token = #{passwordResetToken},
+            password_reset_expire = #{passwordResetExpire},
+            last_login_at = #{lastLoginAt},
+            last_login_ip = #{lastLoginIp},
+            last_username_changed_at = #{lastUsernameChangedAt},
             role = #{role},
             status = #{status},
             updated_at = #{updatedAt},
@@ -195,7 +208,8 @@
     </update>
 
     <select id="searchUsers" resultMap="BaseResultMap">
-        SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.avatar_url, u.bio, u.disable_reason, u.role, u.status,
+        SELECT u.id, u.username, u.email, u.password_hash, u.nickname, u.avatar_url, u.bio,
+               u.website, u.github, u.twitter, u.location, u.disable_reason, u.role, u.status,
                u.created_at, u.updated_at, u.deleted_at, u.version
         FROM blog_user u
         LEFT JOIN (
@@ -282,9 +296,12 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
         INSERT INTO blog_user
-        (id, username, email, password_hash, nickname, avatar_url, bio, disable_reason, role, status, created_at, updated_at)
+        (id, username, email, password_hash, nickname, avatar_url, bio, website, github, twitter, location,
+         disable_reason, role, status, created_at, updated_at)
         VALUES
-        (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio}, #{disableReason}, #{role}, #{status}, #{createdAt}, #{updatedAt})
+        (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio},
+         #{website}, #{github}, #{twitter}, #{location}, #{disableReason}, #{role}, #{status},
+         #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
             username = #{username},
             email = #{email},
@@ -292,6 +309,10 @@
             nickname = #{nickname},
             avatar_url = #{avatarUrl},
             bio = #{bio},
+            website = #{website},
+            github = #{github},
+            twitter = #{twitter},
+            location = #{location},
             disable_reason = #{disableReason},
             role = #{role},
             status = #{status},
@@ -299,8 +320,8 @@
     </insert>
 
     <select id="selectRecommended" resultMap="BaseResultMap">
-        SELECT id, username, email, nickname, avatar_url, bio, disable_reason, role, status,
-               created_at, updated_at, deleted_at, version
+        SELECT id, username, email, nickname, avatar_url, bio, website, github, twitter, location,
+               disable_reason, role, status, created_at, updated_at, deleted_at, version
         FROM blog_user
         WHERE recommended = 1
         AND status = 'NORMAL'

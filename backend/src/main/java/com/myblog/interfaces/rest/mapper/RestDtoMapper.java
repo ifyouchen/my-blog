@@ -118,6 +118,12 @@ public class RestDtoMapper {
         response.setNickname(dto.getNickname());
         response.setAvatarUrl(dto.getAvatarUrl());
         response.setBio(dto.getBio());
+        response.setWebsite(dto.getWebsite());
+        response.setGithub(dto.getGithub());
+        response.setTwitter(dto.getTwitter());
+        response.setLocation(dto.getLocation());
+        response.setLastLoginAt(dto.getLastLoginAt());
+        response.setLastLoginIp(dto.getLastLoginIp());
         response.setRole(dto.getRole());
         response.setFollowed(dto.getFollowed());
         return response;

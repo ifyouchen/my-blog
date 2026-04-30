@@ -1,4 +1,4 @@
-import { resolveMediaUrl } from '@/utils/media';
+import {resolveMediaUrl} from '@/utils/media';
 
 export const normalizeUser = (user) => ({
     id: user.id,
@@ -9,6 +9,12 @@ export const normalizeUser = (user) => ({
     role: user.role,
     status: user.status,
     bio: user.bio,
+    website: user.website || '',
+    github: user.github || '',
+    twitter: user.twitter || '',
+    location: user.location || '',
+    lastLoginAt: user.lastLoginAt || '',
+    lastLoginIp: user.lastLoginIp || '',
     followed: Boolean(user.followed),
     avatar: resolveMediaUrl(
         user.avatar || user.avatarUrl,

@@ -21,6 +21,18 @@ public class UpdateProfileRequest {
     @Size(max = 500, message = "个人简介长度不能超过 500")
     private String bio;
 
+    @Size(max = 500, message = "个人网站长度不能超过 500")
+    private String website;
+
+    @Size(max = 200, message = "GitHub 用户名长度不能超过 200")
+    private String github;
+
+    @Size(max = 200, message = "Twitter 用户名长度不能超过 200")
+    private String twitter;
+
+    @Size(max = 200, message = "所在地长度不能超过 200")
+    private String location;
+
     /**
      * 获取昵称。
      *
@@ -73,5 +85,37 @@ public class UpdateProfileRequest {
      */
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getWebsite() {
+        return website;
+    }
+
+    public void setWebsite(String website) {
+        this.website = website;
+    }
+
+    public String getGithub() {
+        return github;
+    }
+
+    public void setGithub(String github) {
+        this.github = github;
+    }
+
+    public String getTwitter() {
+        return twitter;
+    }
+
+    public void setTwitter(String twitter) {
+        this.twitter = twitter;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 }

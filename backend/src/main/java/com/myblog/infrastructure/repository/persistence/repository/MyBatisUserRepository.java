@@ -66,6 +66,36 @@ public class MyBatisUserRepository implements UserRepository {
     }
 
     /**
+     * 根据邮箱查询用户。
+     *
+     * @param email 邮箱
+     * @return 用户 Optional
+     */
+    @Override
+    public Optional<User> findByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        UserDO userDO = userMapper.selectByEmail(email.trim());
+        return Optional.ofNullable(UserPersistenceConverter.toDomain(userDO));
+    }
+
+    /**
+     * 根据密码重置 Token 查询用户。
+     *
+     * @param token 密码重置 Token
+     * @return 用户 Optional
+     */
+    @Override
+    public Optional<User> findByPasswordResetToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        UserDO userDO = userMapper.selectByPasswordResetToken(token.trim());
+        return Optional.ofNullable(UserPersistenceConverter.toDomain(userDO));
+    }
+
+    /**
      * 判断用户名是否存在。
      *
      * @param username 用户名
