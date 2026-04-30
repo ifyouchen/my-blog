@@ -28,7 +28,28 @@ const tocNavRef = ref(null);
 const observer = ref(null);
 let observerInitToken = 0;
 
+const TOC_COLLAPSE_THRESHOLD = 10;
+const TOC_COLLAPSE_LEVEL = 3; // 三级以下（level >= 3）默认折叠
+
 const toc = computed(() => extractToc(props.content));
+
+// 当标题总数超过阈值时，自动初始化为折叠状态
+const deepCollapsed = ref(false);
+
+watch(toc, (newToc) => {
+    if (newToc.length > TOC_COLLAPSE_THRESHOLD) {
+        deepCollapsed.value = true;
+    } else {
+        deepCollapsed.value = false;
+    }
+}, { immediate: true });
+
+const visibleToc = computed(() => {
+    if (!deepCollapsed.value) return toc.value;
+    return toc.value.filter(item => item.level < TOC_COLLAPSE_LEVEL);
+});
+
+const hasDeepItems = computed(() => toc.value.some(item => item.level >= TOC_COLLAPSE_LEVEL));
 
 const scrollActiveItemIntoView = () => {
     if (!tocNavRef.value || !activeId.value) {
@@ -153,20 +174,39 @@ onUnmounted(() => {
     <aside v-if="toc.length > 0" class="article-toc">
         <div class="toc-header">
             <span>目录</span>
-            <strong>{{ toc.length }}</strong>
+            <div class="toc-header-right">
+                <strong>{{ toc.length }}</strong>
+                <button
+                    v-if="hasDeepItems && toc.length > TOC_COLLAPSE_THRESHOLD"
+                    type="button"
+                    class="toc-collapse-btn"
+                    :title="deepCollapsed ? '展开全部目录' : '折叠三级以下目录'"
+                    @click="deepCollapsed = !deepCollapsed"
+                >
+                    {{ deepCollapsed ? '展开' : '折叠' }}
+                </button>
+            </div>
         </div>
         <nav ref="tocNavRef" class="toc-nav" aria-label="文章目录">
             <a
-                v-for="(item, index) in toc"
+                v-for="(item, index) in visibleToc"
                 :key="item.id"
                 :href="`#${item.id}`"
                 :class="['toc-item', `level-${item.level}`, { active: activeId === item.id }]"
                 :data-toc-id="item.id"
                 :title="item.text"
-                @click.prevent="scrollToHeading(item, index)"
+                @click.prevent="scrollToHeading(item, toc.indexOf(item))"
             >
                 {{ item.text }}
             </a>
+            <button
+                v-if="deepCollapsed && hasDeepItems"
+                type="button"
+                class="toc-show-more"
+                @click="deepCollapsed = false"
+            >
+                显示更多目录...
+            </button>
         </nav>
     </aside>
 </template>
@@ -194,6 +234,12 @@ onUnmounted(() => {
     border-bottom: 1px solid rgba(219, 227, 223, 0.72);
 }
 
+.toc-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .toc-header strong {
     min-width: 24px;
     height: 24px;
@@ -203,6 +249,42 @@ onUnmounted(() => {
     text-align: center;
     background: var(--surface-soft);
     border-radius: var(--radius-md);
+}
+
+.toc-collapse-btn {
+    height: 22px;
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.toc-collapse-btn:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.toc-show-more {
+    display: block;
+    width: 100%;
+    padding: 6px 13px;
+    border: none;
+    background: transparent;
+    color: var(--brand);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+}
+
+.toc-show-more:hover {
+    background: var(--brand-soft);
 }
 
 .toc-nav {

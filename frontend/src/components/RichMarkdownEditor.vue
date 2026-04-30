@@ -1097,6 +1097,35 @@ const contextMenuItems = computed(() => {
     return toolbarGroups.value;
 });
 
+// 快捷键 Tooltip 映射
+const itemShortcuts = {
+    'undo': 'Ctrl+Z',
+    'redo': 'Ctrl+Y',
+    'bold': 'Ctrl+B',
+    'italic': 'Ctrl+I',
+    'underline': 'Ctrl+U',
+    'strike': 'Ctrl+Shift+S',
+    'code': 'Ctrl+`',
+    'link': 'Ctrl+K',
+    'heading-1': 'Ctrl+Alt+1',
+    'heading-2': 'Ctrl+Alt+2',
+    'heading-3': 'Ctrl+Alt+3',
+    'bullet-list': 'Ctrl+Shift+8',
+    'ordered-list': 'Ctrl+Shift+7',
+    'blockquote': 'Ctrl+Shift+B',
+    'code-block': 'Ctrl+Alt+C',
+    'table': '/',
+    'insert-image': '/',
+};
+
+const getItemTitle = (item) => {
+    const shortcut = itemShortcuts[item.id];
+    if (shortcut) {
+        return `${item.label} (${shortcut})`;
+    }
+    return item.label;
+};
+
 const itemIcons = {
     'undo': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.7 5H10a3.5 3.5 0 0 1 0 7H7v-1.5h3a2 2 0 1 0 0-4H4.7l1.8 1.8L5.14 9.7 1.7 6.25 5.14 2.8l1.36 1.36L4.7 5z"/></svg>',
     'redo': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.3 5H6a3.5 3.5 0 0 0 0 7h3v-1.5H6a2 2 0 1 1 0-4h5.3l-1.8 1.8L10.86 9.7l3.44-3.45-3.44-3.45L9.5 4.16 11.3 5z"/></svg>',
@@ -1281,7 +1310,7 @@ const handleGlobalScroll = (event) => {
                         type="button"
                         :class="{ active: item.active, disabled: item.disabled }"
                         :disabled="item.disabled"
-                        :title="item.label"
+                        :title="getItemTitle(item)"
                         :aria-label="item.label"
                         @mousedown.prevent="keepEditorFocus"
                         @click="runToolbarItem(item)"
