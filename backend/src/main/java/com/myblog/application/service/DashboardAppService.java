@@ -1,12 +1,18 @@
 package com.myblog.application.service;
 
+import com.myblog.application.dto.ArticleStatsDTO;
+import com.myblog.application.dto.ArticleStatsTrendPointDTO;
 import com.myblog.application.dto.DashboardArticlePerformanceDTO;
 import com.myblog.application.dto.DashboardOverviewDTO;
 import com.myblog.application.dto.DashboardTrendPointDTO;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.domain.model.aggregate.Article;
+import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
+import com.myblog.shared.exception.ApplicationException;
+import com.myblog.shared.exception.BusinessException;
+import com.myblog.shared.exception.ErrorCode;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
@@ -115,6 +121,54 @@ public class DashboardAppService {
 
     public List<NotificationDTO> getInteractions(Long userId) {
         return notificationAppService.listRecent(userId, "all", 8);
+    }
+
+    /**
+     * 获取单篇文章详细统计（含 N 日趋势）。
+     *
+     * @param userId 当前用户 ID（用于鉴权）
+     * @param articleId 文章 ID
+     * @param range 时间范围（7d / 30d）
+     * @return 文章统计 DTO
+     */
+    public ArticleStatsDTO getArticleStats(Long userId, Long articleId, String range) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        if (!article.getAuthorId().getValue().equals(userId)) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "无权查看该文章统计");
+        }
+        int days = "30d".equalsIgnoreCase(range) ? 30 : 7;
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(days - 1L);
+        List<DashboardTrendPointDO> rows = articleRepository.findArticleTrendPoints(articleId, startDate, endDate);
+        Map<LocalDate, DashboardTrendPointDO> rowMap = new HashMap<LocalDate, DashboardTrendPointDO>(rows.size());
+        for (DashboardTrendPointDO row : rows) {
+            rowMap.put(row.getStatDate(), row);
+        }
+        List<ArticleStatsTrendPointDTO> trends = new ArrayList<ArticleStatsTrendPointDTO>(days);
+        for (int i = 0; i < days; i++) {
+            LocalDate date = startDate.plusDays(i);
+            DashboardTrendPointDO row = rowMap.get(date);
+            ArticleStatsTrendPointDTO point = new ArticleStatsTrendPointDTO();
+            point.setDate(DATE_FORMATTER.format(date));
+            point.setViewCount(safeInt(row != null ? row.getViewCount() : null));
+            point.setLikeCount(safeInt(row != null ? row.getLikeCount() : null));
+            point.setFavoriteCount(safeInt(row != null ? row.getFavoriteCount() : null));
+            point.setCommentCount(safeInt(row != null ? row.getCommentCount() : null));
+            trends.add(point);
+        }
+        ArticleStatsDTO stats = new ArticleStatsDTO();
+        stats.setArticleId(article.getId().getValue());
+        stats.setTitle(article.getTitle());
+        stats.setStatus(article.getStatus().name());
+        stats.setViewCount(article.getViewCount());
+        stats.setLikeCount(article.getLikeCount());
+        stats.setFavoriteCount(article.getFavoriteCount());
+        stats.setCommentCount(article.getCommentCount());
+        stats.setPublishedAt(formatDateTime(article.getPublishedAt()));
+        stats.setUpdatedAt(formatDateTime(article.getUpdatedAt()));
+        stats.setTrends(trends);
+        return stats;
     }
 
     private String normalizePerformanceSort(String sort) {

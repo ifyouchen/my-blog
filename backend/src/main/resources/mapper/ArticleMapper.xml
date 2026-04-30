@@ -589,11 +589,18 @@
         AND a.deleted_at IS NULL
         AND u.deleted_at IS NULL
         <if test="keyword != null and keyword != ''">
-            AND (
-                a.title LIKE CONCAT('%', #{keyword}, '%')
-                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                OR a.content LIKE CONCAT('%', #{keyword}, '%')
-            )
+            <choose>
+                <when test="useFulltext == true">
+                    AND MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
+                </when>
+                <otherwise>
+                    AND (
+                        a.title LIKE CONCAT('%', #{keyword}, '%')
+                        OR a.summary LIKE CONCAT('%', #{keyword}, '%')
+                        OR a.content LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                </otherwise>
+            </choose>
         </if>
         <if test="category != null and category != ''">
             AND a.category = #{category}
@@ -619,6 +626,9 @@
             AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
         <choose>
+            <when test="keyword != null and keyword != '' and useFulltext == true and sort != 'hot' and sort != 'featured'">
+                ORDER BY MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE) DESC, a.published_at DESC, a.id DESC
+            </when>
             <when test="sort == 'hot'">
                 ORDER BY a.view_count DESC, a.published_at DESC, a.id DESC
             </when>
@@ -645,11 +655,18 @@
         AND a.deleted_at IS NULL
         AND u.deleted_at IS NULL
         <if test="keyword != null and keyword != ''">
-            AND (
-                a.title LIKE CONCAT('%', #{keyword}, '%')
-                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                OR a.content LIKE CONCAT('%', #{keyword}, '%')
-            )
+            <choose>
+                <when test="useFulltext == true">
+                    AND MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
+                </when>
+                <otherwise>
+                    AND (
+                        a.title LIKE CONCAT('%', #{keyword}, '%')
+                        OR a.summary LIKE CONCAT('%', #{keyword}, '%')
+                        OR a.content LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                </otherwise>
+            </choose>
         </if>
         <if test="category != null and category != ''">
             AND a.category = #{category}
@@ -976,10 +993,8 @@
         LIMIT #{limit}
     </select>
 
-
-    <!-- 上一篇（同作者或全局，ID 比当前小的最大值） -->
-    <select id="selectPrevPublished"
-            resultMap="BaseResultMap">
+        <!-- 上一篇（ID 比当前小的最大值） -->
+    <select id="selectPrevPublished" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
         WHERE id &lt; #{id}
@@ -989,9 +1004,8 @@
         LIMIT 1
     </select>
 
-    <!-- 下一篇（同作者或全局，ID 比当前大的最小值） -->
-    <select id="selectNextPublished"
-            resultMap="BaseResultMap">
+    <!-- 下一篇（ID 比当前大的最小值） -->
+    <select id="selectNextPublished" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
         WHERE id &gt; #{id}
@@ -1000,5 +1014,73 @@
         ORDER BY id ASC
         LIMIT 1
     </select>
-</mapper>
 
+    <!-- 单篇文章趋势统计（7日/30日，按 articleId 过滤） -->
+    <select id="selectArticleTrendPoints" resultType="com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO">
+        SELECT
+            stat_date AS statDate,
+            COALESCE(SUM(view_count), 0) AS viewCount,
+            COALESCE(SUM(like_count), 0) AS likeCount,
+            COALESCE(SUM(favorite_count), 0) AS favoriteCount,
+            COALESCE(SUM(comment_count), 0) AS commentCount
+        FROM (
+            SELECT DATE(v.created_at) AS stat_date,
+                   COUNT(1) AS view_count,
+                   0 AS like_count,
+                   0 AS favorite_count,
+                   0 AS comment_count
+            FROM blog_article_view v
+            WHERE v.article_id = #{articleId}
+            AND v.deleted_at IS NULL
+            AND v.created_at &gt;= #{startDate}
+            AND v.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(v.created_at)
+
+            UNION ALL
+
+            SELECT DATE(l.created_at) AS stat_date,
+                   0 AS view_count,
+                   COUNT(1) AS like_count,
+                   0 AS favorite_count,
+                   0 AS comment_count
+            FROM blog_article_like l
+            WHERE l.article_id = #{articleId}
+            AND l.deleted_at IS NULL
+            AND l.created_at &gt;= #{startDate}
+            AND l.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(l.created_at)
+
+            UNION ALL
+
+            SELECT DATE(f.created_at) AS stat_date,
+                   0 AS view_count,
+                   0 AS like_count,
+                   COUNT(1) AS favorite_count,
+                   0 AS comment_count
+            FROM blog_article_favorite f
+            WHERE f.article_id = #{articleId}
+            AND f.deleted_at IS NULL
+            AND f.created_at &gt;= #{startDate}
+            AND f.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(f.created_at)
+
+            UNION ALL
+
+            SELECT DATE(c.created_at) AS stat_date,
+                   0 AS view_count,
+                   0 AS like_count,
+                   0 AS favorite_count,
+                   COUNT(1) AS comment_count
+            FROM blog_comment c
+            WHERE c.article_id = #{articleId}
+            AND c.deleted_at IS NULL
+            AND c.status = 'PUBLISHED'
+            AND c.created_at &gt;= #{startDate}
+            AND c.created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+            GROUP BY DATE(c.created_at)
+        ) trend_rows
+        GROUP BY stat_date
+        ORDER BY stat_date ASC
+    </select>
+
+</mapper>

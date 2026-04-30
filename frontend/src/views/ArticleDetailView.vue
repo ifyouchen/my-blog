@@ -1,4 +1,5 @@
-<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+<script setup>
+import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {getArticleApi, getArticleNeighborsApi, getRelatedArticlesApi} from '@/api/articles';

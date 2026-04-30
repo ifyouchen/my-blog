@@ -15,3 +15,7 @@ export const getDashboardArticlePerformanceApi = async (sort = 'view') => {
 export const getDashboardInteractionsApi = async () => {
     return await request('/dashboard/interactions');
 };
+
+export const getArticleStatsApi = async (articleId, range = '7d') => {
+    return await request(`/dashboard/articles/${articleId}/stats?range=${encodeURIComponent(range)}`);
+};

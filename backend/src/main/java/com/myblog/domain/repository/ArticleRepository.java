@@ -176,7 +176,7 @@ public interface ArticleRepository {
      */
     List<Article> findPublishedEnhanced(String keyword, String category, String tag, String sort,
                                        String authorKeyword, String dateFrom, String dateTo,
-                                       Integer limit, Integer offset);
+                                       Integer limit, Integer offset, boolean useFulltext);
 
     /**
      * 统计增强查询已发布文章数量。
@@ -190,7 +190,7 @@ public interface ArticleRepository {
      * @return 已发布文章数量
      */
     long countPublishedEnhanced(String keyword, String category, String tag,
-                               String authorKeyword, String dateFrom, String dateTo);
+                               String authorKeyword, String dateFrom, String dateTo, boolean useFulltext);
 
     /**
      * 增强分页查询关注作者的已发布文章。
@@ -408,4 +408,16 @@ public interface ArticleRepository {
      * @return Optional 下一篇
      */
     java.util.Optional<Article> findNextPublished(Long articleId);
+
+    /**
+     * 查询单篇文章趋势数据。
+     *
+     * @param articleId 文章 ID
+     * @param startDate 起始日期
+     * @param endDate 结束日期
+     * @return 趋势数据列表
+     */
+    List<com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO> findArticleTrendPoints(
+            Long articleId, LocalDate startDate, LocalDate endDate);
 }
+

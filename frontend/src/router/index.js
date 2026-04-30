@@ -1,4 +1,8 @@
 import {createRouter, createWebHistory} from 'vue-router';
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
+
+NProgress.configure({ showSpinner: false, trickleSpeed: 200, minimum: 0.15 });
 
 const HomeView = () => import('@/views/HomeView.vue');
 const AuthView = () => import('@/views/AuthView.vue');
@@ -363,7 +367,6 @@ const routes = [
                     adminDescription: '创建、编辑、发布和撤回平台公告，实时推送给用户。'
                 }
             },
-,
             {
                 path: 'sensitive-words',
                 name: 'adminSensitiveWords',
@@ -413,8 +416,18 @@ const router = createRouter({
     }
 });
 
-router.afterEach((to) => {
-    document.title = to.meta.title ? `${to.meta.title} - my-blog` : 'my-blog';
+router.beforeEach((to, from) => {
+    if (to.path !== from.path) {
+        NProgress.start();
+    }
+});
+
+router.afterEach(() => {
+    NProgress.done();
+});
+
+router.onError(() => {
+    NProgress.done();
 });
 
 export default router;

@@ -121,7 +121,7 @@ CREATE TABLE `blog_article` (
     INDEX `idx_article_author_status_updated_v2` (`author_id`, `deleted_at`, `status`, `updated_at` DESC, `id` DESC) USING BTREE,
     INDEX `idx_article_hot_v2` (`status`, `deleted_at`, `view_count` DESC, `published_at` DESC, `id` DESC) USING BTREE,
     INDEX `idx_article_featured_v2` (`status`, `deleted_at`, `like_count` DESC, `published_at` DESC, `id` DESC) USING BTREE,
-    INDEX `idx_article_featured` (`featured`, `status`, `deleted_at`, `featured_at` DESC, `id` DESC) USING BTREE
+    FULLTEXT INDEX `ft_article_title_summary_content` (`title`, `summary`, `content`) WITH PARSER ngram
 ) ENGINE = InnoDB AUTO_INCREMENT = 9004
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '博客文章表' ROW_FORMAT = Dynamic;

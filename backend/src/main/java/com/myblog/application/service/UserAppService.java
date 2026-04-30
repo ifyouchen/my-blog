@@ -324,10 +324,9 @@ public class UserAppService {
 
 
     public byte[] exportMyArticlesCsv(Long userId) {
-        PageResult<ArticleDTO> page = getMyArticles(userId, null, 1, 10000);
+        PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, null);
         StringBuilder sb = new StringBuilder();
-        sb.append("id,title,category,status,viewCount,likeCount,commentCount,publishedAt,createdAt
-");
+        sb.append("id,title,category,status,viewCount,likeCount,commentCount,publishedAt,createdAt\n");
         for (ArticleDTO a : page.getItems()) {
             sb.append(a.getId()).append(",");
             sb.append(escapeCsvUser(a.getTitle())).append(",");
@@ -337,15 +336,13 @@ public class UserAppService {
             sb.append(a.getLikeCount()).append(",");
             sb.append(a.getCommentCount()).append(",");
             sb.append(escapeCsvUser(a.getPublishedAt()!=null?a.getPublishedAt().toString():"")).append(",");
-            sb.append(escapeCsvUser(a.getCreatedAt()!=null?a.getCreatedAt().toString():"")).append("
-");
+            sb.append(escapeCsvUser(a.getUpdatedAt()!=null?a.getUpdatedAt():"" )).append("\n");
         }
         return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
     private String escapeCsvUser(String v) {
         if (v == null) return "";
-        if (v.contains(",") || v.contains(""") || v.contains("
-")) return """+v.replace(""","""")+""";
+        if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) return "\"" + v.replace("\"", "\"\"\"") + "\"";
         return v;
     }
 }

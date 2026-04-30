@@ -1,7 +1,9 @@
 package com.myblog.application.dto;
 
+import java.util.List;
+
 /**
- * 单篇文章详细统计数据 DTO。
+ * 单篇文章详细统计数据 DTO（含趋势数据）。
  *
  * @author Codex
  * @since 1.0.0
@@ -17,77 +19,36 @@ public class ArticleStatsDTO {
     private int commentCount;
     private String publishedAt;
     private String updatedAt;
+    /** 趋势数据列表（按日期升序）。 */
+    private List<ArticleStatsTrendPointDTO> trends;
 
-    public Long getArticleId() {
-        return articleId;
-    }
+    public Long getArticleId() { return articleId; }
+    public void setArticleId(Long articleId) { this.articleId = articleId; }
 
-    public void setArticleId(Long articleId) {
-        this.articleId = articleId;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public int getViewCount() { return viewCount; }
+    public void setViewCount(int viewCount) { this.viewCount = viewCount; }
 
-    public String getStatus() {
-        return status;
-    }
+    public int getLikeCount() { return likeCount; }
+    public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public int getFavoriteCount() { return favoriteCount; }
+    public void setFavoriteCount(int favoriteCount) { this.favoriteCount = favoriteCount; }
 
-    public int getViewCount() {
-        return viewCount;
-    }
+    public int getCommentCount() { return commentCount; }
+    public void setCommentCount(int commentCount) { this.commentCount = commentCount; }
 
-    public void setViewCount(int viewCount) {
-        this.viewCount = viewCount;
-    }
+    public String getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(String publishedAt) { this.publishedAt = publishedAt; }
 
-    public int getLikeCount() {
-        return likeCount;
-    }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
 
-    public void setLikeCount(int likeCount) {
-        this.likeCount = likeCount;
-    }
-
-    public int getFavoriteCount() {
-        return favoriteCount;
-    }
-
-    public void setFavoriteCount(int favoriteCount) {
-        this.favoriteCount = favoriteCount;
-    }
-
-    public int getCommentCount() {
-        return commentCount;
-    }
-
-    public void setCommentCount(int commentCount) {
-        this.commentCount = commentCount;
-    }
-
-    public String getPublishedAt() {
-        return publishedAt;
-    }
-
-    public void setPublishedAt(String publishedAt) {
-        this.publishedAt = publishedAt;
-    }
-
-    public String getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(String updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public List<ArticleStatsTrendPointDTO> getTrends() { return trends; }
+    public void setTrends(List<ArticleStatsTrendPointDTO> trends) { this.trends = trends; }
 }
-

@@ -344,7 +344,7 @@ public class UserController {
         Long userId = AuthContext.getRequiredUserId();
         String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
-        response.setHeader("Content-Disposition", "attachment; filename="" + filename + """);
+        response.setHeader("Content-Disposition", "attachment; filename=" + filename);
         byte[] data = userAppService.exportMyArticlesCsv(userId);
         response.getOutputStream().write(0xEF);
         response.getOutputStream().write(0xBB);

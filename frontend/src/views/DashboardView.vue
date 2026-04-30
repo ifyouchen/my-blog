@@ -8,7 +8,7 @@ import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {getMyColumnsApi} from '@/api/columns';
 import {deleteArticleApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
-import {getDashboardArticlePerformanceApi, getDashboardInteractionsApi, getDashboardOverviewApi, getDashboardTrendsApi} from '@/api/dashboard';
+import {getDashboardArticlePerformanceApi, getDashboardInteractionsApi, getDashboardOverviewApi, getDashboardTrendsApi, getArticleStatsApi} from '@/api/dashboard';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
@@ -75,6 +75,51 @@ const feedback = ref('');
 const feedbackType = ref('success');
 const actionLoadingId = ref(null);
 const jumpPage = ref(String(currentPage.value));
+
+// 文章统计抽屉
+const statsDrawerVisible = ref(false);
+const statsArticle = ref(null);
+const statsData = ref(null);
+const statsRange = ref('7d');
+const statsLoading = ref(false);
+const statsError = ref('');
+
+async function openStatsDrawer(article) {
+    statsArticle.value = article;
+    statsRange.value = '7d';
+    statsDrawerVisible.value = true;
+    await loadArticleStats(article.id, '7d');
+}
+
+function closeStatsDrawer() {
+    statsDrawerVisible.value = false;
+    statsArticle.value = null;
+    statsData.value = null;
+    statsError.value = '';
+}
+
+async function loadArticleStats(articleId, range) {
+    statsLoading.value = true;
+    statsError.value = '';
+    try {
+        statsData.value = await getArticleStatsApi(articleId, range);
+    } catch (e) {
+        statsError.value = e?.message || '加载失败，请重试';
+    } finally {
+        statsLoading.value = false;
+    }
+}
+
+async function changeStatsRange(range) {
+    if (statsRange.value === range) return;
+    statsRange.value = range;
+    await loadArticleStats(statsArticle.value.id, range);
+}
+
+const statsTrendMax = computed(() => {
+    if (!statsData.value?.trends?.length) return 1;
+    return Math.max(1, ...statsData.value.trends.map((p) => Math.max(p.viewCount || 0, p.likeCount || 0, p.favoriteCount || 0, p.commentCount || 0)));
+});
 
 const statusOptions = [
     { label: '全部', value: '' },
@@ -748,7 +793,7 @@ watch(isLoggedIn, () => {
                 <p v-else-if="errorMessage && !favorites.length" class="error-text">{{ errorMessage }}</p>
                 <div v-else-if="favorites.length" class="favorite-grid">
                     <article v-for="article in favorites" :key="article.id" class="favorite-card">
-                        <img :src="article.cover" :alt="article.coverAlt" decoding="async">
+                        <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
                         <div>
                             <span>{{ article.category }}</span>
                             <h2>{{ article.title }}</h2>
@@ -855,6 +900,14 @@ watch(isLoggedIn, () => {
                                             @click="editArticle(article.id)"
                                         >
                                             {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="action-link action-link-secondary"
+                                            title="查看统计趋势"
+                                            @click="openStatsDrawer(article)"
+                                        >
+                                            统计
                                         </button>
                                     </div>
                                     <button
@@ -987,6 +1040,89 @@ watch(isLoggedIn, () => {
             />
         </section>
     </main>
+
+    <!-- 文章统计趋势抽屉 -->
+    <Teleport to="body">
+        <div v-if="statsDrawerVisible" class="stats-drawer-overlay" @click.self="closeStatsDrawer">
+            <aside class="stats-drawer" role="dialog" aria-modal="true" aria-label="文章数据统计">
+                <header class="stats-drawer-header">
+                    <div>
+                        <p class="eyebrow">数据统计</p>
+                        <h2 class="stats-drawer-title">{{ statsArticle?.title || '文章统计' }}</h2>
+                    </div>
+                    <button type="button" class="stats-drawer-close" aria-label="关闭" @click="closeStatsDrawer">✕</button>
+                </header>
+                <div class="stats-drawer-body">
+                    <div v-if="statsLoading" class="stats-loading">加载中...</div>
+                    <div v-else-if="statsError" class="stats-error">{{ statsError }}</div>
+                    <template v-else-if="statsData">
+                        <!-- 汇总指标 -->
+                        <div class="stats-metrics-grid">
+                            <div class="stats-metric-card">
+                                <span class="stats-metric-value">{{ statsData.viewCount }}</span>
+                                <span class="stats-metric-label">累计阅读</span>
+                            </div>
+                            <div class="stats-metric-card">
+                                <span class="stats-metric-value">{{ statsData.likeCount }}</span>
+                                <span class="stats-metric-label">累计点赞</span>
+                            </div>
+                            <div class="stats-metric-card">
+                                <span class="stats-metric-value">{{ statsData.favoriteCount }}</span>
+                                <span class="stats-metric-label">累计收藏</span>
+                            </div>
+                            <div class="stats-metric-card">
+                                <span class="stats-metric-value">{{ statsData.commentCount }}</span>
+                                <span class="stats-metric-label">累计评论</span>
+                            </div>
+                        </div>
+                        <!-- 趋势图 -->
+                        <div class="stats-trend-section">
+                            <div class="stats-trend-header">
+                                <span class="stats-trend-title">互动趋势</span>
+                                <div class="stats-trend-range">
+                                    <button
+                                        type="button"
+                                        :class="{ active: statsRange === '7d' }"
+                                        @click="changeStatsRange('7d')"
+                                    >7日</button>
+                                    <button
+                                        type="button"
+                                        :class="{ active: statsRange === '30d' }"
+                                        @click="changeStatsRange('30d')"
+                                    >30日</button>
+                                </div>
+                            </div>
+                            <div v-if="statsData.trends?.length" class="stats-trend-chart">
+                                <div
+                                    v-for="point in statsData.trends"
+                                    :key="point.date"
+                                    class="stats-trend-col"
+                                    :title="`${point.date}\n阅读:${point.viewCount} 赞:${point.likeCount} 收:${point.favoriteCount} 评:${point.commentCount}`"
+                                >
+                                    <div class="stats-trend-bars">
+                                        <div
+                                            class="stats-trend-bar views"
+                                            :style="{ height: `${Math.max(4, ((point.viewCount || 0) / statsTrendMax) * 100)}%` }"
+                                        ></div>
+                                        <div
+                                            class="stats-trend-bar interactions"
+                                            :style="{ height: `${Math.max(4, (((point.likeCount || 0) + (point.favoriteCount || 0) + (point.commentCount || 0)) / statsTrendMax) * 100)}%` }"
+                                        ></div>
+                                    </div>
+                                    <span class="stats-trend-label">{{ point.date.slice(5) }}</span>
+                                </div>
+                            </div>
+                            <p v-else class="stats-no-data">暂无趋势数据</p>
+                            <div class="stats-legend">
+                                <span class="stats-legend-item views">阅读</span>
+                                <span class="stats-legend-item interactions">点赞+收藏+评论</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </aside>
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -1796,5 +1932,229 @@ watch(isLoggedIn, () => {
     .creator-overview-grid.secondary {
         grid-template-columns: 1fr;
     }
+}
+
+/* ── 文章统计抽屉 ── */
+.stats-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1100;
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+}
+
+.stats-drawer {
+    width: min(480px, 100vw);
+    height: 100%;
+    background: var(--surface, #fff);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    animation: slideInRight 0.22s ease;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.stats-drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--line, #eee);
+    gap: 12px;
+}
+
+.stats-drawer-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.stats-drawer-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--muted);
+    padding: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.stats-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.stats-loading, .stats-error, .stats-no-data {
+    text-align: center;
+    color: var(--muted);
+    padding: 32px 0;
+    font-size: 14px;
+}
+
+.stats-error {
+    color: var(--danger, #e53e3e);
+}
+
+.stats-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.stats-metric-card {
+    background: var(--bg, #f8f9fa);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stats-metric-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+}
+
+.stats-metric-label {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.stats-trend-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stats-trend-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stats-trend-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.stats-trend-range {
+    display: flex;
+    gap: 4px;
+}
+
+.stats-trend-range button {
+    background: none;
+    border: 1px solid var(--line, #ddd);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+}
+
+.stats-trend-range button.active {
+    background: var(--primary, #2563eb);
+    border-color: var(--primary, #2563eb);
+    color: #fff;
+}
+
+.stats-trend-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 120px;
+    padding-bottom: 20px;
+    position: relative;
+}
+
+.stats-trend-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    cursor: default;
+}
+
+.stats-trend-bars {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.stats-trend-bar {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    min-height: 4px;
+    transition: height 0.3s ease;
+}
+
+.stats-trend-bar.views {
+    background: var(--primary, #2563eb);
+    opacity: 0.7;
+}
+
+.stats-trend-bar.interactions {
+    background: var(--accent, #f59e0b);
+    opacity: 0.85;
+}
+
+.stats-trend-label {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    white-space: nowrap;
+}
+
+.stats-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+}
+
+.stats-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+}
+
+.stats-legend-item::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.stats-legend-item.views::before {
+    background: var(--primary, #2563eb);
+    opacity: 0.7;
+}
+
+.stats-legend-item.interactions::before {
+    background: var(--accent, #f59e0b);
+    opacity: 0.85;
 }
 </style>

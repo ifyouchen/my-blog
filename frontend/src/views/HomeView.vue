@@ -1,5 +1,4 @@
-<script setup>
-import {useRoute, useRouter} from 'vue-router';
+<script setup>import {useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
 import {getHomeBootstrapApi} from '@/api/home';
 import {getActiveAnnouncementsApi} from '@/api/notifications';

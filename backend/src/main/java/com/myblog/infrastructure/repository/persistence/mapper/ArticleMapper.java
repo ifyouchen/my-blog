@@ -156,14 +156,16 @@ public interface ArticleMapper {
                                             @Param("dateFrom") String dateFrom,
                                             @Param("dateTo") String dateTo,
                                             @Param("limit") Integer limit,
-                                            @Param("offset") Integer offset);
+                                            @Param("offset") Integer offset,
+                                            @Param("useFulltext") boolean useFulltext);
 
     long countPublishedEnhanced(@Param("keyword") String keyword,
                                 @Param("category") String category,
                                 @Param("tag") String tag,
                                 @Param("authorKeyword") String authorKeyword,
                                 @Param("dateFrom") String dateFrom,
-                                @Param("dateTo") String dateTo);
+                                @Param("dateTo") String dateTo,
+                                @Param("useFulltext") boolean useFulltext);
 
     List<ArticleDO> selectPublishedEnhancedByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                                        @Param("keyword") String keyword,
@@ -378,5 +380,18 @@ public interface ArticleMapper {
      * 查询下一篇已发布文章（ID 严格大于给定 id 的最小值）。
      */
     ArticleDO selectNextPublished(@Param("id") Long id);
+
+    /**
+     * 查询单篇文章趋势数据。
+     *
+     * @param articleId 文章 ID
+     * @param startDate 起始日期
+     * @param endDate 结束日期
+     * @return 趋势数据列表
+     */
+    List<DashboardTrendPointDO> selectArticleTrendPoints(@Param("articleId") Long articleId,
+                                                         @Param("startDate") LocalDate startDate,
+                                                         @Param("endDate") LocalDate endDate);
 }
+
 

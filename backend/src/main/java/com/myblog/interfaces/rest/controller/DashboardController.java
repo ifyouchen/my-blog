@@ -1,5 +1,6 @@
 package com.myblog.interfaces.rest.controller;
 
+import com.myblog.application.dto.ArticleStatsDTO;
 import com.myblog.application.dto.DashboardArticlePerformanceDTO;
 import com.myblog.application.dto.DashboardOverviewDTO;
 import com.myblog.application.dto.DashboardTrendPointDTO;
@@ -10,6 +11,7 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.Result;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,6 +53,12 @@ public class DashboardController {
     @GetMapping("/interactions")
     public Result<List<NotificationDTO>> interactions() {
         return Result.success(dashboardAppService.getInteractions(requiredUserId()));
+    }
+
+    @GetMapping("/articles/{id}/stats")
+    public Result<ArticleStatsDTO> articleStats(@PathVariable("id") Long articleId,
+                                                @RequestParam(defaultValue = "7d") String range) {
+        return Result.success(dashboardAppService.getArticleStats(requiredUserId(), articleId, range));
     }
 
     private Long requiredUserId() {

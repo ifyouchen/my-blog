@@ -1,5 +1,4 @@
-<script setup>
-import {Teleport} from 'vue';
+<script setup>import {Teleport} from 'vue';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
@@ -716,68 +715,7 @@ onMounted(fetchBootstrap);
             </div>
 
             <p class="result-note">
-                <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章
-    <!-- Mobile bottom sheet for filters -->
-    <Teleport to="body">
-        <div v-if="mobileSheetOpen" class="mobile-sheet-overlay" :class="{ visible: mobileSheetVisible }" @click.self="closeMobileSheet">
-            <div class="mobile-sheet" :class="{ visible: mobileSheetVisible }">
-                <div class="mobile-sheet-header">
-                    <span class="mobile-sheet-title">筛选条件</span>
-                    <button type="button" class="mobile-sheet-close" @click="closeMobileSheet">&#10005;</button>
-                </div>
-                <div class="mobile-sheet-body">
-                    <div class="search-filters">
-                        <div class="filter-group sort-row">
-                            <span>排序方式</span>
-                            <div class="sort-buttons">
-                                <button v-for="item in ARTICLE_SORT_ITEMS" :key="item.value" type="button" :class="{ active: activeSort === item.value }" @click="changeSort(item.value)">{{ item.label }}</button>
-                            </div>
-                        </div>
-                        <div class="filter-group">
-                            <span>分类</span>
-                            <div class="tag-row">
-                                <button v-for="category in visibleCategories" :key="category" type="button" :class="{ active: (activeCategory || '全部') === category }" @click="changeCategory(category)">{{ category }}</button>
-                                <button v-if="hasMoreCategories" type="button" class="expand-btn" @click="categoriesExpanded = !categoriesExpanded">{{ categoriesExpanded ? '收起' : '+' + (categoryOptions.length - MAX_VISIBLE_TAGS) + '个' }}</button>
-                            </div>
-                        </div>
-                        <div class="filter-group">
-                            <span>标签</span>
-                            <div class="tag-row">
-                                <button v-for="tag in visibleTags" :key="tag" type="button" :class="{ active: (activeTag || '全部') === tag }" @click="changeTag(tag)">{{ tag }}</button>
-                                <button v-if="hasMoreTags" type="button" class="expand-btn" @click="tagsExpanded = !tagsExpanded">{{ tagsExpanded ? '收起' : '+' + (tagOptions.length - MAX_VISIBLE_TAGS) + '个' }}</button>
-                            </div>
-                        </div>
-                        <div class="filter-group enhanced-filters">
-                            <span>作者关键字</span>
-                            <input v-model="authorKeyword" type="text" placeholder="搜索作者..." class="filter-input" @keydown.enter="changeAuthorKeyword">
-                        </div>
-                        <div class="filter-group date-filters">
-                            <span>发布日期</span>
-                            <div class="date-presets">
-                                <button v-for="preset in datePresets" :key="preset.label" type="button" :class="{ active: isPresetActive(preset) }" @click="applyDatePreset(preset)">{{ preset.label }}</button>
-                            </div>
-                            <div class="date-range">
-                                <input v-model="dateFrom" type="date" class="filter-input" @change="changeDateFrom">
-                                <span class="date-range-sep">至</span>
-                                <input v-model="dateTo" type="date" class="filter-input" @change="changeDateTo">
-                            </div>
-                        </div>
-                        <div v-if="isLoggedIn" class="filter-group following-filter">
-                            <label class="checkbox-label"><input v-model="followingOnly" type="checkbox" @change="changeFollowingOnly"><span>仅看已关注作者</span></label>
-                        </div>
-                        <div v-else class="filter-group following-filter">
-                            <label class="checkbox-label disabled"><input type="checkbox" disabled><span>仅看已关注作者（需登录）</span></label>
-                        </div>
-                    </div>
-                </div>
-                <div class="mobile-sheet-footer">
-                    <button type="button" class="mobile-sheet-reset" @click="clearAllFilters">重置</button>
-                    <button type="button" class="mobile-sheet-confirm" @click="closeMobileSheet">确认</button>
-                </div>
-            </div>
-        </div>
-    </Teleport>
-</template>
+                <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章</template>
                 <template v-else-if="activeTab === 'users'">共找到 {{ userTotal }} 位作者</template>
                 <template v-else>共找到 {{ columnTotal }} 个专栏</template>
             </p>
@@ -785,7 +723,67 @@ onMounted(fetchBootstrap);
             <AdBanner :slot-code="'search_top'" class="search-ad-banner" />
         </section>
 
-        <!-- Article Results -->
+        <!-- Mobile bottom sheet for filters -->
+        <Teleport to="body">
+            <div v-if="mobileSheetOpen" class="mobile-sheet-overlay" :class="{ visible: mobileSheetVisible }" @click.self="closeMobileSheet">
+                <div class="mobile-sheet" :class="{ visible: mobileSheetVisible }">
+                    <div class="mobile-sheet-header">
+                        <span class="mobile-sheet-title">筛选条件</span>
+                        <button type="button" class="mobile-sheet-close" @click="closeMobileSheet">&#10005;</button>
+                    </div>
+                    <div class="mobile-sheet-body">
+                        <div class="search-filters">
+                            <div class="filter-group sort-row">
+                                <span>排序方式</span>
+                                <div class="sort-buttons">
+                                    <button v-for="item in ARTICLE_SORT_ITEMS" :key="item.value" type="button" :class="{ active: activeSort === item.value }" @click="changeSort(item.value)">{{ item.label }}</button>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <span>分类</span>
+                                <div class="tag-row">
+                                    <button v-for="category in visibleCategories" :key="category" type="button" :class="{ active: (activeCategory || '全部') === category }" @click="changeCategory(category)">{{ category }}</button>
+                                    <button v-if="hasMoreCategories" type="button" class="expand-btn" @click="categoriesExpanded = !categoriesExpanded">{{ categoriesExpanded ? '收起' : '+' + (categoryOptions.length - MAX_VISIBLE_TAGS) + '个' }}</button>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <span>标签</span>
+                                <div class="tag-row">
+                                    <button v-for="tag in visibleTags" :key="tag" type="button" :class="{ active: (activeTag || '全部') === tag }" @click="changeTag(tag)">{{ tag }}</button>
+                                    <button v-if="hasMoreTags" type="button" class="expand-btn" @click="tagsExpanded = !tagsExpanded">{{ tagsExpanded ? '收起' : '+' + (tagOptions.length - MAX_VISIBLE_TAGS) + '个' }}</button>
+                                </div>
+                            </div>
+                            <div class="filter-group enhanced-filters">
+                                <span>作者关键字</span>
+                                <input v-model="authorKeyword" type="text" placeholder="搜索作者..." class="filter-input" @keydown.enter="changeAuthorKeyword">
+                            </div>
+                            <div class="filter-group date-filters">
+                                <span>发布日期</span>
+                                <div class="date-presets">
+                                    <button v-for="preset in datePresets" :key="preset.label" type="button" :class="{ active: isPresetActive(preset) }" @click="applyDatePreset(preset)">{{ preset.label }}</button>
+                                </div>
+                                <div class="date-range">
+                                    <input v-model="dateFrom" type="date" class="filter-input" @change="changeDateFrom">
+                                    <span class="date-range-sep">至</span>
+                                    <input v-model="dateTo" type="date" class="filter-input" @change="changeDateTo">
+                                </div>
+                            </div>
+                            <div v-if="isLoggedIn" class="filter-group following-filter">
+                                <label class="checkbox-label"><input v-model="followingOnly" type="checkbox" @change="changeFollowingOnly"><span>仅看已关注作者</span></label>
+                            </div>
+                            <div v-else class="filter-group following-filter">
+                                <label class="checkbox-label disabled"><input type="checkbox" disabled><span>仅看已关注作者（需登录）</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mobile-sheet-footer">
+                        <button type="button" class="mobile-sheet-reset" @click="clearAllFilters">重置</button>
+                        <button type="button" class="mobile-sheet-confirm" @click="closeMobileSheet">确认</button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
         <ArticleFeed
             v-if="activeTab === 'articles'"
             hide-sort

@@ -3960,3 +3960,14 @@ button:disabled {
         width: 100%;
     }
 }
+
+/* NProgress — route transition bar */
+#nprogress .bar {
+    background: var(--brand);
+    height: 3px;
+    box-shadow: 0 0 8px var(--brand);
+}
+
+#nprogress .peg {
+    box-shadow: 0 0 10px var(--brand), 0 0 5px var(--brand);
+}

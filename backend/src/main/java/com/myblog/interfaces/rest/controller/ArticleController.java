@@ -26,6 +26,10 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.io.IOException;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * 文章 REST 接口。
@@ -34,10 +38,6 @@ import java.util.List;
  * @since 1.0.0
  */
 @Validated
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 @RestController
 @RequestMapping("/api/articles")
 public class ArticleController {

@@ -195,15 +195,15 @@ public class MyBatisArticleRepository implements ArticleRepository {
     @Override
     public List<Article> findPublishedEnhanced(String keyword, String category, String tag, String sort,
                                                String authorKeyword, String dateFrom, String dateTo,
-                                               Integer limit, Integer offset) {
+                                               Integer limit, Integer offset, boolean useFulltext) {
         return toDomainList(articleMapper.selectPublishedEnhanced(
-            keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, limit, offset));
+            keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, limit, offset, useFulltext));
     }
 
     @Override
     public long countPublishedEnhanced(String keyword, String category, String tag,
-                                      String authorKeyword, String dateFrom, String dateTo) {
-        return articleMapper.countPublishedEnhanced(keyword, category, tag, authorKeyword, dateFrom, dateTo);
+                                      String authorKeyword, String dateFrom, String dateTo, boolean useFulltext) {
+        return articleMapper.countPublishedEnhanced(keyword, category, tag, authorKeyword, dateFrom, dateTo, useFulltext);
     }
 
     @Override
@@ -440,7 +440,11 @@ public class MyBatisArticleRepository implements ArticleRepository {
         return articleMapper.selectCategoryStats(limit);
     }
 
-    private List<Article> toDomainList(List<ArticleDO> articleDOList) {
+    @Override
+    public List<com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO> findArticleTrendPoints(
+            Long articleId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        return articleMapper.selectArticleTrendPoints(articleId, startDate, endDate);
+    }
 
     private List<Article> toDomainList(List<ArticleDO> articleDOList) {
         List<Article> articles = new ArrayList<Article>(articleDOList.size());
@@ -481,17 +485,21 @@ public class MyBatisArticleRepository implements ArticleRepository {
     public java.util.Optional<com.myblog.domain.model.aggregate.Article> findPrevPublished(Long articleId) {
         com.myblog.infrastructure.repository.persistence.entity.ArticleDO prev =
             articleMapper.selectPrevPublished(articleId);
-        if (prev == null) return java.util.Optional.empty();
+        if (prev == null) {
+           return Optional.empty();
+        }
         java.util.List<String> tags = articleMapper.selectTagNamesByArticleId(prev.getId());
-        return java.util.Optional.of(articleConverter.toDomain(prev, tags));
+        return java.util.Optional.of(ArticlePersistenceConverter.toDomain(prev, tags));
     }
 
     @Override
     public java.util.Optional<com.myblog.domain.model.aggregate.Article> findNextPublished(Long articleId) {
         com.myblog.infrastructure.repository.persistence.entity.ArticleDO next =
             articleMapper.selectNextPublished(articleId);
-        if (next == null) return java.util.Optional.empty();
+        if (next == null) {
+           return Optional.empty();
+        }
         java.util.List<String> tags = articleMapper.selectTagNamesByArticleId(next.getId());
-        return java.util.Optional.of(articleConverter.toDomain(next, tags));
+        return java.util.Optional.of(ArticlePersistenceConverter.toDomain(next, tags));
     }
 }

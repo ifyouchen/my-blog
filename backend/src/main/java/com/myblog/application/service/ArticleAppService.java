@@ -97,7 +97,12 @@ public class ArticleAppService {
         // Check if enhanced search is needed
         boolean needsEnhancedSearch = query.getAuthorKeyword() != null && !query.getAuthorKeyword().isEmpty()
             || query.getDateFrom() != null && !query.getDateFrom().isEmpty()
-            || query.getDateTo() != null && !query.getDateTo().isEmpty();
+            || query.getDateTo() != null && !query.getDateTo().isEmpty()
+            || (query.getKeyword() != null && !query.getKeyword().isEmpty());
+
+        // Use full-text search if keyword length >= 2 (ngram minimum token size)
+        String kw = query.getKeyword();
+        boolean useFulltext = kw != null && kw.trim().length() >= 2;
 
         List<Article> articles;
         long total;
@@ -149,7 +154,8 @@ public class ArticleAppService {
                 query.getDateFrom(),
                 query.getDateTo(),
                 pageSize,
-                offset
+                offset,
+                useFulltext
             );
             total = articleRepository.countPublishedEnhanced(
                 query.getKeyword(),
@@ -157,7 +163,8 @@ public class ArticleAppService {
                 query.getTag(),
                 query.getAuthorKeyword(),
                 query.getDateFrom(),
-                query.getDateTo()
+                query.getDateTo(),
+                useFulltext
             );
         } else {
             articles = articleRepository.findPublishedWithLimit(
@@ -767,8 +774,8 @@ public class ArticleAppService {
         java.util.Optional<com.myblog.domain.model.aggregate.Article> nextOpt =
             articleRepository.findNextPublished(articleId);
         java.util.Map<String, ArticleDTO> result = new java.util.LinkedHashMap<>();
-        result.put("prev", prevOpt.map(a -> articleAssembler.toDTO(a, null, false, false)).orElse(null));
-        result.put("next", nextOpt.map(a -> articleAssembler.toDTO(a, null, false, false)).orElse(null));
+        result.put("prev", prevOpt.map(a -> articleAssembler.toDTO(a, null)).orElse(null));
+        result.put("next", nextOpt.map(a -> articleAssembler.toDTO(a, null)).orElse(null));
         return result;
     }
 }
