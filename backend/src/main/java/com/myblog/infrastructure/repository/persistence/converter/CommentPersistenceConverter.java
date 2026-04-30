@@ -36,6 +36,8 @@ public final class CommentPersistenceConverter {
             commentDO.getContent(),
             CommentStatus.valueOf(commentDO.getStatus()),
             commentDO.getLikeCount(),
+            commentDO.getEditedAt(),
+            commentDO.getEditCount(),
             commentDO.getPinned(),
             commentDO.getPinnedAt(),
             commentDO.getCreatedAt(),
@@ -59,6 +61,8 @@ public final class CommentPersistenceConverter {
         commentDO.setContent(comment.getContent());
         commentDO.setStatus(comment.getStatus().name());
         commentDO.setLikeCount(comment.getLikeCount());
+        commentDO.setEditedAt(comment.getEditedAt());
+        commentDO.setEditCount(comment.getEditCount());
         commentDO.setPinned(comment.isPinned());
         commentDO.setPinnedAt(comment.getPinnedAt());
         commentDO.setCreatedAt(comment.getCreatedAt());

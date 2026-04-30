@@ -25,6 +25,9 @@ public class CommentResponse {
     private Long parentId;
     private String content;
     private String createdAt;
+    private String editedAt;
+    private Integer editCount;
+    private Boolean canEdit;
     private Integer replyCount;
     private Integer likeCount;
     private Boolean liked;
@@ -90,6 +93,30 @@ public class CommentResponse {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getEditedAt() {
+        return editedAt;
+    }
+
+    public void setEditedAt(String editedAt) {
+        this.editedAt = editedAt;
+    }
+
+    public Integer getEditCount() {
+        return editCount;
+    }
+
+    public void setEditCount(Integer editCount) {
+        this.editCount = editCount;
+    }
+
+    public Boolean getCanEdit() {
+        return canEdit;
+    }
+
+    public void setCanEdit(Boolean canEdit) {
+        this.canEdit = canEdit;
     }
 
     public Integer getReplyCount() {

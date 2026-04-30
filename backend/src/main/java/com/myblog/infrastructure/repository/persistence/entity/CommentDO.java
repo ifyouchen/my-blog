@@ -18,6 +18,8 @@ public class CommentDO {
     private String content;
     private String status;
     private Integer likeCount;
+    private LocalDateTime editedAt;
+    private Integer editCount;
     private Boolean pinned;
     private LocalDateTime pinnedAt;
     private LocalDateTime createdAt;
@@ -87,6 +89,22 @@ public class CommentDO {
 
     public void setLikeCount(Integer likeCount) {
         this.likeCount = likeCount;
+    }
+
+    public LocalDateTime getEditedAt() {
+        return editedAt;
+    }
+
+    public void setEditedAt(LocalDateTime editedAt) {
+        this.editedAt = editedAt;
+    }
+
+    public Integer getEditCount() {
+        return editCount;
+    }
+
+    public void setEditCount(Integer editCount) {
+        this.editCount = editCount;
     }
 
     public Boolean getPinned() {

@@ -34,6 +34,8 @@ public interface UserFollowMapper {
     List<Long> selectFollowingUserIdsIn(@Param("followerUserId") Long followerUserId,
                                         @Param("candidateUserIds") List<Long> candidateUserIds);
 
+    List<Long> selectFollowerUserIds(@Param("followingUserId") Long followingUserId);
+
     Long selectNextId();
 
     int insert(UserFollowDO userFollowDO);

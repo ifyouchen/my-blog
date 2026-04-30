@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -116,6 +117,25 @@ public class CommentController {
             restDtoMapper.toCommand(request, articleId, userId),
             AuthContext.getRole()
         );
+        return Result.success(restDtoMapper.toResponse(comment));
+    }
+
+    /**
+     * 编辑评论内容（发布后 10 分钟内可编辑）。
+     *
+     * @param id 评论 ID
+     * @param request 编辑请求
+     * @return 更新后的评论
+     */
+    @PutMapping("/comments/{id}")
+    public Result<CommentResponse> editComment(@PathVariable Long id,
+                                               @RequestBody Map<String, Object> request) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        String content = (String) request.get("content");
+        CommentDTO comment = commentAppService.editComment(id, content, userId);
         return Result.success(restDtoMapper.toResponse(comment));
     }
 

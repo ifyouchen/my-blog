@@ -24,6 +24,8 @@ public class Comment {
     private String content;
     private CommentStatus status;
     private Integer likeCount;
+    private LocalDateTime editedAt;
+    private Integer editCount;
     private Boolean pinned;
     private LocalDateTime pinnedAt;
     private LocalDateTime createdAt;
@@ -66,6 +68,8 @@ public class Comment {
         comment.content = content.trim();
         comment.status = CommentStatus.PUBLISHED;
         comment.likeCount = 0;
+        comment.editedAt = null;
+        comment.editCount = 0;
         comment.pinned = Boolean.FALSE;
         comment.pinnedAt = null;
         comment.createdAt = LocalDateTime.now();
@@ -92,7 +96,8 @@ public class Comment {
      */
     public static Comment restore(Long id, ArticleId articleId, UserId userId, Long rootCommentId,
                                  Long parentId, String content, CommentStatus status,
-                                 Integer likeCount, Boolean pinned, LocalDateTime pinnedAt,
+                                 Integer likeCount, LocalDateTime editedAt, Integer editCount,
+                                 Boolean pinned, LocalDateTime pinnedAt,
                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
         Comment comment = new Comment();
         comment.id = new CommentId(id);
@@ -103,11 +108,34 @@ public class Comment {
         comment.content = content;
         comment.status = status;
         comment.likeCount = likeCount == null ? 0 : likeCount;
+        comment.editedAt = editedAt;
+        comment.editCount = editCount == null ? 0 : editCount;
         comment.pinned = pinned != null && pinned;
         comment.pinnedAt = pinnedAt;
         comment.createdAt = createdAt;
         comment.updatedAt = updatedAt;
         return comment;
+    }
+
+    /**
+     * 编辑评论内容（仅允许 10 分钟内编辑）。
+     *
+     * @param newContent 新内容
+     */
+    public void edit(String newContent) {
+        if (CommentStatus.DELETED.equals(this.status)) {
+            throw new DomainException(ErrorCode.CONFLICT, "评论已删除，无法编辑");
+        }
+        if (newContent == null || newContent.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "评论内容不能为空");
+        }
+        if (newContent.length() > 1000) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "评论内容不能超过 1000 字符");
+        }
+        this.content = newContent.trim();
+        this.editedAt = LocalDateTime.now();
+        this.editCount = this.editCount == null ? 1 : this.editCount + 1;
+        this.updatedAt = this.editedAt;
     }
 
     /**
@@ -240,6 +268,24 @@ public class Comment {
      */
     public Integer getLikeCount() {
         return likeCount == null ? 0 : likeCount;
+    }
+
+    /**
+     * 获取最后编辑时间。
+     *
+     * @return 最后编辑时间
+     */
+    public LocalDateTime getEditedAt() {
+        return editedAt;
+    }
+
+    /**
+     * 获取编辑次数。
+     *
+     * @return 编辑次数
+     */
+    public Integer getEditCount() {
+        return editCount == null ? 0 : editCount;
     }
 
     /**

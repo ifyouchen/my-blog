@@ -96,6 +96,19 @@ public class TagAppService {
         return toDTO(tag);
     }
 
+    /**
+     * 查询热门标签（按使用次数降序）。
+     *
+     * @param limit 返回数量，最多 100
+     * @return 热门标签列表
+     */
+    public List<TagDTO> getHotTags(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        return tagRepository.findHot(safeLimit).stream()
+            .map(this::toDTO)
+            .collect(Collectors.toList());
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void deleteTag(Long id) {
         Tag tag = tagRepository.findById(new TagId(id))

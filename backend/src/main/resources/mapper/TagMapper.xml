@@ -99,6 +99,15 @@
         AND deleted_at IS NULL
     </update>
 
+    <select id="selectHot" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_tag
+        WHERE deleted_at IS NULL
+        AND enabled = 1
+        ORDER BY use_count DESC, id ASC
+        LIMIT #{limit}
+    </select>
+
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.TagDO">
         INSERT INTO blog_tag

@@ -4,7 +4,7 @@ import CommentComposer from '@/components/CommentComposer.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
-import {createCommentApi, deleteCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
+import {createCommentApi, deleteCommentApi, editCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
@@ -44,6 +44,10 @@ const replyFeedback = ref('');
 const replySubmitting = ref(false);
 const activeReplyTarget = ref(null);
 const reportTarget = ref(null);
+const editingComment = ref(false);
+const editDraft = ref('');
+const editFeedback = ref('');
+const editSubmitting = ref(false);
 const localComment = ref(createCommentSnapshot(props.comment));
 
 watch(() => props.comment, (value) => {
@@ -270,6 +274,48 @@ function handleReportSuccess() {
     closeReportDialog();
 }
 
+function startEditComment() {
+    const canContinue = loginModal.requireLogin(() => startEditComment(), {
+        title: '登录后编辑评论',
+        message: '登录后才能编辑自己的评论。',
+        actionText: '登录'
+    });
+    if (!canContinue) return;
+    editDraft.value = localComment.value.content;
+    editFeedback.value = '';
+    editingComment.value = true;
+}
+
+function cancelEditComment() {
+    editingComment.value = false;
+    editDraft.value = '';
+    editFeedback.value = '';
+}
+
+async function submitEditComment() {
+    const content = editDraft.value.trim();
+    if (!content) {
+        editFeedback.value = '评论内容不能为空';
+        return;
+    }
+    editSubmitting.value = true;
+    try {
+        const updated = await editCommentApi(localComment.value.id, content);
+        localComment.value.content = updated.content;
+        localComment.value.editedAt = updated.editedAt;
+        localComment.value.editCount = updated.editCount;
+        localComment.value.canEdit = updated.canEdit;
+        editingComment.value = false;
+        editDraft.value = '';
+        editFeedback.value = '';
+        toast.success('评论已更新');
+    } catch (error) {
+        editFeedback.value = error.message || '编辑失败';
+    } finally {
+        editSubmitting.value = false;
+    }
+}
+
 function goReplyPage(step) {
     const nextPage = replyPage.value + step;
     if (nextPage < 1) {
@@ -303,15 +349,40 @@ function goReplyPage(step) {
                 </div>
             </header>
 
-            <div class="comment-root-content">
-                {{ localComment.content }}
-            </div>
+            <template v-if="editingComment">
+                <div class="comment-edit-area">
+                    <textarea
+                        v-model="editDraft"
+                        class="comment-edit-textarea"
+                        :disabled="editSubmitting"
+                        rows="3"
+                        maxlength="2000"
+                        placeholder="编辑你的评论..."
+                    ></textarea>
+                    <div v-if="editFeedback" class="comment-edit-feedback">{{ editFeedback }}</div>
+                    <div class="comment-edit-actions">
+                        <button type="button" class="btn-cancel" :disabled="editSubmitting" @click="cancelEditComment">取消</button>
+                        <button type="button" class="btn-submit" :disabled="editSubmitting || !editDraft.trim()" @click="submitEditComment">
+                            {{ editSubmitting ? '保存中...' : '保存修改' }}
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template v-else>
+                <div class="comment-root-content">
+                    {{ localComment.content }}
+                    <span v-if="localComment.editCount > 0" class="comment-edited-mark">（已编辑）</span>
+                </div>
+            </template>
 
             <div class="comment-root-actions">
                 <button type="button" :class="{ active: localComment.liked }" data-testid="comment-like-button" @click="toggleLike(localComment)">
                     {{ localComment.liked ? '已赞' : '点赞' }} {{ localComment.likeCount }}
                 </button>
                 <button type="button" data-testid="comment-reply-button" @click="startReply(localComment)">回复</button>
+                <button v-if="localComment.canEdit" type="button" data-testid="comment-edit-button" @click="startEditComment">
+                    编辑
+                </button>
                 <button v-if="localComment.canPin" type="button" data-testid="comment-pin-button" @click="togglePin">
                     {{ localComment.pinned ? '取消置顶' : '置顶' }}
                 </button>
@@ -622,6 +693,81 @@ color: var(--brand-strong);
 
 .comment-inline-composer {
     margin-top: 14px;
+}
+
+.comment-edit-area {
+    display: grid;
+    gap: 8px;
+    margin: 8px 0 2px;
+}
+
+.comment-edit-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-md);
+    resize: vertical;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.comment-edit-textarea:focus {
+    border-color: var(--brand-strong);
+}
+
+.comment-edit-feedback {
+    font-size: 12px;
+    color: #b42318;
+}
+
+.comment-edit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.comment-edit-actions .btn-cancel,
+.comment-edit-actions .btn-submit {
+    min-height: 32px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.comment-edit-actions .btn-cancel {
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.comment-edit-actions .btn-cancel:hover {
+    border-color: var(--muted);
+}
+
+.comment-edit-actions .btn-submit {
+    color: #fff;
+    background: var(--brand-strong);
+    border: 1px solid var(--brand-strong);
+}
+
+.comment-edit-actions .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.comment-edited-mark {
+    margin-left: 4px;
+    color: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 640px) {

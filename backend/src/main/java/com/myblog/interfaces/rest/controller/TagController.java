@@ -1,12 +1,18 @@
 package com.myblog.interfaces.rest.controller;
 
+import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.TagDTO;
 import com.myblog.application.command.RecordAdminLogCommand;
+import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.service.AdminLogAppService;
+import com.myblog.application.service.ArticleAppService;
 import com.myblog.application.service.TagAppService;
 import com.myblog.infrastructure.security.AuthContext;
+import com.myblog.interfaces.rest.dto.response.ArticleResponse;
+import com.myblog.interfaces.rest.mapper.RestDtoMapper;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.List;
@@ -31,10 +38,15 @@ public class TagController {
 
     private final TagAppService tagAppService;
     private final AdminLogAppService adminLogAppService;
+    private final ArticleAppService articleAppService;
+    private final RestDtoMapper restDtoMapper;
 
-    public TagController(TagAppService tagAppService, AdminLogAppService adminLogAppService) {
+    public TagController(TagAppService tagAppService, AdminLogAppService adminLogAppService,
+                         ArticleAppService articleAppService, RestDtoMapper restDtoMapper) {
         this.tagAppService = tagAppService;
         this.adminLogAppService = adminLogAppService;
+        this.articleAppService = articleAppService;
+        this.restDtoMapper = restDtoMapper;
     }
 
     /**
@@ -57,6 +69,44 @@ public class TagController {
     @GetMapping("/{id}")
     public Result<TagDTO> getTag(@PathVariable Long id) {
         return Result.success(tagAppService.getTag(id));
+    }
+
+    /**
+     * 查询热门标签（按使用次数降序）。
+     *
+     * @param limit 返回数量，默认 30，最多 100
+     * @return 热门标签列表
+     */
+    @GetMapping("/hot")
+    public Result<List<TagDTO>> getHotTags(@RequestParam(defaultValue = "30") int limit) {
+        return Result.success(tagAppService.getHotTags(limit));
+    }
+
+    /**
+     * 查询标签下的已发布文章。
+     *
+     * @param id 标签 ID
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param sort 排序方式（latest/hot/featured）
+     * @return 文章分页结果
+     */
+    @GetMapping("/{id}/articles")
+    public Result<PageResult<ArticleResponse>> getTagArticles(@PathVariable Long id,
+                                                              @RequestParam(defaultValue = "1") int page,
+                                                              @RequestParam(defaultValue = "10") int pageSize,
+                                                              @RequestParam(defaultValue = "latest") String sort) {
+        TagDTO tag = tagAppService.getTag(id);
+        ArticlePageQuery query = new ArticlePageQuery(page, pageSize, null, null, tag.getName(), sort);
+        query.setCurrentUserId(AuthContext.getCurrentUserId());
+        PageResult<ArticleDTO> pageResult = articleAppService.pagePublishedArticles(query);
+        List<ArticleResponse> items = new ArrayList<ArticleResponse>();
+        for (ArticleDTO item : pageResult.getItems()) {
+            items.add(restDtoMapper.toResponse(item));
+        }
+        return Result.success(new PageResult<ArticleResponse>(
+            items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()
+        ));
     }
 
     /**

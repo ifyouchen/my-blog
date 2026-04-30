@@ -18,10 +18,13 @@ public class CommentDTO {
     private String content;
     private String status;
     private String createdAt;
+    private String editedAt;
+    private Integer editCount;
     private Integer replyCount;
     private Integer likeCount;
     private Boolean liked;
     private Boolean pinned;
+    private Boolean canEdit;
     private Boolean canDelete;
     private Boolean canPin;
     private Boolean author;
@@ -93,6 +96,22 @@ public class CommentDTO {
         this.createdAt = createdAt;
     }
 
+    public String getEditedAt() {
+        return editedAt;
+    }
+
+    public void setEditedAt(String editedAt) {
+        this.editedAt = editedAt;
+    }
+
+    public Integer getEditCount() {
+        return editCount;
+    }
+
+    public void setEditCount(Integer editCount) {
+        this.editCount = editCount;
+    }
+
     public Integer getReplyCount() {
         return replyCount;
     }
@@ -123,6 +142,14 @@ public class CommentDTO {
 
     public void setPinned(Boolean pinned) {
         this.pinned = pinned;
+    }
+
+    public Boolean getCanEdit() {
+        return canEdit;
+    }
+
+    public void setCanEdit(Boolean canEdit) {
+        this.canEdit = canEdit;
     }
 
     public Boolean getCanDelete() {

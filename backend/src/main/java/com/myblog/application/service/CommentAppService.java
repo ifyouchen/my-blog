@@ -246,6 +246,36 @@ public class CommentAppService {
     }
 
     /**
+     * 编辑评论内容（仅允许发布后 10 分钟内，且只有评论作者可操作）。
+     *
+     * @param commentId 评论 ID
+     * @param newContent 新内容
+     * @param userId 操作用户 ID
+     * @return 更新后的评论数据
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public CommentDTO editComment(Long commentId, String newContent, Long userId) {
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        Comment comment = commentRepository.findById(new CommentId(commentId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
+        if (!comment.getUserId().getValue().equals(userId)) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "只能编辑自己的评论");
+        }
+        // 仅允许发布后 10 分钟内编辑
+        java.time.LocalDateTime deadline = comment.getCreatedAt().plusMinutes(10);
+        if (java.time.LocalDateTime.now().isAfter(deadline)) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "评论发布超过 10 分钟，不可编辑");
+        }
+        comment.edit(newContent);
+        commentRepository.save(comment);
+        User user = userRepository.findById(comment.getUserId())
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        return CommentAssembler.toDTO(comment, user);
+    }
+
+    /**
      * 删除评论。
      *
      * @param commentId 评论 ID
@@ -516,6 +546,7 @@ public class CommentAppService {
         dto.setLiked(likedCommentIds.contains(comment.getId().getValue()));
         dto.setCanDelete(canDelete(comment, article, currentUserId, currentUserRole));
         dto.setCanPin(canPin(comment, article, currentUserId, currentUserRole));
+        dto.setCanEdit(canEdit(comment, currentUserId));
         dto.setAuthor(article.getAuthorId().getValue().equals(comment.getUserId().getValue()));
         dto.setReplyPreview(buildReplyPreview(previewReplies, article, userMap, parentCommentMap, likedCommentIds, currentUserId, currentUserRole));
 
@@ -548,6 +579,7 @@ public class CommentAppService {
             replyDTO.setLiked(likedCommentIds.contains(reply.getId().getValue()));
             replyDTO.setCanDelete(canDelete(reply, article, currentUserId, currentUserRole));
             replyDTO.setCanPin(Boolean.FALSE);
+            replyDTO.setCanEdit(canEdit(reply, currentUserId));
             replyDTO.setAuthor(article.getAuthorId().getValue().equals(reply.getUserId().getValue()));
             replyDTO.setReplyPreview(new ArrayList<CommentDTO>());
             if (reply.getParentId() != null && reply.getParentId() > 0) {
@@ -582,6 +614,19 @@ public class CommentAppService {
             return false;
         }
         return article.getAuthorId().getValue().equals(currentUserId);
+    }
+
+    private boolean canEdit(Comment comment, Long currentUserId) {
+        if (currentUserId == null) {
+            return false;
+        }
+        if (!comment.getUserId().getValue().equals(currentUserId)) {
+            return false;
+        }
+        if (comment.getCreatedAt() == null) {
+            return false;
+        }
+        return java.time.LocalDateTime.now().isBefore(comment.getCreatedAt().plusMinutes(10));
     }
 
     private UserDTO toUserDTO(User user) {

@@ -239,6 +239,9 @@ public class RestDtoMapper {
         response.setCanPin(dto.getCanPin());
         response.setAuthor(dto.getAuthor());
         response.setCreatedAt(dto.getCreatedAt());
+        response.setEditedAt(dto.getEditedAt());
+        response.setEditCount(dto.getEditCount());
+        response.setCanEdit(dto.getCanEdit());
         if (dto.getUser() != null) {
             response.setUser(toResponse(dto.getUser()));
         }

@@ -108,6 +108,71 @@ public class FollowAppService {
         return items;
     }
 
+    /**
+     * 查询某用户的粉丝列表。
+     *
+     * @param targetUserId 目标用户 ID
+     * @return 粉丝用户 DTO 列表
+     */
+    public List<UserDTO> listFollowers(Long targetUserId) {
+        List<Long> followerUserIds = userFollowRepository.findFollowerUserIds(new UserId(targetUserId));
+        if (followerUserIds.isEmpty()) {
+            return new ArrayList<UserDTO>();
+        }
+        Map<Long, User> userMap = userRepository.findByIds(followerUserIds).stream()
+            .collect(Collectors.toMap(user -> user.getId().getValue(), user -> user));
+        List<UserDTO> items = new ArrayList<UserDTO>(followerUserIds.size());
+        for (Long userId : followerUserIds) {
+            User user = userMap.get(userId);
+            if (user != null) {
+                items.add(UserAssembler.toDTO(user));
+            }
+        }
+        return items;
+    }
+
+    /**
+     * 查询某用户的关注列表（公开可见）。
+     *
+     * @param targetUserId 目标用户 ID
+     * @return 关注用户 DTO 列表
+     */
+    public List<UserDTO> listUserFollowing(Long targetUserId) {
+        List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(targetUserId));
+        if (followingUserIds.isEmpty()) {
+            return new ArrayList<UserDTO>();
+        }
+        Map<Long, User> userMap = userRepository.findByIds(followingUserIds).stream()
+            .collect(Collectors.toMap(user -> user.getId().getValue(), user -> user));
+        List<UserDTO> items = new ArrayList<UserDTO>(followingUserIds.size());
+        for (Long userId : followingUserIds) {
+            User user = userMap.get(userId);
+            if (user != null) {
+                items.add(UserAssembler.toDTO(user));
+            }
+        }
+        return items;
+    }
+
+    /**
+     * 获取当前用户对目标用户的关注状态（含互关判断）。
+     *
+     * @param targetUserId 目标用户 ID
+     * @param currentUserId 当前用户 ID
+     * @return 关注状态 map: followed=是否关注, followedBack=对方是否回关
+     */
+    public Map<String, Boolean> getFollowStatus(Long targetUserId, Long currentUserId) {
+        boolean followed = currentUserId != null
+            && userFollowRepository.exists(new UserId(currentUserId), new UserId(targetUserId));
+        boolean followedBack = currentUserId != null
+            && userFollowRepository.exists(new UserId(targetUserId), new UserId(currentUserId));
+        Map<String, Boolean> result = new java.util.HashMap<String, Boolean>();
+        result.put("followed", followed);
+        result.put("followedBack", followedBack);
+        result.put("mutual", followed && followedBack);
+        return result;
+    }
+
     public PageResult<ArticleDTO> pageFollowingFeed(Long currentUserId, int page, int pageSize, String sort) {
         List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(currentUserId));
         if (followingUserIds.isEmpty()) {

@@ -104,6 +104,7 @@ public class UserController {
     }
 
     /**
+     * 获取某用户的粉丝列表。
      * 获取当前用户文章。
      *
      * @param page 页码

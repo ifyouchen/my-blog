@@ -86,6 +86,14 @@
         AND deleted_at IS NULL
     </select>
 
+    <select id="selectFollowerUserIds" resultType="long">
+        SELECT follower_user_id
+        FROM blog_user_follow
+        WHERE following_user_id = #{followingUserId}
+        AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC
+    </select>
+
     <select id="selectNextId" resultType="long">
         SELECT COALESCE(MAX(id), 1000) + 1
         FROM blog_user_follow

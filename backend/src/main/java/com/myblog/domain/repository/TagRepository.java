@@ -21,4 +21,12 @@ public interface TagRepository {
     Tag save(Tag tag);
 
     Long nextId();
+
+    /**
+     * 查询热门标签（按使用次数降序）。
+     *
+     * @param limit 返回数量
+     * @return 热门标签列表
+     */
+    List<Tag> findHot(int limit);
 }

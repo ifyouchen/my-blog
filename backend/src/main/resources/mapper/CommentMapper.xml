@@ -12,6 +12,8 @@
         <result column="content" property="content"/>
         <result column="status" property="status"/>
         <result column="like_count" property="likeCount"/>
+        <result column="edited_at" property="editedAt"/>
+        <result column="edit_count" property="editCount"/>
         <result column="pinned" property="pinned"/>
         <result column="pinned_at" property="pinnedAt"/>
         <result column="created_at" property="createdAt"/>
@@ -21,13 +23,13 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, article_id, user_id, root_comment_id, parent_id, content, status, like_count, pinned, pinned_at,
-        created_at, updated_at, deleted_at, version
+        id, article_id, user_id, root_comment_id, parent_id, content, status, like_count, edited_at, edit_count,
+        pinned, pinned_at, created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="Comment_Alias_Column_List">
-        c.id, c.article_id, c.user_id, c.root_comment_id, c.parent_id, c.content, c.status, c.like_count, c.pinned,
-        c.pinned_at, c.created_at, c.updated_at, c.deleted_at, c.version
+        c.id, c.article_id, c.user_id, c.root_comment_id, c.parent_id, c.content, c.status, c.like_count,
+        c.edited_at, c.edit_count, c.pinned, c.pinned_at, c.created_at, c.updated_at, c.deleted_at, c.version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -266,6 +268,8 @@
             content = #{content},
             status = #{status},
             like_count = #{likeCount},
+            edited_at = #{editedAt},
+            edit_count = #{editCount},
             pinned = #{pinned},
             pinned_at = #{pinnedAt},
             updated_at = #{updatedAt},

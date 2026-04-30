@@ -26,6 +26,7 @@ public interface TagMapper {
     int insert(TagDO tagDO);
     int insertOrUpdate(TagDO tagDO);
 
-
     int update(TagDO tagDO);
+
+    List<TagDO> selectHot(@Param("limit") int limit);
 }

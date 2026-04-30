@@ -1,5 +1,5 @@
-import { request } from './http';
-import { normalizeComment, normalizeCommentPage } from './transformers';
+import {request} from './http';
+import {normalizeComment, normalizeCommentPage} from './transformers';
 
 export const pageCommentsApi = async (articleId, { page = 1, pageSize = 20, sort = 'latest' } = {}) => {
     const data = await request(`/articles/${articleId}/comments?page=${page}&pageSize=${pageSize}&sort=${sort}`);
@@ -15,6 +15,13 @@ export const createCommentApi = async (articleId, payload) => {
     return normalizeComment(await request(`/articles/${articleId}/comments`, {
         method: 'POST',
         body: payload
+    }));
+};
+
+export const editCommentApi = async (commentId, content) => {
+    return normalizeComment(await request(`/comments/${commentId}`, {
+        method: 'PUT',
+        body: { content }
     }));
 };
 

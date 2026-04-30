@@ -29,6 +29,9 @@ const AdminColumnsView = () => import('@/views/admin/AdminColumnsView.vue');
 const AdminTopicsView = () => import('@/views/admin/AdminTopicsView.vue');
 const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 const AdminAdsView = () => import('@/views/admin/AdminAdsView.vue');
+const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
+const TagDetailView = () => import('@/views/TagDetailView.vue');
+const ExploreView = () => import('@/views/ExploreView.vue');
 
 const routes = [
     {
@@ -125,6 +128,30 @@ const routes = [
         component: TopicDetailView,
         meta: {
             title: '专题详情'
+        }
+    },
+    {
+        path: '/explore',
+        name: 'explore',
+        component: ExploreView,
+        meta: {
+            title: '探索'
+        }
+    },
+    {
+        path: '/categories/:id',
+        name: 'categoryDetail',
+        component: CategoryDetailView,
+        meta: {
+            title: '分类'
+        }
+    },
+    {
+        path: '/tags/:id',
+        name: 'tagDetail',
+        component: TagDetailView,
+        meta: {
+            title: '标签'
         }
     },
     {

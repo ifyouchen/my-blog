@@ -33,4 +33,6 @@ public interface UserFollowRepository {
     List<Long> findFollowingUserIds(UserId followerUserId);
 
     List<Long> findFollowingUserIdsIn(UserId followerUserId, List<Long> candidateUserIds);
+
+    List<Long> findFollowerUserIds(UserId followingUserId);
 }

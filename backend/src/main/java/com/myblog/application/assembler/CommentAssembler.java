@@ -37,9 +37,13 @@ public final class CommentAssembler {
         dto.setContent(comment.getContent());
         dto.setStatus(comment.getStatus().name());
         dto.setLikeCount(comment.getLikeCount());
+        dto.setEditCount(comment.getEditCount());
         dto.setPinned(comment.isPinned());
         if (comment.getCreatedAt() != null) {
             dto.setCreatedAt(FORMATTER.format(comment.getCreatedAt()));
+        }
+        if (comment.getEditedAt() != null) {
+            dto.setEditedAt(FORMATTER.format(comment.getEditedAt()));
         }
         if (user != null) {
             dto.setUser(UserAssembler.toDTO(user));

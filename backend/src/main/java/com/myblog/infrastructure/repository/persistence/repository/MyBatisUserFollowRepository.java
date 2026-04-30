@@ -100,6 +100,11 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
         return userFollowMapper.selectFollowingUserIdsIn(followerUserId.getValue(), candidateUserIds);
     }
 
+    @Override
+    public List<Long> findFollowerUserIds(UserId followingUserId) {
+        return userFollowMapper.selectFollowerUserIds(followingUserId.getValue());
+    }
+
     private UserFollow toDomain(UserFollowDO userFollowDO) {
         return UserFollow.restore(
             userFollowDO.getId(),

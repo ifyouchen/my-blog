@@ -76,4 +76,14 @@ public class MyBatisTagRepository implements TagRepository {
     public Long nextId() {
         return tagMapper.selectNextId();
     }
+
+    @Override
+    public List<Tag> findHot(int limit) {
+        List<TagDO> tagDOList = tagMapper.selectHot(limit);
+        List<Tag> tags = new ArrayList<>(tagDOList.size());
+        for (TagDO tagDO : tagDOList) {
+            tags.add(TagPersistenceConverter.toDomain(tagDO));
+        }
+        return tags;
+    }
 }

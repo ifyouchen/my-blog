@@ -303,6 +303,8 @@ CREATE TABLE `blog_comment` (
     `content`         varchar(1000)   NOT NULL COMMENT '评论内容',
     `status`          varchar(20)     NOT NULL DEFAULT 'PUBLISHED' COMMENT '状态：PUBLISHED-已发布 DELETED-已删除',
     `like_count`      int             NOT NULL DEFAULT 0 COMMENT '点赞数',
+    `edited_at`       datetime        NULL DEFAULT NULL COMMENT '最后编辑时间',
+    `edit_count`      tinyint         NOT NULL DEFAULT 0 COMMENT '编辑次数',
     `pinned`          tinyint(1)      NOT NULL DEFAULT 0 COMMENT '是否置顶',
     `pinned_at`       datetime        NULL DEFAULT NULL COMMENT '置顶时间',
     `created_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
