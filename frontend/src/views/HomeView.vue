@@ -1,8 +1,8 @@
-<script setup>
-import {computed, nextTick, onMounted, ref, watch} from 'vue';
+<script setup>import {computed, nextTick, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
 import {getHomeBootstrapApi} from '@/api/home';
+import {getActiveAnnouncementsApi} from '@/api/notifications';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
@@ -29,6 +29,25 @@ const sidebarTopics = ref([]);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
+
+// 公告横幅
+const activeBanners = ref([]);
+const dismissedBannerIds = ref(new Set(JSON.parse(localStorage.getItem('dismissed-banners') || '[]')));
+const visibleBanners = computed(() =>
+    activeBanners.value.filter(b => !dismissedBannerIds.value.has(b.id))
+);
+const dismissBanner = (id) => {
+    dismissedBannerIds.value.add(id);
+    const ids = [...dismissedBannerIds.value];
+    localStorage.setItem('dismissed-banners', JSON.stringify(ids));
+};
+const loadBanners = async () => {
+    try {
+        const list = await getActiveAnnouncementsApi();
+        activeBanners.value = Array.isArray(list) ? list : [];
+    } catch {}
+};
+
 const route = useRoute();
 const router = useRouter();
 let firstLoad = true;
@@ -183,12 +202,31 @@ watch(
 
 onMounted(() => {
     loadHomeBootstrap();
+    loadBanners();
 });
 </script>
 
 <template>
     <SiteHeader />
     <main class="page-shell" data-testid="home-page">
+        <!-- 公告横幅 -->
+        <div v-if="visibleBanners.length" class="announcement-banners">
+            <div
+                v-for="banner in visibleBanners"
+                :key="banner.id"
+                class="announcement-banner"
+            >
+                <span class="announcement-banner-icon">📢</span>
+                <strong class="announcement-banner-title">{{ banner.title }}</strong>
+                <span class="announcement-banner-content">{{ banner.content }}</span>
+                <button
+                    class="announcement-banner-close"
+                    type="button"
+                    aria-label="关闭公告"
+                    @click="dismissBanner(banner.id)"
+                >×</button>
+            </div>
+        </div>
         <HomeIntro
             :total-articles="homeStats.totalArticles"
             :total-authors="homeStats.totalAuthors"
@@ -220,3 +258,62 @@ onMounted(() => {
         </div>
     </main>
 </template>
+
+<style scoped>
+.announcement-banners {
+    display: grid;
+    gap: 8px;
+    max-width: 1320px;
+    margin: 0 auto 12px;
+}
+
+.announcement-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.announcement-banner-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
+.announcement-banner-title {
+    flex-shrink: 0;
+    color: var(--brand-strong);
+    font-weight: 700;
+}
+
+.announcement-banner-content {
+    flex: 1;
+    color: var(--text);
+    min-width: 0;
+    word-break: break-word;
+}
+
+.announcement-banner-close {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: var(--muted);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    font-size: 18px;
+    line-height: 1;
+    transition: color 0.12s, background 0.12s;
+}
+
+.announcement-banner-close:hover {
+    color: var(--text);
+    background: var(--surface-muted);
+}
+</style>

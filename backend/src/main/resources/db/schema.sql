@@ -615,6 +615,28 @@ CREATE TABLE `blog_ad_event` (
   COMMENT = '广告事件表（曝光/点击记录）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- blog_announcement
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_announcement`;
+CREATE TABLE `blog_announcement` (
+    `id`           bigint unsigned  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `title`        varchar(200)     NOT NULL COMMENT '公告标题',
+    `content`      text             NOT NULL COMMENT '公告内容（支持 Markdown）',
+    `target`       varchar(20)      NOT NULL DEFAULT 'ALL' COMMENT '目标用户：ALL / AUTHOR / ADMIN',
+    `published`    tinyint(1)       NOT NULL DEFAULT 0 COMMENT '是否发布：1-已发布 0-草稿',
+    `published_at` datetime         NULL DEFAULT NULL COMMENT '发布时间',
+    `expires_at`   datetime         NULL DEFAULT NULL COMMENT '过期时间，NULL 表示永不过期',
+    `created_at`   datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`   datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`   datetime         NULL DEFAULT NULL COMMENT '删除时间',
+    `version`      int              NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_announcement_published` (`published`, `published_at` DESC, `deleted_at`) USING BTREE
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '平台公告表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES

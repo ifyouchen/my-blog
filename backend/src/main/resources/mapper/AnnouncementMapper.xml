@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.AnnouncementMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AnnouncementDO">
+        <id     column="id"           property="id"/>
+        <result column="title"        property="title"/>
+        <result column="content"      property="content"/>
+        <result column="target"       property="target"/>
+        <result column="published"    property="published"/>
+        <result column="published_at" property="publishedAt"/>
+        <result column="expires_at"   property="expiresAt"/>
+        <result column="created_at"   property="createdAt"/>
+        <result column="updated_at"   property="updatedAt"/>
+        <result column="deleted_at"   property="deletedAt"/>
+        <result column="version"      property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, title, content, target, published, published_at, expires_at, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectActive" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_announcement
+        WHERE published = 1
+          AND deleted_at IS NULL
+          AND (expires_at IS NULL OR expires_at > NOW())
+        ORDER BY published_at DESC
+    </select>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_announcement
+        WHERE deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM blog_announcement WHERE deleted_at IS NULL
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_announcement
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO blog_announcement (title, content, target, published, published_at, expires_at, created_at, updated_at, deleted_at, version)
+        VALUES (#{title}, #{content}, #{target}, #{published}, #{publishedAt}, #{expiresAt}, NOW(), NOW(), NULL, 0)
+    </insert>
+
+    <update id="updateByPrimaryKeySelective">
+        UPDATE blog_announcement
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="target != null">target = #{target},</if>
+            <if test="published != null">published = #{published},</if>
+            <if test="publishedAt != null">published_at = #{publishedAt},</if>
+            <if test="expiresAt != null">expires_at = #{expiresAt},</if>
+            updated_at = NOW(),
+            version = version + 1
+        </set>
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE blog_announcement SET deleted_at = NOW(), version = version + 1
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+</mapper>
+

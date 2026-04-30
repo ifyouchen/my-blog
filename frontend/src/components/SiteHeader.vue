@@ -2,7 +2,13 @@
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {navItems} from '@/data/home';
 import {useSession} from '@/stores/session';
-import {getNotificationUnreadCountApi, getRecentNotificationsApi, markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
+import {
+  getNotificationUnreadCountApi,
+  getRecentNotificationsApi,
+  markAllNotificationsReadApi,
+  markNotificationReadApi,
+  subscribeNotificationStream
+} from '@/api/notifications';
 import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
@@ -33,6 +39,7 @@ const notificationsLoading = ref(false);
 const notificationError = ref('');
 const markingAllRead = ref(false);
 let notificationPollInterval = null;
+let unsubscribeNotificationStream = null;
 
 const submitSearch = () => {
     router.push({
@@ -166,20 +173,41 @@ const displayUnreadCount = computed(() => {
     return unreadCount.value;
 });
 
+const startNotificationSync = () => {
+    fetchUnreadCount();
+    // 先尝试 SSE 实时推送
+    if (unsubscribeNotificationStream) {
+        unsubscribeNotificationStream();
+        unsubscribeNotificationStream = null;
+    }
+    unsubscribeNotificationStream = subscribeNotificationStream((count) => {
+        unreadCount.value = count;
+    });
+    // 兜底轮询（SSE 不可用时）
+    if (notificationPollInterval) {
+        clearInterval(notificationPollInterval);
+    }
+    notificationPollInterval = setInterval(fetchUnreadCount, 60000);
+};
+
+const stopNotificationSync = () => {
+    unreadCount.value = 0;
+    recentNotifications.value = [];
+    if (unsubscribeNotificationStream) {
+        unsubscribeNotificationStream();
+        unsubscribeNotificationStream = null;
+    }
+    if (notificationPollInterval) {
+        clearInterval(notificationPollInterval);
+        notificationPollInterval = null;
+    }
+};
+
 watch(isLoggedIn, (loggedIn) => {
     if (loggedIn) {
-        fetchUnreadCount();
-        if (notificationPollInterval) {
-            clearInterval(notificationPollInterval);
-        }
-        notificationPollInterval = setInterval(fetchUnreadCount, 30000);
+        startNotificationSync();
     } else {
-        unreadCount.value = 0;
-        recentNotifications.value = [];
-        if (notificationPollInterval) {
-            clearInterval(notificationPollInterval);
-            notificationPollInterval = null;
-        }
+        stopNotificationSync();
     }
 }, { immediate: true });
 
@@ -192,6 +220,9 @@ onUnmounted(() => {
     document.removeEventListener('click', handleDocumentClick);
     if (notificationPollInterval) {
         clearInterval(notificationPollInterval);
+    }
+    if (unsubscribeNotificationStream) {
+        unsubscribeNotificationStream();
     }
     window.removeEventListener('notifications:refresh', handleNotificationsRefresh);
 });

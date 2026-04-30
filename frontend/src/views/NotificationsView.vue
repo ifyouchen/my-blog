@@ -1,15 +1,15 @@
 <script setup>
-import {computed, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import {getNotificationsApi, markNotificationReadApi} from '@/api/notifications';
+import {getActiveAnnouncementsApi, getNotificationsApi, markNotificationReadApi} from '@/api/notifications';
 import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
 const router = useRouter();
 
-const validFilters = ['all', 'unread', 'read'];
+const validFilters = ['all', 'unread', 'read', 'system'];
 const pageSize = 10;
 
 const notifications = ref([]);
@@ -21,6 +21,30 @@ const refreshing = ref(false);
 const errorMessage = ref('');
 const actionError = ref('');
 let hasLoadedOnce = false;
+
+// 系统公告
+const announcements = ref([]);
+const announcementsLoading = ref(false);
+const announcementsError = ref('');
+
+const loadAnnouncements = async () => {
+    announcementsLoading.value = true;
+    announcementsError.value = '';
+    try {
+        const result = await getActiveAnnouncementsApi();
+        announcements.value = Array.isArray(result) ? result : [];
+    } catch (e) {
+        announcementsError.value = e.message || '加载公告失败';
+    } finally {
+        announcementsLoading.value = false;
+    }
+};
+
+onMounted(() => {
+    if (currentFilter.value === 'system') {
+        loadAnnouncements();
+    }
+});
 
 const syncRoute = (overrides = {}) => {
     const nextFilter = overrides.filter ?? currentFilter.value;
@@ -120,6 +144,9 @@ const changeFilter = (filter) => {
     currentFilter.value = filter;
     currentPage.value = 1;
     syncRoute({ filter, page: 1 });
+    if (filter === 'system') {
+        loadAnnouncements();
+    }
 };
 
 const changePage = (page) => {
@@ -226,11 +253,51 @@ watch(
                         >
                             已读
                         </button>
+                        <button
+                            :class="{ active: currentFilter === 'system' }"
+                            type="button"
+                            :disabled="refreshing"
+                            @click="changeFilter('system')"
+                        >
+                            系统通知
+                        </button>
                     </div>
                 </div>
             </header>
 
             <section class="notifications-panel">
+                <!-- 系统通知（公告）面板 -->
+                <template v-if="currentFilter === 'system'">
+                    <div v-if="announcementsLoading" class="panel-status panel-status-refreshing">正在加载系统公告...</div>
+                    <div v-else-if="announcementsError" class="panel-status panel-status-error">{{ announcementsError }}</div>
+                    <EmptyState
+                        v-else-if="announcements.length === 0"
+                        eyebrow="系统通知"
+                        title="暂无系统公告"
+                        description="平台公告与重要通知将在此展示。"
+                        compact
+                        class="notifications-state"
+                    />
+                    <div v-else class="notifications-list">
+                        <article
+                            v-for="ann in announcements"
+                            :key="ann.id"
+                            class="notification-item announcement-item"
+                        >
+                            <div class="announcement-icon" aria-hidden="true">📢</div>
+                            <div class="notification-content">
+                                <div class="notification-text">
+                                    <span class="notification-actor">官方公告</span>
+                                    <span class="notification-action">· {{ ann.title }}</span>
+                                </div>
+                                <div class="notification-detail">{{ ann.content }}</div>
+                                <div class="notification-time">{{ ann.publishedAt || ann.createdAt }}</div>
+                            </div>
+                        </article>
+                    </div>
+                </template>
+
+                <template v-else>
                 <div v-if="refreshing" class="panel-status panel-status-refreshing">刷新中...</div>
                 <div v-else-if="actionError" class="panel-status panel-status-error">{{ actionError }}</div>
 
@@ -356,6 +423,7 @@ watch(
                         </button>
                     </div>
                 </footer>
+                </template>
             </section>
         </section>
     </main>
@@ -692,6 +760,26 @@ watch(
     100% {
         background-position: 180px 0;
     }
+}
+
+.announcement-item {
+    cursor: default;
+    border-left: 3px solid var(--brand);
+    background: var(--brand-soft);
+}
+
+.announcement-item:hover {
+    background: var(--brand-soft);
+}
+
+.announcement-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
 }
 
 @media (max-width: 900px) {

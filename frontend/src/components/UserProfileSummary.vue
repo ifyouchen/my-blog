@@ -1,7 +1,7 @@
 <script setup>
 import {computed, useSlots} from 'vue';
 
-defineEmits(['avatar-load', 'avatar-error']);
+const emit = defineEmits(['avatar-load', 'avatar-error', 'stat-click']);
 
 const props = defineProps({
     mode: {
@@ -85,7 +85,12 @@ const hasExtra = computed(() => Boolean(slots.extra));
 
         <div v-if="stats.length || hasActions" class="profile-summary-footer">
             <div v-if="stats.length" class="profile-summary-stats">
-                <span v-for="stat in stats" :key="stat.key">
+                <span
+                    v-for="stat in stats"
+                    :key="stat.key"
+                    :class="{ 'stat-clickable': stat.clickable }"
+                    @click="stat.clickable && emit('stat-click', stat)"
+                >
                     <strong>{{ stat.value }}</strong>
                     {{ stat.label }}
                 </span>
@@ -214,6 +219,15 @@ const hasExtra = computed(() => Boolean(slots.extra));
 .profile-summary-stats span:last-child {
     border-right: 0;
     margin-right: 0;
+}
+
+.profile-summary-stats span.stat-clickable {
+    cursor: pointer;
+    transition: color 0.12s;
+}
+
+.profile-summary-stats span.stat-clickable:hover strong {
+    color: var(--brand);
 }
 
 .profile-summary-stats strong {

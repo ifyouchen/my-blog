@@ -1,6 +1,5 @@
-<script setup>
-import {computed, inject, ref, watch} from 'vue';
-import {RouterLink, useRoute} from 'vue-router';
+<script setup>import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
@@ -10,17 +9,24 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserProfileApi} from '@/api/auth';
+import {getUserFollowersApi, getUserFollowingListApi, getFollowStatusApi} from '@/api/following';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import {buildProfileSummaryStats} from '@/utils/profileSummary';
 
 const route = useRoute();
+const router = useRouter();
 const { state } = useSession();
 const toast = inject('toast', { error: () => {}, success: () => {} });
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const profile = ref(null);
 const articles = ref([]);
 const reportDialogVisible = ref(false);
+const followDialogVisible = ref(false);
+const followDialogType = ref('followers');
+const followDialogList = ref([]);
+const followDialogLoading = ref(false);
+const followStatus = ref({ followed: false, followedBack: false, mutual: false });
 const page = ref(1);
 
 useHead({
@@ -45,12 +51,18 @@ const {
 } = useStableListRequest();
 const userId = computed(() => String(route.params.id || ''));
 const isOwnProfile = computed(() => profile.value?.user?.id === state.user?.id);
-const summaryStats = computed(() => buildProfileSummaryStats(profile.value || {}, {
-    includeSocial: true
-}));
+const summaryStats = computed(() => {
+    const base = buildProfileSummaryStats(profile.value || {}, { includeSocial: false });
+    return [
+        ...base,
+        { key: 'followers', label: '粉丝', value: profile.value ? (profile.value.followerCount || 0) : '--', clickable: true },
+        { key: 'following', label: '关注', value: profile.value ? (profile.value.followingCount || 0) : '--', clickable: true }
+    ];
+});
 const summarySubtitle = computed(() => (
     profile.value?.user?.username ? `@${profile.value.user.username}` : ''
 ));
+const isMutualFollow = computed(() => !!(followStatus.value && followStatus.value.mutual));
 
 const loadProfile = async ({ reset = false } = {}) => {
     if (reset) {
@@ -58,6 +70,7 @@ const loadProfile = async ({ reset = false } = {}) => {
         profile.value = null;
         articles.value = [];
         total.value = 0;
+        followStatus.value = { followed: false, followedBack: false, mutual: false };
     }
 
     const { result } = await runStableRequest(
@@ -80,6 +93,10 @@ const loadProfile = async ({ reset = false } = {}) => {
     profile.value = profileData;
     articles.value = articlePage.items || [];
     total.value = articlePage.total || 0;
+
+    if (!isOwnProfile.value && state.user) {
+        getFollowStatusApi(userId.value).then(function(s) { followStatus.value = s; }).catch(function() {});
+    }
 };
 
 const changePage = async (nextPage) => {
@@ -97,6 +114,9 @@ const handleFollowChange = (followed, error) => {
     }
     profile.value.following = followed;
     profile.value.followerCount = Math.max(0, (profile.value.followerCount || 0) + (followed ? 1 : -1));
+    if (state.user) {
+        getFollowStatusApi(userId.value).then(function(s) { followStatus.value = s; }).catch(function() {});
+    }
 };
 
 const openReportUser = () => {
@@ -118,6 +138,26 @@ const handleReportSuccess = () => {
     toast.success('举报已提交，管理员会尽快处理');
 };
 
+const openFollowDialog = async (type) => {
+    followDialogType.value = type;
+    followDialogVisible.value = true;
+    followDialogLoading.value = true;
+    followDialogList.value = [];
+    try {
+        if (type === 'followers') {
+            followDialogList.value = await getUserFollowersApi(userId.value);
+        } else {
+            followDialogList.value = await getUserFollowingListApi(userId.value);
+        }
+    } catch (e) {
+        // ignore
+    } finally {
+        followDialogLoading.value = false;
+    }
+};
+const closeFollowDialog = () => { followDialogVisible.value = false; };
+const goToUserProfile = (uid) => { closeFollowDialog(); router.push('/users/' + uid); };
+
 watch(() => route.params.id, () => {
     page.value = 1;
     loadProfile({ reset: true });
@@ -136,6 +176,7 @@ watch(() => route.params.id, () => {
             :subtitle="summarySubtitle"
             :bio="profile.user.bio"
             :stats="summaryStats"
+            @stat-click="(stat) => { if (stat.key === 'followers' || stat.key === 'following') openFollowDialog(stat.key); }"
         >
             <template #actions>
                 <RouterLink
@@ -145,12 +186,14 @@ watch(() => route.params.id, () => {
                 >
                     编辑资料
                 </RouterLink>
-                <AuthorFollowButton
-                    v-else
-                    :user-id="profile.user.id"
-                    :followed="profile.following"
-                    @change="handleFollowChange"
-                />
+                <template v-else>
+                    <span v-if="isMutualFollow" class="mutual-follow-badge">互关</span>
+                    <AuthorFollowButton
+                        :user-id="profile.user.id"
+                        :followed="profile.following"
+                        @change="handleFollowChange"
+                    />
+                </template>
                 <button
                     v-if="!isOwnProfile"
                     type="button"
@@ -229,6 +272,37 @@ watch(() => route.params.id, () => {
             @page-change="changePage"
         />
     </main>
+    <Teleport to="body">
+        <div v-if="followDialogVisible" class="follow-dialog-overlay" @click.self="closeFollowDialog">
+            <div class="follow-dialog" role="dialog">
+                <div class="follow-dialog-header">
+                    <h2 class="follow-dialog-title">
+                        {{ followDialogType === 'followers' ? '粉丝' : '关注' }}
+                        <span class="follow-dialog-count">{{ followDialogList.length }}</span>
+                    </h2>
+                    <button type="button" class="follow-dialog-close" aria-label="关闭" @click="closeFollowDialog">
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5l-10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="follow-dialog-body">
+                    <div v-if="followDialogLoading" class="follow-dialog-loading">
+                        <span class="follow-loading-dot"></span><span class="follow-loading-dot"></span><span class="follow-loading-dot"></span>
+                    </div>
+                    <ul v-else-if="followDialogList.length" class="follow-user-list">
+                        <li v-for="user in followDialogList" :key="user.id" class="follow-user-item" @click="goToUserProfile(user.id)">
+                            <img class="follow-user-avatar" :src="user.avatar" :alt="user.nickname" />
+                            <div class="follow-user-info">
+                                <span class="follow-user-name">{{ user.nickname }}</span>
+                                <span class="follow-user-handle">@{{ user.username }}</span>
+                            </div>
+                        </li>
+                    </ul>
+                    <p v-else class="follow-dialog-empty">{{ followDialogType === 'followers' ? '暂无粉丝' : '还没有关注任何人' }}</p>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+
     <ReportDialog
         v-if="profile"
         :visible="reportDialogVisible"
@@ -376,5 +450,128 @@ watch(() => route.params.id, () => {
 
 .profile-social-link a:hover {
     text-decoration: underline;
+}
+
+.mutual-follow-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #059669;
+    background: rgba(5, 150, 105, 0.08);
+    border: 1px solid rgba(5, 150, 105, 0.24);
+    border-radius: var(--radius-sm);
+}
+
+.follow-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.44);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fade-in 0.12s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.follow-dialog {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    width: min(440px, 100%);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    animation: slide-up 0.14s ease;
+}
+@keyframes slide-up { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.follow-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+}
+.follow-dialog-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.follow-dialog-count {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--surface-soft);
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+.follow-dialog-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background 0.12s;
+}
+.follow-dialog-close:hover { color: var(--text); background: var(--surface-soft); }
+.follow-dialog-close svg { width: 18px; height: 18px; }
+.follow-dialog-body { overflow-y: auto; flex: 1; padding: 8px 0; }
+.follow-user-list { list-style: none; margin: 0; padding: 0; }
+.follow-user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.follow-user-item:hover { background: var(--surface-soft); }
+.follow-user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+}
+.follow-user-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.follow-user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-strong);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.follow-user-handle { font-size: 12px; color: var(--muted); }
+.follow-dialog-empty { text-align: center; color: var(--muted); font-size: 14px; padding: 36px 20px; margin: 0; }
+.follow-dialog-loading { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 40px 20px; }
+.follow-loading-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--brand);
+    animation: dot-bounce 1.2s ease-in-out infinite;
+}
+.follow-loading-dot:nth-child(2) { animation-delay: 0.16s; }
+.follow-loading-dot:nth-child(3) { animation-delay: 0.32s; }
+@keyframes dot-bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
 }
 </style>

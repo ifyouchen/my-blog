@@ -7,11 +7,16 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 通知 REST 接口。
@@ -23,10 +28,81 @@ import java.util.Map;
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
+    /** userId -> list of active emitters */
+    private static final ConcurrentHashMap<Long, CopyOnWriteArrayList<SseEmitter>> USER_EMITTERS =
+        new ConcurrentHashMap<>();
+
     private final NotificationAppService notificationAppService;
 
     public NotificationController(NotificationAppService notificationAppService) {
         this.notificationAppService = notificationAppService;
+    }
+
+    /**
+     * SSE 通知流：客户端保持长连接，服务端主动推送未读计数变化。
+     * 每次有新通知写入后，可调用 {@link #pushUnreadCount(Long, long)} 推送。
+     */
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream() {
+        Long userId = AuthContext.getCurrentUserId();
+        if (userId == null) {
+            SseEmitter emitter = new SseEmitter(0L);
+            emitter.completeWithError(new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录"));
+            return emitter;
+        }
+
+        SseEmitter emitter = new SseEmitter(180_000L); // 3分钟超时，客户端重连
+
+        USER_EMITTERS.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+
+        Runnable cleanup = () -> {
+            CopyOnWriteArrayList<SseEmitter> list = USER_EMITTERS.get(userId);
+            if (list != null) {
+                list.remove(emitter);
+                if (list.isEmpty()) {
+                    USER_EMITTERS.remove(userId, list);
+                }
+            }
+        };
+
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(cleanup);
+        emitter.onError(e -> cleanup.run());
+
+        // 立即推送当前未读数（连接建立时同步一次）
+        try {
+            long unread = notificationAppService.countUnread(userId);
+            emitter.send(SseEmitter.event()
+                .name("unread")
+                .data("{\"count\":" + unread + "}"));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
+
+        return emitter;
+    }
+
+    /**
+     * 向指定用户的所有 SSE 连接推送未读计数（供内部调用）。
+     *
+     * @param userId      用户 ID
+     * @param unreadCount 最新未读数
+     */
+    public static void pushUnreadCount(Long userId, long unreadCount) {
+        CopyOnWriteArrayList<SseEmitter> emitters = USER_EMITTERS.get(userId);
+        if (emitters == null || emitters.isEmpty()) {
+            return;
+        }
+        String data = "{\"count\":" + unreadCount + "}";
+        List<SseEmitter> toRemove = new java.util.ArrayList<>();
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name("unread").data(data));
+            } catch (IOException e) {
+                toRemove.add(emitter);
+            }
+        }
+        emitters.removeAll(toRemove);
     }
 
     @GetMapping

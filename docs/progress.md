@@ -135,14 +135,14 @@
 ### 4.1 通知系统增强
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| DB: blog_announcement 表 | ❌ | schema.sql 无此表 |
-| 后端: GET /api/announcements/active | ❌ | 无此接口 |
-| 后端: GET /api/notifications/stream（SSE） | ❌ | 无此接口 |
-| 后端: GET/POST/PUT/DELETE /api/admin/announcements | ❌ | AdminController 无此接口 |
-| 前端: Header 通知角标 SSE 实时更新 | ❌ | 未实现 |
-| 前端: 通知列表"系统通知"Tab | ❌ | 未实现 |
-| 前端: 首页公告横幅 | ❌ | 未实现 |
-| 前端: 后台公告管理页 /admin/announcements | ❌ | 无此页面 |
+| DB: blog_announcement 表 | ✅ | schema.sql 已有 |
+| 后端: GET /api/announcements/active | ✅ | AnnouncementController 已实现 |
+| 后端: GET /api/notifications/stream（SSE） | ✅ | NotificationController.stream()，支持 query token |
+| 后端: GET/POST/PUT/DELETE /api/admin/announcements | ✅ | AdminController 已添加公告 CRUD + publish/unpublish |
+| 前端: Header 通知角标 SSE 实时更新 | ✅ | SiteHeader.vue 用 subscribeNotificationStream + 60s 兜底轮询 |
+| 前端: 通知列表"系统通知"Tab | ✅ | NotificationsView.vue 新增 system filter + 公告列表 |
+| 前端: 首页公告横幅 | ✅ | HomeView.vue 公告横幅，支持按 id 关闭（存 localStorage） |
+| 前端: 后台公告管理页 /admin/announcements | ✅ | AdminAnnouncementsView.vue，路由和导航已添加 |
 
 ### 4.2 评论体验优化
 | 条目 | 状态 | 备注 |
@@ -157,12 +157,12 @@
 ### 4.3 关注与社交功能
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| 后端: GET /api/users/{id}/followers | ❌ | UserController 无此接口 |
-| 后端: GET /api/users/{id}/following | ❌ | UserController 无此接口（只有 /me/following）|
-| 后端: GET /api/users/{id}/follow-status | ❌ | UserController 无此接口 |
-| 前端: 用户主页粉丝数可点击弹窗 | ❌ | 未实现 |
-| 前端: 用户主页关注数可点击弹窗 | ❌ | 未实现 |
-| 前端: 互关标识 | ❌ | 未实现 |
+| 后端: GET /api/users/{id}/followers | ✅ | UserController + FollowAppService.listFollowers() + UserFollowRepository.findFollowerUserIds() |
+| 后端: GET /api/users/{id}/following | ✅ | UserController + FollowAppService.listUserFollowing() |
+| 后端: GET /api/users/{id}/follow-status | ✅ | UserController + FollowAppService.getFollowStatus()，返回 followed/followedBack/mutual |
+| 前端: 用户主页粉丝数可点击弹窗 | ✅ | UserProfileView.vue + UserProfileSummary stat-click 事件，openFollowDialog('followers') |
+| 前端: 用户主页关注数可点击弹窗 | ✅ | UserProfileView.vue openFollowDialog('following')，Teleport 弹窗列表 |
+| 前端: 互关标识 | ✅ | isMutualFollow computed + mutual-follow-badge 绿色标签，getFollowStatusApi 加载 |
 
 ---
 
@@ -215,4 +215,7 @@
 | 2026-04-30 | Phase 4.2 后端：schema.sql blog_comment 新增 edited_at/edit_count，Comment.edit() 10分钟时限逻辑，CommentAppService.editComment()，CommentController PUT /comments/{id}，CommentDO/CommentDTO/CommentAssembler/CommentMapper.xml 同步更新 |
 | 2026-04-30 | Phase 3.4 前端：CategoryDetailView.vue、TagDetailView.vue、ExploreView.vue，api/categories.js、api/tags.js，路由 /explore、/categories/:id、/tags/:id |
 | 2026-04-30 | Phase 4.2 前端：CommentRootItem.vue 添加编辑功能（内联编辑框、canEdit 逻辑、已编辑标记），transformers.js 添加 canEdit/editCount 字段，api/comments.js 添加 editCommentApi，后端 canEdit 权限方法 + CommentResponse/CommentDTO/RestDtoMapper 同步 |
+| 2026-04-30 | Phase 4.3 前端：UserProfileView.vue 粉丝/关注弹窗（openFollowDialog + Teleport modal + getUserFollowersApi/getUserFollowingListApi）、互关标识（isMutualFollow + mutual-follow-badge），UserProfileSummary.vue 支持 stat-click 事件，following.js 新增 API |
+| 2026-04-30 | Phase 4.1 后端：JwtAuthenticationInterceptor 支持 query token（SSE 用），NotificationController.stream() SSE 接口，AdminController 公告 CRUD + publish/unpublish |
+| 2026-04-30 | Phase 4.1 前端：notifications.js 添加 subscribeNotificationStream + getActiveAnnouncementsApi，SiteHeader.vue 改用 SSE（兜底轮询），NotificationsView.vue 新增"系统通知"Tab，HomeView.vue 公告横幅，AdminAnnouncementsView.vue 后台公告管理页，路由和导航更新 |
 

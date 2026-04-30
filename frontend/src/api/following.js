@@ -1,5 +1,5 @@
-import { request } from './http';
-import { normalizeArticle, normalizeUser } from './transformers';
+import {request} from './http';
+import {normalizeArticle, normalizeUser} from './transformers';
 
 export const followUserApi = async (userId) => request(`/users/${userId}/follow`, {
     method: 'POST'
@@ -20,4 +20,19 @@ export const getFollowingFeedApi = async ({ page = 1, pageSize = 10, sort = 'lat
         ...data,
         items: (data.items || []).map(normalizeArticle)
     };
+};
+
+export const getUserFollowersApi = async (userId) => {
+    const data = await request(`/users/${userId}/followers`);
+    return (data || []).map(normalizeUser);
+};
+
+export const getUserFollowingListApi = async (userId) => {
+    const data = await request(`/users/${userId}/following`);
+    return (data || []).map(normalizeUser);
+};
+
+export const getFollowStatusApi = async (userId) => {
+    const data = await request(`/users/${userId}/follow-status`);
+    return data || {};
 };

@@ -18,6 +18,7 @@ const navItems = [
     { to: '/admin/columns', label: '专栏', icon: '专栏' },
     { to: '/admin/topics', label: '专题', icon: '专题' },
     { to: '/admin/ads', label: '广告', icon: '广告' },
+    { to: '/admin/announcements', label: '公告', icon: '公告' },
     { to: '/admin/logs', label: '日志', icon: '日志' }
 ];
 

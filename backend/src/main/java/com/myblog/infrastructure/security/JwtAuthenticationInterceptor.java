@@ -57,6 +57,14 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             AuthContext.set(payload);
             return true;
         }
+        // 支持从 query param 读取 token（用于 SSE 等不支持自定义 Header 的请求）
+        String queryToken = request.getParameter("token");
+        if (queryToken != null && !queryToken.trim().isEmpty()) {
+            JwtPayload payload = jwtTokenProvider.parseToken(queryToken.trim());
+            ensureUserAvailable(payload.getUserId());
+            AuthContext.set(payload);
+            return true;
+        }
         if (isPublicRequest(request)) {
             return true;
         }
@@ -102,7 +110,11 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || path.matches("^/api/articles/\\d+/like/status$")
             || path.matches("^/api/articles/\\d+/favorite/status$")
             || path.matches("^/api/users/\\d+$")
-            || path.matches("^/api/users/\\d+/articles$")) {
+            || path.matches("^/api/users/\\d+/articles$")
+            || "/api/announcements/active".equals(path)
+            || path.matches("^/api/categories/\\d+/articles$")
+            || path.matches("^/api/tags/\\d+/articles$")
+            || "/api/tags/hot".equals(path)) {
             return true;
         }
         return false;

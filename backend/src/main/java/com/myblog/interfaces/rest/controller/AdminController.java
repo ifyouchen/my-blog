@@ -1,12 +1,14 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.command.RecordAdminLogCommand;
+import com.myblog.application.dto.AnnouncementDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.TagDTO;
 import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.AdminAppService;
 import com.myblog.application.service.AdminLogAppService;
+import com.myblog.application.service.AnnouncementAppService;
 import com.myblog.application.service.CategoryAppService;
 import com.myblog.application.service.ColumnAppService;
 import com.myblog.application.service.TagAppService;
@@ -44,16 +46,19 @@ public class AdminController {
     private final TagAppService tagAppService;
     private final ColumnAppService columnAppService;
     private final TopicAppService topicAppService;
+    private final AnnouncementAppService announcementAppService;
 
     public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService,
                            CategoryAppService categoryAppService, TagAppService tagAppService,
-                           ColumnAppService columnAppService, TopicAppService topicAppService) {
+                           ColumnAppService columnAppService, TopicAppService topicAppService,
+                           AnnouncementAppService announcementAppService) {
         this.adminAppService = adminAppService;
         this.adminLogAppService = adminLogAppService;
         this.categoryAppService = categoryAppService;
         this.tagAppService = tagAppService;
         this.columnAppService = columnAppService;
         this.topicAppService = topicAppService;
+        this.announcementAppService = announcementAppService;
     }
 
     private void ensureAdmin() {
@@ -697,6 +702,104 @@ public class AdminController {
             "UNFEATURE_ARTICLE", "ARTICLE", id,
             "取消精选文章 " + id, null, result.getData(), httpServletRequest));
         return result;
+    }
+
+    // ==================== 公告管理 ====================
+
+    /**
+     * 分页查询公告列表（管理后台）。
+     */
+    @GetMapping("/announcements")
+    public Result<PageResult<AnnouncementDTO>> getAnnouncements(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        ensureAdmin();
+        return Result.success(announcementAppService.pageAll(page, pageSize));
+    }
+
+    /**
+     * 创建公告。
+     */
+    @PostMapping("/announcements")
+    public Result<AnnouncementDTO> createAnnouncement(@RequestBody Map<String, Object> request,
+                                                      @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        AnnouncementDTO dto = announcementAppService.create(request);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_ANNOUNCEMENT", "ANNOUNCEMENT", dto.getId(),
+            "创建公告 " + dto.getTitle(), null, toAnnouncementSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 更新公告。
+     */
+    @PutMapping("/announcements/{id}")
+    public Result<AnnouncementDTO> updateAnnouncement(@PathVariable Long id,
+                                                      @RequestBody Map<String, Object> request,
+                                                      @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        AnnouncementDTO dto = announcementAppService.update(id, request);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_ANNOUNCEMENT", "ANNOUNCEMENT", id,
+            "更新公告 " + dto.getTitle(), null, toAnnouncementSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 删除公告（软删除）。
+     */
+    @DeleteMapping("/announcements/{id}")
+    public Result<Map<String, Object>> deleteAnnouncement(@PathVariable Long id,
+                                                          @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        announcementAppService.delete(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_ANNOUNCEMENT", "ANNOUNCEMENT", id,
+            "删除公告 " + id, null, null, httpServletRequest));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
+    /**
+     * 发布公告。
+     */
+    @PostMapping("/announcements/{id}/publish")
+    public Result<AnnouncementDTO> publishAnnouncement(@PathVariable Long id,
+                                                       @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        AnnouncementDTO dto = announcementAppService.publish(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "PUBLISH_ANNOUNCEMENT", "ANNOUNCEMENT", id,
+            "发布公告 " + dto.getTitle(), null, toAnnouncementSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    /**
+     * 撤回公告。
+     */
+    @PostMapping("/announcements/{id}/unpublish")
+    public Result<AnnouncementDTO> unpublishAnnouncement(@PathVariable Long id,
+                                                         @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        AnnouncementDTO dto = announcementAppService.unpublish(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UNPUBLISH_ANNOUNCEMENT", "ANNOUNCEMENT", id,
+            "撤回公告 " + dto.getTitle(), null, toAnnouncementSnapshot(dto), httpServletRequest));
+        return Result.success(dto);
+    }
+
+    private Map<String, Object> toAnnouncementSnapshot(AnnouncementDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Map<String, Object> s = new LinkedHashMap<String, Object>();
+        s.put("id", dto.getId());
+        s.put("title", dto.getTitle());
+        s.put("published", dto.getPublished());
+        s.put("target", dto.getTarget());
+        return s;
     }
 
     private Map<String, Object> toColumnSnapshot(ColumnDTO dto) {

@@ -105,6 +105,47 @@ public class UserController {
 
     /**
      * 获取某用户的粉丝列表。
+     *
+     * @param id 目标用户 ID
+     * @return 粉丝用户列表
+     */
+    @GetMapping("/{id}/followers")
+    public Result<List<UserResponse>> getUserFollowers(@PathVariable Long id) {
+        List<UserResponse> items = new ArrayList<UserResponse>();
+        for (com.myblog.application.dto.UserDTO userDTO : followAppService.listFollowers(id)) {
+            items.add(restDtoMapper.toResponse(userDTO));
+        }
+        return Result.success(items);
+    }
+
+    /**
+     * 获取某用户的关注列表。
+     *
+     * @param id 目标用户 ID
+     * @return 关注用户列表
+     */
+    @GetMapping("/{id}/following")
+    public Result<List<UserResponse>> getUserFollowing(@PathVariable Long id) {
+        List<UserResponse> items = new ArrayList<UserResponse>();
+        for (com.myblog.application.dto.UserDTO userDTO : followAppService.listUserFollowing(id)) {
+            items.add(restDtoMapper.toResponse(userDTO));
+        }
+        return Result.success(items);
+    }
+
+    /**
+     * 获取当前用户对目标用户的关注状态（含互关）。
+     *
+     * @param id 目标用户 ID
+     * @return 关注状态
+     */
+    @GetMapping("/{id}/follow-status")
+    public Result<java.util.Map<String, Boolean>> getFollowStatus(@PathVariable Long id) {
+        Long currentUserId = AuthContext.getCurrentUserId();
+        return Result.success(followAppService.getFollowStatus(id, currentUserId));
+    }
+
+    /**
      * 获取当前用户文章。
      *
      * @param page 页码

@@ -257,3 +257,41 @@ export const unfeatureAdminArticleApi = async (articleId) => {
         method: 'POST'
     });
 };
+
+// ===== 公告管理 =====
+
+export const getAdminAnnouncementsApi = async (page = 1, pageSize = 10) => {
+    return await request(`/admin/announcements?page=${page}&pageSize=${pageSize}`);
+};
+
+export const createAdminAnnouncementApi = async (payload) => {
+    return await request('/admin/announcements', {
+        method: 'POST',
+        body: payload
+    });
+};
+
+export const updateAdminAnnouncementApi = async (id, payload) => {
+    return await request(`/admin/announcements/${id}`, {
+        method: 'PUT',
+        body: payload
+    });
+};
+
+export const deleteAdminAnnouncementApi = async (id) => {
+    return await request(`/admin/announcements/${id}`, {
+        method: 'DELETE'
+    });
+};
+
+export const publishAdminAnnouncementApi = async (id) => {
+    return await request(`/admin/announcements/${id}/publish`, {
+        method: 'POST'
+    });
+};
+
+export const unpublishAdminAnnouncementApi = async (id) => {
+    return await request(`/admin/announcements/${id}/unpublish`, {
+        method: 'POST'
+    });
+};

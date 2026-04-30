@@ -4,8 +4,17 @@ import CommentComposer from '@/components/CommentComposer.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
-import {createCommentApi, deleteCommentApi, editCommentApi, likeCommentApi, pageRepliesApi, pinCommentApi, unlikeCommentApi, unpinCommentApi} from '@/api/comments';
-import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import {
+  createCommentApi,
+  deleteCommentApi,
+  editCommentApi,
+  likeCommentApi,
+  pageRepliesApi,
+  pinCommentApi,
+  unlikeCommentApi,
+  unpinCommentApi
+} from '@/api/comments';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     articleId: {

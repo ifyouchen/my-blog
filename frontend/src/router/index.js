@@ -29,6 +29,8 @@ const AdminColumnsView = () => import('@/views/admin/AdminColumnsView.vue');
 const AdminTopicsView = () => import('@/views/admin/AdminTopicsView.vue');
 const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 const AdminAdsView = () => import('@/views/admin/AdminAdsView.vue');
+const AdminAnnouncementsView = () => import('@/views/admin/AdminAnnouncementsView.vue');
+const AdminAnnouncementsView = () => import('@/views/admin/AdminAnnouncementsView.vue');
 const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
 const TagDetailView = () => import('@/views/TagDetailView.vue');
 const ExploreView = () => import('@/views/ExploreView.vue');
@@ -339,6 +341,16 @@ const routes = [
                     title: '广告管理',
                     adminTitle: '广告管理',
                     adminDescription: '配置广告位投放内容，管理广告时间范围、启用状态和展示顺序。'
+                }
+            },
+            {
+                path: 'announcements',
+                name: 'adminAnnouncements',
+                component: AdminAnnouncementsView,
+                meta: {
+                    title: '公告管理',
+                    adminTitle: '公告管理',
+                    adminDescription: '创建、编辑、发布和撤回平台公告，实时推送给用户。'
                 }
             },
             {
