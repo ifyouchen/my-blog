@@ -719,6 +719,7 @@ onMounted(fetchBootstrap);
             eyebrow="搜索结果"
             title="匹配文章"
             empty-text="换个关键词、分类或标签试试"
+            :highlight-keyword="keyword"
             @page-change="changePage"
             @sort-change="changeSort"
         />

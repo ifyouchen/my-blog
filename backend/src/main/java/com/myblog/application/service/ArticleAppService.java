@@ -24,7 +24,6 @@ import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
-import com.myblog.application.service.SensitiveWordAppService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -62,7 +61,6 @@ public class ArticleAppService {
     private final ApplicationEventPublisher eventPublisher;
     private final ArticleVersionRepository articleVersionRepository;
     private final String defaultArticleCoverUrl;
-    private SensitiveWordAppService sensitiveWordAppService;
 
     public ArticleAppService(ArticleRepository articleRepository,
                              ArticleLikeRepository articleLikeRepository,
@@ -83,12 +81,6 @@ public class ArticleAppService {
         this.articleVersionRepository = articleVersionRepository;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
-    }
-
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setSensitiveWordAppService(SensitiveWordAppService svc) {
-        this.sensitiveWordAppService = svc;
     }
 
     /**
@@ -309,7 +301,6 @@ public class ArticleAppService {
             command.getSeoTitle(),
             command.getSeoDescription()
         );
-        applyWarnFlagIfNeeded(article);
         articleRepository.save(article);
         saveVersionSnapshot(article, command.getAuthorId());
         return buildDetailDto(article, author, command.getAuthorId());
@@ -357,7 +348,6 @@ public class ArticleAppService {
             command.getSeoDescription()
         );
         applyStatus(article, command.getStatus());
-        applyWarnFlagIfNeeded(article);
         articleRepository.save(article);
         saveVersionSnapshot(article, userId);
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())
@@ -693,29 +683,6 @@ public class ArticleAppService {
             "当前会使用系统默认封面，建议上传更贴合主题的封面图"
         );
 
-        // --- 敏感词检测 ---
-        if (StringUtils.hasText(title) || StringUtils.hasText(content)) {
-            String textToCheck = title + " " + content;
-            List<String> blockWords = sensitiveWordAppService != null ? sensitiveWordAppService.detectBlockWords(textToCheck) : new ArrayList<String>();
-            List<String> warnWords = sensitiveWordAppService != null ? sensitiveWordAppService.detectWarnWords(textToCheck) : new ArrayList<String>();
-            if (!blockWords.isEmpty()) {
-                String blockedMsg = "内容含有违禁词（" + String.join("、", blockWords) + "），请修改后再发布";
-                appendCheck(checks, errors, "sensitiveBlock", "违禁词检测", false, "error",
-                    "未检测到违禁词", blockedMsg);
-            } else {
-                appendCheck(checks, new ArrayList<String>(), "sensitiveBlock", "违禁词检测", true, "pass",
-                    "未检测到违禁词", "");
-            }
-            if (!warnWords.isEmpty()) {
-                String warnMsg = "内容含有敏感词（" + String.join("、", warnWords) + "），发布后将进入待审核队列";
-                appendCheck(checks, warnings, "sensitiveWarn", "敏感词检测", false, "warning",
-                    "未检测到敏感词", warnMsg);
-            } else {
-                appendCheck(checks, new ArrayList<String>(), "sensitiveWarn", "敏感词检测", true, "pass",
-                    "未检测到敏感词", "");
-            }
-        }
-
         validation.setPublishable(errors.isEmpty());
         validation.setErrors(errors);
         validation.setWarnings(warnings);
@@ -743,26 +710,65 @@ public class ArticleAppService {
         }
     }
 
-
-    /**
-     * 若文章处于 PUBLISHED 状态，检测警告级敏感词并标记 warn_flag。
-     */
-    private void applyWarnFlagIfNeeded(Article article) {
-        if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
-            return;
-        }
-        if (sensitiveWordAppService == null) {
-            return;
-        }
-        String text = (article.getTitle() == null ? "" : article.getTitle())
-            + " " + (article.getContent() == null ? "" : article.getContent());
-        List<String> warnHits = sensitiveWordAppService.detectWarnWords(text);
-        if (!warnHits.isEmpty()) {
-            article.markWarnFlag();
-        }
-    }
-
     private String normalizeValue(String source) {
         return source == null ? "" : source.trim();
+    }
+
+    /**
+     * 导出指定用户的文章为 ZIP，每篇文章生成一个 Markdown 文件。
+     *
+     * @param userId 用户 ID
+     * @return ZIP 字节数组
+     */
+    public byte[] exportMyArticlesZip(Long userId) {
+        List<Article> articles = articleRepository.findByAuthorId(userId);
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            for (Article article : articles) {
+                String safeName = article.getTitle() == null ? "untitled" : article.getTitle()
+                    .replaceAll("[/\\\\:*?\"<>|]", "_").trim();
+                if (safeName.isEmpty()) safeName = "article-" + article.getId().getValue();
+                String entryName = article.getId().getValue() + "-" + safeName + ".md";
+                java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(entryName);
+                zos.putNextEntry(entry);
+                String md = buildMarkdown(article);
+                zos.write(md.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                zos.closeEntry();
+            }
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("生成 ZIP 失败", e);
+        }
+        return baos.toByteArray();
+    }
+
+    private String buildMarkdown(Article article) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# ").append(article.getTitle() == null ? "" : article.getTitle()).append("\n\n");
+        if (article.getCategory() != null) {
+            sb.append("> 分类: ").append(article.getCategory()).append("\n\n");
+        }
+        if (article.getSummary() != null && !article.getSummary().isEmpty()) {
+            sb.append("> ").append(article.getSummary()).append("\n\n");
+        }
+        sb.append("---\n\n");
+        sb.append(article.getContent() == null ? "" : article.getContent());
+        return sb.toString();
+    }
+
+    /**
+     * 获取指定文章的上下篇（均为已发布文章）。
+     *
+     * @param articleId 当前文章 ID
+     * @return Map with keys "prev" and "next", values may be null
+     */
+    public java.util.Map<String, ArticleDTO> getArticleNeighbors(Long articleId) {
+        java.util.Optional<com.myblog.domain.model.aggregate.Article> prevOpt =
+            articleRepository.findPrevPublished(articleId);
+        java.util.Optional<com.myblog.domain.model.aggregate.Article> nextOpt =
+            articleRepository.findNextPublished(articleId);
+        java.util.Map<String, ArticleDTO> result = new java.util.LinkedHashMap<>();
+        result.put("prev", prevOpt.map(a -> articleAssembler.toDTO(a, null, false, false)).orElse(null));
+        result.put("next", nextOpt.map(a -> articleAssembler.toDTO(a, null, false, false)).orElse(null));
+        return result;
     }
 }

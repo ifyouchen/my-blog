@@ -27,7 +27,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -301,11 +306,50 @@ public class UserController {
         return Result.success();
     }
 
+    /**
+     * 绑定/更换邮箱。
+     *
+     * @param request 请求体（email, password）
+     * @return 更新后的用户信息
+     */
+    @PostMapping("/me/email")
+    public Result<UserResponse> changeEmail(@RequestBody java.util.Map<String, String> request) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+        String email = request.get("email");
+        String password = request.get("password");
+        if (email == null || email.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "邮箱不能为空");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "请输入密码以确认身份");
+        }
+        return Result.success(restDtoMapper.toResponse(
+            userAppService.changeEmail(userId, email.trim(), password)
+        ));
+    }
+
     private PageResult<ArticleResponse> toArticlePage(PageResult<ArticleDTO> pageResult) {
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO articleDTO : pageResult.getItems()) {
             items.add(restDtoMapper.toResponse(articleDTO));
         }
         return new PageResult<ArticleResponse>(items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal());
+    }
+
+    @GetMapping("/me/export/articles")
+    public void exportMyArticles(HttpServletResponse response) throws IOException {
+        Long userId = AuthContext.getRequiredUserId();
+        String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename="" + filename + """);
+        byte[] data = userAppService.exportMyArticlesCsv(userId);
+        response.getOutputStream().write(0xEF);
+        response.getOutputStream().write(0xBB);
+        response.getOutputStream().write(0xBF);
+        response.getOutputStream().write(data);
+        response.getOutputStream().flush();
     }
 }

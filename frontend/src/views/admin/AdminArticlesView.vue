@@ -1,10 +1,11 @@
 <script setup>
-import {onMounted, reactive, watch} from 'vue';
+import {onMounted, reactive, ref, watch} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
   deleteAdminArticleApi,
+  exportAdminArticlesApi,
   featureAdminArticleApi,
   getAdminArticlesApi,
   getAdminStatsApi,
@@ -12,6 +13,7 @@ import {
   unfeatureAdminArticleApi,
   updateAdminArticleStatusApi
 } from '@/api/admin';
+import {getArticleApi} from '@/api/articles';
 import {createPagedState, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
@@ -23,6 +25,28 @@ const {
     closeConfirmDialog,
     executeConfirmDialog
 } = useConfirmDialog();
+
+const previewId = ref(null);
+const previewArticle = ref(null);
+const previewLoading = ref(false);
+
+const openPreview = async (article) => {
+    previewId.value = article.id;
+    previewArticle.value = null;
+    previewLoading.value = true;
+    try {
+        previewArticle.value = await getArticleApi(article.id);
+    } catch {
+        previewArticle.value = null;
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
+const closePreview = () => {
+    previewId.value = null;
+    previewArticle.value = null;
+};
 
 const state = reactive({
     ...createPagedState(),
@@ -276,6 +300,7 @@ watch(
                 <div class="admin-filter-actions">
                     <button type="submit">查询</button>
                     <button type="button" @click="resetFilters">重置</button>
+                    <button type="button" class="btn-export" @click="exportAdminArticlesApi" title="导出所有文章为 CSV">导出 CSV</button>
                 </div>
             </form>
             <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
@@ -357,6 +382,12 @@ watch(
                                     </button>
                                     <button
                                         type="button"
+                                        @click="openPreview(article)"
+                                    >
+                                        预览
+                                    </button>
+                                    <button
+                                        type="button"
                                         class="danger-link"
                                         :disabled="state.actionLoadingId === article.id"
                                         @click="deleteArticle(article)"
@@ -385,6 +416,40 @@ watch(
             @close="closeConfirmDialog"
             @confirm="executeConfirmDialog"
         />
+        <!-- 快速预览抽屉 -->
+        <Teleport to="body">
+            <div v-if="previewId" class="preview-overlay" @click.self="closePreview">
+                <aside class="preview-drawer">
+                    <div class="preview-drawer-header">
+                        <span class="preview-drawer-title">文章预览</span>
+                        <button class="preview-close-btn" type="button" @click="closePreview">✕</button>
+                    </div>
+                    <div v-if="previewLoading" class="preview-drawer-body preview-loading">加载中...</div>
+                    <div v-else-if="previewArticle" class="preview-drawer-body">
+                        <h2 class="preview-article-title">{{ previewArticle.title }}</h2>
+                        <div class="preview-article-meta">
+                            <span>{{ previewArticle.author?.name }}</span>
+                            <span>{{ previewArticle.category }}</span>
+                            <span>{{ previewArticle.publishedText }}</span>
+                            <span class="status-pill" :class="{ warning: previewArticle.status === 'OFFLINE' }">{{ previewArticle.status }}</span>
+                        </div>
+                        <p v-if="previewArticle.summary" class="preview-article-summary">{{ previewArticle.summary }}</p>
+                        <div class="preview-article-tags">
+                            <span v-for="tag in (previewArticle.tags || [])" :key="tag" class="preview-tag">{{ tag }}</span>
+                        </div>
+                        <div class="preview-article-stats">
+                            <span>👁 {{ previewArticle.stats?.views }}</span>
+                            <span>❤ {{ previewArticle.stats?.likes }}</span>
+                            <span>💬 {{ previewArticle.stats?.comments }}</span>
+                        </div>
+                        <RouterLink :to="`/articles/${previewArticle.id}`" target="_blank" class="preview-open-link">
+                            在新标签页中查看全文 →
+                        </RouterLink>
+                    </div>
+                    <div v-else class="preview-drawer-body preview-loading">加载失败</div>
+                </aside>
+            </div>
+        </Teleport>
     </section>
 </template>
 
@@ -449,5 +514,140 @@ watch(
 .admin-status-card[data-key="REVIEW_PENDING"]:hover {
     border-color: #fb923c;
     background: #fff7ed;
+}
+.preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.preview-drawer {
+    width: min(520px, 90vw);
+    height: 100%;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+    animation: drawer-slide-in 0.2s ease;
+}
+
+@keyframes drawer-slide-in {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+}
+
+.preview-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+}
+
+.preview-drawer-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.preview-close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--muted);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+}
+
+.preview-close-btn:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+}
+
+.preview-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.preview-loading {
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+}
+
+.preview-article-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.preview-article-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    align-items: center;
+}
+
+.preview-article-summary {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+    padding: 12px;
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--brand);
+}
+
+.preview-article-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.preview-tag {
+    padding: 2px 10px;
+    font-size: 12px;
+    color: var(--brand);
+    background: var(--brand-tint);
+    border-radius: 20px;
+}
+
+.preview-article-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.preview-open-link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--brand);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.preview-open-link:hover {
+    text-decoration: underline;
 }
 </style>

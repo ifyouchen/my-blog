@@ -8,6 +8,7 @@ const route = useRoute();
 const router = useRouter();
 const { login, register } = useSession();
 const isRegister = computed(() => route.name === 'register');
+const inviteCode = computed(() => route.query.invite || '');
 
 const form = reactive({
     username: '',
@@ -67,7 +68,8 @@ const submit = async () => {
             await register({
                 username: form.username.trim(),
                 email: form.email.trim(),
-                password: form.password
+                password: form.password,
+                inviteCode: inviteCode.value || undefined
             });
             welcomeUsername.value = form.username.trim();
             showWelcome.value = true;

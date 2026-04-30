@@ -3,7 +3,7 @@ import { reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import { getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
+import { exportAdminUsersApi, getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
 import {
     createPagedState,
     readPositiveInt,
@@ -162,6 +162,7 @@ watch(
                 <div class="admin-filter-actions">
                     <button type="submit">查询</button>
                     <button type="button" @click="resetFilters">重置</button>
+                    <button type="button" class="btn-export" @click="exportAdminUsersApi" title="导出所有用户为 CSV">导出 CSV</button>
                 </div>
             </form>
             <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">

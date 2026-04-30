@@ -1,5 +1,5 @@
 <script setup>
-import { RouterLink } from 'vue-router';
+import {RouterLink} from 'vue-router';
 
 const navItems = [
     {
@@ -9,6 +9,10 @@ const navItems = [
     {
         label: '我的文章',
         path: '/dashboard/articles'
+    },
+    {
+        label: '我的专栏',
+        path: '/dashboard/columns'
     },
     {
         label: '我的收藏',

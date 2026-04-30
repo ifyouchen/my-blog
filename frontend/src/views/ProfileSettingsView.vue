@@ -4,7 +4,7 @@ import {RouterLink} from 'vue-router';
 import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
-import {changePasswordApi, getSecurityInfoApi, getUserHotArticlesApi, getUserProfileApi, updateProfileApi} from '@/api/auth';
+import {changeEmailApi, changePasswordApi, getSecurityInfoApi, getUserHotArticlesApi, getUserProfileApi, updateProfileApi} from '@/api/auth';
 import {useSession} from '@/stores/session';
 import {buildProfileSummaryStats} from '@/utils/profileSummary';
 import {resolveMediaUrl} from '@/utils/media';
@@ -13,7 +13,7 @@ const { state, updateCurrentUser } = useSession();
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=240&q=80';
 
 // ── Tab ──────────────────────────────────────────────────────────────────────
-const activeTab = ref('profile'); // 'profile' | 'security'
+const activeTab = ref('profile'); // 'profile' | 'security' | 'invite'
 
 // ── 个人资料 ──────────────────────────────────────────────────────────────────
 const loading = ref(false);
@@ -66,10 +66,19 @@ const FIELD_LABELS = {
 // ── 账号安全 ──────────────────────────────────────────────────────────────────
 const securityLoading = ref(false);
 const securityInfo = ref(null);
+
+const inviteCodes = ref([]);
+const inviteLoading = ref(false);
+const inviteGenerating = ref(false);
+const inviteFeedback = ref('');
 const pwdForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' });
 const pwdError = ref('');
 const pwdSuccess = ref('');
 const pwdLoading = ref(false);
+const emailForm = reactive({ email: '', password: '' });
+const emailError = ref('');
+const emailSuccess = ref('');
+const emailLoading = ref(false);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -281,6 +290,69 @@ const changePassword = async () => {
     }
 };
 
+const changeEmail = async () => {
+    emailError.value = '';
+    emailSuccess.value = '';
+    if (!emailForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForm.email.trim())) {
+        emailError.value = '请输入正确的邮箱格式';
+        return;
+    }
+    if (!emailForm.password) {
+        emailError.value = '请输入当前密码以确认身份';
+        return;
+    }
+    emailLoading.value = true;
+    try {
+        const updated = await changeEmailApi(emailForm.email.trim(), emailForm.password);
+        if (updated) {
+            updateCurrentUser(updated);
+        }
+        emailSuccess.value = '邮箱已绑定/更换成功';
+        emailForm.password = '';
+        if (securityInfo.value) {
+            securityInfo.value = { ...securityInfo.value, email: emailForm.email.trim() };
+        }
+    } catch (error) {
+        emailError.value = error.message || '邮箱绑定失败';
+    } finally {
+        emailLoading.value = false;
+    }
+};
+
+const loadInviteCodes = async () => {
+    inviteLoading.value = true;
+    try {
+        inviteCodes.value = await getMyInviteCodesApi() || [];
+    } catch {
+        inviteCodes.value = [];
+    } finally {
+        inviteLoading.value = false;
+    }
+};
+
+const generateCode = async () => {
+    inviteGenerating.value = true;
+    inviteFeedback.value = '';
+    try {
+        await generateInviteCodeApi();
+        inviteFeedback.value = '邀请码生成成功！';
+        await loadInviteCodes();
+    } catch (e) {
+        inviteFeedback.value = e.message || '生成失败';
+    } finally {
+        inviteGenerating.value = false;
+    }
+};
+
+const copyCode = async (code) => {
+    try {
+        await navigator.clipboard.writeText(code);
+        inviteFeedback.value = '已复制到剪贴板';
+    } catch {
+        inviteFeedback.value = '复制失败，请手动复制';
+    }
+};
+
 const switchTab = (tab) => {
     activeTab.value = tab;
     if (tab === 'security' && !securityInfo.value) {
@@ -352,6 +424,20 @@ onMounted(async () => {
                     <path d="m7.5 10 1.75 1.75 3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 账号安全
+            </button>
+            <button
+                role="tab"
+                class="settings-tab"
+                :class="{ active: activeTab === 'invite' }"
+                :aria-selected="activeTab === 'invite'"
+                type="button"
+                @click="switchTab('invite')"
+            >
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M13 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM4 17c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <path d="M16 7v3m0 0v3m0-3h3m-3 0h-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                邀请好友
             </button>
         </nav>
 
@@ -663,7 +749,50 @@ onMounted(async () => {
         </div>
 
         <!-- 账号安全 Tab -->
-        <div v-if="activeTab === 'security'" class="settings-tab-panel">
+        
+        <!-- 邀请好友 Tab -->
+        <div v-if="activeTab === 'invite'" class="settings-tab-panel">
+            <section class="settings-card">
+                <div class="settings-card-head">
+                    <h2>邀请好友</h2>
+                    <p>生成专属邀请码，邀请朋友加入社区，一起创作与分享。</p>
+                </div>
+                <div class="invite-actions">
+                    <button
+                        type="button"
+                        class="primary-action"
+                        :disabled="inviteGenerating"
+                        @click="generateCode"
+                    >
+                        {{ inviteGenerating ? '生成中...' : '生成新邀请码' }}
+                    </button>
+                    <p v-if="inviteFeedback" class="invite-feedback">{{ inviteFeedback }}</p>
+                </div>
+                <div v-if="inviteLoading" class="invite-loading">加载中...</div>
+                <ul v-else-if="inviteCodes.length" class="invite-code-list">
+                    <li v-for="item in inviteCodes" :key="item.id" class="invite-code-item">
+                        <code class="invite-code-value">{{ item.code }}</code>
+                        <div class="invite-code-meta">
+                            <span v-if="item.usedBy" class="invite-used">已被使用</span>
+                            <span v-else-if="item.expiredAt && new Date(item.expiredAt) < new Date()" class="invite-expired">已过期</span>
+                            <span v-else class="invite-available">可用</span>
+                            <span v-if="item.expiredAt" class="invite-expire-date">{{ item.expiredAt }} 过期</span>
+                        </div>
+                        <button
+                            v-if="!item.usedBy"
+                            type="button"
+                            class="copy-btn"
+                            @click="copyCode(item.code)"
+                        >
+                            复制
+                        </button>
+                    </li>
+                </ul>
+                <p v-else class="invite-empty">暂无邀请码，点击"生成新邀请码"创建。</p>
+            </section>
+        </div>
+
+<div v-if="activeTab === 'security'" class="settings-tab-panel">
             <section class="profile-settings-grid">
                 <!-- 修改密码 -->
                 <section class="profile-settings-panel">
@@ -696,6 +825,31 @@ onMounted(async () => {
                         <p v-if="pwdError" class="form-message error">{{ pwdError }}</p>
                         <p v-if="pwdSuccess" class="form-message success">{{ pwdSuccess }}</p>
                     </form>
+
+                    <div class="security-divider"></div>
+
+                    <!-- 绑定邮箱 -->
+                    <div class="security-section">
+                        <h3 class="security-sub-title">绑定 / 更换邮箱</h3>
+                        <p class="security-sub-desc">邮箱用于密码找回和重要通知，需输入当前密码以确认身份。</p>
+                        <form class="security-form" @submit.prevent="changeEmail">
+                            <label class="security-field">
+                                <span>新邮箱</span>
+                                <input v-model.trim="emailForm.email" type="email" placeholder="请输入新邮箱" autocomplete="email">
+                            </label>
+                            <label class="security-field">
+                                <span>当前密码</span>
+                                <input v-model="emailForm.password" type="password" placeholder="请输入当前密码确认身份" autocomplete="current-password">
+                            </label>
+                            <div class="security-form-actions">
+                                <button class="primary-action" type="submit" :disabled="emailLoading">
+                                    {{ emailLoading ? '绑定中...' : '确认绑定' }}
+                                </button>
+                            </div>
+                            <p v-if="emailError" class="form-message error">{{ emailError }}</p>
+                            <p v-if="emailSuccess" class="form-message success">{{ emailSuccess }}</p>
+                        </form>
+                    </div>
 
                     <div class="security-divider"></div>
 
@@ -1295,4 +1449,80 @@ onMounted(async () => {
         justify-content: center;
     }
 }
+.invite-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.invite-feedback {
+    font-size: 13px;
+    color: var(--brand);
+    margin: 0;
+}
+
+.invite-loading, .invite-empty {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 8px 0;
+}
+
+.invite-code-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.invite-code-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.invite-code-value {
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.invite-code-meta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.invite-available { color: #16a34a; }
+.invite-used, .invite-expired { color: var(--muted); }
+.invite-expire-date { color: var(--muted); }
+
+.copy-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    cursor: pointer;
+    color: var(--brand);
+    transition: background 0.12s;
+    flex-shrink: 0;
+}
+
+.copy-btn:hover {
+    background: var(--surface-soft);
+}
+
 </style>

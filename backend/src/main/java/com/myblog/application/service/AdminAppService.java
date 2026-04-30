@@ -61,7 +61,6 @@ public class AdminAppService {
         long publishedCount = articleRepository.countByStatus(ArticleStatus.PUBLISHED.name());
         long offlineCount = articleRepository.countByStatus(ArticleStatus.OFFLINE.name());
         long deletedCount = articleRepository.countByStatus(ArticleStatus.DELETED.name());
-        long reviewPendingCount = articleRepository.countByWarnFlag();
         long commentCount = commentRepository.countAll();
         long todayNewUsers = userRepository.countCreatedOn(today);
         long todayNewArticles = articleRepository.countCreatedOn(today);
@@ -119,7 +118,6 @@ public class AdminAppService {
         stats.put("publishedArticles", publishedCount);
         stats.put("offlineArticles", offlineCount);
         stats.put("deletedArticles", deletedCount);
-        stats.put("reviewPendingArticles", reviewPendingCount);
         stats.put("totalComments", commentCount);
         stats.put("todayNewUsers", todayNewUsers);
         stats.put("todayNewArticles", todayNewArticles);
@@ -670,5 +668,60 @@ public class AdminAppService {
             userMap.put(user.getId().getValue(), user);
         }
         return userMap;
+    }
+
+    /**
+     * 导出所有用户为 CSV 字节数组（最多 50000 行）。
+     *
+     * @return CSV 字节数组
+     */
+    public byte[] exportUsersCsv() {
+        List<User> users = userRepository.findAdminPage(null, null, 1, 50000);
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,username,email,nickname,role,status,createdAt\n");
+        for (User u : users) {
+            sb.append(escapeCsv(String.valueOf(u.getId().getValue()))).append(",");
+            sb.append(escapeCsv(u.getUsername())).append(",");
+            sb.append(escapeCsv(u.getEmail() != null ? u.getEmail().getValue() : "")).append(",");
+            sb.append(escapeCsv(u.getNickname())).append(",");
+            sb.append(escapeCsv(u.getRole() != null ? u.getRole().name() : "")).append(",");
+            sb.append(escapeCsv(u.getStatus() != null ? u.getStatus().name() : "")).append(",");
+            sb.append(escapeCsv(u.getCreatedAt() != null ? u.getCreatedAt().toString() : "")).append("\n");
+        }
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 导出所有文章为 CSV 字节数组（最多 50000 行）。
+     *
+     * @return CSV 字节数组
+     */
+    public byte[] exportArticlesCsv() {
+        List<Article> articles = articleRepository.findAdminPage(null, null, null, 1, 50000);
+        Map<Long, User> authorMap = buildAuthorMap(articles);
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,title,category,status,authorUsername,viewCount,likeCount,commentCount,publishedAt,createdAt\n");
+        for (Article a : articles) {
+            User author = authorMap.get(a.getAuthorId().getValue());
+            sb.append(escapeCsv(String.valueOf(a.getId().getValue()))).append(",");
+            sb.append(escapeCsv(a.getTitle())).append(",");
+            sb.append(escapeCsv(a.getCategory())).append(",");
+            sb.append(escapeCsv(a.getStatus() != null ? a.getStatus().name() : "")).append(",");
+            sb.append(escapeCsv(author != null ? author.getUsername() : "")).append(",");
+            sb.append(a.getViewCount()).append(",");
+            sb.append(a.getLikeCount()).append(",");
+            sb.append(a.getCommentCount()).append(",");
+            sb.append(escapeCsv(a.getPublishedAt() != null ? a.getPublishedAt().toString() : "")).append(",");
+            sb.append(escapeCsv(a.getCreatedAt() != null ? a.getCreatedAt().toString() : "")).append("\n");
+        }
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

@@ -254,7 +254,7 @@ onMounted(() => {
                 @page-change="changePage"
                 @sort-change="changeSort"
             />
-            <HomeSidebar :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" />
+            <HomeSidebar :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" :featured="featuredArticles" />
         </div>
     </main>
 </template>

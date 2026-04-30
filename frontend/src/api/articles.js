@@ -24,6 +24,14 @@ export const getRelatedArticlesApi = async (id, limit = 5) => {
     return (Array.isArray(data) ? data : []).map(normalizeArticle);
 };
 
+export const getArticleNeighborsApi = async (id) => {
+    const data = await request(`/articles/${id}/neighbors`);
+    return {
+        prev: data?.prev ? normalizeArticle(data.prev) : null,
+        next: data?.next ? normalizeArticle(data.next) : null
+    };
+};
+
 export const getEditableArticleApi = async (id) => normalizeArticle(await request(`/articles/${id}/edit`));
 
 export const createArticleApi = async (draft, status) => {

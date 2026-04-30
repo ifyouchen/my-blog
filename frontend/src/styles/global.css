@@ -863,13 +863,31 @@ button:disabled {
 }
 
 .featured-post {
-    border-bottom-color: var(--line);
-    box-shadow: none;
-    border-color: var(--line);
+    border-color: #f59e0b66;
+    box-shadow: 0 0 0 1px #f59e0b22;
+}
+
+.post-featured-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    padding: 2px 7px;
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 600;
+    color: #92400e;
+    background: #fef3c7ee;
+    border: 1px solid #f59e0b55;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    user-select: none;
 }
 
 /* 文章封面图 */
 .post-cover {
+    position: relative;
     order: 2;
     align-self: start;
     aspect-ratio: 16 / 9;

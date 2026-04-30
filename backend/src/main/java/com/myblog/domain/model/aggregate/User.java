@@ -197,6 +197,19 @@ public class User {
     }
 
     /**
+     * 绑定/更换邮箱。
+     *
+     * @param newEmail 新邮箱
+     */
+    public void changeEmail(String newEmail) {
+        if (newEmail == null || newEmail.trim().isEmpty()) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "邮箱不能为空");
+        }
+        this.email = new Email(newEmail.trim());
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 修改密码。
      *
      * @param newPasswordHash 新密码哈希

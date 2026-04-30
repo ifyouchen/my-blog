@@ -368,5 +368,15 @@ public interface ArticleMapper {
     List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> selectCategoryStats(
             @Param("limit") int limit);
 
+
+    /**
+     * 查询上一篇已发布文章（ID 严格小于给定 id 的最大值）。
+     */
+    ArticleDO selectPrevPublished(@Param("id") Long id);
+
+    /**
+     * 查询下一篇已发布文章（ID 严格大于给定 id 的最小值）。
+     */
+    ArticleDO selectNextPublished(@Param("id") Long id);
 }
 

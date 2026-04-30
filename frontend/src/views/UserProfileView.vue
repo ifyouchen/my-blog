@@ -1,4 +1,4 @@
-<script setup>import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';import {computed, inject, ref, watch} from 'vue';
+<script setup>import {computed, inject, ref, watch} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import ArticleFeed from '@/components/ArticleFeed.vue';

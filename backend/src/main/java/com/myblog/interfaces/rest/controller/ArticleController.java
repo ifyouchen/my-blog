@@ -34,6 +34,10 @@ import java.util.List;
  * @since 1.0.0
  */
 @Validated
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 @RestController
 @RequestMapping("/api/articles")
 public class ArticleController {
@@ -260,5 +264,35 @@ public class ArticleController {
         return Result.success(restDtoMapper.toResponse(
             articleAppService.restoreVersion(id, versionNo, AuthContext.getRequiredUserId(), AuthContext.getRole())
         ));
+    }
+
+    /**
+     * 导出当前用户的全部文章为 ZIP（每篇一个 Markdown 文件）。
+     */
+    @GetMapping("/me/export")
+    public void exportMyArticles(HttpServletResponse response) throws IOException {
+        Long userId = AuthContext.getRequiredUserId();
+        String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".zip";
+        response.setContentType("application/zip");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        byte[] data = articleAppService.exportMyArticlesZip(userId);
+        response.getOutputStream().write(data);
+        response.getOutputStream().flush();
+    }
+
+    /**
+     * 获取文章上下篇。
+     *
+     * @param id 当前文章 ID
+     * @return prev/next ArticleResponse
+     */
+    @GetMapping("/{id}/neighbors")
+    public Result<java.util.Map<String, ArticleResponse>> getNeighbors(@PathVariable Long id) {
+        java.util.Map<String, com.myblog.application.dto.ArticleDTO> neighbors =
+            articleAppService.getArticleNeighbors(id);
+        java.util.Map<String, ArticleResponse> resp = new java.util.LinkedHashMap<>();
+        resp.put("prev", neighbors.get("prev") == null ? null : restDtoMapper.toResponse(neighbors.get("prev")));
+        resp.put("next", neighbors.get("next") == null ? null : restDtoMapper.toResponse(neighbors.get("next")));
+        return Result.success(resp);
     }
 }

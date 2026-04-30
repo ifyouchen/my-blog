@@ -16,6 +16,7 @@ const NotificationsView = () => import('@/views/NotificationsView.vue');
 const ArticleDetailView = () => import('@/views/ArticleDetailView.vue');
 const UserProfileView = () => import('@/views/UserProfileView.vue');
 const DashboardView = () => import('@/views/DashboardView.vue');
+const DashboardColumnsView = () => import('@/views/DashboardColumnsView.vue');
 const ProfileSettingsView = () => import('@/views/ProfileSettingsView.vue');
 const AdminLayout = () => import('@/views/admin/AdminLayout.vue');
 const AdminOverviewView = () => import('@/views/admin/AdminOverviewView.vue');
@@ -222,6 +223,14 @@ const routes = [
         }
     },
     {
+        path: '/dashboard/columns',
+        name: 'dashboardColumns',
+        component: DashboardColumnsView,
+        meta: {
+            title: '我的专栏'
+        }
+    },
+    {
         path: '/settings/profile',
         name: 'profileSettings',
         component: ProfileSettingsView,
@@ -396,7 +405,7 @@ const router = createRouter({
         if (savedPosition) {
             return savedPosition;
         }
-        const samePathNoScroll = ['/', '/dashboard/overview', '/dashboard/articles', '/dashboard/favorites', '/search'];
+        const samePathNoScroll = ['/', '/dashboard/overview', '/dashboard/articles', '/dashboard/columns', '/dashboard/favorites', '/search'];
         if (to.path === from.path && samePathNoScroll.includes(to.path)) {
             return false;
         }

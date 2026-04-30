@@ -976,5 +976,29 @@
         LIMIT #{limit}
     </select>
 
+
+    <!-- 上一篇（同作者或全局，ID 比当前小的最大值） -->
+    <select id="selectPrevPublished"
+            resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE id &lt; #{id}
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <!-- 下一篇（同作者或全局，ID 比当前大的最小值） -->
+    <select id="selectNextPublished"
+            resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_article
+        WHERE id &gt; #{id}
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        ORDER BY id ASC
+        LIMIT 1
+    </select>
 </mapper>
 

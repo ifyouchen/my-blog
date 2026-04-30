@@ -33,6 +33,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -1050,5 +1054,42 @@ public class AdminController {
             return parts[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    // ==================== 数据导出 ====================
+
+    /**
+     * 导出文章列表 CSV。
+     */
+    @GetMapping("/export/articles")
+    public void exportArticles(HttpServletResponse response) throws IOException {
+        ensureAdmin();
+        String filename = "articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        byte[] data = adminAppService.exportArticlesCsv();
+        // Write BOM for Excel compatibility
+        response.getOutputStream().write(0xEF);
+        response.getOutputStream().write(0xBB);
+        response.getOutputStream().write(0xBF);
+        response.getOutputStream().write(data);
+        response.getOutputStream().flush();
+    }
+
+    /**
+     * 导出用户列表 CSV。
+     */
+    @GetMapping("/export/users")
+    public void exportUsers(HttpServletResponse response) throws IOException {
+        ensureAdmin();
+        String filename = "users-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        byte[] data = adminAppService.exportUsersCsv();
+        response.getOutputStream().write(0xEF);
+        response.getOutputStream().write(0xBB);
+        response.getOutputStream().write(0xBF);
+        response.getOutputStream().write(data);
+        response.getOutputStream().flush();
     }
 }

@@ -683,6 +683,22 @@ CREATE TABLE `blog_invite_code` (
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '邀请码表' ROW_FORMAT = Dynamic;
 
+DROP TABLE IF EXISTS `blog_sensitive_word`;
+DROP TABLE IF EXISTS `blog_sensitive_word`;
+CREATE TABLE `blog_sensitive_word` (
+    `id`          bigint unsigned  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `word`        varchar(100)     NOT NULL COMMENT '敏感词',
+    `category`    varchar(50)      NOT NULL DEFAULT 'GENERAL' COMMENT '分类',
+    `level`       tinyint          NOT NULL DEFAULT 1 COMMENT '级别（1=提示 2=屏蔽）',
+    `created_by`  bigint unsigned  NOT NULL DEFAULT 0 COMMENT '创建者ID',
+    `created_at`  datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`  datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at`  datetime         NULL DEFAULT NULL,
+    `version`     int              NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_sensitive_word` (`word`, `deleted_at`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '敏感词表';
+
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES

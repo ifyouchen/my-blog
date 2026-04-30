@@ -6,16 +6,12 @@ import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
+import {getMyColumnsApi} from '@/api/columns';
 import {deleteArticleApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
-import {
-    getDashboardArticlePerformanceApi,
-    getDashboardInteractionsApi,
-    getDashboardOverviewApi,
-    getDashboardTrendsApi
-} from '@/api/dashboard';
+import {getDashboardArticlePerformanceApi, getDashboardInteractionsApi, getDashboardOverviewApi, getDashboardTrendsApi} from '@/api/dashboard';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
-import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 import {getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
@@ -62,6 +58,7 @@ const trendRange = ref(String(route.query.range || '7d') === '30d' ? '30d' : '7d
 const performanceSort = ref(String(route.query.sort || 'view'));
 const performanceArticles = ref([]);
 const interactions = ref([]);
+const columnCount = ref(0);
 const dashboardLoading = ref(false);
 const dashboardError = ref('');
 const {
@@ -212,21 +209,24 @@ const fetchDashboardAnalytics = async () => {
         trends.value = [];
         performanceArticles.value = [];
         interactions.value = [];
+        columnCount.value = 0;
         return;
     }
     dashboardLoading.value = true;
     dashboardError.value = '';
     try {
-        const [overviewResult, trendResult, performanceResult, interactionResult] = await Promise.all([
+        const [overviewResult, trendResult, performanceResult, interactionResult, columnsResult] = await Promise.all([
             getDashboardOverviewApi(),
             getDashboardTrendsApi(trendRange.value),
             getDashboardArticlePerformanceApi(performanceSort.value),
-            getDashboardInteractionsApi()
+            getDashboardInteractionsApi(),
+            getMyColumnsApi().catch(() => [])
         ]);
         overview.value = overviewResult;
         trends.value = trendResult || [];
         performanceArticles.value = performanceResult || [];
         interactions.value = interactionResult || [];
+        columnCount.value = (columnsResult || []).length;
     } catch (error) {
         dashboardError.value = error.message || '创作台数据加载失败';
     } finally {
@@ -351,6 +351,10 @@ const removeArticle = async (article) => {
             }
         }
     });
+};
+
+const exportMyArticles = () => {
+    window.location.href = `/api/users/me/export/articles?_t=${Date.now()}`;
 };
 
 const overviewCards = computed(() => ([
@@ -530,6 +534,7 @@ watch(isLoggedIn, () => {
                     <p class="eyebrow">{{ isFavorites ? '收藏夹' : (isOverview ? '创作者工作台' : '内容管理') }}</p>
                     <h1>{{ isFavorites ? '我的收藏' : (isOverview ? '创作概览' : '我的文章') }}</h1>
                 </div>
+                <button v-if="!isFavorites" type="button" class="btn-export" title="导出所有文章为 CSV" @click="exportMyArticles">导出 CSV</button>
             </div>
 
             <section v-if="isOverview" class="creator-overview">
@@ -575,6 +580,14 @@ watch(isLoggedIn, () => {
                         <span>{{ overview.recommendedActionHint || '创作台会根据你的内容状态持续给出下一步建议。' }}</span>
                         <RouterLink class="creator-overview-link" :to="overview.recommendedActionRoute || '/editor/new'">
                             {{ overview.recommendedActionText || '马上前往' }}
+                        </RouterLink>
+                    </div>
+                    <div class="creator-overview-next-step columns-entry">
+                        <p class="eyebrow">专栏</p>
+                        <strong>{{ columnCount }} 个专栏</strong>
+                        <span>将相关文章归类成专栏，方便读者系统阅读。</span>
+                        <RouterLink class="creator-overview-link" to="/dashboard/columns">
+                            {{ columnCount ? '管理专栏' : '创建专栏' }}
                         </RouterLink>
                     </div>
                 </div>

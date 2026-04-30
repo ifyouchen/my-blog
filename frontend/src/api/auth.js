@@ -70,3 +70,17 @@ export const changePasswordApi = async (currentPassword, newPassword) => {
 };
 
 export const getSecurityInfoApi = async () => normalizeUser(await request('/users/me/security'));
+
+
+
+export const changeEmailApi = async (email, password) => normalizeUser(
+    await request('/users/me/email', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+    })
+);
+
+
+export const generateInviteCodeApi = async () => await request('/invite-codes/generate', { method: 'POST' });
+
+export const getMyInviteCodesApi = async () => await request('/invite-codes/my');

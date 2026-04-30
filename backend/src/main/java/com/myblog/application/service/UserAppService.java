@@ -90,6 +90,29 @@ public class UserAppService {
     }
 
     /**
+     * 绑定/更换邮箱（需验证当前密码）。
+     *
+     * @param userId 用户 ID
+     * @param newEmail 新邮箱
+     * @param password 当前密码（确认身份）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public com.myblog.application.dto.UserDTO changeEmail(Long userId, String newEmail, String password) {
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        if (!passwordDomainService.matches(password, user.getPasswordHash())) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "密码错误，无法修改邮箱");
+        }
+        java.util.Optional<User> existing = userRepository.findByEmail(newEmail);
+        if (existing.isPresent() && !existing.get().getId().equals(user.getId())) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "该邮箱已被其他账号绑定");
+        }
+        user.changeEmail(newEmail);
+        userRepository.save(user);
+        return UserAssembler.toDTO(user);
+    }
+
+    /**
      * 忘记密码：生成重置 Token 并记录（控制台 log 代替发邮件）。
      *
      * @param email 邮箱
@@ -297,5 +320,32 @@ public class UserAppService {
         overviewDTO.setRecommendedActionText("查看已发布文章");
         overviewDTO.setRecommendedActionHint("你的内容已经在线，继续优化标题、摘要和互动表现会更有效。");
         overviewDTO.setRecommendedActionRoute("/dashboard/articles?status=PUBLISHED");
+    }
+
+
+    public byte[] exportMyArticlesCsv(Long userId) {
+        PageResult<ArticleDTO> page = getMyArticles(userId, null, 1, 10000);
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,title,category,status,viewCount,likeCount,commentCount,publishedAt,createdAt
+");
+        for (ArticleDTO a : page.getItems()) {
+            sb.append(a.getId()).append(",");
+            sb.append(escapeCsvUser(a.getTitle())).append(",");
+            sb.append(escapeCsvUser(a.getCategory())).append(",");
+            sb.append(escapeCsvUser(a.getStatus())).append(",");
+            sb.append(a.getViewCount()).append(",");
+            sb.append(a.getLikeCount()).append(",");
+            sb.append(a.getCommentCount()).append(",");
+            sb.append(escapeCsvUser(a.getPublishedAt()!=null?a.getPublishedAt().toString():"")).append(",");
+            sb.append(escapeCsvUser(a.getCreatedAt()!=null?a.getCreatedAt().toString():"")).append("
+");
+        }
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+    private String escapeCsvUser(String v) {
+        if (v == null) return "";
+        if (v.contains(",") || v.contains(""") || v.contains("
+")) return """+v.replace(""","""")+""";
+        return v;
     }
 }

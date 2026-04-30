@@ -68,6 +68,10 @@ const props = defineProps({
     sortItems: {
         type: Array,
         default: () => []
+    },
+    highlightKeyword: {
+        type: String,
+        default: ""
     }
 });
 
@@ -89,6 +93,13 @@ const showEmpty = computed(() =>
     && props.articles.length === 0
 );
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
+
+const highlightHtml = (text) => {
+    const kw = props.highlightKeyword ? props.highlightKeyword.trim() : "";
+    if (!kw || !text) return text;
+    const escaped = kw.replace(/[.*+?^()|[]\]/g, "\const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));");
+    return text.replace(new RegExp(escaped, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
+};
 const pageStart = computed(() => {
     if (!props.total) {
         return 0;
@@ -214,6 +225,7 @@ watch(
             >
                 <div class="post-cover" :aria-label="`查看文章：${article.title}`">
                     <img :src="article.cover" :alt="article.coverAlt" loading="lazy">
+                    <span v-if="article.featured" class="post-featured-badge" title="精选文章">⭐</span>
                 </div>
                 <div class="post-content">
                     <div class="post-meta">
@@ -221,8 +233,8 @@ watch(
                         <span>{{ article.readingTime }}</span>
                         <span>{{ article.publishedText }}</span>
                     </div>
-                    <h3 class="post-title">{{ article.title }}</h3>
-                    <p>{{ article.summary }}</p>
+                    <h3 class="post-title" v-html="highlightHtml(article.title)"></h3>
+                    <p v-html="highlightHtml(article.summary)"></p>
                     <div class="post-footer">
                         <RouterLink
                             class="author author-hotspot"
@@ -451,5 +463,13 @@ watch(
         aspect-ratio: 16 / 9;
         height: auto;
     }
+}
+
+:deep(.search-highlight) {
+    background: #fef08a;
+    color: #78350f;
+    border-radius: 2px;
+    padding: 0 1px;
+    font-style: normal;
 }
 </style>

@@ -1,5 +1,45 @@
-import { request } from './http';
-import { normalizeArticle, normalizeColumn } from './transformers';
+import {request} from './http';
+import {normalizeArticle, normalizeColumn} from './transformers';
+
+// ========== 创作者专栏管理 API ==========
+
+export const getMyColumnsApi = async () => {
+    const data = await request('/dashboard/columns');
+    return (data || []).map(normalizeColumn);
+};
+
+export const createMyColumnApi = async ({ title, summary = '', coverUrl = '' }) => {
+    const data = await request('/dashboard/columns', {
+        method: 'POST',
+        body: JSON.stringify({ title, summary, coverUrl })
+    });
+    return normalizeColumn(data);
+};
+
+export const updateMyColumnApi = async (columnId, { title, summary = '', coverUrl = '' }) => {
+    const data = await request(`/dashboard/columns/${columnId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title, summary, coverUrl })
+    });
+    return normalizeColumn(data);
+};
+
+export const deleteMyColumnApi = async (columnId) => {
+    return request(`/dashboard/columns/${columnId}`, { method: 'DELETE' });
+};
+
+export const addMyColumnArticleApi = async (columnId, articleId) => {
+    return request(`/dashboard/columns/${columnId}/articles`, {
+        method: 'POST',
+        body: JSON.stringify({ articleId })
+    });
+};
+
+export const removeMyColumnArticleApi = async (columnId, articleId) => {
+    return request(`/dashboard/columns/${columnId}/articles/${articleId}`, { method: 'DELETE' });
+};
+
+// ========== 公共专栏 API ==========
 
 export const getColumnsApi = async ({ page = 1, pageSize = 9 } = {}) => {
     const data = await request(`/columns?page=${page}&pageSize=${pageSize}`);

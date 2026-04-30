@@ -393,4 +393,19 @@ public interface ArticleRepository {
     List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> findCategoryStats(int limit);
 
     long countByWarnFlag();
+    /**
+     * 查询上一篇已发布文章（ID 小于给定值的最大项）。
+     *
+     * @param articleId 当前文章 ID
+     * @return Optional 上一篇
+     */
+    java.util.Optional<Article> findPrevPublished(Long articleId);
+
+    /**
+     * 查询下一篇已发布文章（ID 大于给定值的最小项）。
+     *
+     * @param articleId 当前文章 ID
+     * @return Optional 下一篇
+     */
+    java.util.Optional<Article> findNextPublished(Long articleId);
 }

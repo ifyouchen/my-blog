@@ -1,8 +1,7 @@
-<script setup>
-import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
-import {getArticleApi, getRelatedArticlesApi} from '@/api/articles';
+import {getArticleApi, getArticleNeighborsApi, getRelatedArticlesApi} from '@/api/articles';
 import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
 import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -26,6 +25,8 @@ const loadError = ref('');
 const useLocalFallback = ref(false);
 const relatedArticles = ref([]);
 const relatedLoading = ref(false);
+const neighborPrev = ref(null);
+const neighborNext = ref(null);
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
 const pageTitle = computed(() => {
@@ -79,6 +80,9 @@ const readingProgress = ref(0);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
 const reportDialogVisible = ref(false);
+const immersiveMode = ref(false);
+const showShareMenu = ref(false);
+const shareCopied = ref(false);
 const currentUserId = computed(() => state.user?.id || null);
 const showAuthorFollow = computed(() => {
     if (!article.value?.author?.id) {
@@ -200,6 +204,17 @@ const fetchRelated = async (id) => {
     }
 };
 
+const fetchNeighbors = async (id) => {
+    try {
+        const nb = await getArticleNeighborsApi(id);
+        neighborPrev.value = nb.prev || null;
+        neighborNext.value = nb.next || null;
+    } catch {
+        neighborPrev.value = null;
+        neighborNext.value = null;
+    }
+};
+
 const toggleLike = async () => {
     if (likeSubmitting.value || !article.value) {
         return;
@@ -291,6 +306,56 @@ const handleReportSuccess = () => {
     toast.success('举报已提交，管理员会尽快处理');
 };
 
+const toggleImmersive = () => {
+    immersiveMode.value = !immersiveMode.value;
+    if (immersiveMode.value) {
+        document.body.classList.add('immersive-mode');
+    } else {
+        document.body.classList.remove('immersive-mode');
+    }
+};
+
+const handleImmersiveKeydown = (e) => {
+    if (e.key === 'Escape' && immersiveMode.value) {
+        toggleImmersive();
+    }
+};
+
+const copyArticleLink = async () => {
+    const url = window.location.href;
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(url);
+        } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+        shareCopied.value = true;
+        showShareMenu.value = false;
+        window.setTimeout(() => { shareCopied.value = false; }, 2000);
+    } catch (_) {
+        toast.error('复制失败，请手动复制链接');
+    }
+};
+
+const closeShareIfOutside = (e) => {
+    if (!e.target.closest('.article-share-wrap')) {
+        showShareMenu.value = false;
+    }
+};
+
+const shareToWeibo = () => {
+    if (!article.value) return;
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent(article.value.title || '');
+    window.open(`https://service.weibo.com/share/share.php?url=${url}&title=${title}`, '_blank');
+    showShareMenu.value = false;
+};
+
 const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -307,15 +372,21 @@ watch(() => route.params.id, fetchArticle, { immediate: true });
 watch(remoteArticle, (val) => {
     if (val?.id) {
         fetchRelated(val.id);
+        fetchNeighbors(val.id);
     }
 });
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
+    window.addEventListener('keydown', handleImmersiveKeydown);
+    document.addEventListener('click', closeShareIfOutside);
 });
 
 onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('keydown', handleImmersiveKeydown);
+    document.removeEventListener('click', closeShareIfOutside);
+    document.body.classList.remove('immersive-mode');
 });
 </script>
 
@@ -330,7 +401,7 @@ onUnmounted(() => {
         aria-valuemax="100"
         :style="{ width: `${readingProgress}%` }"
     ></div>
-    <main v-if="article" class="page-shell detail-layout" data-testid="article-detail-page">
+    <main v-if="article" :class="['page-shell', 'detail-layout', { 'detail-immersive': immersiveMode }]" data-testid="article-detail-page">
         <article class="article-main" data-testid="article-detail-main">
             <img class="article-hero" :src="article.cover" :alt="article.coverAlt" loading="eager">
             <div class="article-body">
@@ -412,6 +483,30 @@ onUnmounted(() => {
                             >
                                 <span class="article-quick-label">举报</span>
                             </button>
+                            <!-- 分享 -->
+                            <div class="article-share-wrap">
+                                <button
+                                    type="button"
+                                    :class="['article-quick-button', { active: shareCopied }]"
+                                    :title="shareCopied ? '已复制链接' : '分享文章'"
+                                    @click="showShareMenu = !showShareMenu"
+                                >
+                                    <span class="article-quick-label">{{ shareCopied ? '已复制' : '分享' }}</span>
+                                </button>
+                                <div v-if="showShareMenu" class="article-share-menu">
+                                    <button type="button" @click="copyArticleLink">复制链接</button>
+                                    <button type="button" @click="shareToWeibo">分享到微博</button>
+                                </div>
+                            </div>
+                            <!-- 沉浸阅读 -->
+                            <button
+                                type="button"
+                                :class="['article-quick-button', { active: immersiveMode }]"
+                                :title="immersiveMode ? '退出沉浸模式 (Esc)' : '沉浸阅读'"
+                                @click="toggleImmersive"
+                            >
+                                <span class="article-quick-label">{{ immersiveMode ? '退出' : '沉浸' }}</span>
+                            </button>
                         </div>
                     </div>
                 </section>
@@ -419,6 +514,28 @@ onUnmounted(() => {
                 <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
                 <section v-else class="article-content-empty">
                     <p>正文暂时为空，稍后再来看一眼。</p>
+                </section>
+
+                <!-- 上下篇导航 -->
+                <section v-if="neighborPrev || neighborNext" class="article-neighbors">
+                    <RouterLink
+                        v-if="neighborPrev"
+                        :to="`/articles/${neighborPrev.id}`"
+                        class="article-neighbor article-neighbor--prev"
+                    >
+                        <span class="article-neighbor-label">上一篇</span>
+                        <span class="article-neighbor-title">{{ neighborPrev.title }}</span>
+                    </RouterLink>
+                    <span v-else class="article-neighbor article-neighbor--prev article-neighbor--empty" />
+                    <RouterLink
+                        v-if="neighborNext"
+                        :to="`/articles/${neighborNext.id}`"
+                        class="article-neighbor article-neighbor--next"
+                    >
+                        <span class="article-neighbor-label">下一篇</span>
+                        <span class="article-neighbor-title">{{ neighborNext.title }}</span>
+                    </RouterLink>
+                    <span v-else class="article-neighbor article-neighbor--next article-neighbor--empty" />
                 </section>
 
                 <section class="article-comment" data-testid="article-comments-section">

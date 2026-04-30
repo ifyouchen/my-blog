@@ -476,4 +476,22 @@ public class MyBatisArticleRepository implements ArticleRepository {
     public long countByWarnFlag() {
         return articleMapper.countByWarnFlag();
     }
+
+    @Override
+    public java.util.Optional<com.myblog.domain.model.aggregate.Article> findPrevPublished(Long articleId) {
+        com.myblog.infrastructure.repository.persistence.entity.ArticleDO prev =
+            articleMapper.selectPrevPublished(articleId);
+        if (prev == null) return java.util.Optional.empty();
+        java.util.List<String> tags = articleMapper.selectTagNamesByArticleId(prev.getId());
+        return java.util.Optional.of(articleConverter.toDomain(prev, tags));
+    }
+
+    @Override
+    public java.util.Optional<com.myblog.domain.model.aggregate.Article> findNextPublished(Long articleId) {
+        com.myblog.infrastructure.repository.persistence.entity.ArticleDO next =
+            articleMapper.selectNextPublished(articleId);
+        if (next == null) return java.util.Optional.empty();
+        java.util.List<String> tags = articleMapper.selectTagNamesByArticleId(next.getId());
+        return java.util.Optional.of(articleConverter.toDomain(next, tags));
+    }
 }
