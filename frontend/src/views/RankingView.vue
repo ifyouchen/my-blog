@@ -92,7 +92,7 @@ onMounted(fetchRankings);
                                 <strong>{{ index + 1 }}</strong>
                             </div>
                             <div class="ranking-post-cover" :aria-label="`查看文章：${article.title}`">
-                                <img :src="article.cover" :alt="article.coverAlt" loading="lazy">
+                                <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
                             </div>
                             <div class="ranking-post-content">
                                 <div class="ranking-post-meta">
@@ -112,7 +112,7 @@ onMounted(fetchRankings);
                                         @keydown.enter.stop
                                         @keydown.space.stop
                                     >
-                                        <img :src="article.author.avatar" alt="作者头像" loading="lazy">
+                                        <img :src="article.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                                         <span>{{ article.author.name }}</span>
                                     </RouterLink>
                                     <div class="ranking-post-stats">
@@ -139,7 +139,7 @@ onMounted(fetchRankings);
                         <div v-for="author in authorRankings" :key="author.user.id" class="ranking-author-card">
                             <span class="ranking-side-rank" :class="`rank-${author.rank}`">{{ author.rank }}</span>
                             <RouterLink class="ranking-author-avatar" :to="`/users/${author.user.id}`">
-                                <img :src="author.user.avatar" alt="作者头像" loading="lazy">
+                                <img :src="author.user.avatar" alt="作者头像" loading="lazy" decoding="async">
                             </RouterLink>
                             <div class="ranking-author-copy">
                                 <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>

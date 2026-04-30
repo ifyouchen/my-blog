@@ -767,7 +767,7 @@ onUnmounted(() => {
                     alt="预览封面"
                     @load="handleCoverPreviewLoad"
                     @error="handleCoverPreviewError"
-                >
+                 decoding="async">
                 <MarkdownPreview v-if="draft.content.trim()" :content="draft.content" />
                 <div v-else class="editor-preview-empty">正文还没有内容，继续往下写就好。</div>
             </section>
@@ -843,7 +843,7 @@ onUnmounted(() => {
                         alt="文章封面预览"
                         @load="handleCoverPreviewLoad"
                         @error="handleCoverPreviewError"
-                    >
+                     decoding="async">
                     <div class="cover-card-overlay">
                         <span>{{ isUsingDefaultCover ? '未上传时将使用系统默认封面' : '这张图会作为文章封面展示' }}</span>
                     </div>

@@ -1,4 +1,4 @@
-<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {getArticleApi, getArticleNeighborsApi, getRelatedArticlesApi} from '@/api/articles';
@@ -403,7 +403,7 @@ onUnmounted(() => {
     ></div>
     <main v-if="article" :class="['page-shell', 'detail-layout', { 'detail-immersive': immersiveMode }]" data-testid="article-detail-page">
         <article class="article-main" data-testid="article-detail-main">
-            <img class="article-hero" :src="article.cover" :alt="article.coverAlt" loading="eager">
+            <img v-if="article.cover" class="article-hero" :src="article.cover" :alt="article.coverAlt" loading="eager" decoding="async">
             <div class="article-body">
                 <section class="article-heading-panel">
                     <div class="article-heading-top">
@@ -424,7 +424,6 @@ onUnmounted(() => {
                     <div class="article-heading-bottom">
                         <div class="article-heading-meta">
                             <RouterLink class="article-author" :to="`/users/${article.author.id}`">
-                                <img :src="article.author.avatar" alt="作者头像" loading="lazy">
                                 <div>
                                     <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
                                     <span>{{ article.publishedText }} · {{ article.category }}</span>

@@ -106,7 +106,7 @@ onBeforeUnmount(() => {
                     :src="ad.imageUrl"
                     :alt="ad.title"
                     loading="lazy"
-                >
+                 decoding="async">
                 <span class="ad-banner-title">{{ ad.title }}</span>
             </button>
         </div>

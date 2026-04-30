@@ -224,7 +224,7 @@ watch(
                 @keydown.space.prevent="openArticle(article)"
             >
                 <div class="post-cover" :aria-label="`查看文章：${article.title}`">
-                    <img :src="article.cover" :alt="article.coverAlt" loading="lazy">
+                    <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
                     <span v-if="article.featured" class="post-featured-badge" title="精选文章">⭐</span>
                 </div>
                 <div class="post-content">
@@ -243,7 +243,7 @@ watch(
                             @keydown.enter.stop
                             @keydown.space.stop
                         >
-                            <img :src="article.author.avatar" alt="作者头像">
+                            <img :src="article.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                             <span>{{ article.author.name }}</span>
                         </RouterLink>
                         <span>{{ article.stats.views }}</span>

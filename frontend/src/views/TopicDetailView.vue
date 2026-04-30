@@ -83,7 +83,7 @@ watch(() => route.params.id, async () => {
                 </div>
             </div>
             <div class="topic-detail-cover-panel">
-                <img :src="topic.coverUrl" :alt="`${topic.title} 封面`">
+                <img :src="topic.coverUrl" :alt="`${topic.title} 封面`" loading="lazy" decoding="async">
                 <div class="topic-detail-cover-note">
                     <span>精选专题</span>
                     <strong>{{ topic.title }}</strong>

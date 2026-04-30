@@ -199,7 +199,7 @@ watch(() => route.query, async (query) => {
                             class="following-author-item"
                             :to="`/users/${author.id}`"
                         >
-                            <img :src="author.avatar" alt="作者头像" loading="lazy">
+                            <img :src="author.avatar" alt="作者头像" loading="lazy" decoding="async">
                             <div>
                                 <strong>{{ author.name }}</strong>
                                 <span>{{ author.bio || '持续分享工程实践与技术经验。' }}</span>
@@ -224,7 +224,7 @@ watch(() => route.query, async (query) => {
                             class="rank-author-item"
                         >
                             <div class="rank-author-info">
-                                <img :src="item.user.avatar" alt="作者头像" loading="lazy">
+                                <img :src="item.user.avatar" alt="作者头像" loading="lazy" decoding="async">
                                 <div>
                                     <RouterLink :to="`/users/${item.user.id}`">
                                         {{ item.user.name }}

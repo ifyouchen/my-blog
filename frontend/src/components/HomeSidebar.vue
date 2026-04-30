@@ -64,6 +64,7 @@ const writeArticle = () => {
                         :src="topic.coverUrl"
                         :alt="`${topic.title} 封面`"
                         loading="lazy"
+                        decoding="async"
                     >
                     <span>{{ topic.title }}</span>
                 </RouterLink>
@@ -76,7 +77,6 @@ const writeArticle = () => {
                 <li v-for="(author, index) in props.authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
                     <RouterLink class="home-author-avatar" :to="`/users/${author.user.id}`">
-                        <img :src="author.user.avatar" alt="作者头像" loading="lazy">
                     </RouterLink>
                     <div>
                         <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>

@@ -89,7 +89,7 @@ watch(() => route.params.id, async () => {
                 </div>
                 <div class="column-detail-meta">
                     <RouterLink class="column-detail-author" :to="`/users/${column.author.id}`">
-                        <img :src="column.author.avatar" alt="作者头像" loading="lazy">
+                        <img :src="column.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                         <div>
                             <strong>{{ column.author.name }}</strong>
                             <span>专栏作者</span>
@@ -110,7 +110,7 @@ watch(() => route.params.id, async () => {
                 </div>
             </div>
             <div class="column-detail-cover-panel">
-                <img :src="column.coverUrl" :alt="`${column.title} 封面`">
+                <img :src="column.coverUrl" :alt="`${column.title} 封面`" loading="lazy" decoding="async">
                 <div class="column-detail-cover-note">
                     <span>内容主题</span>
                     <strong>{{ column.title }}</strong>

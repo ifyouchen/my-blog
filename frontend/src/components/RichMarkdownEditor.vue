@@ -1424,7 +1424,7 @@ const handleGlobalScroll = (event) => {
                     >
                     <p v-if="imageUrlDialog.error" class="image-url-error">{{ imageUrlDialog.error }}</p>
                     <div v-if="imageUrlDialog.url && !imageUrlDialog.error" class="image-url-preview">
-                        <img :src="imageUrlDialog.url" alt="图片预览" @error="false">
+                        <img :src="imageUrlDialog.url" alt="图片预览" @error="false" decoding="async">
                     </div>
                 </div>
                 <div class="image-url-actions">

@@ -290,7 +290,7 @@ watch(() => route.params.id, () => {
                     </div>
                     <ul v-else-if="followDialogList.length" class="follow-user-list">
                         <li v-for="user in followDialogList" :key="user.id" class="follow-user-item" @click="goToUserProfile(user.id)">
-                            <img class="follow-user-avatar" :src="user.avatar" :alt="user.nickname" />
+                            <img class="follow-user-avatar" :src="user.avatar" :alt="user.nickname" decoding="async">
                             <div class="follow-user-info">
                                 <span class="follow-user-name">{{ user.nickname }}</span>
                                 <span class="follow-user-handle">@{{ user.username }}</span>

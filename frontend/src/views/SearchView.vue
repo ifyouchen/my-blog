@@ -822,7 +822,7 @@ onMounted(fetchBootstrap);
                     class="user-card"
                     @click="goToUser(user.id)"
                 >
-                    <img :src="user.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'" :alt="user.nickname" class="user-avatar">
+                    <img :src="user.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'" :alt="user.nickname" class="user-avatar" decoding="async">
                     <div class="user-info">
                         <div class="user-name">{{ user.nickname || user.username }}</div>
                         <div class="user-bio">{{ user.bio || '' }}</div>
@@ -875,7 +875,7 @@ onMounted(fetchBootstrap);
                     class="column-card"
                     @click="goToColumn(column.id)"
                 >
-                    <img :src="column.coverUrl || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=300&q=80'" :alt="column.title" class="column-cover">
+                    <img :src="column.coverUrl || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=300&q=80'" :alt="column.title" class="column-cover" decoding="async">
                     <div class="column-info">
                         <div class="column-name">{{ column.title }}</div>
                         <div class="column-summary">{{ column.summary || column.description || '' }}</div>
@@ -885,7 +885,7 @@ onMounted(fetchBootstrap);
                                 :src="column.author.avatarUrl"
                                 :alt="column.author?.nickname"
                                 class="column-author-avatar"
-                            >
+                             decoding="async">
                             <span>{{ column.author?.nickname || '' }}</span>
                         </div>
                         <div class="column-stats">

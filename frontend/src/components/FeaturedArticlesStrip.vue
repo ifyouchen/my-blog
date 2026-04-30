@@ -23,7 +23,7 @@ defineProps({
                 class="featured-card"
             >
                 <div class="featured-card-cover">
-                    <img :src="article.cover || article.coverUrl" :alt="`${article.title} 封面`" loading="lazy">
+                    <img :src="article.cover || article.coverUrl" :alt="`${article.title} 封面`" loading="lazy" decoding="async">
                 </div>
                 <div class="featured-card-body">
                     <span class="featured-card-category">{{ article.category }}</span>

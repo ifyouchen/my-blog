@@ -42,7 +42,7 @@ const avatarUrl = (comment) => {
 
 <template>
     <article class="comment-thread-item" :class="{ nested: depth > 0 }">
-        <img class="comment-thread-avatar" :src="avatarUrl(comment)" :alt="authorName(comment)">
+        <img class="comment-thread-avatar" :src="avatarUrl(comment)" :alt="authorName(comment)" decoding="async">
         <div class="comment-thread-body">
             <div class="comment-thread-card">
                 <div class="comment-thread-meta">
@@ -87,7 +87,7 @@ const avatarUrl = (comment) => {
                         class="comment-flatten-item"
                     >
                         <div class="comment-thread-item nested">
-                            <img class="comment-thread-avatar" :src="avatarUrl(reply)" :alt="authorName(reply)">
+                            <img class="comment-thread-avatar" :src="avatarUrl(reply)" :alt="authorName(reply)" decoding="async">
                             <div class="comment-thread-body">
                                 <div class="comment-thread-card">
                                     <div class="comment-thread-meta">

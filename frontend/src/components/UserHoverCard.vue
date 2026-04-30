@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
             :to="profilePath"
             :aria-label="`进入 ${displayName} 的个人主页`"
         >
-            <img :class="avatarClass" :src="displayAvatar" :alt="displayName">
+            <img :class="avatarClass" :src="displayAvatar" :alt="displayName" decoding="async">
         </RouterLink>
         <RouterLink
             v-else
@@ -138,7 +138,7 @@ onBeforeUnmount(() => {
 
         <span v-if="showCard" class="user-hover-panel" role="tooltip">
             <span class="user-hover-panel-head">
-                <img class="user-hover-panel-avatar" :src="displayAvatar" :alt="displayName">
+                <img class="user-hover-panel-avatar" :src="displayAvatar" :alt="displayName" decoding="async">
                 <span class="user-hover-panel-main">
                     <strong>{{ displayName }}</strong>
                     <small v-if="displayUser.username">@{{ displayUser.username }}</small>

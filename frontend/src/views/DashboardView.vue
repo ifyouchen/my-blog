@@ -748,7 +748,7 @@ watch(isLoggedIn, () => {
                 <p v-else-if="errorMessage && !favorites.length" class="error-text">{{ errorMessage }}</p>
                 <div v-else-if="favorites.length" class="favorite-grid">
                     <article v-for="article in favorites" :key="article.id" class="favorite-card">
-                        <img :src="article.cover" :alt="article.coverAlt">
+                        <img :src="article.cover" :alt="article.coverAlt" decoding="async">
                         <div>
                             <span>{{ article.category }}</span>
                             <h2>{{ article.title }}</h2>

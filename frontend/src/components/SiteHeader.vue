@@ -342,13 +342,13 @@ const handleNotificationsRefresh = () => {
                                         :src="notification.actor.avatarUrl"
                                         class="notification-avatar"
                                         alt=""
-                                    >
+                                     decoding="async">
                                     <img
                                         v-else
                                         src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80"
                                         class="notification-avatar"
                                         alt=""
-                                    >
+                                     decoding="async">
                                     <div class="notification-content">
                                         <div class="notification-text">
                                             <span class="notification-actor">{{ notification.actor?.nickname || notification.actor?.username }}</span>
@@ -382,7 +382,7 @@ const handleNotificationsRefresh = () => {
                                 :aria-expanded="userMenuOpen"
                                 aria-haspopup="true"
                             >
-                                <img :src="avatarUrl" alt="用户头像">
+                                <img :src="avatarUrl" alt="用户头像" decoding="async">
                                 <span>{{ displayName }}</span>
                             </button>
                         </div>
@@ -431,7 +431,7 @@ const handleNotificationsRefresh = () => {
 
             <!-- 已登录：用户信息区 -->
             <div v-if="isLoggedIn" class="mobile-user-info">
-                <img :src="avatarUrl" class="mobile-user-avatar" alt="用户头像">
+                <img :src="avatarUrl" class="mobile-user-avatar" alt="用户头像" decoding="async">
                 <div class="mobile-user-detail">
                     <span class="mobile-user-name">{{ displayName }}</span>
                     <span v-if="unreadCount > 0" class="mobile-unread-hint">{{ displayUnreadCount }} 条未读通知</span>

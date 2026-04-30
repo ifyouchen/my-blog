@@ -249,7 +249,7 @@ onMounted(loadOverview);
                             :src="author.avatarUrl || '/default-avatar.png'"
                             :alt="author.nickname || author.username"
                             class="top-author-avatar"
-                        />
+                        / decoding="async">
                         <div class="top-author-info">
                             <strong>{{ author.nickname || author.username }}</strong>
                             <span>{{ author.articleCount }} 篇 · {{ (author.totalViews || 0).toLocaleString() }} 阅读</span>

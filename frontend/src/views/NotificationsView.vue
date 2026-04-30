@@ -353,14 +353,14 @@ watch(
                             class="notification-avatar"
                             alt=""
                             loading="lazy"
-                        >
+                         decoding="async">
                         <img
                             v-else
                             src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80"
                             class="notification-avatar"
                             alt=""
                             loading="lazy"
-                        >
+                         decoding="async">
                         <div class="notification-content">
                             <div class="notification-text">
                                 <span class="notification-actor">

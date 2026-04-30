@@ -66,7 +66,7 @@ const hasExtra = computed(() => Boolean(slots.extra));
                 :alt="avatarAlt"
                 @load="$emit('avatar-load')"
                 @error="$emit('avatar-error')"
-            >
+             decoding="async">
             <div class="profile-summary-copy">
                 <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
                 <div class="profile-summary-title-row">

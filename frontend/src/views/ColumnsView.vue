@@ -85,7 +85,7 @@ onMounted(fetchColumns);
                     @keydown.space.prevent="router.push(`/columns/${column.id}`)"
                 >
                     <div class="column-card-cover" :aria-label="`查看专栏：${column.title}`">
-                        <img :src="column.coverUrl" :alt="`${column.title} 封面`" loading="lazy">
+                        <img :src="column.coverUrl" :alt="`${column.title} 封面`" loading="lazy" decoding="async">
                     </div>
                     <div class="column-card-body">
                         <div class="column-card-meta">
@@ -104,7 +104,7 @@ onMounted(fetchColumns);
                                 @keydown.enter.stop
                                 @keydown.space.stop
                             >
-                                <img :src="column.author.avatar" alt="作者头像" loading="lazy">
+                                <img :src="column.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                                 <span>{{ column.author.name }}</span>
                             </RouterLink>
                             <ColumnSubscribeButton

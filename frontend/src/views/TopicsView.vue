@@ -79,7 +79,7 @@ onMounted(fetchTopics);
                     @keydown.space.prevent="router.push(`/topics/${topic.id}`)"
                 >
                     <div class="topic-card-cover" :aria-label="`查看专题：${topic.title}`">
-                        <img :src="topic.coverUrl" :alt="`${topic.title} 封面`" loading="lazy">
+                        <img :src="topic.coverUrl" :alt="`${topic.title} 封面`" loading="lazy" decoding="async">
                     </div>
                     <div class="topic-card-body">
                         <div class="topic-card-meta">
