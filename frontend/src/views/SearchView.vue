@@ -1,5 +1,6 @@
 <script setup>
-import {computed, onMounted, ref, watch} from 'vue';
+import {Teleport} from 'vue';
+import {useWindowSize} from '@/composables/useWindowSize';
 import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {listArticlesApi} from '@/api/articles';
@@ -19,6 +20,9 @@ const MAX_GUEST_RECENT_SEARCHES = 10;
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn, state } = useSession();
+const { width: windowWidth } = useWindowSize();
+const MOBILE_BREAKPOINT = 720;
+const isMobile = computed(() => windowWidth.value < MOBILE_BREAKPOINT);
 
 const activeTab = ref(String(route.query.tab || 'articles'));
 const keyword = ref(String(route.query.keyword || ''));
@@ -64,6 +68,26 @@ useHead({
 const categoriesExpanded = ref(false);
 const tagsExpanded = ref(false);
 const filtersExpanded = ref(false);
+
+// Mobile bottom sheet state
+const mobileSheetOpen = ref(false);
+const mobileSheetVisible = ref(false);
+let mobileSheetTimer = null;
+
+const openMobileSheet = () => {
+    if (mobileSheetTimer) clearTimeout(mobileSheetTimer);
+    mobileSheetOpen.value = true;
+    requestAnimationFrame(() => {
+        mobileSheetVisible.value = true;
+    });
+};
+
+const closeMobileSheet = () => {
+    mobileSheetVisible.value = false;
+    mobileSheetTimer = setTimeout(() => {
+        mobileSheetOpen.value = false;
+    }, 300);
+};
 
 const formatDate = (date) => {
     const y = date.getFullYear();
@@ -548,17 +572,17 @@ onMounted(fetchBootstrap);
                 v-if="activeTab === 'articles'"
                 class="mobile-filter-toggle"
                 type="button"
-                @click="filtersExpanded = !filtersExpanded"
+                @click="isMobile ? openMobileSheet() : (filtersExpanded = !filtersExpanded)"
             >
                 <span>
                     筛选条件
                     <span v-if="activeFilterCount" class="filter-count-badge">{{ activeFilterCount }}</span>
                 </span>
-                <span class="filter-toggle-arrow" :class="{ open: filtersExpanded }">▾</span>
+                <span v-if="!isMobile" class="filter-toggle-arrow" :class="{ open: filtersExpanded }">▾</span>
             </button>
 
             <!-- Article Filters -->
-            <div v-if="activeTab === 'articles'" class="search-filters" :class="{ collapsed: !filtersExpanded }">
+            <div v-if="activeTab === 'articles' && !isMobile" class="search-filters" :class="{ collapsed: !filtersExpanded }">
                 <div class="filter-group sort-row">
                     <span>排序方式</span>
                     <div class="sort-buttons">
@@ -692,7 +716,68 @@ onMounted(fetchBootstrap);
             </div>
 
             <p class="result-note">
-                <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章</template>
+                <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章
+    <!-- Mobile bottom sheet for filters -->
+    <Teleport to="body">
+        <div v-if="mobileSheetOpen" class="mobile-sheet-overlay" :class="{ visible: mobileSheetVisible }" @click.self="closeMobileSheet">
+            <div class="mobile-sheet" :class="{ visible: mobileSheetVisible }">
+                <div class="mobile-sheet-header">
+                    <span class="mobile-sheet-title">筛选条件</span>
+                    <button type="button" class="mobile-sheet-close" @click="closeMobileSheet">&#10005;</button>
+                </div>
+                <div class="mobile-sheet-body">
+                    <div class="search-filters">
+                        <div class="filter-group sort-row">
+                            <span>排序方式</span>
+                            <div class="sort-buttons">
+                                <button v-for="item in ARTICLE_SORT_ITEMS" :key="item.value" type="button" :class="{ active: activeSort === item.value }" @click="changeSort(item.value)">{{ item.label }}</button>
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <span>分类</span>
+                            <div class="tag-row">
+                                <button v-for="category in visibleCategories" :key="category" type="button" :class="{ active: (activeCategory || '全部') === category }" @click="changeCategory(category)">{{ category }}</button>
+                                <button v-if="hasMoreCategories" type="button" class="expand-btn" @click="categoriesExpanded = !categoriesExpanded">{{ categoriesExpanded ? '收起' : '+' + (categoryOptions.length - MAX_VISIBLE_TAGS) + '个' }}</button>
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <span>标签</span>
+                            <div class="tag-row">
+                                <button v-for="tag in visibleTags" :key="tag" type="button" :class="{ active: (activeTag || '全部') === tag }" @click="changeTag(tag)">{{ tag }}</button>
+                                <button v-if="hasMoreTags" type="button" class="expand-btn" @click="tagsExpanded = !tagsExpanded">{{ tagsExpanded ? '收起' : '+' + (tagOptions.length - MAX_VISIBLE_TAGS) + '个' }}</button>
+                            </div>
+                        </div>
+                        <div class="filter-group enhanced-filters">
+                            <span>作者关键字</span>
+                            <input v-model="authorKeyword" type="text" placeholder="搜索作者..." class="filter-input" @keydown.enter="changeAuthorKeyword">
+                        </div>
+                        <div class="filter-group date-filters">
+                            <span>发布日期</span>
+                            <div class="date-presets">
+                                <button v-for="preset in datePresets" :key="preset.label" type="button" :class="{ active: isPresetActive(preset) }" @click="applyDatePreset(preset)">{{ preset.label }}</button>
+                            </div>
+                            <div class="date-range">
+                                <input v-model="dateFrom" type="date" class="filter-input" @change="changeDateFrom">
+                                <span class="date-range-sep">至</span>
+                                <input v-model="dateTo" type="date" class="filter-input" @change="changeDateTo">
+                            </div>
+                        </div>
+                        <div v-if="isLoggedIn" class="filter-group following-filter">
+                            <label class="checkbox-label"><input v-model="followingOnly" type="checkbox" @change="changeFollowingOnly"><span>仅看已关注作者</span></label>
+                        </div>
+                        <div v-else class="filter-group following-filter">
+                            <label class="checkbox-label disabled"><input type="checkbox" disabled><span>仅看已关注作者（需登录）</span></label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mobile-sheet-footer">
+                    <button type="button" class="mobile-sheet-reset" @click="clearAllFilters">重置</button>
+                    <button type="button" class="mobile-sheet-confirm" @click="closeMobileSheet">确认</button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+</template>
                 <template v-else-if="activeTab === 'users'">共找到 {{ userTotal }} 位作者</template>
                 <template v-else>共找到 {{ columnTotal }} 个专栏</template>
             </p>
@@ -719,7 +804,6 @@ onMounted(fetchBootstrap);
             eyebrow="搜索结果"
             title="匹配文章"
             empty-text="换个关键词、分类或标签试试"
-            :highlight-keyword="keyword"
             @page-change="changePage"
             @sort-change="changeSort"
         />
@@ -970,6 +1054,10 @@ onMounted(fetchBootstrap);
     content: "";
     background: var(--brand);
     border-radius: 0;
+}
+
+.search-filters.collapsed {
+    display: none;
 }
 
 .search-filters {
@@ -1227,10 +1315,6 @@ onMounted(fetchBootstrap);
         display: flex;
     }
 
-    .search-filters.collapsed {
-        display: none;
-    }
-
     .search-filters {
         padding: 14px;
         gap: 12px;
@@ -1391,5 +1475,124 @@ onMounted(fetchBootstrap);
     background: var(--brand);
     border-radius: var(--radius-sm);
     line-height: 1;
+}
+
+/* Mobile bottom sheet */
+.mobile-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.3s ease;
+}
+
+.mobile-sheet-overlay.visible {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.mobile-sheet {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.mobile-sheet.visible {
+    transform: translateY(0);
+}
+
+.mobile-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.mobile-sheet-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.mobile-sheet-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: var(--surface-soft);
+    border-radius: 50%;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.mobile-sheet-close:hover {
+    background: var(--line);
+    color: var(--text);
+}
+
+.mobile-sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px 16px;
+}
+
+.mobile-sheet-body .search-filters {
+    margin-top: 8px;
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+.mobile-sheet-footer {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.mobile-sheet-reset {
+    flex: 1;
+    min-height: 40px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.mobile-sheet-reset:hover {
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.mobile-sheet-confirm {
+    flex: 2;
+    min-height: 40px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.mobile-sheet-confirm:hover {
+    opacity: 0.9;
 }
 </style>

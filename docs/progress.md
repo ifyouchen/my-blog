@@ -32,10 +32,10 @@
 ### 1.3 移动端响应式
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| 前端: 编辑器工具栏移动端折叠 | ❌ | 未实现 |
-| 前端: 管理后台表格移动端卡片布局 | ❌ | 未实现 |
-| 前端: 首页侧边栏 v-if 小屏不渲染 | ❌ | 未实现 |
-| 前端: 搜索页筛选底部 bottom sheet | ❌ | 未实现 |
+| 前端: 编辑器工具栏移动端折叠 | ✅ | RichMarkdownEditor.vue useWindowSize 过滤工具栏项，<768px 折叠 |
+| 前端: 管理后台表格移动端卡片布局 | ✅ | DashboardView.vue 表格/卡片切换+媒体查询 |
+| 前端: 首页侧边栏 v-if 小屏不渲染 | ✅ | HomeView.vue showSidebar computed + v-if |
+| 前端: 搜索页筛选底部 bottom sheet | ✅ | SearchView.vue Teleport+mobile-sheet，移动端点击筛选打开底部抽屉 |
 
 ### 1.4 页面加载体验
 | 条目 | 状态 | 备注 |

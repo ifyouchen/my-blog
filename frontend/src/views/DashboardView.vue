@@ -870,6 +870,63 @@ watch(isLoggedIn, () => {
                         </tr>
                     </tbody>
                 </table>
+                <!-- Mobile card layout -->
+                <div v-if="articles.length" class="article-cards">
+                    <article v-for="article in articles" :key="article.id" class="article-card">
+                        <div class="article-card-head">
+                            <span class="status-pill" :class="getArticleStatusClass(article.status)">
+                                {{ getArticleStatusLabel(article.status) }}
+                            </span>
+                            <span class="article-card-time">{{ getUpdatedTimeParts(article.updatedText).date }}</span>
+                        </div>
+                        <div class="article-card-title">{{ article.title }}</div>
+                        <div class="article-card-metrics">
+                            <span>阅读 {{ article.viewCount }}</span>
+                            <span>赞 {{ article.likeCount }}</span>
+                            <span>收藏 {{ article.favoriteCount }}</span>
+                            <span>评论 {{ article.commentCount }}</span>
+                        </div>
+                        <div class="article-card-actions">
+                            <button
+                                v-if="article.status === 'PUBLISHED'"
+                                type="button"
+                                class="action-link action-link-primary"
+                                :disabled="actionLoadingId === article.id"
+                                @click="publishOrOfflineArticle(article, 'OFFLINE')"
+                            >
+                                {{ actionLoadingId === article.id ? '处理中...' : '下架' }}
+                            </button>
+                            <button
+                                v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE'"
+                                type="button"
+                                class="action-link action-link-primary"
+                                :disabled="actionLoadingId === article.id"
+                                @click="publishOrOfflineArticle(article, 'PUBLISHED')"
+                            >
+                                {{ actionLoadingId === article.id ? '处理中...' : '发布' }}
+                            </button>
+                            <RouterLink class="action-link action-link-secondary" :to="'/articles/' + article.id">
+                                查看
+                            </RouterLink>
+                            <button
+                                v-if="article.status !== 'DELETED'"
+                                type="button"
+                                class="action-link action-link-secondary"
+                                @click="editArticle(article.id)"
+                            >
+                                {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
+                            </button>
+                            <button
+                                v-if="article.status !== 'DELETED'"
+                                type="button"
+                                class="action-link action-link-danger"
+                                @click="removeArticle(article)"
+                            >
+                                删除
+                            </button>
+                        </div>
+                    </article>
+                </div>
                 <EmptyState
                     v-if="showEmptyState"
                     eyebrow="内容管理"
@@ -1666,6 +1723,71 @@ watch(isLoggedIn, () => {
 
     .action-link {
         min-width: 0;
+    }
+}
+
+/* ===== Mobile card layout (hidden on desktop) ===== */
+.article-cards {
+    display: none;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.article-card {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.article-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.article-card-time {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.article-card-title {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.article-card-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.article-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px solid var(--line);
+}
+
+@media (max-width: 768px) {
+    .table-panel table {
+        display: none;
+    }
+
+    .article-cards {
+        display: grid;
     }
 }
 

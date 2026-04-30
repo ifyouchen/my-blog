@@ -1,10 +1,11 @@
-<script setup>import {computed, nextTick, onMounted, ref, watch} from 'vue';
+<script setup>
 import {useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
 import {getHomeBootstrapApi} from '@/api/home';
 import {getActiveAnnouncementsApi} from '@/api/notifications';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {useStableListRequest} from '@/composables/useStableListRequest';
+import {useWindowSize} from '@/composables/useWindowSize';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
 import FeaturedArticlesStrip from '@/components/FeaturedArticlesStrip.vue';
 import HomeIntro from '@/components/HomeIntro.vue';
@@ -29,6 +30,10 @@ const sidebarTopics = ref([]);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
+
+const {width: windowWidth} = useWindowSize();
+const SIDEBAR_BREAKPOINT = 980;
+const showSidebar = computed(() => windowWidth.value >= SIDEBAR_BREAKPOINT);
 
 // 公告横幅
 const activeBanners = ref([]);
@@ -254,7 +259,7 @@ onMounted(() => {
                 @page-change="changePage"
                 @sort-change="changeSort"
             />
-            <HomeSidebar :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" :featured="featuredArticles" />
+            <HomeSidebar v-if="showSidebar" :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" />
         </div>
     </main>
 </template>

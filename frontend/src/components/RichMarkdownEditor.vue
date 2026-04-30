@@ -1,5 +1,6 @@
 <script setup>
 import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
+import {useWindowSize} from '@/composables/useWindowSize';
 import {BubbleMenu, EditorContent, useEditor, VueNodeViewRenderer} from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -1018,6 +1019,21 @@ const toolbarGroups = computed(() => {
     ];
 });
 
+const {width: editorWidth} = useWindowSize();
+const isMobileEditor = computed(() => editorWidth.value < 768);
+const MOBILE_HIDDEN_GROUPS = new Set(['history']);
+const MOBILE_HIDDEN_ITEMS = new Set(['align-left', 'align-center', 'align-right', 'strike', 'underline', 'task-list', 'divider']);
+const visibleToolbarGroups = computed(() => {
+    if (!isMobileEditor.value) return toolbarGroups.value;
+    return toolbarGroups.value
+        .filter(g => !MOBILE_HIDDEN_GROUPS.has(g.id))
+        .map(g => ({
+            ...g,
+            items: g.items.filter(item => !MOBILE_HIDDEN_ITEMS.has(item.id))
+        }))
+        .filter(g => g.items.length > 0);
+});
+
 const contextMenuMode = ref('default');
 
 const tableContextMenuItems = [
@@ -1254,7 +1270,7 @@ const handleGlobalScroll = (event) => {
                 :data-editor-state="editorStateVersion"
             >
                 <div
-                    v-for="group in toolbarGroups"
+                    v-for="group in visibleToolbarGroups"
                     :key="group.id"
                     class="editor-toolbar-group"
                     :aria-label="group.label"
