@@ -364,4 +364,14 @@ public interface ArticleRepository {
 
     /** 统计精选文章数量。 */
     long countFeatured();
+
+    /**
+     * 查询同分类相关文章（排除当前文章，按热度降序）。
+     *
+     * @param category 分类
+     * @param excludeId 排除的文章 ID
+     * @param limit 返回数量
+     * @return 相关文章列表
+     */
+    List<Article> findRelated(String category, Long excludeId, int limit);
 }

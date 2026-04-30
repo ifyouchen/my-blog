@@ -110,6 +110,24 @@ public class ArticleController {
     }
 
     /**
+     * 获取相关文章（同分类推荐，排除自身）。
+     *
+     * @param id 文章 ID
+     * @param limit 返回数量（默认 5，最多 20）
+     * @return 相关文章列表
+     */
+    @GetMapping("/{id}/related")
+    public Result<List<ArticleResponse>> getRelatedArticles(@PathVariable Long id,
+                                                            @RequestParam(defaultValue = "5") int limit) {
+        List<ArticleDTO> dtos = articleAppService.getRelatedArticles(id, limit);
+        List<ArticleResponse> items = new ArrayList<ArticleResponse>();
+        for (ArticleDTO dto : dtos) {
+            items.add(restDtoMapper.toResponse(dto));
+        }
+        return Result.success(items);
+    }
+
+    /**
      * 创建文章。
      *
      * @param request 创建文章请求

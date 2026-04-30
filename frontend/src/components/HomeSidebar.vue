@@ -13,6 +13,10 @@ const props = defineProps({
     authors: {
         type: Array,
         default: () => []
+    },
+    topics: {
+        type: Array,
+        default: () => []
     }
 });
 const loading = computed(() => false);
@@ -35,15 +39,20 @@ const writeArticle = () => {
         <SidebarBlock eyebrow="本周" title="热门专题" compact data-testid="home-specials">
             <div class="special-list">
                 <RouterLink
-                    v-for="special in props.specials"
-                    :key="special.id"
+                    v-for="topic in props.topics"
+                    :key="topic.id"
                     class="special-item"
-                    :to="`/columns/${special.id}`"
+                    :to="`/topics/${topic.id}`"
                 >
-                    <img :src="special.coverUrl" :alt="`${special.title} 封面`" loading="lazy">
-                    <span>{{ special.title }}</span>
+                    <img
+                        v-if="topic.coverUrl"
+                        :src="topic.coverUrl"
+                        :alt="`${topic.title} 封面`"
+                        loading="lazy"
+                    >
+                    <span>{{ topic.title }}</span>
                 </RouterLink>
-                <p v-if="!loading && !props.specials.length" class="sidebar-empty">专栏内容正在整理中。</p>
+                <p v-if="!loading && !props.topics.length" class="sidebar-empty">专题内容正在整理中。</p>
             </div>
         </SidebarBlock>
 

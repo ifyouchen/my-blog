@@ -424,6 +424,12 @@ public class MyBatisArticleRepository implements ArticleRepository {
         return articleMapper.countFeatured();
     }
 
+    @Override
+    public List<Article> findRelated(String category, Long excludeId, int limit) {
+        int safeLimit = Math.max(1, limit);
+        return toDomainList(articleMapper.selectRelated(category, excludeId, safeLimit));
+    }
+
     private List<Article> toDomainList(List<ArticleDO> articleDOList) {
         List<Article> articles = new ArrayList<Article>(articleDOList.size());
         Map<Long, List<String>> tagMap = loadTags(articleDOList);

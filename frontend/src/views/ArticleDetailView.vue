@@ -2,7 +2,7 @@
 import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
-import {getArticleApi} from '@/api/articles';
+import {getArticleApi, getRelatedArticlesApi} from '@/api/articles';
 import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
 import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -23,6 +23,8 @@ const remoteArticle = ref(null);
 const isLoading = ref(false);
 const loadError = ref('');
 const useLocalFallback = ref(false);
+const relatedArticles = ref([]);
+const relatedLoading = ref(false);
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
 const pageTitle = computed(() => {
@@ -164,6 +166,7 @@ const fetchArticle = async () => {
     useLocalFallback.value = false;
     loadError.value = '';
     isLoading.value = true;
+    relatedArticles.value = [];
     try {
         const detail = await getArticleApi(currentId);
         if (String(route.params.id) === currentId) {
@@ -181,6 +184,17 @@ const fetchArticle = async () => {
         if (String(route.params.id) === currentId) {
             isLoading.value = false;
         }
+    }
+};
+
+const fetchRelated = async (id) => {
+    relatedLoading.value = true;
+    try {
+        relatedArticles.value = await getRelatedArticlesApi(id, 5);
+    } catch {
+        relatedArticles.value = [];
+    } finally {
+        relatedLoading.value = false;
     }
 };
 
@@ -285,6 +299,11 @@ const handleScroll = () => {
 
 watch(article, syncArticleState, { immediate: true });
 watch(() => route.params.id, fetchArticle, { immediate: true });
+watch(remoteArticle, (val) => {
+    if (val?.id) {
+        fetchRelated(val.id);
+    }
+});
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
@@ -397,6 +416,38 @@ onUnmounted(() => {
                     />
                     <div v-else class="comment-placeholder">
                         <p>登录后可查看和发表评论</p>
+                    </div>
+                </section>
+
+                <section
+                    v-if="relatedArticles.length > 0 || relatedLoading"
+                    class="article-related"
+                    data-testid="article-related-section"
+                >
+                    <h2 class="article-related-title">相关推荐</h2>
+                    <div v-if="relatedLoading" class="article-related-loading">加载中...</div>
+                    <div v-else class="article-related-list">
+                        <RouterLink
+                            v-for="rel in relatedArticles"
+                            :key="rel.id"
+                            class="article-related-item"
+                            :to="`/articles/${rel.id}`"
+                        >
+                            <div
+                                class="article-related-cover"
+                                :style="rel.cover
+                                    ? { backgroundImage: `url(${rel.cover})` }
+                                    : undefined"
+                            />
+                            <div class="article-related-meta">
+                                <span v-if="rel.category" class="article-related-category">{{ rel.category }}</span>
+                                <p class="article-related-item-title">{{ rel.title }}</p>
+                                <div class="article-related-stats">
+                                    <span>{{ rel.viewCount }} 阅读</span>
+                                    <span>{{ rel.likeCount }} 赞</span>
+                                </div>
+                            </div>
+                        </RouterLink>
                     </div>
                 </section>
             </div>
@@ -607,6 +658,90 @@ onUnmounted(() => {
     border-radius: var(--radius-sm);
 }
 
+.article-related {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+.article-related-title {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.article-related-loading {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 12px 0;
+}
+
+.article-related-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.article-related-item {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.article-related-item:hover {
+    border-color: var(--brand);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.article-related-cover {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--surface-soft) center / cover no-repeat;
+}
+
+.article-related-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    flex: 1;
+}
+
+.article-related-category {
+    font-size: 11px;
+    color: var(--brand);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.article-related-item-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.article-related-stats {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
 @media (max-width: 760px) {
     .article-heading-panel {
         padding: 18px;
@@ -618,6 +753,10 @@ onUnmounted(() => {
 
     .article-heading-meta {
         flex-basis: 100%;
+    }
+
+    .article-related-list {
+        grid-template-columns: 1fr 1fr;
     }
 }
 </style>

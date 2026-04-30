@@ -913,4 +913,18 @@
         AND status = 'PUBLISHED'
         AND deleted_at IS NULL
     </select>
+
+    <!-- 查询同分类相关文章（排除当前文章，按热度降序取 N 条） -->
+    <select id="selectRelated" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        AND id != #{excludeId}
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        ORDER BY (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

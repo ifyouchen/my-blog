@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.AdCampaignMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AdCampaignDO">
+        <id column="id" property="id"/>
+        <result column="slot_code" property="slotCode"/>
+        <result column="title" property="title"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="target_url" property="targetUrl"/>
+        <result column="label" property="label"/>
+        <result column="start_at" property="startAt"/>
+        <result column="end_at" property="endAt"/>
+        <result column="enabled" property="enabled"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <resultMap id="EventCountResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AdEventCountDO">
+        <result column="campaign_id" property="campaignId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="event_count" property="eventCount"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, slot_code, title, image_url, target_url, label,
+        start_at, end_at, enabled, sort_order,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO blog_ad_campaign (
+            slot_code, title, image_url, target_url, label,
+            start_at, end_at, enabled, sort_order,
+            created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{slotCode}, #{title}, #{imageUrl}, #{targetUrl}, #{label},
+            #{startAt}, #{endAt}, #{enabled}, #{sortOrder},
+            #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="updateById">
+        UPDATE blog_ad_campaign
+        SET slot_code  = #{slotCode},
+            title      = #{title},
+            image_url  = #{imageUrl},
+            target_url = #{targetUrl},
+            label      = #{label},
+            start_at   = #{startAt},
+            end_at     = #{endAt},
+            enabled    = #{enabled},
+            sort_order = #{sortOrder},
+            updated_at = #{updatedAt},
+            deleted_at = #{deletedAt},
+            version    = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM blog_ad_campaign
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectActiveBySlot" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM blog_ad_campaign
+        WHERE slot_code = #{slotCode}
+          AND enabled = 1
+          AND deleted_at IS NULL
+          AND (start_at IS NULL OR start_at &lt;= #{now})
+          AND (end_at IS NULL OR end_at &gt;= #{now})
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM blog_ad_campaign
+        WHERE deleted_at IS NULL
+        <if test="slotCode != null and slotCode != ''">
+            AND slot_code = #{slotCode}
+        </if>
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+        ORDER BY sort_order ASC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM blog_ad_campaign
+        WHERE deleted_at IS NULL
+        <if test="slotCode != null and slotCode != ''">
+            AND slot_code = #{slotCode}
+        </if>
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+    </select>
+
+    <insert id="insertEvent">
+        INSERT INTO blog_ad_event (campaign_id, event_type, user_id, ip_address, user_agent, created_at)
+        VALUES (#{campaignId}, #{eventType}, #{userId}, #{ipAddress}, #{userAgent}, NOW())
+    </insert>
+
+    <select id="countEvents" resultType="long">
+        SELECT COUNT(*)
+        FROM blog_ad_event
+        WHERE campaign_id = #{campaignId}
+          AND event_type = #{eventType}
+    </select>
+
+    <select id="selectEventStats" resultMap="EventCountResultMap">
+        SELECT campaign_id, event_type, COUNT(*) AS event_count
+        FROM blog_ad_event
+        WHERE campaign_id IN
+        <foreach item="id" collection="campaignIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        GROUP BY campaign_id, event_type
+    </select>
+
+</mapper>
+

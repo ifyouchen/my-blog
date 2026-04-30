@@ -26,6 +26,7 @@ const AdminTagsView = () => import('@/views/admin/AdminTagsView.vue');
 const AdminColumnsView = () => import('@/views/admin/AdminColumnsView.vue');
 const AdminTopicsView = () => import('@/views/admin/AdminTopicsView.vue');
 const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
+const AdminAdsView = () => import('@/views/admin/AdminAdsView.vue');
 
 const routes = [
     {
@@ -283,6 +284,16 @@ const routes = [
                     title: '专题管理',
                     adminTitle: '专题管理',
                     adminDescription: '新增、编辑、删除专题，管理专题文章归属。'
+                }
+            },
+            {
+                path: 'ads',
+                name: 'adminAds',
+                component: AdminAdsView,
+                meta: {
+                    title: '广告管理',
+                    adminTitle: '广告管理',
+                    adminDescription: '配置广告位投放内容，管理广告时间范围、启用状态和展示顺序。'
                 }
             },
             {

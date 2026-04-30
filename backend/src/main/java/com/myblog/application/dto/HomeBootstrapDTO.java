@@ -17,6 +17,8 @@ public class HomeBootstrapDTO {
     private List<ColumnDTO> recommendedColumns;
     private List<AuthorRankingDTO> authorRankings;
     private List<ArticleDTO> featuredArticles;
+    /** 首页侧边栏热门专题 */
+    private List<TopicDTO> hotTopics;
 
     public HomeStats getStats() {
         return stats;
@@ -56,5 +58,13 @@ public class HomeBootstrapDTO {
 
     public void setFeaturedArticles(List<ArticleDTO> featuredArticles) {
         this.featuredArticles = featuredArticles;
+    }
+
+    public List<TopicDTO> getHotTopics() {
+        return hotTopics;
+    }
+
+    public void setHotTopics(List<TopicDTO> hotTopics) {
+        this.hotTopics = hotTopics;
     }
 }

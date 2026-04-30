@@ -6,6 +6,7 @@ import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
+import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class HomeBootstrapAppService {
     private final ColumnAppService columnAppService;
     private final RankingAppService rankingAppService;
     private final RecommendationAppService recommendationAppService;
+    private final TopicAppService topicAppService;
     private final Executor taskExecutor;
 
     public HomeBootstrapAppService(@Qualifier("homeBootstrapCache") Cache<String, HomeBootstrapDTO> homeBootstrapCache,
@@ -39,6 +41,7 @@ public class HomeBootstrapAppService {
                                    ColumnAppService columnAppService,
                                    RankingAppService rankingAppService,
                                    RecommendationAppService recommendationAppService,
+                                   TopicAppService topicAppService,
                                    Executor taskExecutor) {
         this.homeBootstrapCache = homeBootstrapCache;
         this.homeStatsAppService = homeStatsAppService;
@@ -46,6 +49,7 @@ public class HomeBootstrapAppService {
         this.columnAppService = columnAppService;
         this.rankingAppService = rankingAppService;
         this.recommendationAppService = recommendationAppService;
+        this.topicAppService = topicAppService;
         this.taskExecutor = taskExecutor;
     }
 
@@ -60,7 +64,7 @@ public class HomeBootstrapAppService {
             return cached;
         }
 
-        // 并行加载 5 路数据，总耗时取决于最慢的那一路
+        // 并行加载 6 路数据，总耗时取决于最慢的那一路
         CompletableFuture<HomeStats> statsFuture =
             CompletableFuture.supplyAsync(() -> homeStatsAppService.getStats(), taskExecutor);
 
@@ -76,6 +80,9 @@ public class HomeBootstrapAppService {
         CompletableFuture<List<ArticleDTO>> featuredFuture =
             CompletableFuture.supplyAsync(() -> recommendationAppService.listFeaturedArticles(1, 5), taskExecutor);
 
+        CompletableFuture<List<TopicDTO>> hotTopicsFuture =
+            CompletableFuture.supplyAsync(() -> topicAppService.listHotTopics(5), taskExecutor);
+
         // 等待所有完成并组装结果
         HomeBootstrapDTO bootstrap = new HomeBootstrapDTO();
         bootstrap.setStats(statsFuture.join());
@@ -83,6 +90,7 @@ public class HomeBootstrapAppService {
         bootstrap.setRecommendedColumns(columnsFuture.join());
         bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
         bootstrap.setFeaturedArticles(featuredFuture.join());
+        bootstrap.setHotTopics(hotTopicsFuture.join());
 
         homeBootstrapCache.put(BOOTSTRAP_CACHE_KEY, bootstrap);
         return bootstrap;

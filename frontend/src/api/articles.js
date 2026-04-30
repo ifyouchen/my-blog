@@ -1,5 +1,5 @@
-import { request } from './http';
-import { normalizeArticle } from './transformers';
+import {request} from './http';
+import {normalizeArticle} from './transformers';
 
 export const listArticlesApi = async (params = {}) => {
     const query = new URLSearchParams();
@@ -18,6 +18,11 @@ export const listArticlesApi = async (params = {}) => {
 };
 
 export const getArticleApi = async (id) => normalizeArticle(await request(`/articles/${id}`));
+
+export const getRelatedArticlesApi = async (id, limit = 5) => {
+    const data = await request(`/articles/${id}/related?limit=${limit}`);
+    return (Array.isArray(data) ? data : []).map(normalizeArticle);
+};
 
 export const getEditableArticleApi = async (id) => normalizeArticle(await request(`/articles/${id}/edit`));
 

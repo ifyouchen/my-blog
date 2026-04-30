@@ -48,6 +48,22 @@ public class TopicAppService {
     // ==================== 前台接口 ====================
 
     /**
+     * 查询热门专题（按排序权重取前 N 条已发布专题）。
+     *
+     * @param limit 返回数量
+     * @return 热门专题列表
+     */
+    public List<TopicDTO> listHotTopics(int limit) {
+        List<Topic> topics = topicRepository.findPublished(1, limit);
+        List<TopicDTO> items = new ArrayList<>(topics.size());
+        for (Topic topic : topics) {
+            items.add(toDTO(topic));
+        }
+        return items;
+    }
+
+
+    /**
      * 分页查询专题。
      */
     public PageResult<TopicDTO> pageTopics(int page, int pageSize) {

@@ -1,22 +1,16 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { listArticlesApi } from '@/api/articles';
-import { getHomeBootstrapApi } from '@/api/home';
+import {computed, nextTick, onMounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {listArticlesApi} from '@/api/articles';
+import {getHomeBootstrapApi} from '@/api/home';
 import ArticleFeed from '@/components/ArticleFeed.vue';
-import { useStableListRequest } from '@/composables/useStableListRequest';
-import {
-    ARTICLE_SORT_ITEMS,
-    ARTICLE_SORT_LATEST,
-    isDefaultArticleSort,
-    normalizeArticleSort
-} from '@/constants/articleSort';
+import {useStableListRequest} from '@/composables/useStableListRequest';
+import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
 import FeaturedArticlesStrip from '@/components/FeaturedArticlesStrip.vue';
 import HomeIntro from '@/components/HomeIntro.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import TopicStrip from '@/components/TopicStrip.vue';
-import { articles as fallbackArticles, topics as fallbackTopics } from '@/data/home';
 
 const homeStats = ref({
     totalArticles: 0,
@@ -31,6 +25,7 @@ const topicItems = ref([]);
 const featuredArticles = ref([]);
 const sidebarColumns = ref([]);
 const sidebarAuthors = ref([]);
+const sidebarTopics = ref([]);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
@@ -82,10 +77,12 @@ const loadHomeBootstrap = async () => {
         featuredArticles.value = bootstrap?.featuredArticles || [];
         sidebarColumns.value = bootstrap?.recommendedColumns || [];
         sidebarAuthors.value = bootstrap?.authorRankings || [];
+        sidebarTopics.value = bootstrap?.hotTopics || [];
     } catch (error) {
         topicItems.value = ['全部'];
         sidebarColumns.value = [];
         sidebarAuthors.value = [];
+        sidebarTopics.value = [];
     } finally {
         bootstrapLoaded.value = true;
     }
@@ -219,7 +216,7 @@ onMounted(() => {
                 @page-change="changePage"
                 @sort-change="changeSort"
             />
-            <HomeSidebar :specials="sidebarColumns" :authors="sidebarAuthors" />
+            <HomeSidebar :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" />
         </div>
     </main>
 </template>

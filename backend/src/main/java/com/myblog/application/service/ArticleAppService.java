@@ -247,6 +247,28 @@ public class ArticleAppService {
     }
 
     /**
+     * 获取相关文章（同分类，排除自身，按热度降序）。
+     *
+     * @param articleId 当前文章 ID
+     * @param limit 返回数量
+     * @return 相关文章列表
+     */
+    public List<ArticleDTO> getRelatedArticles(Long articleId, int limit) {
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        int safeLimit = (limit > 0 && limit <= 20) ? limit : 5;
+        List<Article> related = articleRepository.findRelated(article.getCategory(), articleId, safeLimit);
+        List<ArticleDTO> items = new ArrayList<>(related.size());
+        for (Article rel : related) {
+            User author = userRepository.findById(rel.getAuthorId()).orElse(null);
+            if (author != null) {
+                items.add(articleAssembler.toDTO(rel, author));
+            }
+        }
+        return items;
+    }
+
+    /**
      * 创建文章。
      *
      * @param command 创建文章命令

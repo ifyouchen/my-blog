@@ -323,6 +323,18 @@ public interface ArticleMapper {
     List<ArticleDO> selectFeatured(@Param("offset") int offset,
                                    @Param("pageSize") int pageSize);
 
+    /**
+     * 查询同分类相关文章（排除当前文章，按热度降序）。
+     *
+     * @param category 分类
+     * @param excludeId 排除的文章 ID
+     * @param limit 返回数量
+     * @return 文章数据对象列表
+     */
+    List<ArticleDO> selectRelated(@Param("category") String category,
+                                  @Param("excludeId") Long excludeId,
+                                  @Param("limit") int limit);
+
     /** 统计精选文章数量。 */
     long countFeatured();
 
