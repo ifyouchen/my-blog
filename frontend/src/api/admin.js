@@ -295,3 +295,33 @@ export const unpublishAdminAnnouncementApi = async (id) => {
         method: 'POST'
     });
 };
+
+// ===== 敏感词管理 =====
+
+export const getAdminSensitiveWordsApi = async (page = 1, pageSize = 20, keyword = null, category = null, enabled = null) => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (keyword) params.append('keyword', keyword);
+    if (category) params.append('category', category);
+    if (enabled !== null) params.append('enabled', enabled);
+    return await request(`/admin/sensitive-words?${params}`);
+};
+
+export const createAdminSensitiveWordApi = async (payload) => {
+    return await request('/admin/sensitive-words', {
+        method: 'POST',
+        body: payload
+    });
+};
+
+export const updateAdminSensitiveWordApi = async (id, payload) => {
+    return await request(`/admin/sensitive-words/${id}`, {
+        method: 'PUT',
+        body: payload
+    });
+};
+
+export const deleteAdminSensitiveWordApi = async (id) => {
+    return await request(`/admin/sensitive-words/${id}`, {
+        method: 'DELETE'
+    });
+};

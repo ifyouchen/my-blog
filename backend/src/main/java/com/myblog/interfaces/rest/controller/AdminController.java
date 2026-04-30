@@ -793,6 +793,73 @@ public class AdminController {
             "撤回公告 " + dto.getTitle(), null, toAnnouncementSnapshot(dto), httpServletRequest));
         return Result.success(dto);
     }
+    // ==================== 敏感词管理 ====================
+
+    /**
+     * 分页查询敏感词列表。
+     */
+    @GetMapping("/sensitive-words")
+    public Result<PageResult<Map<String, Object>>> getSensitiveWords(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean enabled) {
+        ensureAdmin();
+        return Result.success(sensitiveWordAppService.pageList(keyword, category, enabled, page, pageSize));
+    }
+
+    /**
+     * 创建敏感词。
+     */
+    @PostMapping("/sensitive-words")
+    public Result<Map<String, Object>> createSensitiveWord(@RequestBody Map<String, Object> request,
+                                                           @Nullable HttpServletRequest httpReq) {
+        ensureAdmin();
+        String word = (String) request.get("word");
+        String category = (String) request.get("category");
+        String level = (String) request.get("level");
+        Map<String, Object> result = sensitiveWordAppService.create(word, category, level);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_SENSITIVE_WORD", "SENSITIVE_WORD", (Long) result.get("id"),
+            "创建敏感词 " + word, null, result, httpReq));
+        return Result.success(result);
+    }
+
+    /**
+     * 更新敏感词。
+     */
+    @PutMapping("/sensitive-words/{id}")
+    public Result<Map<String, Object>> updateSensitiveWord(@PathVariable Long id,
+                                                           @RequestBody Map<String, Object> request,
+                                                           @Nullable HttpServletRequest httpReq) {
+        ensureAdmin();
+        String word = (String) request.get("word");
+        String category = (String) request.get("category");
+        String level = (String) request.get("level");
+        Boolean enabled = request.get("enabled") instanceof Boolean ? (Boolean) request.get("enabled") : null;
+        Map<String, Object> result = sensitiveWordAppService.update(id, word, category, level, enabled);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_SENSITIVE_WORD", "SENSITIVE_WORD", id,
+            "更新敏感词 " + id, null, result, httpReq));
+        return Result.success(result);
+    }
+
+    /**
+     * 删除敏感词（软删除）。
+     */
+    @DeleteMapping("/sensitive-words/{id}")
+    public Result<Map<String, Object>> deleteSensitiveWord(@PathVariable Long id,
+                                                           @Nullable HttpServletRequest httpReq) {
+        ensureAdmin();
+        sensitiveWordAppService.delete(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_SENSITIVE_WORD", "SENSITIVE_WORD", id,
+            "删除敏感词 " + id, null, null, httpReq));
+        Map<String, Object> r = new HashMap<String, Object>();
+        r.put("deleted", true);
+        return Result.success(r);
+    }
 
     private Map<String, Object> toAnnouncementSnapshot(AnnouncementDTO dto) {
         if (dto == null) {

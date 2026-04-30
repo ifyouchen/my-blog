@@ -103,6 +103,7 @@ CREATE TABLE `blog_article` (
     `slug`            varchar(255)    NULL DEFAULT NULL COMMENT 'URL 友好标识，唯一索引',
     `seo_title`       varchar(255)    NULL DEFAULT NULL COMMENT 'SEO 标题',
     `seo_description` varchar(500)    NULL DEFAULT NULL COMMENT 'SEO 描述',
+    `warn_flag`       tinyint(1)      NOT NULL DEFAULT 0 COMMENT '敏感词警告标记：0-正常 1-含警告词待审核',
     `status`          varchar(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 PUBLISHED-已发布 OFFLINE-已下架 DELETED-已删除',
     `view_count`      int             NOT NULL DEFAULT 0 COMMENT '阅读数',
     `like_count`      int             NOT NULL DEFAULT 0 COMMENT '点赞数',

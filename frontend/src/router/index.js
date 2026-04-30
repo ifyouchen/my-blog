@@ -30,7 +30,7 @@ const AdminTopicsView = () => import('@/views/admin/AdminTopicsView.vue');
 const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 const AdminAdsView = () => import('@/views/admin/AdminAdsView.vue');
 const AdminAnnouncementsView = () => import('@/views/admin/AdminAnnouncementsView.vue');
-const AdminAnnouncementsView = () => import('@/views/admin/AdminAnnouncementsView.vue');
+const AdminSensitiveWordsView = () => import('@/views/admin/AdminSensitiveWordsView.vue');
 const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
 const TagDetailView = () => import('@/views/TagDetailView.vue');
 const ExploreView = () => import('@/views/ExploreView.vue');
@@ -353,6 +353,17 @@ const routes = [
                     adminDescription: '创建、编辑、发布和撤回平台公告，实时推送给用户。'
                 }
             },
+,
+            {
+                path: 'sensitive-words',
+                name: 'adminSensitiveWords',
+                component: AdminSensitiveWordsView,
+                meta: {
+                    title: '敏感词管理',
+                    adminTitle: '敏感词管理',
+                    adminDescription: '管理内容审核敏感词库，配置警告或拦截规则。'
+                }
+            }
             {
                 path: 'logs',
                 name: 'adminLogs',
