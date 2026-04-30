@@ -4,6 +4,7 @@ import com.myblog.domain.model.aggregate.AdCampaign;
 import com.myblog.domain.repository.AdCampaignRepository;
 import com.myblog.infrastructure.repository.persistence.converter.AdCampaignPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.AdCampaignDO;
+import com.myblog.infrastructure.repository.persistence.entity.AdSlotStatDO;
 import com.myblog.infrastructure.repository.persistence.mapper.AdCampaignMapper;
 import org.springframework.stereotype.Repository;
 
@@ -79,6 +80,24 @@ public class MyBatisAdCampaignRepository implements AdCampaignRepository {
     @Override
     public long countEvents(Long campaignId, String eventType) {
         return adCampaignMapper.countEvents(campaignId, eventType);
+    }
+
+    @Override
+    public long countTotalEvents(String eventType) {
+        return adCampaignMapper.countTotalEvents(eventType);
+    }
+
+    @Override
+    public List<AdCampaignRepository.SlotStat> findSlotStats() {
+        List<AdSlotStatDO> rows = adCampaignMapper.selectSlotStats();
+        List<AdCampaignRepository.SlotStat> result = new ArrayList<>(rows.size());
+        for (AdSlotStatDO row : rows) {
+            long impressions = row.getImpressionCount() == null ? 0L : row.getImpressionCount();
+            long clicks = row.getClickCount() == null ? 0L : row.getClickCount();
+            long campaigns = row.getCampaignCount() == null ? 0L : row.getCampaignCount();
+            result.add(new AdCampaignRepository.SlotStat(row.getSlotCode(), campaigns, impressions, clicks));
+        }
+        return result;
     }
 }
 

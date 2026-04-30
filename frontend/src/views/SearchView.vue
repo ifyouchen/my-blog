@@ -10,6 +10,7 @@ import {useSession} from '@/stores/session';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
 import SiteHeader from '@/components/SiteHeader.vue';
+import AdBanner from '@/components/AdBanner.vue';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const GUEST_RECENT_SEARCHES_KEY = 'my-blog:recent-searches';
@@ -695,6 +696,8 @@ onMounted(fetchBootstrap);
                 <template v-else-if="activeTab === 'users'">共找到 {{ userTotal }} 位作者</template>
                 <template v-else>共找到 {{ columnTotal }} 个专栏</template>
             </p>
+
+            <AdBanner :slot-code="'search_top'" class="search-ad-banner" />
         </section>
 
         <!-- Article Results -->

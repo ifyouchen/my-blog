@@ -1,9 +1,9 @@
 <script setup>
-import {inject, reactive, watch} from 'vue';
+import {inject, onMounted, reactive, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import {createAdminAdApi, deleteAdminAdApi, getAdminAdsApi, updateAdminAdApi} from '@/api/ads';
+import {createAdminAdApi, deleteAdminAdApi, getAdminAdsApi, getAdminAdStatsApi, updateAdminAdApi} from '@/api/ads';
 import {createPagedState, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
@@ -238,6 +238,23 @@ const getSlotLabel = (code) => {
 
 const formatDate = (d) => (d ? String(d).slice(0, 16).replace('T', ' ') : '—');
 
+// ======== 统计概览 ========
+const stats = ref(null);
+const statsLoading = ref(false);
+
+const loadStats = async () => {
+    statsLoading.value = true;
+    try {
+        stats.value = await getAdminAdStatsApi();
+    } catch (e) {
+        // 统计加载失败不影响列表
+    } finally {
+        statsLoading.value = false;
+    }
+};
+
+onMounted(loadStats);
+
 useAdminRefresh(loadAds);
 
 watch(
@@ -252,6 +269,45 @@ watch(
 
 <template>
     <section class="dashboard-content-panel">
+        <!-- 统计概览 -->
+        <div class="admin-stats-overview" data-testid="admin-ads-stats">
+            <div class="admin-stat-card">
+                <span class="stat-label">广告总数</span>
+                <span class="stat-value">{{ statsLoading ? '…' : (stats ? stats.totalCampaigns : '—') }}</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="stat-label">启用中</span>
+                <span class="stat-value enabled">{{ statsLoading ? '…' : (stats ? stats.enabledCampaigns : '—') }}</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="stat-label">总曝光</span>
+                <span class="stat-value">{{ statsLoading ? '…' : (stats ? stats.totalImpressions : '—') }}</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="stat-label">总点击</span>
+                <span class="stat-value">{{ statsLoading ? '…' : (stats ? stats.totalClicks : '—') }}</span>
+            </div>
+        </div>
+
+        <!-- 广告位明细统计 -->
+        <div v-if="stats && stats.slotStats && stats.slotStats.length" class="admin-slot-stats">
+            <p class="admin-slot-stats-title">各广告位统计</p>
+            <div class="admin-slot-stats-grid">
+                <div
+                    v-for="slot in stats.slotStats"
+                    :key="slot.slotCode"
+                    class="admin-slot-stat-card"
+                >
+                    <span class="slot-name">{{ getSlotLabel(slot.slotCode) }}</span>
+                    <div class="slot-numbers">
+                        <span>{{ slot.campaignCount }} 条投放</span>
+                        <span>{{ slot.impressions }} 曝光</span>
+                        <span>{{ slot.clicks }} 点击</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 创建广告表单 -->
         <div class="admin-create-form admin-form-card">
             <p class="eyebrow">新增广告</p>
@@ -660,7 +716,94 @@ watch(
     border-color: var(--brand);
 }
 
+.admin-stats-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.admin-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.stat-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+
+.stat-value.enabled {
+    color: var(--brand);
+}
+
+.admin-slot-stats {
+    margin-bottom: 20px;
+}
+
+.admin-slot-stats-title {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.admin-slot-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.admin-slot-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.slot-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.slot-numbers {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.slot-numbers span {
+    font-size: 12px;
+    color: var(--muted);
+}
+
 @media (max-width: 760px) {
+    .admin-stats-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .admin-slot-stats-grid,
     .admin-form-grid,
     .ad-inline-edit-grid {
         grid-template-columns: 1fr;

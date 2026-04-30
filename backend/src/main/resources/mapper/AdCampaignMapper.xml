@@ -130,5 +130,31 @@
         GROUP BY campaign_id, event_type
     </select>
 
+    <select id="countTotalEvents" resultType="long">
+        SELECT COUNT(*)
+        FROM blog_ad_event
+        WHERE event_type = #{eventType}
+    </select>
+
+    <resultMap id="SlotStatResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AdSlotStatDO">
+        <result column="slot_code"        property="slotCode"/>
+        <result column="campaign_count"   property="campaignCount"/>
+        <result column="impression_count" property="impressionCount"/>
+        <result column="click_count"      property="clickCount"/>
+    </resultMap>
+
+    <select id="selectSlotStats" resultMap="SlotStatResultMap">
+        SELECT
+            c.slot_code,
+            COUNT(DISTINCT c.id)                                                    AS campaign_count,
+            COALESCE(SUM(CASE WHEN e.event_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS impression_count,
+            COALESCE(SUM(CASE WHEN e.event_type = 'CLICK'      THEN 1 ELSE 0 END), 0) AS click_count
+        FROM blog_ad_campaign c
+        LEFT JOIN blog_ad_event e ON e.campaign_id = c.id
+        WHERE c.deleted_at IS NULL
+        GROUP BY c.slot_code
+        ORDER BY c.slot_code
+    </select>
+
 </mapper>
 

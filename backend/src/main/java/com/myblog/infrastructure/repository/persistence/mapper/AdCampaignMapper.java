@@ -2,6 +2,7 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 
 import com.myblog.infrastructure.repository.persistence.entity.AdCampaignDO;
 import com.myblog.infrastructure.repository.persistence.entity.AdEventCountDO;
+import com.myblog.infrastructure.repository.persistence.entity.AdSlotStatDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -44,5 +45,15 @@ public interface AdCampaignMapper {
                      @Param("eventType") String eventType);
 
     List<AdEventCountDO> selectEventStats(@Param("campaignIds") List<Long> campaignIds);
+
+    /**
+     * 统计全部广告事件（曝光或点击）总次数。
+     */
+    long countTotalEvents(@Param("eventType") String eventType);
+
+    /**
+     * 按广告位聚合统计广告数、曝光数和点击数。
+     */
+    List<AdSlotStatDO> selectSlotStats();
 }
 

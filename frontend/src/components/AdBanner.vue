@@ -14,7 +14,7 @@ import {getAdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
 
 const props = defineProps({
     /** 广告位编码，如 home_sidebar / article_sidebar */
-    slot: {
+    slotCode: {
         type: String,
         required: true
     }
@@ -26,7 +26,7 @@ let intersectionObserver = null;
 
 const fetchAds = async () => {
     try {
-        const result = await getAdsApi(props.slot);
+        const result = await getAdsApi(props.slotCode);
         ads.value = Array.isArray(result) ? result : [];
     } catch (e) {
         ads.value = [];
@@ -67,7 +67,7 @@ const observeAds = () => {
     if (!intersectionObserver) {
         return;
     }
-    document.querySelectorAll(`[data-ad-slot="${props.slot}"] [data-ad-id]`).forEach((el) => {
+    document.querySelectorAll(`[data-ad-slot="${props.slotCode}"] [data-ad-id]`).forEach((el) => {
         intersectionObserver.observe(el);
     });
 };
@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div v-if="ads.length" class="ad-banner-list" :data-ad-slot="slot">
+    <div v-if="ads.length" class="ad-banner-list" :data-ad-slot="slotCode">
         <div
             v-for="ad in ads"
             :key="ad.id"

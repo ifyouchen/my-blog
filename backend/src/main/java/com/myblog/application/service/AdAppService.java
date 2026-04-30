@@ -1,6 +1,7 @@
 package com.myblog.application.service;
 
 import com.myblog.application.dto.AdCampaignDTO;
+import com.myblog.application.dto.AdStatsDTO;
 import com.myblog.domain.model.aggregate.AdCampaign;
 import com.myblog.domain.repository.AdCampaignRepository;
 import com.myblog.shared.exception.BusinessException;
@@ -157,6 +158,35 @@ public class AdAppService {
         );
         campaign.delete();
         adCampaignRepository.save(campaign);
+    }
+
+    /**
+     * 获取广告整体统计概览（后台展示用）。
+     */
+    public AdStatsDTO getStats() {
+        long total = adCampaignRepository.count(null, null);
+        long enabled = adCampaignRepository.count(null, true);
+        long totalImpressions = adCampaignRepository.countTotalEvents("IMPRESSION");
+        long totalClicks = adCampaignRepository.countTotalEvents("CLICK");
+        List<AdCampaignRepository.SlotStat> slotRows = adCampaignRepository.findSlotStats();
+
+        List<AdStatsDTO.SlotStat> slotStats = new ArrayList<>(slotRows.size());
+        for (AdCampaignRepository.SlotStat row : slotRows) {
+            AdStatsDTO.SlotStat s = new AdStatsDTO.SlotStat();
+            s.setSlotCode(row.getSlotCode());
+            s.setCampaignCount(row.getCampaignCount());
+            s.setImpressions(row.getImpressions());
+            s.setClicks(row.getClicks());
+            slotStats.add(s);
+        }
+
+        AdStatsDTO dto = new AdStatsDTO();
+        dto.setTotalCampaigns(total);
+        dto.setEnabledCampaigns(enabled);
+        dto.setTotalImpressions(totalImpressions);
+        dto.setTotalClicks(totalClicks);
+        dto.setSlotStats(slotStats);
+        return dto;
     }
 
     // ==================== 私有工具方法 ====================

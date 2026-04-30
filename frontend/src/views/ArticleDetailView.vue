@@ -11,6 +11,7 @@ import CommentList from '@/components/CommentList.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
+import AdBanner from '@/components/AdBanner.vue';
 import {articles} from '@/data/home';
 import {useSession} from '@/stores/session';
 
@@ -459,6 +460,7 @@ onUnmounted(() => {
                 :content="articleMarkdown"
                 class="detail-toc"
             />
+            <AdBanner :slot-code="'article_sidebar'" />
         </aside>
     </main>
     <main v-else class="page-shell detail-layout">

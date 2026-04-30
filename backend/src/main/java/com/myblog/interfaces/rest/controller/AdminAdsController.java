@@ -1,6 +1,7 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.AdCampaignDTO;
+import com.myblog.application.dto.AdStatsDTO;
 import com.myblog.application.service.AdAppService;
 import com.myblog.application.service.AdminLogAppService;
 import com.myblog.application.command.RecordAdminLogCommand;
@@ -39,6 +40,15 @@ public class AdminAdsController {
     public AdminAdsController(AdAppService adAppService, AdminLogAppService adminLogAppService) {
         this.adAppService = adAppService;
         this.adminLogAppService = adminLogAppService;
+    }
+
+    /**
+     * 后台广告统计概览。
+     */
+    @GetMapping("/stats")
+    public Result<AdStatsDTO> getStats() {
+        ensureAdmin();
+        return Result.success(adAppService.getStats());
     }
 
     /**

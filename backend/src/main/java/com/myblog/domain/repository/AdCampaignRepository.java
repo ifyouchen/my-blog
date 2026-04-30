@@ -48,5 +48,51 @@ public interface AdCampaignRepository {
      * 统计广告事件数（后台统计用）。
      */
     long countEvents(Long campaignId, String eventType);
+
+    /**
+     * 统计指定类型的广告事件总次数（全部投放汇总）。
+     *
+     * @param eventType 事件类型，IMPRESSION 或 CLICK
+     */
+    long countTotalEvents(String eventType);
+
+    /**
+     * 按广告位聚合统计投放数、曝光数、点击数。
+     */
+    List<SlotStat> findSlotStats();
+
+    /**
+     * 广告位维度统计值对象。
+     */
+    class SlotStat {
+
+        private final String slotCode;
+        private final long campaignCount;
+        private final long impressions;
+        private final long clicks;
+
+        public SlotStat(String slotCode, long campaignCount, long impressions, long clicks) {
+            this.slotCode = slotCode;
+            this.campaignCount = campaignCount;
+            this.impressions = impressions;
+            this.clicks = clicks;
+        }
+
+        public String getSlotCode() {
+            return slotCode;
+        }
+
+        public long getCampaignCount() {
+            return campaignCount;
+        }
+
+        public long getImpressions() {
+            return impressions;
+        }
+
+        public long getClicks() {
+            return clicks;
+        }
+    }
 }
 

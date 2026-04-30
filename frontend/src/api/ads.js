@@ -103,3 +103,10 @@ export const deleteAdminAdApi = async (id) => {
     return await request(`/admin/ads/${id}`, { method: 'DELETE' });
 };
 
+/**
+ * 后台获取广告统计概览。
+ */
+export const getAdminAdStatsApi = async () => {
+    return await request('/admin/ads/stats');
+};
+

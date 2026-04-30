@@ -2,6 +2,7 @@
 import {computed, inject} from 'vue';
 import {RouterLink, useRouter} from 'vue-router';
 import SidebarBlock from '@/components/SidebarBlock.vue';
+import AdBanner from '@/components/AdBanner.vue';
 
 const router = useRouter();
 const loginModal = inject('loginModal', { requireLogin: () => false });
@@ -78,6 +79,8 @@ const writeArticle = () => {
             <p>标题、Markdown、分类、标签、封面图，第一版先把写作路径做顺。</p>
             <button class="primary-action block" type="button" data-testid="home-write-button" @click="writeArticle">发布文章</button>
         </SidebarBlock>
+
+        <AdBanner :slot-code="'home_sidebar'" />
     </aside>
 </template>
 
