@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.InviteCodeMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.InviteCodeDO">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="creator_id" property="creatorId"/>
+        <result column="used_by" property="usedBy"/>
+        <result column="used_at" property="usedAt"/>
+        <result column="expired_at" property="expiredAt"/>
+        <result column="max_uses" property="maxUses"/>
+        <result column="use_count" property="useCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, code, creator_id, used_by, used_at, expired_at, max_uses, use_count,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_invite_code
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_invite_code
+        WHERE code = #{code}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectByCreatorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_invite_code
+        WHERE creator_id = #{creatorId}
+        AND deleted_at IS NULL
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countActiveByCreatorId" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_invite_code
+        WHERE creator_id = #{creatorId}
+        AND deleted_at IS NULL
+        AND (expired_at IS NULL OR expired_at > NOW())
+        AND use_count &lt; max_uses
+    </select>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_invite_code
+        WHERE deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND code LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_invite_code
+        WHERE deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND code LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO blog_invite_code
+            (code, creator_id, expired_at, max_uses, use_count, created_at, updated_at, version)
+        VALUES
+            (#{code}, #{creatorId}, #{expiredAt}, #{maxUses}, 0, NOW(), NOW(), 0)
+    </insert>
+
+    <update id="useCode">
+        UPDATE blog_invite_code
+        SET used_by   = #{usedBy},
+            used_at   = NOW(),
+            use_count = use_count + 1,
+            updated_at = NOW(),
+            version   = version + 1
+        WHERE id = #{id}
+        AND version = #{version}
+        AND deleted_at IS NULL
+        AND use_count &lt; max_uses
+        AND (expired_at IS NULL OR expired_at > NOW())
+    </update>
+
+    <update id="softDelete">
+        UPDATE blog_invite_code
+        SET deleted_at = NOW(),
+            updated_at = NOW(),
+            version    = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+
+</mapper>
+

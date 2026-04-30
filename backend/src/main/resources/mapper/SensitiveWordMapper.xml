@@ -66,6 +66,14 @@
         AND deleted_at IS NULL
     </select>
 
+    <select id="selectEnabledWordsByLevel" resultType="string">
+        SELECT word
+        FROM blog_sensitive_word
+        WHERE enabled = 1
+        AND level = #{level}
+        AND deleted_at IS NULL
+    </select>
+
     <select id="countByWord" resultType="int">
         SELECT COUNT(1)
         FROM blog_sensitive_word

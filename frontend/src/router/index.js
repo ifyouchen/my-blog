@@ -31,6 +31,7 @@ const AdminLogsView = () => import('@/views/admin/AdminLogsView.vue');
 const AdminAdsView = () => import('@/views/admin/AdminAdsView.vue');
 const AdminAnnouncementsView = () => import('@/views/admin/AdminAnnouncementsView.vue');
 const AdminSensitiveWordsView = () => import('@/views/admin/AdminSensitiveWordsView.vue');
+const AdminInviteCodesView = () => import('@/views/admin/AdminInviteCodesView.vue');
 const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
 const TagDetailView = () => import('@/views/TagDetailView.vue');
 const ExploreView = () => import('@/views/ExploreView.vue');
@@ -363,7 +364,17 @@ const routes = [
                     adminTitle: '敏感词管理',
                     adminDescription: '管理内容审核敏感词库，配置警告或拦截规则。'
                 }
-            }
+            },
+            {
+                path: 'invite-codes',
+                name: 'adminInviteCodes',
+                component: AdminInviteCodesView,
+                meta: {
+                    title: '邀请码管理',
+                    adminTitle: '邀请码管理',
+                    adminDescription: '查看与管理站点邀请码，跟踪使用情况。'
+                }
+            },
             {
                 path: 'logs',
                 name: 'adminLogs',

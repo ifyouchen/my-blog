@@ -24,6 +24,7 @@ import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.application.service.SensitiveWordAppService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -61,6 +62,7 @@ public class ArticleAppService {
     private final ApplicationEventPublisher eventPublisher;
     private final ArticleVersionRepository articleVersionRepository;
     private final String defaultArticleCoverUrl;
+    private SensitiveWordAppService sensitiveWordAppService;
 
     public ArticleAppService(ArticleRepository articleRepository,
                              ArticleLikeRepository articleLikeRepository,
@@ -81,6 +83,12 @@ public class ArticleAppService {
         this.articleVersionRepository = articleVersionRepository;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
+    }
+
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSensitiveWordAppService(SensitiveWordAppService svc) {
+        this.sensitiveWordAppService = svc;
     }
 
     /**
@@ -301,6 +309,7 @@ public class ArticleAppService {
             command.getSeoTitle(),
             command.getSeoDescription()
         );
+        applyWarnFlagIfNeeded(article);
         articleRepository.save(article);
         saveVersionSnapshot(article, command.getAuthorId());
         return buildDetailDto(article, author, command.getAuthorId());
@@ -348,6 +357,7 @@ public class ArticleAppService {
             command.getSeoDescription()
         );
         applyStatus(article, command.getStatus());
+        applyWarnFlagIfNeeded(article);
         articleRepository.save(article);
         saveVersionSnapshot(article, userId);
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())
@@ -683,6 +693,29 @@ public class ArticleAppService {
             "当前会使用系统默认封面，建议上传更贴合主题的封面图"
         );
 
+        // --- 敏感词检测 ---
+        if (StringUtils.hasText(title) || StringUtils.hasText(content)) {
+            String textToCheck = title + " " + content;
+            List<String> blockWords = sensitiveWordAppService != null ? sensitiveWordAppService.detectBlockWords(textToCheck) : new ArrayList<String>();
+            List<String> warnWords = sensitiveWordAppService != null ? sensitiveWordAppService.detectWarnWords(textToCheck) : new ArrayList<String>();
+            if (!blockWords.isEmpty()) {
+                String blockedMsg = "内容含有违禁词（" + String.join("、", blockWords) + "），请修改后再发布";
+                appendCheck(checks, errors, "sensitiveBlock", "违禁词检测", false, "error",
+                    "未检测到违禁词", blockedMsg);
+            } else {
+                appendCheck(checks, new ArrayList<String>(), "sensitiveBlock", "违禁词检测", true, "pass",
+                    "未检测到违禁词", "");
+            }
+            if (!warnWords.isEmpty()) {
+                String warnMsg = "内容含有敏感词（" + String.join("、", warnWords) + "），发布后将进入待审核队列";
+                appendCheck(checks, warnings, "sensitiveWarn", "敏感词检测", false, "warning",
+                    "未检测到敏感词", warnMsg);
+            } else {
+                appendCheck(checks, new ArrayList<String>(), "sensitiveWarn", "敏感词检测", true, "pass",
+                    "未检测到敏感词", "");
+            }
+        }
+
         validation.setPublishable(errors.isEmpty());
         validation.setErrors(errors);
         validation.setWarnings(warnings);
@@ -707,6 +740,25 @@ public class ArticleAppService {
         checks.add(item);
         if (!passed) {
             messages.add(failedMessage);
+        }
+    }
+
+
+    /**
+     * 若文章处于 PUBLISHED 状态，检测警告级敏感词并标记 warn_flag。
+     */
+    private void applyWarnFlagIfNeeded(Article article) {
+        if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+            return;
+        }
+        if (sensitiveWordAppService == null) {
+            return;
+        }
+        String text = (article.getTitle() == null ? "" : article.getTitle())
+            + " " + (article.getContent() == null ? "" : article.getContent());
+        List<String> warnHits = sensitiveWordAppService.detectWarnWords(text);
+        if (!warnHits.isEmpty()) {
+            article.markWarnFlag();
         }
     }
 

@@ -391,5 +391,6 @@ public interface ArticleRepository {
      * @return 分类统计列表
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> findCategoryStats(int limit);
-}
 
+    long countByWarnFlag();
+}

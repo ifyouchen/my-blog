@@ -335,6 +335,9 @@ public interface ArticleMapper {
                                   @Param("excludeId") Long excludeId,
                                   @Param("limit") int limit);
 
+    /** 统计待审核文章数量（warn_flag=1 且未删除）。 */
+    long countByWarnFlag();
+
     /** 统计精选文章数量。 */
     long countFeatured();
 

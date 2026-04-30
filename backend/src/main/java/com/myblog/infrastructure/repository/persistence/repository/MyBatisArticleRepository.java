@@ -471,4 +471,9 @@ public class MyBatisArticleRepository implements ArticleRepository {
         }
         return tagMap;
     }
+
+    @Override
+    public long countByWarnFlag() {
+        return articleMapper.countByWarnFlag();
+    }
 }

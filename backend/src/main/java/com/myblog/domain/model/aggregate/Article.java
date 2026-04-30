@@ -33,6 +33,7 @@ public class Article {
     private int likeCount;
     private int favoriteCount;
     private int commentCount;
+    private boolean warnFlag;
     private boolean featured;
     private LocalDateTime featuredAt;
     private String slug;
@@ -118,7 +119,7 @@ public class Article {
     public static Article restore(Long id, UserId authorId, String title, String summary, String content,
                                   String coverUrl, String category, String offlineReason, List<String> tags, ArticleStatus status,
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
-                                  boolean featured, LocalDateTime featuredAt,
+                                  boolean warnFlag, boolean featured, LocalDateTime featuredAt,
                                   String slug, String seoTitle, String seoDescription,
                                   LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
                                   Integer version) {
@@ -137,6 +138,7 @@ public class Article {
         article.likeCount = likeCount;
         article.favoriteCount = favoriteCount;
         article.commentCount = commentCount;
+        article.warnFlag = warnFlag;
         article.featured = featured;
         article.featuredAt = featuredAt;
         article.slug = slug;
@@ -486,6 +488,24 @@ public class Article {
      *
      * @return 是否精选
      */
+
+    /**
+     * 获取敏感词警告标记。
+     *
+     * @return 敏感词警告标记
+     */
+    public boolean isWarnFlag() {
+        return warnFlag;
+    }
+
+    /**
+     * 标记为敏感词警告。
+     */
+    public void markWarnFlag() {
+        this.warnFlag = true;
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
+
     public boolean isFeatured() {
         return featured;
     }

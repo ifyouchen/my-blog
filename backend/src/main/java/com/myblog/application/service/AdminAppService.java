@@ -61,6 +61,7 @@ public class AdminAppService {
         long publishedCount = articleRepository.countByStatus(ArticleStatus.PUBLISHED.name());
         long offlineCount = articleRepository.countByStatus(ArticleStatus.OFFLINE.name());
         long deletedCount = articleRepository.countByStatus(ArticleStatus.DELETED.name());
+        long reviewPendingCount = articleRepository.countByWarnFlag();
         long commentCount = commentRepository.countAll();
         long todayNewUsers = userRepository.countCreatedOn(today);
         long todayNewArticles = articleRepository.countCreatedOn(today);
@@ -118,6 +119,7 @@ public class AdminAppService {
         stats.put("publishedArticles", publishedCount);
         stats.put("offlineArticles", offlineCount);
         stats.put("deletedArticles", deletedCount);
+        stats.put("reviewPendingArticles", reviewPendingCount);
         stats.put("totalComments", commentCount);
         stats.put("todayNewUsers", todayNewUsers);
         stats.put("todayNewArticles", todayNewArticles);

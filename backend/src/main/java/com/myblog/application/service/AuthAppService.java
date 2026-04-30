@@ -12,7 +12,9 @@ import com.myblog.domain.service.PasswordDomainService;
 import com.myblog.infrastructure.security.JwtTokenProvider;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -28,6 +30,12 @@ public class AuthAppService {
     private final UserRepository userRepository;
     private final PasswordDomainService passwordDomainService;
     private final JwtTokenProvider jwtTokenProvider;
+    private InviteCodeAppService inviteCodeAppService;
+
+    @Autowired(required = false)
+    public void setInviteCodeAppService(InviteCodeAppService inviteCodeAppService) {
+        this.inviteCodeAppService = inviteCodeAppService;
+    }
 
     /**
      * 创建认证应用服务。
@@ -50,6 +58,7 @@ public class AuthAppService {
      * @param command 注册命令
      * @return 认证结果
      */
+    @Transactional(rollbackFor = Exception.class)
     public AuthDTO register(RegisterCommand command) {
         if (userRepository.existsByUsername(command.getUsername())) {
             throw new ApplicationException(ErrorCode.CONFLICT, "用户名已存在");
@@ -60,6 +69,9 @@ public class AuthAppService {
         String passwordHash = passwordDomainService.encode(command.getPassword());
         User user = User.create(userRepository.nextId(), command.getUsername(), command.getEmail(), passwordHash);
         userRepository.save(user);
+        if (inviteCodeAppService != null && command.getInviteCode() != null && !command.getInviteCode().isEmpty()) {
+            inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
+        }
         String token = jwtTokenProvider.createToken(user.getId().getValue(), user.getUsername(), user.getRole().name());
         return new AuthDTO(token, UserAssembler.toDTO(user));
     }

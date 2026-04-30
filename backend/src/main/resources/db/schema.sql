@@ -659,6 +659,30 @@ CREATE TABLE `blog_sensitive_word` (
   COMMENT = '敏感词表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- ----------------------------
+-- blog_invite_code
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_invite_code`;
+CREATE TABLE `blog_invite_code` (
+    `id`          bigint unsigned  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `code`        varchar(32)      NOT NULL COMMENT '邀请码（唯一）',
+    `creator_id`  bigint unsigned  NOT NULL DEFAULT 0 COMMENT '创建者ID（0表示系统生成）',
+    `used_by`     bigint unsigned  NULL DEFAULT NULL COMMENT '被使用者ID',
+    `used_at`     datetime         NULL DEFAULT NULL COMMENT '使用时间',
+    `expired_at`  datetime         NULL DEFAULT NULL COMMENT '过期时间',
+    `max_uses`    int              NOT NULL DEFAULT 1 COMMENT '最大使用次数',
+    `use_count`   int              NOT NULL DEFAULT 0 COMMENT '已使用次数',
+    `created_at`  datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`  datetime         NULL DEFAULT NULL COMMENT '删除时间',
+    `version`     int              NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_invite_code` (`code`) USING BTREE,
+    INDEX `idx_invite_code_creator` (`creator_id`, `deleted_at`) USING BTREE
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '邀请码表' ROW_FORMAT = Dynamic;
+
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES

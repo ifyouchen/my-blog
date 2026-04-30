@@ -28,6 +28,9 @@ public interface SensitiveWordMapper {
     /** 查询所有启用的敏感词（用于内容检测）。 */
     List<String> selectAllEnabledWords();
 
+    /** 查询指定等级的启用敏感词列表。 */
+    List<String> selectEnabledWordsByLevel(@Param("level") String level);
+
     int countByWord(@Param("word") String word, @Param("excludeId") Long excludeId);
 
     Long selectNextId();

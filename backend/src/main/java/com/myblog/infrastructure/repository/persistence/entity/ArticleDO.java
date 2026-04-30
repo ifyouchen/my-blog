@@ -18,6 +18,7 @@ public class ArticleDO {
     private String coverUrl;
     private String category;
     private String offlineReason;
+    private Boolean warnFlag;
     private Boolean featured;
     private LocalDateTime featuredAt;
     private String slug;
@@ -176,6 +177,25 @@ public class ArticleDO {
      */
     public void setOfflineReason(String offlineReason) {
         this.offlineReason = offlineReason;
+    }
+
+
+    /**
+     * 获取敏感词警告标记。
+     *
+     * @return 敏感词警告标记
+     */
+    public Boolean getWarnFlag() {
+        return warnFlag;
+    }
+
+    /**
+     * 设置敏感词警告标记。
+     *
+     * @param warnFlag 敏感词警告标记
+     */
+    public void setWarnFlag(Boolean warnFlag) {
+        this.warnFlag = warnFlag;
     }
 
     public Boolean getFeatured() {

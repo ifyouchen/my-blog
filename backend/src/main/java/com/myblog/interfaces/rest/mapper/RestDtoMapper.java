@@ -40,7 +40,8 @@ public class RestDtoMapper {
      * @return 注册命令
      */
     public RegisterCommand toCommand(RegisterRequest request) {
-        return new RegisterCommand(request.getUsername(), request.getEmail(), request.getPassword());
+        return new RegisterCommand(request.getUsername(), request.getEmail(),
+            request.getPassword(), request.getInviteCode());
     }
 
     /**

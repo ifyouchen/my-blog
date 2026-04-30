@@ -1,26 +1,19 @@
 <script setup>
-import { onMounted, reactive, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import {onMounted, reactive, watch} from 'vue';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
-    deleteAdminArticleApi,
-    featureAdminArticleApi,
-    getAdminArticlesApi,
-    getAdminStatsApi,
-    getCategoriesApi,
-    unfeatureAdminArticleApi,
-    updateAdminArticleStatusApi
+  deleteAdminArticleApi,
+  featureAdminArticleApi,
+  getAdminArticlesApi,
+  getAdminStatsApi,
+  getCategoriesApi,
+  unfeatureAdminArticleApi,
+  updateAdminArticleStatusApi
 } from '@/api/admin';
-import {
-    createPagedState,
-    readPositiveInt,
-    readQueryText,
-    resolveAdminOverflowPage,
-    syncAdminQuery,
-    useAdminRefresh
-} from '@/views/admin/adminShared';
-import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import {createPagedState, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const route = useRoute();
 const router = useRouter();
@@ -151,6 +144,7 @@ const quickStatusCards = [
     { label: '全部文章', key: 'ALL', status: '', value: () => state.stats?.totalArticles || 0 },
     { label: '草稿', key: 'DRAFT', status: 'DRAFT', value: () => state.stats?.draftArticles || 0 },
     { label: '已发布', key: 'PUBLISHED', status: 'PUBLISHED', value: () => state.stats?.publishedArticles || 0 },
+    { label: '待审核', key: 'REVIEW_PENDING', status: 'REVIEW_PENDING', value: () => state.stats?.reviewPendingArticles || 0 },
     { label: '已下架', key: 'OFFLINE', status: 'OFFLINE', value: () => state.stats?.offlineArticles || 0 },
     { label: '已删除', key: 'DELETED', status: 'DELETED', value: () => state.stats?.deletedArticles || 0 }
 ];
@@ -260,6 +254,7 @@ watch(
                     <select v-model="state.status">
                         <option value="">全部</option>
                         <option value="PUBLISHED">已发布</option>
+                        <option value="REVIEW_PENDING">待审核</option>
                         <option value="DRAFT">草稿</option>
                         <option value="OFFLINE">已下架</option>
                         <option value="DELETED">已删除</option>
@@ -331,6 +326,7 @@ watch(
                                     <span class="status-pill" :class="{ warning: article.status === 'OFFLINE' }">
                                         {{ article.status }}
                                     </span>
+                                    <span v-if="article.warnFlag" class="status-pill review-pending" title="含敏感词，待审核">待审核</span>
                                 </td>
                                 <td>
                                     <span v-if="article.featured" class="status-pill brand">精选</span>
@@ -439,5 +435,19 @@ watch(
     .admin-status-overview {
         grid-template-columns: 1fr;
     }
+}
+
+.status-pill.review-pending {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+    margin-left: 4px;
+    font-size: 11px;
+}
+
+.admin-status-card[data-key="REVIEW_PENDING"].active,
+.admin-status-card[data-key="REVIEW_PENDING"]:hover {
+    border-color: #fb923c;
+    background: #fff7ed;
 }
 </style>

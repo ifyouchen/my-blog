@@ -325,3 +325,14 @@ export const deleteAdminSensitiveWordApi = async (id) => {
         method: 'DELETE'
     });
 };
+
+// ======= 邀请码管理 =======
+export const getAdminInviteCodesApi = async (page = 1, pageSize = 20, keyword = '') => {
+    const params = new URLSearchParams({ page, pageSize });
+    if (keyword) params.append('keyword', keyword);
+    return await request(`/invite-codes/admin?${params.toString()}`);
+};
+
+export const deleteAdminInviteCodeApi = async (id) => {
+    return await request(`/invite-codes/admin/${id}`, { method: 'DELETE' });
+};

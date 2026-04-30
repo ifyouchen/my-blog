@@ -19,6 +19,7 @@ const navItems = [
     { to: '/admin/ads', label: '广告', icon: '广告' },
     { to: '/admin/announcements', label: '公告', icon: '公告' },
     { to: '/admin/sensitive-words', label: '敏感词', icon: '敏感' },
+    { to: '/admin/invite-codes', label: '邀请码', icon: '邀请' },
     { to: '/admin/logs', label: '日志', icon: '日志' }
 ];
 

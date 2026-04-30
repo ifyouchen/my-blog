@@ -24,6 +24,8 @@ public class RegisterRequest {
     @Size(min = 6, max = 64, message = "密码长度必须在6到64之间")
     private String password;
 
+    private String inviteCode;
+
     /**
      * 获取用户名。
      *
@@ -76,5 +78,13 @@ public class RegisterRequest {
      */
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getInviteCode() {
+        return inviteCode;
+    }
+
+    public void setInviteCode(String inviteCode) {
+        this.inviteCode = inviteCode;
     }
 }

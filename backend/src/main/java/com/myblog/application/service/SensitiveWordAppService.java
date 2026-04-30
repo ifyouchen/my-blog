@@ -128,6 +128,48 @@ public class SensitiveWordAppService {
         return hits;
     }
 
+    /**
+     * 检测文本中 BLOCK 级别的敏感词。
+     *
+     * @param text 待检测文本
+     * @return 命中的 BLOCK 级别敏感词列表
+     */
+    public List<String> detectBlockWords(String text) {
+        if (text == null || text.isEmpty()) {
+            return new ArrayList<String>();
+        }
+        List<String> words = sensitiveWordMapper.selectEnabledWordsByLevel("BLOCK");
+        List<String> hits = new ArrayList<String>();
+        String lower = text.toLowerCase();
+        for (String word : words) {
+            if (lower.contains(word.toLowerCase())) {
+                hits.add(word);
+            }
+        }
+        return hits;
+    }
+
+    /**
+     * 检测文本中 WARN 级别的敏感词。
+     *
+     * @param text 待检测文本
+     * @return 命中的 WARN 级别敏感词列表
+     */
+    public List<String> detectWarnWords(String text) {
+        if (text == null || text.isEmpty()) {
+            return new ArrayList<String>();
+        }
+        List<String> words = sensitiveWordMapper.selectEnabledWordsByLevel("WARN");
+        List<String> hits = new ArrayList<String>();
+        String lower = text.toLowerCase();
+        for (String word : words) {
+            if (lower.contains(word.toLowerCase())) {
+                hits.add(word);
+            }
+        }
+        return hits;
+    }
+
     // ========== 私有方法 ==========
 
     private void validateWord(String word) {
