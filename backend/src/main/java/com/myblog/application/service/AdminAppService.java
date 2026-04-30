@@ -9,6 +9,9 @@ import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.CommentRepository;
 import com.myblog.domain.repository.UserRepository;
+import com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO;
+import com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO;
+import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
@@ -43,7 +46,7 @@ public class AdminAppService {
     }
 
     /**
-     * 查询后台概览统计数据。
+     * 查询后台概览统计数据（含7日趋势、分类分布、Top作者）。
      *
      * @return 概览统计
      */
@@ -66,6 +69,46 @@ public class AdminAppService {
         long sevenDayArticles = articleRepository.countCreatedSince(sevenDaysAgo);
         long sevenDayComments = commentRepository.countCreatedSince(sevenDaysAgo);
 
+        // 7 日每日趋势：合并用户、文章、评论的每日新增量
+        List<Map<String, Object>> sevenDayTrend = buildSevenDayTrend(today, sevenDaysAgo);
+
+        // 分类分布（已发布文章，Top 10）
+        List<AdminCategoryStatDO> categoryStatDOs = articleRepository.findCategoryStats(10);
+        List<Map<String, Object>> categoryStats = new ArrayList<Map<String, Object>>(categoryStatDOs.size());
+        for (AdminCategoryStatDO stat : categoryStatDOs) {
+            Map<String, Object> entry = new LinkedHashMap<String, Object>();
+            entry.put("category", stat.getCategory());
+            entry.put("articleCount", stat.getArticleCount());
+            categoryStats.add(entry);
+        }
+
+        // Top 5 活跃作者（按已发布文章的浏览量排序）
+        List<AuthorArticleStatsDO> authorStatsDOs = articleRepository.findAuthorArticleStats(5);
+        List<Long> topAuthorIds = new ArrayList<Long>(authorStatsDOs.size());
+        for (AuthorArticleStatsDO stat : authorStatsDOs) {
+            topAuthorIds.add(stat.getAuthorId());
+        }
+        List<User> topAuthors = topAuthorIds.isEmpty()
+            ? Collections.emptyList()
+            : userRepository.findByIds(topAuthorIds);
+        Map<Long, User> authorMap = new HashMap<Long, User>(topAuthors.size());
+        for (User u : topAuthors) {
+            authorMap.put(u.getId().getValue(), u);
+        }
+        List<Map<String, Object>> topAuthorList = new ArrayList<Map<String, Object>>(authorStatsDOs.size());
+        for (AuthorArticleStatsDO stat : authorStatsDOs) {
+            User author = authorMap.get(stat.getAuthorId());
+            Map<String, Object> entry = new LinkedHashMap<String, Object>();
+            entry.put("authorId", stat.getAuthorId());
+            entry.put("username", author == null ? null : author.getUsername());
+            entry.put("nickname", author == null ? null : author.getNickname());
+            entry.put("avatarUrl", author == null ? null : author.getAvatarUrl());
+            entry.put("articleCount", stat.getArticleCount());
+            entry.put("totalViews", stat.getTotalViews());
+            entry.put("totalLikes", stat.getTotalLikes());
+            topAuthorList.add(entry);
+        }
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalUsers", userCount);
         stats.put("normalUsers", normalUserCount);
@@ -82,7 +125,38 @@ public class AdminAppService {
         stats.put("sevenDayUsers", sevenDayUsers);
         stats.put("sevenDayArticles", sevenDayArticles);
         stats.put("sevenDayComments", sevenDayComments);
+        stats.put("sevenDayTrend", sevenDayTrend);
+        stats.put("categoryStats", categoryStats);
+        stats.put("topAuthors", topAuthorList);
         return stats;
+    }
+
+    /**
+     * 构建最近 7 日每日新增用户、文章、评论趋势。
+     */
+    private List<Map<String, Object>> buildSevenDayTrend(LocalDate today, LocalDate sevenDaysAgo) {
+        // 获取文章每日趋势（使用 DB 聚合）
+        List<AdminTrendPointDO> articleTrend = articleRepository.findDailyArticleTrend(sevenDaysAgo, today);
+        Map<String, Long> articleByDate = new HashMap<String, Long>();
+        for (AdminTrendPointDO p : articleTrend) {
+            articleByDate.put(p.getDate(), p.getNewArticles());
+        }
+        // 用户和评论按日循环查询
+        List<Map<String, Object>> trend = new ArrayList<Map<String, Object>>(7);
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            long newUsers = userRepository.countCreatedOn(date);
+            long newArticles = articleByDate.containsKey(dateStr) ? articleByDate.get(dateStr) : 0L;
+            long newComments = commentRepository.countCreatedOn(date);
+            Map<String, Object> point = new LinkedHashMap<String, Object>();
+            point.put("date", dateStr);
+            point.put("newUsers", newUsers);
+            point.put("newArticles", newArticles);
+            point.put("newComments", newComments);
+            trend.add(point);
+        }
+        return trend;
     }
 
     /**

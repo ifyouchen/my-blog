@@ -11,6 +11,7 @@ import com.myblog.application.service.AdminLogAppService;
 import com.myblog.application.service.AnnouncementAppService;
 import com.myblog.application.service.CategoryAppService;
 import com.myblog.application.service.ColumnAppService;
+import com.myblog.application.service.SensitiveWordAppService;
 import com.myblog.application.service.TagAppService;
 import com.myblog.application.service.TopicAppService;
 import com.myblog.infrastructure.security.AuthContext;
@@ -47,11 +48,13 @@ public class AdminController {
     private final ColumnAppService columnAppService;
     private final TopicAppService topicAppService;
     private final AnnouncementAppService announcementAppService;
+    private final SensitiveWordAppService sensitiveWordAppService;
 
     public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService,
                            CategoryAppService categoryAppService, TagAppService tagAppService,
                            ColumnAppService columnAppService, TopicAppService topicAppService,
-                           AnnouncementAppService announcementAppService) {
+                           AnnouncementAppService announcementAppService,
+                           SensitiveWordAppService sensitiveWordAppService) {
         this.adminAppService = adminAppService;
         this.adminLogAppService = adminLogAppService;
         this.categoryAppService = categoryAppService;
@@ -59,6 +62,7 @@ public class AdminController {
         this.columnAppService = columnAppService;
         this.topicAppService = topicAppService;
         this.announcementAppService = announcementAppService;
+        this.sensitiveWordAppService = sensitiveWordAppService;
     }
 
     private void ensureAdmin() {

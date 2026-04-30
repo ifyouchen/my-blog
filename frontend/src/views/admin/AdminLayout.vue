@@ -1,5 +1,4 @@
-<script setup>
-import {computed} from 'vue';
+<script setup>import {computed} from 'vue';
 import {RouterLink, RouterView, useRoute} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {useSession} from '@/stores/session';

@@ -1,14 +1,14 @@
 <script setup>
-import {inject, onMounted, reactive, ref} from 'vue';
+import {inject, onMounted, reactive} from 'vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import {
-    createAdminAnnouncementApi,
-    deleteAdminAnnouncementApi,
-    getAdminAnnouncementsApi,
-    publishAdminAnnouncementApi,
-    unpublishAdminAnnouncementApi,
-    updateAdminAnnouncementApi
+  createAdminAnnouncementApi,
+  deleteAdminAnnouncementApi,
+  getAdminAnnouncementsApi,
+  publishAdminAnnouncementApi,
+  unpublishAdminAnnouncementApi,
+  updateAdminAnnouncementApi
 } from '@/api/admin';
 import {createPagedState, useAdminRefresh} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';

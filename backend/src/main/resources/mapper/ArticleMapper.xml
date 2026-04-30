@@ -927,4 +927,32 @@
         ORDER BY (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC
         LIMIT #{limit}
     </select>
+    <!-- 每日新增文章趋势（管理后台用） -->
+    <select id="selectDailyArticleTrend"
+            resultType="com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO">
+        SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date,
+               COUNT(1) AS newArticles,
+               0 AS newUsers,
+               0 AS newComments
+        FROM blog_article
+        WHERE deleted_at IS NULL
+        AND DATE(created_at) BETWEEN #{startDate} AND #{endDate}
+        GROUP BY DATE(created_at)
+        ORDER BY DATE(created_at) ASC
+    </select>
+
+    <!-- 已发布文章分类分布统计（管理后台用） -->
+    <select id="selectCategoryStats"
+            resultType="com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO">
+        SELECT COALESCE(category, '未分类') AS category,
+               COUNT(1) AS articleCount
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        GROUP BY category
+        ORDER BY articleCount DESC
+        LIMIT #{limit}
+    </select>
+
 </mapper>
+

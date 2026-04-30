@@ -429,6 +429,18 @@ public class MyBatisArticleRepository implements ArticleRepository {
         int safeLimit = Math.max(1, limit);
         return toDomainList(articleMapper.selectRelated(category, excludeId, safeLimit));
     }
+    @Override
+    public List<com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO> findDailyArticleTrend(
+            java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        return articleMapper.selectDailyArticleTrend(startDate, endDate);
+    }
+
+    @Override
+    public List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> findCategoryStats(int limit) {
+        return articleMapper.selectCategoryStats(limit);
+    }
+
+    private List<Article> toDomainList(List<ArticleDO> articleDOList) {
 
     private List<Article> toDomainList(List<ArticleDO> articleDOList) {
         List<Article> articles = new ArrayList<Article>(articleDOList.size());

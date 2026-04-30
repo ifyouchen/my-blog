@@ -345,6 +345,25 @@ public interface ArticleMapper {
      * @return 文章数据对象
      */
     ArticleDO selectBySlug(@Param("slug") String slug);
+    /**
+     * 查询指定日期范围内每日新增文章趋势。
+     *
+     * @param startDate 起始日期（含）
+     * @param endDate 结束日期（含）
+     * @return 每日文章新增数列表
+     */
+    List<com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO> selectDailyArticleTrend(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     /**
+     * 查询已发布文章的分类分布统计。
+     *
+     * @param limit 最多返回的分类数量
+     * @return 分类统计列表
+     */
+    List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> selectCategoryStats(
+            @Param("limit") int limit);
+
 }
+

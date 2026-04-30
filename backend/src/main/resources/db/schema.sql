@@ -637,6 +637,27 @@ CREATE TABLE `blog_announcement` (
   COMMENT = '平台公告表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- blog_sensitive_word
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_sensitive_word`;
+CREATE TABLE `blog_sensitive_word` (
+    `id`          bigint unsigned  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `word`        varchar(100)     NOT NULL COMMENT '敏感词',
+    `category`    varchar(50)      NULL DEFAULT NULL COMMENT '分类（如：政治、色情、广告等）',
+    `level`       varchar(20)      NOT NULL DEFAULT 'WARN' COMMENT '等级：WARN-警告 BLOCK-拦截',
+    `enabled`     tinyint(1)       NOT NULL DEFAULT 1 COMMENT '是否启用：1-启用 0-禁用',
+    `created_at`  datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`  datetime         NULL DEFAULT NULL COMMENT '删除时间',
+    `version`     int              NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_sensitive_word` (`word`, `deleted_at`) USING BTREE,
+    INDEX `idx_sensitive_word_enabled` (`enabled`, `deleted_at`) USING BTREE
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '敏感词表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES
