@@ -26,6 +26,7 @@ public class UserResponse {
     private String lastLoginIp;
     private String role;
     private Boolean followed;
+    private long followerCount;
 
     /**
      * 获取用户 ID。
@@ -217,5 +218,23 @@ public class UserResponse {
      */
     public void setFollowed(Boolean followed) {
         this.followed = followed;
+    }
+
+    /**
+     * 获取粉丝数。
+     *
+     * @return 粉丝数
+     */
+    public long getFollowerCount() {
+        return followerCount;
+    }
+
+    /**
+     * 设置粉丝数。
+     *
+     * @param followerCount 粉丝数
+     */
+    public void setFollowerCount(long followerCount) {
+        this.followerCount = followerCount;
     }
 }

@@ -185,6 +185,18 @@ onMounted(async () => {
     }
 });
 
+watch(() => route.params.conversationId, (newId) => {
+    if (!newId) {
+        state.activeConversationId = null;
+        state.messages = [];
+    } else if (!state.activeConversationId) {
+        const conv = state.conversations.find(c => String(c.id) === newId);
+        if (conv) {
+            selectConversation(conv);
+        }
+    }
+});
+
 onUnmounted(() => {
     if (unsubscribeMessageStream) {
         unsubscribeMessageStream();
@@ -199,6 +211,7 @@ watch(() => state.messages.length, () => {
 </script>
 
 <template>
+    <SiteHeader />
     <div class="messages-page">
         <!-- 会话列表 -->
         <aside class="conversation-list-panel">
@@ -231,7 +244,7 @@ watch(() => state.messages.length, () => {
         </aside>
 
         <!-- 会话详情 -->
-        <main class="conversation-detail-panel">
+        <main class="conversation-detail-panel" :class="{ 'detail-active': !!state.activeConversationId }">
             <template v-if="state.activeConversationId">
                 <div class="message-header">
                     <button class="back-btn" @click="router.push('/messages')">&larr;</button>
@@ -454,6 +467,27 @@ watch(() => state.messages.length, () => {
     padding: 4px 8px;
 }
 
+.message-header-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.message-header-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
 .message-list {
     flex: 1;
     overflow-y: auto;
@@ -465,7 +499,28 @@ watch(() => state.messages.length, () => {
 
 .message-item {
     display: flex;
+    gap: 10px;
     max-width: 70%;
+}
+
+.message-self {
+    margin-left: auto;
+    flex-direction: row-reverse;
+}
+
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+.message-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .message-bubble {
@@ -480,6 +535,11 @@ watch(() => state.messages.length, () => {
 .message-self .message-bubble {
     background: var(--brand);
     color: #fff;
+    border-bottom-right-radius: 4px;
+}
+
+.message-item:not(.message-self) .message-bubble {
+    border-bottom-left-radius: 4px;
 }
 
 .message-meta {
@@ -556,6 +616,8 @@ watch(() => state.messages.length, () => {
 @media (max-width: 768px) {
     .messages-page {
         height: calc(100vh - 56px);
+        max-width: none;
+        margin: 0;
         border-radius: 0;
         border: none;
     }
@@ -565,6 +627,10 @@ watch(() => state.messages.length, () => {
     }
 
     .conversation-detail-panel {
+        display: none;
+    }
+    .conversation-detail-panel.detail-active {
+        display: flex;
         position: fixed;
         inset: 56px 0 0;
         z-index: 10;

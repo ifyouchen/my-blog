@@ -504,6 +504,7 @@ const handleNotificationsRefresh = () => {
                 </RouterLink>
             </nav>
             <div class="mobile-menu-actions">
+                <button class="primary-action block" type="button" @click="writeArticle; mobileMenuOpen = false">写文章</button>
                 <template v-if="isLoggedIn">
                     <RouterLink class="mobile-menu-link" :to="`/users/${state.user?.id}`" @click="mobileMenuOpen = false">个人主页</RouterLink>
                     <RouterLink class="mobile-menu-link" to="/notifications" @click="mobileMenuOpen = false">
@@ -522,7 +523,6 @@ const handleNotificationsRefresh = () => {
                     </button>
                 </template>
                 <RouterLink v-else class="mobile-menu-link" to="/login" @click="mobileMenuOpen = false">登录</RouterLink>
-                <button class="primary-action block" type="button" @click="writeArticle; mobileMenuOpen = false">写文章</button>
             </div>
         </div>
     </Teleport>

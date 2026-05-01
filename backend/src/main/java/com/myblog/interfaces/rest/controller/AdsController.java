@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 广告前台接口。
@@ -64,6 +66,30 @@ public class AdsController {
         String ua = request == null ? null : request.getHeader("User-Agent");
         adAppService.recordClick(campaignId, userId, ip, ua);
         return Result.success(null);
+    }
+
+    /**
+     * 关闭广告（用户维度，3天有效）。
+     */
+    @PostMapping("/{campaignId}/dismiss")
+    public Result<Void> dismiss(@PathVariable Long campaignId) {
+        Long userId = safeGetUserId();
+        if (userId != null) {
+            adAppService.dismiss(campaignId, userId);
+        }
+        return Result.success(null);
+    }
+
+    /**
+     * 获取当前用户 3 天内关闭过的广告 ID 列表。
+     */
+    @GetMapping("/dismissed-ids")
+    public Result<Map<String, List<Long>>> getDismissedIds() {
+        Long userId = safeGetUserId();
+        List<Long> ids = adAppService.getUserDismissedIds(userId);
+        Map<String, List<Long>> result = new HashMap<>();
+        result.put("ids", ids);
+        return Result.success(result);
     }
 
     private Long safeGetUserId() {

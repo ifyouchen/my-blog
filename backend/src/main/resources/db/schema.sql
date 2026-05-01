@@ -717,6 +717,17 @@ CREATE TABLE `blog_message` (
     INDEX `idx_receiver_unread` (`conversation_id`, `receiver_deleted_at`, `read_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='私信消息表';
 
+DROP TABLE IF EXISTS `blog_user_ad_dismissal`;
+CREATE TABLE `blog_user_ad_dismissal` (
+    `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`     bigint unsigned NOT NULL COMMENT '用户ID',
+    `ad_id`       bigint unsigned NOT NULL COMMENT '广告ID',
+    `dismissed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '关闭时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_ad` (`user_id`, `ad_id`),
+    INDEX `idx_user_dismissed` (`user_id`, `dismissed_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户广告关闭记录';
+
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES

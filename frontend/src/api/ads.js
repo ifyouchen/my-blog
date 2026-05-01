@@ -24,6 +24,21 @@ export const recordAdClickApi = async (campaignId) => {
     return await request(`/ads/${campaignId}/click`, { method: 'POST' });
 };
 
+/**
+ * 关闭广告（用户维度，3天有效）。
+ * @param {number} campaignId 广告 ID
+ */
+export const dismissAdApi = async (campaignId) => {
+    return await request(`/ads/${campaignId}/dismiss`, { method: 'POST' });
+};
+
+/**
+ * 获取当前用户 3 天内关闭过的广告 ID 列表。
+ */
+export const getDismissedAdIdsApi = async () => {
+    return await request('/ads/dismissed-ids');
+};
+
 // ========================== 后台管理接口 ==========================
 
 /**

@@ -174,11 +174,13 @@ const handleAuthorFollowChange = (nextFollowed) => {
     if (!remoteArticle.value?.author) {
         return;
     }
+    const delta = nextFollowed ? 1 : -1;
     remoteArticle.value = {
         ...remoteArticle.value,
         author: {
             ...remoteArticle.value.author,
-            followed: nextFollowed
+            followed: nextFollowed,
+            followerCount: Math.max(0, (remoteArticle.value.author.followerCount || 0) + delta)
         }
     };
 };
@@ -1234,6 +1236,12 @@ onUnmounted(() => {
 .share-icon {
     flex: none;
     color: var(--muted);
+}
+
+@media (max-width: 768px) {
+    .article-quick-actions .article-quick-button:last-child {
+        display: none;
+    }
 }
 </style>
 

@@ -3796,8 +3796,9 @@ button:disabled {
         align-items: center;
     }
 
-    /* 移动端：隐藏文字链接、通知铃铛、用户菜单，只保留汉堡菜单和写文章 */
+    /* 移动端：隐藏文字链接、私信图标、通知铃铛、用户菜单，只保留汉堡菜单和写文章 */
     .header-actions .text-link,
+    .header-actions .message-btn,
     .header-actions .notification-wrapper,
     .header-actions .user-menu {
         display: none;

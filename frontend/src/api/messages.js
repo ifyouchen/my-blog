@@ -66,7 +66,18 @@ export const getMessageUnreadCountApi = async () => {
  * 返回取消订阅函数。
  */
 export const subscribeMessageStream = (onMessage, onUnread) => {
-    const token = localStorage.getItem('my-blog-session');
+    const getToken = () => {
+        try {
+            const raw = localStorage.getItem('my-blog-session');
+            const session = raw ? JSON.parse(raw) : null;
+            if (!session || !session.token || session.token === 'local-dev-token') return '';
+            return session.token;
+        } catch {
+            return '';
+        }
+    };
+
+    const token = getToken();
     if (!token) {
         return () => {};
     }

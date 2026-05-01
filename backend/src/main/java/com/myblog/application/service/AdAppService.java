@@ -7,6 +7,7 @@ import com.myblog.domain.repository.AdCampaignRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.infrastructure.repository.persistence.mapper.AdDismissalMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +30,12 @@ public class AdAppService {
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final AdCampaignRepository adCampaignRepository;
+    private final AdDismissalMapper adDismissalMapper;
 
-    public AdAppService(AdCampaignRepository adCampaignRepository) {
+    public AdAppService(AdCampaignRepository adCampaignRepository,
+                        AdDismissalMapper adDismissalMapper) {
         this.adCampaignRepository = adCampaignRepository;
+        this.adDismissalMapper = adDismissalMapper;
     }
 
     // ==================== 前台接口 ====================
@@ -71,6 +75,28 @@ public class AdAppService {
             () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         adCampaignRepository.recordEvent(campaignId, "CLICK", userId, ipAddress, userAgent);
+    }
+
+    /**
+     * 关闭广告（按用户维度，3天后自动过期）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void dismiss(Long campaignId, Long userId) {
+        if (userId == null) {
+            return;
+        }
+        adDismissalMapper.insert(userId, campaignId, LocalDateTime.now());
+    }
+
+    /**
+     * 获取当前用户 3 天内关闭过的广告 ID 列表。
+     */
+    public List<Long> getUserDismissedIds(Long userId) {
+        if (userId == null) {
+            return new ArrayList<>();
+        }
+        LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(3);
+        return adDismissalMapper.selectDismissedAdIds(userId, threeDaysAgo);
     }
 
     // ==================== 后台接口 ====================

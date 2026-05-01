@@ -326,12 +326,12 @@ watch(
                     <table class="admin-table">
                         <colgroup>
                             <col style="width: 8%">
-                            <col style="width: 16%">
+                            <col style="width: 18%">
                             <col style="width: 22%">
-                            <col style="width: 9%">
                             <col style="width: 10%">
-                            <col style="width: 10%">
-                            <col style="width: 13%">
+                            <col style="width: 12%">
+                            <col style="width: 12%">
+                            <col style="width: 18%">
                         </colgroup>
                         <thead>
                             <tr>
@@ -353,12 +353,12 @@ watch(
                                 </td>
                                 <td v-else><span class="admin-cell-text">{{ topic.title }}</span></td>
 
-                                <td v-if="state.editingId === topic.id" class="admin-edit-cell-wide">
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell admin-edit-cell-wide">
                                     <input v-model.trim="state.editForm.summary" class="admin-edit-input" type="text">
                                 </td>
                                 <td v-else class="summary-cell">{{ topic.summary || '-' }}</td>
 
-                                <td v-if="state.editingId === topic.id" class="admin-edit-cell-narrow">
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell admin-edit-cell-narrow">
                                     <input v-model.number="state.editForm.sortOrder" class="admin-edit-input" type="number">
                                 </td>
                                 <td v-else>{{ topic.sortOrder ?? 0 }}</td>
@@ -551,5 +551,217 @@ watch(
 .admin-edit-btn.secondary:hover:not(:disabled) {
     color: var(--brand);
     border-color: var(--brand);
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    padding: 24px;
+}
+
+.modal-container {
+    display: flex;
+    flex-direction: column;
+    width: min(680px, 100%);
+    height: min(600px, 85vh);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    padding: 24px;
+    gap: 16px;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-right: 32px;
+    position: relative;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-strong);
+}
+
+.modal-subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.modal-close-btn:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+}
+
+.modal-search {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-search input {
+    flex: 1;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+    outline: 0;
+    background: var(--surface-soft);
+}
+
+.modal-search input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.modal-search button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+
+.modal-search button:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.modal-section-title {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.modal-article-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.modal-article-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+}
+
+.modal-article-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.modal-article-id {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.modal-article-title {
+    color: var(--text);
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal-article-category {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.modal-article-row button {
+    min-height: 32px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.modal-article-row button:hover:not(:disabled) {
+    background: var(--brand);
+    color: #fff;
+    border-color: var(--brand);
+}
+
+.modal-article-row button.danger-link {
+    color: var(--danger, #dc2626);
+    border-color: var(--danger, #dc2626);
+    background: #fff;
+}
+
+.modal-article-row button.danger-link:hover:not(:disabled) {
+    background: var(--danger, #dc2626);
+    color: #fff;
+}
+
+
+.modal-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 16px 0;
+}
+
+.modal-section {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
 }
 </style>

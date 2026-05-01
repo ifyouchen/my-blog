@@ -1,6 +1,6 @@
 <script setup>
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
-import {getAdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
+import {dismissAdApi, getAdsApi, getDismissedAdIdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
 
 const props = defineProps({
     slotCode: { type: String, required: true }
@@ -9,6 +9,7 @@ const props = defineProps({
 const ads = ref([]);
 const impressionReported = ref(new Set());
 const dismissedIds = ref(new Set());
+const serverDismissedIds = ref(new Set());
 const activePopoverAdId = ref(null);
 let intersectionObserver = null;
 let closeHoverTimer = null;
@@ -24,18 +25,24 @@ const isDismissedPermanently = (id) => {
 };
 
 const visibleAds = computed(() => {
-    return ads.value.filter(ad => !dismissedIds.value.has(ad.id) && !isDismissedPermanently(ad.id));
+    return ads.value.filter(ad => (
+        !dismissedIds.value.has(ad.id)
+        && !serverDismissedIds.value.has(ad.id)
+        && !isDismissedPermanently(ad.id)
+    ));
 });
 
 const dismissSession = (id) => {
     dismissedIds.value.add(id);
     activePopoverAdId.value = null;
+    dismissAdApi(id).catch(() => {});
 };
 
 const dismissToday = (id) => {
     try { localStorage.setItem(getDismissKey(id), '1'); } catch (e) {}
     dismissedIds.value.add(id);
     activePopoverAdId.value = null;
+    dismissAdApi(id).catch(() => {});
 };
 
 const openPopover = (id) => {
@@ -94,9 +101,20 @@ const observeAds = () => {
     });
 };
 
+const fetchDismissedIds = async () => {
+    try {
+        const result = await getDismissedAdIdsApi();
+        if (result?.ids?.length) {
+            serverDismissedIds.value = new Set(result.ids);
+        }
+    } catch (e) {
+        // ignore
+    }
+};
+
 onMounted(async () => {
     setupObserver();
-    await fetchAds();
+    await Promise.all([fetchAds(), fetchDismissedIds()]);
     setTimeout(observeAds, 100);
 });
 
