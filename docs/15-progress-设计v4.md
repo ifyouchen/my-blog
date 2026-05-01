@@ -76,9 +76,9 @@
 - [x] 数据库 DDL `blog_conversation` + `blog_message` 表追加至 `schema.sql`
 - [x] `mvn compile` + `npm run build` 均通过
 
-## Phase 7：打磨 ⬜
+## Phase 7：打磨 ✅
 
-- [ ] 空状态、加载状态、错误处理
-- [ ] 消息发送中状态
-- [ ] 下拉加载更多
-- [ ] 删除会话
+- [x] 空状态、加载状态、错误处理（会话/消息列表均有覆盖）
+- [x] 消息发送中状态（按钮文字切换「发送中...」）
+- [x] 下拉加载更多（滚动到顶部 80px 内触发）
+- [x] 删除会话（hover 显示删除按钮 + ConfirmDialog 确认）

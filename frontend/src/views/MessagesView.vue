@@ -4,6 +4,8 @@ import {useRoute, useRouter} from 'vue-router';
 import {useSession} from '@/stores/session';
 import {useToast} from '@/composables/useToast';
 import SiteHeader from '@/components/SiteHeader.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
     createConversationApi,
     deleteConversationApi,
@@ -19,6 +21,13 @@ const route = useRoute();
 const router = useRouter();
 const { state: sessionState } = useSession();
 const toast = useToast();
+
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const state = reactive({
     conversations: [],
@@ -117,6 +126,29 @@ const sendMessage = async () => {
     }
 };
 
+const deleteConversation = (conv) => {
+    const name = conv.participant?.nickname || conv.participant?.username || '未知用户';
+    openConfirmDialog({
+        title: '删除会话',
+        message: `确定删除与「${name}」的会话吗？删除后聊天记录将不再显示。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteConversationApi(conv.id);
+                state.conversations = state.conversations.filter(c => c.id !== conv.id);
+                if (state.activeConversationId === conv.id) {
+                    state.activeConversationId = null;
+                    state.messages = [];
+                    await router.replace('/messages');
+                }
+            } catch (error) {
+                toast.error(error.message || '删除会话失败');
+            }
+        }
+    });
+};
+
 const handleKeydown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -126,6 +158,8 @@ const handleKeydown = (e) => {
 
 const loadMore = async () => {
     if (!state.activeConversationId || state.loadingMore || !state.hasMore) return;
+    const el = messageContainer.value;
+    if (!el || el.scrollTop > 80) return;
     state.loadingMore = true;
     state.page++;
     await loadMessages(state.activeConversationId, true);
@@ -238,6 +272,12 @@ watch(() => state.messages.length, () => {
                         <div class="conv-name">{{ conv.participant?.nickname || conv.participant?.username || '未知用户' }}</div>
                         <div class="conv-preview">{{ conv.lastMessage || '' }}</div>
                     </div>
+                    <!-- 删除按钮 -->
+                    <button class="conv-delete-btn" title="删除会话" @click.stop="deleteConversation(conv)">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4v7.5a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                     <div class="conv-time" v-if="conv.lastMessageAt">{{ conv.lastMessageAt.slice(5, 16) }}</div>
                 </div>
             </div>
@@ -303,7 +343,7 @@ watch(() => state.messages.length, () => {
                         class="send-btn"
                         :disabled="state.sending || !messageInput.trim()"
                         @click="sendMessage"
-                    >发送</button>
+                    >{{ state.sending ? '发送中...' : '发送' }}</button>
                 </div>
             </template>
 
@@ -312,6 +352,7 @@ watch(() => state.messages.length, () => {
             </div>
         </main>
     </div>
+    <ConfirmDialog v-bind="confirmDialog" @close="closeConfirmDialog" @confirm="executeConfirmDialog" />
 </template>
 
 <style scoped>
@@ -439,6 +480,32 @@ watch(() => state.messages.length, () => {
     font-size: 11px;
     color: var(--muted);
     flex-shrink: 0;
+}
+
+.conv-delete-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.1s, color 0.1s;
+    opacity: 0.7;
+}
+
+.conversation-item:hover .conv-delete-btn {
+    display: inline-flex;
+}
+
+.conv-delete-btn:hover {
+    background: var(--surface);
+    color: var(--accent);
+    opacity: 1;
 }
 
 .conversation-detail-panel {
