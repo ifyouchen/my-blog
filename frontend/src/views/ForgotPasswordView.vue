@@ -1,5 +1,5 @@
 <script setup>
-import {reactive, ref} from 'vue';
+import {computed, onBeforeUnmount, reactive, ref} from 'vue';
 import {RouterLink} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {forgotPasswordApi} from '@/api/auth';
@@ -8,16 +8,47 @@ const form = reactive({ email: '' });
 const error = ref('');
 const loading = ref(false);
 const sent = ref(false);
+const cooldown = ref(0);
+let cooldownTimer = null;
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const submitButtonText = computed(() => {
+    if (loading.value) {
+        return '发送中...';
+    }
+    return cooldown.value > 0 ? `${cooldown.value}s 后重试` : '发送重置链接';
+});
+
+const stopCooldown = () => {
+    if (cooldownTimer) {
+        window.clearInterval(cooldownTimer);
+        cooldownTimer = null;
+    }
+};
+
+const startCooldown = () => {
+    stopCooldown();
+    cooldown.value = 30;
+    cooldownTimer = window.setInterval(() => {
+        cooldown.value -= 1;
+        if (cooldown.value <= 0) {
+            cooldown.value = 0;
+            stopCooldown();
+        }
+    }, 1000);
+};
 
 const submit = async () => {
+    if (loading.value || cooldown.value > 0) {
+        return;
+    }
     error.value = '';
     if (!validateEmail(form.email.trim())) {
         error.value = '请输入正确的邮箱地址';
         return;
     }
     loading.value = true;
+    startCooldown();
     try {
         await forgotPasswordApi(form.email.trim());
         sent.value = true;
@@ -27,6 +58,10 @@ const submit = async () => {
         loading.value = false;
     }
 };
+
+onBeforeUnmount(() => {
+    stopCooldown();
+});
 </script>
 
 <template>
@@ -54,8 +89,13 @@ const submit = async () => {
                             data-testid="forgot-email-input"
                         >
                     </label>
-                    <button class="primary-action form-submit" type="submit" :disabled="loading" data-testid="forgot-submit">
-                        {{ loading ? '发送中...' : '发送重置链接' }}
+                    <button
+                        class="primary-action form-submit"
+                        type="submit"
+                        :disabled="loading || cooldown > 0"
+                        data-testid="forgot-submit"
+                    >
+                        {{ submitButtonText }}
                     </button>
                     <small v-if="error" class="form-error">{{ error }}</small>
                 </form>
@@ -68,8 +108,8 @@ const submit = async () => {
                         <path d="M14 24l7 7 13-14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
-                <h3>邮件已发送</h3>
-                <p>我们已向 <strong>{{ form.email }}</strong> 发送了重置链接，请查收邮箱并点击链接完成密码重置。</p>
+                <h3>邮件请求已提交</h3>
+                <p>我们会向 <strong>{{ form.email }}</strong> 发送重置链接，请稍后查收邮箱并点击链接完成密码重置。</p>
                 <p class="forgot-tip">链接 30 分钟内有效，如未收到请检查垃圾邮件文件夹。</p>
             </div>
 
