@@ -2,9 +2,10 @@ package com.myblog.application.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.myblog.application.port.EmailSender;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -23,23 +24,27 @@ import java.util.concurrent.TimeUnit;
 public class RegisterEmailCodeAppService {
 
     private static final int MAX_VERIFY_FAIL_COUNT = 5;
-    private static final long RESEND_INTERVAL_SECONDS = 60L;
     private static final long CODE_EXPIRE_MILLIS = TimeUnit.MINUTES.toMillis(10);
 
     private final Cache<String, RegisterEmailCode> emailCodeCache;
-    private final EmailSender emailSender;
+    private final EmailQueueAppService emailQueueAppService;
     private final long resendIntervalSeconds;
 
-    public RegisterEmailCodeAppService(EmailSender emailSender) {
-        this(emailSender, CODE_EXPIRE_MILLIS, RESEND_INTERVAL_SECONDS);
+    @Autowired
+    public RegisterEmailCodeAppService(
+        EmailQueueAppService emailQueueAppService,
+        @Value("${my-blog.mail.email-resend-interval-seconds:30}") long resendIntervalSeconds) {
+        this(emailQueueAppService, CODE_EXPIRE_MILLIS, resendIntervalSeconds);
     }
 
-    RegisterEmailCodeAppService(EmailSender emailSender, long codeExpireMillis, long resendIntervalSeconds) {
-        this.emailSender = emailSender;
+    RegisterEmailCodeAppService(EmailQueueAppService emailQueueAppService,
+                                long codeExpireMillis,
+                                long resendIntervalSeconds) {
+        this.emailQueueAppService = emailQueueAppService;
         this.emailCodeCache = Caffeine.newBuilder()
             .expireAfterWrite(codeExpireMillis, TimeUnit.MILLISECONDS)
             .build();
-        this.resendIntervalSeconds = resendIntervalSeconds;
+        this.resendIntervalSeconds = Math.max(resendIntervalSeconds, 1L);
     }
 
     /**
@@ -59,7 +64,10 @@ public class RegisterEmailCodeAppService {
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
         emailCodeCache.put(normalizedEmail, new RegisterEmailCode(code, now));
         try {
-            emailSender.sendRegisterCode(normalizedEmail, code);
+            emailQueueAppService.enqueueRegisterCode(normalizedEmail, code);
+        } catch (ApplicationException exception) {
+            emailCodeCache.invalidate(normalizedEmail);
+            throw exception;
         } catch (RuntimeException exception) {
             emailCodeCache.invalidate(normalizedEmail);
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "验证码发送失败，请稍后重试");

@@ -14,6 +14,19 @@ spring:
       minimum-idle: 5
       maximum-pool-size: 20
       connection-timeout: 30000
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:successful-chen@qq.com}
+    password: ${MAIL_PASSWORD:qongmajewctojecc}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          ssl:
+            enable: ${MAIL_SMTP_SSL_ENABLE:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
   sql:
     init:
       mode: always
@@ -42,6 +55,14 @@ my-blog:
     expire-seconds: 86400
   upload-dir: uploads
   default-article-cover-url: /api/uploads/files/default/article-cover.svg
+  frontend-base-url: ${FRONTEND_BASE_URL:http://43.128.134.245:9999/}
+  mail:
+    from: ${MAIL_FROM:${MAIL_USERNAME:successful-chen@qq.com}}
+    queue-capacity: ${MAIL_QUEUE_CAPACITY:1000}
+    consumer-interval-ms: ${MAIL_CONSUMER_INTERVAL_MS:3000}
+    max-retry: ${MAIL_MAX_RETRY:3}
+    ip-rate-limit-seconds: ${MAIL_IP_RATE_LIMIT_SECONDS:20}
+    email-resend-interval-seconds: ${MAIL_EMAIL_RESEND_INTERVAL_SECONDS:30}
 
 logging:
   level:

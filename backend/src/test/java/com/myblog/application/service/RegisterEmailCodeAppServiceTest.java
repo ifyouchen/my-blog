@@ -1,6 +1,5 @@
 package com.myblog.application.service;
 
-import com.myblog.application.port.EmailSender;
 import com.myblog.shared.exception.ApplicationException;
 import org.junit.jupiter.api.Test;
 
@@ -11,22 +10,28 @@ class RegisterEmailCodeAppServiceTest {
 
     @Test
     void sendAndVerifyCodeConsumesCode() {
-        CapturingEmailSender emailSender = new CapturingEmailSender();
-        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(emailSender, 600000L, 0L);
+        EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
+        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
+            emailQueueAppService, 600000L, 0L
+        );
 
         service.sendCode("User@Example.com");
 
-        assertThat(emailSender.registerCode).matches("\\d{6}");
-        service.verifyAndConsume("user@example.com", emailSender.registerCode);
-        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", emailSender.registerCode))
+        EmailTask task = emailQueueAppService.poll();
+        assertThat(task.getType()).isEqualTo(EmailTaskType.REGISTER_CODE);
+        assertThat(task.getEmail()).isEqualTo("user@example.com");
+        assertThat(task.getCode()).matches("\\d{6}");
+        service.verifyAndConsume("user@example.com", task.getCode());
+        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", task.getCode()))
             .isInstanceOf(ApplicationException.class)
             .hasMessageContaining("验证码无效或已过期");
     }
 
     @Test
     void resendTooSoonIsRejected() {
+        EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
         RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
-            new CapturingEmailSender(), 600000L, 60L
+            emailQueueAppService, 600000L, 30L
         );
 
         service.sendCode("user@example.com");
@@ -38,24 +43,30 @@ class RegisterEmailCodeAppServiceTest {
 
     @Test
     void codeExpires() throws Exception {
-        CapturingEmailSender emailSender = new CapturingEmailSender();
-        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(emailSender, 1L, 0L);
+        EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
+        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
+            emailQueueAppService, 1L, 0L
+        );
 
         service.sendCode("user@example.com");
+        EmailTask task = emailQueueAppService.poll();
         Thread.sleep(5L);
 
-        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", emailSender.registerCode))
+        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", task.getCode()))
             .isInstanceOf(ApplicationException.class)
             .hasMessageContaining("验证码无效或已过期");
     }
 
     @Test
     void tooManyWrongAttemptsInvalidatesCode() {
-        CapturingEmailSender emailSender = new CapturingEmailSender();
-        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(emailSender, 600000L, 0L);
+        EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
+        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
+            emailQueueAppService, 600000L, 0L
+        );
 
         service.sendCode("user@example.com");
-        String wrongCode = "000000".equals(emailSender.registerCode) ? "111111" : "000000";
+        EmailTask task = emailQueueAppService.poll();
+        String wrongCode = "000000".equals(task.getCode()) ? "111111" : "000000";
         for (int i = 0; i < 4; i++) {
             assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", wrongCode))
                 .isInstanceOf(ApplicationException.class)
@@ -65,23 +76,24 @@ class RegisterEmailCodeAppServiceTest {
         assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", wrongCode))
             .isInstanceOf(ApplicationException.class)
             .hasMessageContaining("验证码错误次数过多");
-        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", emailSender.registerCode))
+        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", task.getCode()))
             .isInstanceOf(ApplicationException.class)
             .hasMessageContaining("验证码无效或已过期");
     }
 
-    private static class CapturingEmailSender implements EmailSender {
+    @Test
+    void enqueueFailureInvalidatesCode() {
+        EmailQueueAppService emailQueueAppService = new EmailQueueAppService(1, true);
+        emailQueueAppService.enqueueRegisterCode("busy@example.com", "123456");
+        RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
+            emailQueueAppService, 600000L, 0L
+        );
 
-        private String registerCode;
-
-        @Override
-        public void sendRegisterCode(String email, String code) {
-            this.registerCode = code;
-        }
-
-        @Override
-        public void sendPasswordResetLink(String email, String username, String resetLink) {
-            throw new UnsupportedOperationException();
-        }
+        assertThatThrownBy(() -> service.sendCode("user@example.com"))
+            .isInstanceOf(ApplicationException.class)
+            .hasMessageContaining("邮件发送队列繁忙");
+        assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", "123456"))
+            .isInstanceOf(ApplicationException.class)
+            .hasMessageContaining("验证码无效或已过期");
     }
 }

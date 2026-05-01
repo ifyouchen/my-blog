@@ -7,7 +7,6 @@ import com.myblog.application.dto.MyArticleOverviewDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.application.dto.UserProfileDTO;
 import com.myblog.application.dto.UserSearchDTO;
-import com.myblog.application.port.EmailSender;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
@@ -48,7 +47,7 @@ public class UserAppService {
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
     private final PasswordDomainService passwordDomainService;
-    private final EmailSender emailSender;
+    private final EmailQueueAppService emailQueueAppService;
     private final String frontendBaseUrl;
 
     public UserAppService(UserRepository userRepository,
@@ -56,14 +55,14 @@ public class UserAppService {
                           UserFollowRepository userFollowRepository,
                           ArticleAssembler articleAssembler,
                           PasswordDomainService passwordDomainService,
-                          EmailSender emailSender,
+                          EmailQueueAppService emailQueueAppService,
                           @Value("${my-blog.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
         this.passwordDomainService = passwordDomainService;
-        this.emailSender = emailSender;
+        this.emailQueueAppService = emailQueueAppService;
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
@@ -135,9 +134,15 @@ public class UserAppService {
         String token = user.generatePasswordResetToken();
         userRepository.save(user);
         try {
-            emailSender.sendPasswordResetLink(user.getEmail().getValue(), user.getUsername(), buildResetLink(token));
+            emailQueueAppService.enqueuePasswordReset(
+                user.getEmail().getValue(),
+                user.getUsername(),
+                buildResetLink(token)
+            );
+        } catch (ApplicationException exception) {
+            throw exception;
         } catch (RuntimeException exception) {
-            throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "重置邮件发送失败，请稍后重试");
+            throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "重置邮件提交失败，请稍后重试");
         }
         return token;
     }

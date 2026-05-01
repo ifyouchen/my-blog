@@ -1,7 +1,6 @@
 package com.myblog.application.service;
 
 import com.myblog.application.assembler.ArticleAssembler;
-import com.myblog.application.port.EmailSender;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
@@ -20,8 +19,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,8 +40,7 @@ class UserAppServicePasswordTest {
     @Mock
     private PasswordDomainService passwordDomainService;
 
-    @Mock
-    private EmailSender emailSender;
+    private EmailQueueAppService emailQueueAppService;
 
     @Test
     void changePasswordRejectsSamePassword() {
@@ -70,11 +66,24 @@ class UserAppServicePasswordTest {
         assertThat(user.getPasswordResetToken()).isEqualTo(token);
         assertThat(user.getPasswordResetExpire()).isNotNull();
         verify(userRepository).save(user);
-        verify(emailSender).sendPasswordResetLink(
-            eq("coder@example.com"),
-            eq("coder"),
-            contains("/auth/reset-password?token=" + token)
-        );
+        EmailTask task = emailQueueAppService.poll();
+        assertThat(task.getType()).isEqualTo(EmailTaskType.PASSWORD_RESET);
+        assertThat(task.getEmail()).isEqualTo("coder@example.com");
+        assertThat(task.getUsername()).isEqualTo("coder");
+        assertThat(task.getResetLink()).contains("/auth/reset-password?token=" + token);
+    }
+
+    @Test
+    void forgotPasswordRejectsWhenQueueIsFull() {
+        User user = User.create(1001L, "coder", "coder@example.com", "encoded-password");
+        EmailQueueAppService busyQueue = new EmailQueueAppService(1, true);
+        busyQueue.enqueueRegisterCode("busy@example.com", "123456");
+        UserAppService service = createService(busyQueue);
+        when(userRepository.findByEmail("coder@example.com")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.forgotPassword("coder@example.com"))
+            .isInstanceOf(ApplicationException.class)
+            .hasMessageContaining("邮件发送队列繁忙");
     }
 
     @Test
@@ -105,13 +114,19 @@ class UserAppServicePasswordTest {
     }
 
     private UserAppService createService() {
+        emailQueueAppService = new EmailQueueAppService(10, true);
+        return createService(emailQueueAppService);
+    }
+
+    private UserAppService createService(EmailQueueAppService emailQueueAppService) {
+        this.emailQueueAppService = emailQueueAppService;
         return new UserAppService(
             userRepository,
             articleRepository,
             userFollowRepository,
             articleAssembler,
             passwordDomainService,
-            emailSender,
+            emailQueueAppService,
             "http://localhost:5173/"
         );
     }

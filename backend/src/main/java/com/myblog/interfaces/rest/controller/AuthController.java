@@ -2,6 +2,7 @@ package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.service.AuthAppService;
+import com.myblog.application.service.EmailRequestRateLimitService;
 import com.myblog.application.service.UserAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.ForgotPasswordRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 /**
@@ -35,6 +37,7 @@ public class AuthController {
 
     private final AuthAppService authAppService;
     private final UserAppService userAppService;
+    private final EmailRequestRateLimitService emailRequestRateLimitService;
     private final RestDtoMapper restDtoMapper;
 
     /**
@@ -44,9 +47,13 @@ public class AuthController {
      * @param userAppService 用户应用服务
      * @param restDtoMapper REST DTO 转换器
      */
-    public AuthController(AuthAppService authAppService, UserAppService userAppService, RestDtoMapper restDtoMapper) {
+    public AuthController(AuthAppService authAppService,
+                          UserAppService userAppService,
+                          EmailRequestRateLimitService emailRequestRateLimitService,
+                          RestDtoMapper restDtoMapper) {
         this.authAppService = authAppService;
         this.userAppService = userAppService;
+        this.emailRequestRateLimitService = emailRequestRateLimitService;
         this.restDtoMapper = restDtoMapper;
     }
 
@@ -57,7 +64,9 @@ public class AuthController {
      * @return 成功响应
      */
     @PostMapping("/auth/register/email-code")
-    public Result<Void> sendRegisterEmailCode(@RequestBody @Valid SendRegisterEmailCodeRequest request) {
+    public Result<Void> sendRegisterEmailCode(@RequestBody @Valid SendRegisterEmailCodeRequest request,
+                                              HttpServletRequest servletRequest) {
+        emailRequestRateLimitService.checkAndRecord(resolveClientIp(servletRequest));
         authAppService.sendRegisterEmailCode(request.getEmail());
         return Result.success();
     }
@@ -103,7 +112,9 @@ public class AuthController {
      * @return 成功响应
      */
     @PostMapping("/auth/password/forgot")
-    public Result<Void> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+    public Result<Void> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request,
+                                       HttpServletRequest servletRequest) {
+        emailRequestRateLimitService.checkAndRecord(resolveClientIp(servletRequest));
         userAppService.forgotPassword(request.getEmail());
         return Result.success();
     }
@@ -128,5 +139,17 @@ public class AuthController {
     @GetMapping("/users/me")
     public Result<UserResponse> me() {
         return Result.success(restDtoMapper.toResponse(authAppService.getUser(AuthContext.getRequiredUserId())));
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.trim().isEmpty()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.trim().isEmpty()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }

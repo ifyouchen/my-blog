@@ -52,7 +52,7 @@ const stopEmailCodeCooldown = () => {
 
 const startEmailCodeCooldown = () => {
     stopEmailCodeCooldown();
-    emailCodeCooldown.value = 60;
+    emailCodeCooldown.value = 30;
     emailCodeTimer = window.setInterval(() => {
         emailCodeCooldown.value -= 1;
         if (emailCodeCooldown.value <= 0) {
@@ -77,10 +77,10 @@ const sendEmailCode = async () => {
     }
 
     emailCodeSending.value = true;
+    startEmailCodeCooldown();
     try {
         await sendRegisterEmailCodeApi(email);
-        successMessage.value = '验证码已发送，请查看邮箱';
-        startEmailCodeCooldown();
+        successMessage.value = '验证码邮件请求已提交，请稍后查收';
     } catch (error) {
         errors.emailCode = error.message || '验证码发送失败，请稍后重试';
     } finally {
