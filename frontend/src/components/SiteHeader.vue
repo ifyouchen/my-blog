@@ -10,6 +10,7 @@ import {
   subscribeNotificationStream
 } from '@/api/notifications';
 import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
+import {getMessageUnreadCountApi, subscribeMessageStream} from '@/api/messages';
 
 const route = useRoute();
 const router = useRouter();
@@ -40,6 +41,8 @@ const notificationError = ref('');
 const markingAllRead = ref(false);
 let notificationPollInterval = null;
 let unsubscribeNotificationStream = null;
+const messageUnreadCount = ref(0);
+let unsubscribeMessageStream = null;
 
 const submitSearch = () => {
     router.push({
@@ -173,9 +176,29 @@ const displayUnreadCount = computed(() => {
     return unreadCount.value;
 });
 
+const displayMessageUnreadCount = computed(() => {
+    if (messageUnreadCount.value <= 0) return '';
+    if (messageUnreadCount.value > 99) return '99+';
+    return messageUnreadCount.value;
+});
+
+const fetchMessageUnreadCount = async () => {
+    if (!isLoggedIn.value) {
+        messageUnreadCount.value = 0;
+        return;
+    }
+    try {
+        const result = await getMessageUnreadCountApi();
+        messageUnreadCount.value = result.count || 0;
+    } catch (e) {
+        console.error('Failed to fetch message unread count:', e);
+    }
+};
+
 const startNotificationSync = () => {
     fetchUnreadCount();
-    // 先尝试 SSE 实时推送
+    fetchMessageUnreadCount();
+    // 通知 SSE
     if (unsubscribeNotificationStream) {
         unsubscribeNotificationStream();
         unsubscribeNotificationStream = null;
@@ -183,19 +206,36 @@ const startNotificationSync = () => {
     unsubscribeNotificationStream = subscribeNotificationStream((count) => {
         unreadCount.value = count;
     });
+    // 私信 SSE
+    if (unsubscribeMessageStream) {
+        unsubscribeMessageStream();
+        unsubscribeMessageStream = null;
+    }
+    unsubscribeMessageStream = subscribeMessageStream(
+        () => { fetchMessageUnreadCount(); },
+        (count) => { messageUnreadCount.value = count; }
+    );
     // 兜底轮询（SSE 不可用时）
     if (notificationPollInterval) {
         clearInterval(notificationPollInterval);
     }
-    notificationPollInterval = setInterval(fetchUnreadCount, 60000);
+    notificationPollInterval = setInterval(() => {
+        fetchUnreadCount();
+        fetchMessageUnreadCount();
+    }, 60000);
 };
 
 const stopNotificationSync = () => {
     unreadCount.value = 0;
+    messageUnreadCount.value = 0;
     recentNotifications.value = [];
     if (unsubscribeNotificationStream) {
         unsubscribeNotificationStream();
         unsubscribeNotificationStream = null;
+    }
+    if (unsubscribeMessageStream) {
+        unsubscribeMessageStream();
+        unsubscribeMessageStream = null;
     }
     if (notificationPollInterval) {
         clearInterval(notificationPollInterval);
@@ -223,6 +263,9 @@ onUnmounted(() => {
     }
     if (unsubscribeNotificationStream) {
         unsubscribeNotificationStream();
+    }
+    if (unsubscribeMessageStream) {
+        unsubscribeMessageStream();
     }
     window.removeEventListener('notifications:refresh', handleNotificationsRefresh);
 });
@@ -283,6 +326,15 @@ const handleNotificationsRefresh = () => {
                 <template v-if="isLoggedIn">
                     <RouterLink class="text-link" to="/dashboard/articles" data-testid="header-dashboard-link">创作台</RouterLink>
                     <RouterLink v-if="state.user?.role === 'ADMIN'" class="text-link" to="/admin" data-testid="header-admin-link">后台</RouterLink>
+                    <RouterLink class="message-btn" to="/messages" aria-label="私信" data-testid="header-message-btn">
+                        <span class="message-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <path d="M2.5 4.5A1.5 1.5 0 0 1 4 3h12a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 16 13H7l-3.5 3V4.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                <path d="M5.5 7.5h9M5.5 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span v-if="displayMessageUnreadCount" class="unread-badge">{{ displayMessageUnreadCount }}</span>
+                    </RouterLink>
                     <div
                         ref="notificationRef"
                         class="notification-wrapper"
@@ -457,6 +509,10 @@ const handleNotificationsRefresh = () => {
                     <RouterLink class="mobile-menu-link" to="/notifications" @click="mobileMenuOpen = false">
                         通知
                         <span v-if="unreadCount > 0" class="mobile-badge">{{ displayUnreadCount }}</span>
+                    </RouterLink>
+                    <RouterLink class="mobile-menu-link" to="/messages" @click="mobileMenuOpen = false">
+                        私信
+                        <span v-if="messageUnreadCount > 0" class="mobile-badge">{{ displayMessageUnreadCount }}</span>
                     </RouterLink>
                     <RouterLink class="mobile-menu-link" to="/dashboard/articles" @click="mobileMenuOpen = false">创作台</RouterLink>
                     <RouterLink v-if="state.user?.role === 'ADMIN'" class="mobile-menu-link" to="/admin" @click="mobileMenuOpen = false">后台管理</RouterLink>

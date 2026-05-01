@@ -40,6 +40,7 @@ const AdminInviteCodesView = () => import('@/views/admin/AdminInviteCodesView.vu
 const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
 const TagDetailView = () => import('@/views/TagDetailView.vue');
 const ExploreView = () => import('@/views/ExploreView.vue');
+const MessagesView = () => import('@/views/MessagesView.vue');
 
 const routes = [
     {
@@ -176,6 +177,14 @@ const routes = [
         component: SearchView,
         meta: {
             title: '搜索'
+        }
+    },
+    {
+        path: '/messages/:conversationId?',
+        name: 'messages',
+        component: MessagesView,
+        meta: {
+            title: '私信'
         }
     },
     {

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.util.stream.Collectors;
 
@@ -47,6 +48,14 @@ public class GlobalExceptionHandler {
             .collect(Collectors.joining(", "));
         LOGGER.warn("参数校验失败，message={}", message);
         return Result.fail(ErrorCode.PARAM_ERROR, message);
+    }
+
+    /**
+     * 处理 SSE 等异步请求超时（连接正常断开，无需响应体）。
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public void handleAsyncTimeout(AsyncRequestTimeoutException exception) {
+        // 不需要返回响应体，连接已超时断开
     }
 
     /**

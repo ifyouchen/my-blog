@@ -432,29 +432,31 @@ onUnmounted(() => {
 
                     <div class="article-heading-bottom">
                         <div class="article-heading-meta">
-                            <RouterLink class="article-author" :to="`/users/${article.author.id}`">
-                                <div>
-                                    <strong>{{ article.author.name || article.author.nickname || article.author.username }}</strong>
-                                    <span>{{ article.publishedText }} · {{ article.category }}</span>
+                            <RouterLink class="article-byline" :to="`/users/${article.author.id}`">
+                                <img
+                                    v-if="article.author.avatar"
+                                    class="byline-avatar"
+                                    :src="article.author.avatar"
+                                    :alt="article.author.name"
+                                    loading="lazy"
+                                    decoding="async"
+                                >
+                                <span class="byline-avatar-fallback" v-else>{{ article.author.name[0] }}</span>
+                                <div class="byline-info">
+                                    <strong class="byline-name">{{ article.author.name }}</strong>
+                                    <span class="byline-meta">
+                                        {{ article.publishedText }}
+                                        <template v-if="article.category"> · {{ article.category }}</template>
+                                        <template v-if="article.readingTime"> · {{ article.readingTime }}</template>
+                                    </span>
                                 </div>
                             </RouterLink>
                             <div class="article-stats-row">
-                                <span class="article-stat-pill">
-                                    <strong>{{ article.viewCount }}</strong>
-                                    <em>阅读</em>
-                                </span>
-                                <span class="article-stat-pill">
-                                    <strong>{{ likeCount }}</strong>
-                                    <em>点赞</em>
-                                </span>
-                                <span class="article-stat-pill">
-                                    <strong>{{ commentCount }}</strong>
-                                    <em>评论</em>
-                                </span>
-                                <span class="article-stat-pill">
-                                    <strong>{{ favoriteCount }}</strong>
-                                    <em>收藏</em>
-                                </span>
+                                <span class="article-stat"><strong>{{ article.viewCount }}</strong> 阅读</span>
+                                <span class="article-stat"><strong>{{ likeCount }}</strong> 点赞</span>
+                                <span class="article-stat"><strong>{{ commentCount }}</strong> 评论</span>
+                                <span class="article-stat"><strong>{{ favoriteCount }}</strong> 收藏</span>
+                                <span class="article-stat"><strong>{{ article.author.followerCount }}</strong> 粉丝</span>
                             </div>
                         </div>
 
@@ -846,8 +848,8 @@ onUnmounted(() => {
 .article-heading-top,
 .article-heading-bottom {
     display: flex;
-    gap: 16px;
-    align-items: flex-start;
+    gap: 12px;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
 }
@@ -857,45 +859,79 @@ onUnmounted(() => {
 }
 
 .article-heading-meta {
-    display: grid;
-    gap: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
     flex: 1 1 460px;
     min-width: 0;
+    align-items: center;
 }
 
-.article-heading-meta :deep(.article-author),
-.article-heading-meta .article-author {
-    margin: 0;
+.article-byline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+    flex-shrink: 0;
+}
+
+.byline-avatar,
+.byline-avatar-fallback {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.byline-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-soft);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.byline-info {
+    display: grid;
+    gap: 1px;
+}
+
+.byline-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.byline-meta {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+    white-space: nowrap;
 }
 
 .article-stats-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
 }
 
-.article-stat-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 30px;
-    padding: 0 10px;
-    color: var(--muted);
-    background: var(--surface-soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    line-height: 1;
-}
-
-.article-stat-pill strong {
-    color: var(--text-strong);
-    font-size: 14px;
-}
-
-.article-stat-pill em {
-    font-style: normal;
+.article-stat {
     font-size: 12px;
+    color: var(--muted);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.article-stat strong {
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .article-quick-actions {

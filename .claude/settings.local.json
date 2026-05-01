@@ -55,7 +55,16 @@
       "Bash(xargs kill *)",
       "Bash(taskkill /F /PID 24960)",
       "Bash(awk '{print $5}')",
-      "Bash(taskkill *)"
+      "Bash(taskkill *)",
+      "Bash(awk NR>=36 && NR<=44{print NR\": \\\\\"\"$0\"\\\\\"\"} *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['data']['author'], indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d['data']['author'].items\\(\\) if 'follower' in k.lower\\(\\)}, indent=2\\)\\)\")",
+      "Bash(javap -p \"F:/software/IdeaProject/my-blog/backend/target/classes/com/myblog/application/dto/UserDTO.class\")",
+      "Bash(findstr \"follower\")",
+      "Bash(findstr \"Follower\")",
+      "Bash(javap -c \"F:/software/IdeaProject/my-blog/backend/target/classes/com/myblog/application/service/ArticleAppService.class\")",
+      "Bash(awk NR>=236 && NR<=241{printf \"%d: [%d chars] \", NR, length\\($0\\); print} *)",
+      "Bash(xxd)"
     ]
   }
 }

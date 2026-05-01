@@ -478,6 +478,7 @@ public class ArticleAppService {
 
     private ArticleDTO buildDetailDto(Article article, User author, Long currentUserId) {
         ArticleDTO dto = articleAssembler.toDetailDTO(article, author);
+        dto.getAuthor().setFollowerCount(userRepository.countFollowers(author.getId().getValue()));
         populateUserStatus(dto, article, currentUserId);
         return dto;
     }

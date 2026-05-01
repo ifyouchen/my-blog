@@ -9,6 +9,7 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserProfileApi} from '@/api/auth';
+import {createConversationApi} from '@/api/messages';
 import {getUserFollowersApi, getUserFollowingListApi, getFollowStatusApi} from '@/api/following';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
@@ -136,6 +137,16 @@ const openReportUser = () => {
 
 const handleReportSuccess = () => {};
 
+const sendDirectMessage = async () => {
+    if (!profile.value?.user?.id) return;
+    try {
+        const conv = await createConversationApi(profile.value.user.id);
+        router.push(`/messages/${conv.id}`);
+    } catch (e) {
+        toast.error(e.message || '发起私信失败');
+    }
+};
+
 const openFollowDialog = async (type) => {
     followDialogType.value = type;
     followDialogVisible.value = true;
@@ -191,6 +202,13 @@ watch(() => route.params.id, () => {
                         :followed="profile.following"
                         @change="handleFollowChange"
                     />
+                    <button
+                        type="button"
+                        class="profile-msg-action"
+                        @click="sendDirectMessage"
+                    >
+                        发私信
+                    </button>
                 </template>
                 <button
                     v-if="!isOwnProfile"
@@ -348,6 +366,26 @@ watch(() => route.params.id, () => {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
+}
+
+.profile-msg-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 16px;
+    color: var(--brand);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-md);
+    transition: opacity 0.12s;
+}
+
+.profile-msg-action:hover {
+    opacity: 0.85;
 }
 
 .profile-report-action:hover {

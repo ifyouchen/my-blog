@@ -3468,6 +3468,39 @@ button:disabled {
     background: var(--brand-soft);
 }
 
+.message-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    text-decoration: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.message-btn:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.message-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text);
+}
+
+.message-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
 .bell-icon {
     display: inline-flex;
     align-items: center;

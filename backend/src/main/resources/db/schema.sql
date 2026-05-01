@@ -678,6 +678,45 @@ CREATE TABLE `blog_sensitive_word` (
     UNIQUE INDEX `uk_sensitive_word` (`word`, `deleted_at`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '敏感词表';
 
+DROP TABLE IF EXISTS `blog_conversation`;
+CREATE TABLE `blog_conversation` (
+    `id`               bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '会话ID',
+    `participant_a_id` bigint unsigned NOT NULL COMMENT '参与者A用户ID（较小者）',
+    `participant_b_id` bigint unsigned NOT NULL COMMENT '参与者B用户ID（较大者）',
+    `last_message`     varchar(500)    DEFAULT NULL COMMENT '最后一条消息内容预览',
+    `last_message_at`  datetime        DEFAULT NULL COMMENT '最后一条消息时间',
+    `a_deleted_at`     datetime        DEFAULT NULL COMMENT 'A方删除时间',
+    `b_deleted_at`     datetime        DEFAULT NULL COMMENT 'B方删除时间',
+    `created_at`       datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at`       datetime        DEFAULT NULL,
+    `version`          bigint          NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_participants` (`participant_a_id`, `participant_b_id`),
+    INDEX `idx_participant_a` (`participant_a_id`, `a_deleted_at`, `last_message_at` DESC),
+    INDEX `idx_participant_b` (`participant_b_id`, `b_deleted_at`, `last_message_at` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='私信会话表';
+
+DROP TABLE IF EXISTS `blog_message`;
+CREATE TABLE `blog_message` (
+    `id`              bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '消息ID',
+    `conversation_id` bigint unsigned NOT NULL COMMENT '所属会话ID',
+    `sender_id`       bigint unsigned NOT NULL COMMENT '发送者用户ID',
+    `content`         text            NOT NULL COMMENT '消息内容',
+    `type`            varchar(20)     NOT NULL DEFAULT 'TEXT' COMMENT '消息类型：TEXT / IMAGE / SYSTEM',
+    `read_at`         datetime        DEFAULT NULL COMMENT '已读时间',
+    `sender_deleted_at` datetime      DEFAULT NULL COMMENT '发送方删除时间',
+    `receiver_deleted_at` datetime    DEFAULT NULL COMMENT '接收方删除时间',
+    `created_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at`      datetime        DEFAULT NULL,
+    `version`         bigint          NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    INDEX `idx_conversation_time` (`conversation_id`, `created_at` DESC, `id` DESC),
+    INDEX `idx_sender` (`sender_id`),
+    INDEX `idx_receiver_unread` (`conversation_id`, `receiver_deleted_at`, `read_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='私信消息表';
+
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.MessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.MessageDO">
+        <id column="id" property="id"/>
+        <result column="conversation_id" property="conversationId"/>
+        <result column="sender_id" property="senderId"/>
+        <result column="content" property="content"/>
+        <result column="type" property="type"/>
+        <result column="read_at" property="readAt"/>
+        <result column="sender_deleted_at" property="senderDeletedAt"/>
+        <result column="receiver_deleted_at" property="receiverDeletedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, conversation_id, sender_id, content, type, read_at,
+        sender_deleted_at, receiver_deleted_at, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_message
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByConversation" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_message
+        WHERE conversation_id = #{conversationId}
+        AND deleted_at IS NULL
+        AND sender_deleted_at IS NULL
+        AND receiver_deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByConversation" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_message
+        WHERE conversation_id = #{conversationId}
+        AND deleted_at IS NULL
+        AND sender_deleted_at IS NULL
+        AND receiver_deleted_at IS NULL
+    </select>
+
+    <select id="countUnreadByConversation" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_message
+        WHERE conversation_id = #{conversationId}
+        AND deleted_at IS NULL
+        AND sender_id != #{receiverId}
+        AND read_at IS NULL
+        AND sender_deleted_at IS NULL
+        AND receiver_deleted_at IS NULL
+    </select>
+
+    <select id="countTotalUnread" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_message m
+        INNER JOIN blog_conversation c ON m.conversation_id = c.id
+        WHERE c.deleted_at IS NULL
+        AND m.deleted_at IS NULL
+        AND m.read_at IS NULL
+        AND m.sender_id != #{userId}
+        AND m.sender_deleted_at IS NULL
+        AND m.receiver_deleted_at IS NULL
+        AND (
+            (c.participant_a_id = #{userId} AND c.a_deleted_at IS NULL)
+            OR
+            (c.participant_b_id = #{userId} AND c.b_deleted_at IS NULL)
+        )
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.MessageDO">
+        INSERT INTO blog_message
+        (id, conversation_id, sender_id, content, type, created_at, updated_at)
+        VALUES
+        (#{id}, #{conversationId}, #{senderId}, #{content}, #{type}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="markAllRead">
+        UPDATE blog_message
+        SET read_at = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE conversation_id = #{conversationId}
+        AND sender_id != #{receiverId}
+        AND read_at IS NULL
+        AND deleted_at IS NULL
+        AND sender_deleted_at IS NULL
+        AND receiver_deleted_at IS NULL
+    </update>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 100) + 1
+        FROM blog_message
+        WHERE id &lt; 10000000000
+    </select>
+</mapper>
