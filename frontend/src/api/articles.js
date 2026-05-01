@@ -84,8 +84,10 @@ export const getMyArticleOverviewApi = async () => {
     return await request('/users/me/articles/overview');
 };
 
-export const exportMyArticlesApi = () => {
-    return downloadFile(`/users/me/export/articles?_t=${Date.now()}`, 'my-articles.csv');
+export const exportMyArticlesApi = (params = {}) => {
+    const query = new URLSearchParams({ _t: Date.now() });
+    if (params.status) query.set('status', params.status);
+    return downloadFile(`/users/me/export/articles?${query.toString()}`, 'my-articles.csv');
 };
 
 export const getUserArticlesApi = async (userId, { page = 1, pageSize = 10 } = {}) => {

@@ -3083,6 +3083,26 @@ button:disabled {
     transition: color 0.12s, border-color 0.12s;
 }
 
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 14px;
+    color: var(--success) !important;
+    border-color: var(--success) !important;
+    background: #f0fdf4 !important;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: background 0.12s, box-shadow 0.12s;
+}
+.btn-export:hover {
+    background: #dcfce7 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
 .admin-refresh-button:hover,
 .admin-filter-actions button:hover,
 .admin-pagination-actions button:hover:not(:disabled),

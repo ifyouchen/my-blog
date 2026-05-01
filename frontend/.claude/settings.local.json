@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vue-tsc *)",
+      "Bash(node -e ' *)",
+      "Bash(node *)",
+      "Bash(npx vite *)",
+      "Bash(curl -s http://localhost:5173/search)",
+      "Bash(echo \"BUILD_EXIT: $?\")",
+      "Bash(lsof -ti:5173)",
+      "Bash(xargs kill *)",
+      "Bash(grep -v \"//.*\\\\|from '\")"
+    ]
+  }
+}

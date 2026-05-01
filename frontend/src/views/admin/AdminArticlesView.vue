@@ -238,7 +238,11 @@ const toggleFeatured = async (article) => {
 
 const exportArticles = async () => {
     try {
-        await exportAdminArticlesApi();
+        await exportAdminArticlesApi({
+            status: state.status || undefined,
+            keyword: state.keyword || undefined,
+            category: state.category || undefined
+        });
     } catch (error) {
         toast.error(error.message || '文章导出失败');
     }

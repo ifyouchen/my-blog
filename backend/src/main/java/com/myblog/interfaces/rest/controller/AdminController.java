@@ -1060,12 +1060,16 @@ public class AdminController {
      * 导出文章列表 CSV。
      */
     @GetMapping("/export/articles")
-    public void exportArticles(HttpServletResponse response) throws IOException {
+    public void exportArticles(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            HttpServletResponse response) throws IOException {
         ensureAdmin();
         String filename = "articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-        byte[] data = adminAppService.exportArticlesCsv();
+        byte[] data = adminAppService.exportArticlesCsv(status, keyword, category);
         // Write BOM for Excel compatibility
         response.getOutputStream().write(0xEF);
         response.getOutputStream().write(0xBB);
@@ -1078,12 +1082,15 @@ public class AdminController {
      * 导出用户列表 CSV。
      */
     @GetMapping("/export/users")
-    public void exportUsers(HttpServletResponse response) throws IOException {
+    public void exportUsers(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            HttpServletResponse response) throws IOException {
         ensureAdmin();
         String filename = "users-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-        byte[] data = adminAppService.exportUsersCsv();
+        byte[] data = adminAppService.exportUsersCsv(status, keyword);
         response.getOutputStream().write(0xEF);
         response.getOutputStream().write(0xBB);
         response.getOutputStream().write(0xBF);

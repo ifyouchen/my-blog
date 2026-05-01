@@ -326,12 +326,19 @@ export const deleteAdminSensitiveWordApi = async (id) => {
 };
 
 // ======= 数据导出 =======
-export const exportAdminArticlesApi = () => {
-    return downloadFile('/admin/export/articles', 'articles.csv');
+export const exportAdminArticlesApi = (params = {}) => {
+    const query = new URLSearchParams({ _t: Date.now() });
+    if (params.status) query.set('status', params.status);
+    if (params.keyword) query.set('keyword', params.keyword);
+    if (params.category) query.set('category', params.category);
+    return downloadFile(`/admin/export/articles?${query.toString()}`, 'articles.csv');
 };
 
-export const exportAdminUsersApi = () => {
-    return downloadFile('/admin/export/users', 'users.csv');
+export const exportAdminUsersApi = (params = {}) => {
+    const query = new URLSearchParams({ _t: Date.now() });
+    if (params.status) query.set('status', params.status);
+    if (params.keyword) query.set('keyword', params.keyword);
+    return downloadFile(`/admin/export/users?${query.toString()}`, 'users.csv');
 };
 
 // ======= 邀请码管理 =======

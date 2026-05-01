@@ -340,12 +340,12 @@ public class UserController {
     }
 
     @GetMapping("/me/export/articles")
-    public void exportMyArticles(HttpServletResponse response) throws IOException {
+    public void exportMyArticles(@RequestParam(required = false) String status, HttpServletResponse response) throws IOException {
         Long userId = AuthContext.getRequiredUserId();
         String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=" + filename);
-        byte[] data = userAppService.exportMyArticlesCsv(userId);
+        byte[] data = userAppService.exportMyArticlesCsv(userId, status);
         response.getOutputStream().write(0xEF);
         response.getOutputStream().write(0xBB);
         response.getOutputStream().write(0xBF);

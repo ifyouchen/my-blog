@@ -131,7 +131,10 @@ const toggleUserStatus = async (user) => {
 
 const exportUsers = async () => {
     try {
-        await exportAdminUsersApi();
+        await exportAdminUsersApi({
+            status: state.status || undefined,
+            keyword: state.keyword || undefined
+        });
     } catch (error) {
         toast.error(error.message || '用户导出失败');
     }

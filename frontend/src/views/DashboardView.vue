@@ -400,7 +400,7 @@ const removeArticle = async (article) => {
 
 const exportMyArticles = async () => {
     try {
-        await exportMyArticlesApi();
+        await exportMyArticlesApi({ status: articleStatus.value });
         feedback.value = '导出已开始';
         feedbackType.value = 'success';
     } catch (error) {

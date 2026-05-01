@@ -323,8 +323,8 @@ public class UserAppService {
     }
 
 
-    public byte[] exportMyArticlesCsv(Long userId) {
-        PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, null);
+    public byte[] exportMyArticlesCsv(Long userId, String status) {
+        PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, status);
         StringBuilder sb = new StringBuilder();
         sb.append("id,title,category,status,viewCount,likeCount,commentCount,publishedAt,createdAt\n");
         for (ArticleDTO a : page.getItems()) {

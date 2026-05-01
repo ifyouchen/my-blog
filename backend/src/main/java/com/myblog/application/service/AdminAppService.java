@@ -675,8 +675,8 @@ public class AdminAppService {
      *
      * @return CSV 字节数组
      */
-    public byte[] exportUsersCsv() {
-        List<User> users = userRepository.findAdminPage(null, null, 1, 50000);
+    public byte[] exportUsersCsv(String status, String keyword) {
+        List<User> users = userRepository.findAdminPage(status, keyword, 1, 50000);
         StringBuilder sb = new StringBuilder();
         sb.append("id,username,email,nickname,role,status,createdAt\n");
         for (User u : users) {
@@ -696,8 +696,8 @@ public class AdminAppService {
      *
      * @return CSV 字节数组
      */
-    public byte[] exportArticlesCsv() {
-        List<Article> articles = articleRepository.findAdminPage(null, null, null, 1, 50000);
+    public byte[] exportArticlesCsv(String status, String keyword, String category) {
+        List<Article> articles = articleRepository.findAdminPage(status, keyword, category, 1, 50000);
         Map<Long, User> authorMap = buildAuthorMap(articles);
         StringBuilder sb = new StringBuilder();
         sb.append("id,title,category,status,authorUsername,viewCount,likeCount,commentCount,publishedAt,createdAt\n");

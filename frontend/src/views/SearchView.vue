@@ -1,4 +1,4 @@
-<script setup>import {Teleport} from 'vue';
+<script setup>import {computed, onMounted, ref, Teleport, watch} from 'vue';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
@@ -330,14 +330,18 @@ const fetchColumns = async () => {
 const runSearch = async () => {
     currentPage.value = 1;
     if (keyword.value.trim()) {
-        if (isLoggedIn.value) {
-            await saveRecentKeywordApi(keyword.value.trim());
-        } else {
-            addGuestRecentSearch(keyword.value.trim());
+        try {
+            if (isLoggedIn.value) {
+                await saveRecentKeywordApi(keyword.value.trim());
+            } else {
+                addGuestRecentSearch(keyword.value.trim());
+            }
+        } catch (e) {
+            // 保存搜索历史失败不影响搜索
+            console.warn('保存搜索历史失败:', e);
         }
     }
     syncRoute({ page: 1, keyword: keyword.value.trim() || undefined });
-    await fetchCurrentTab();
 };
 
 const changeTab = (tab) => {

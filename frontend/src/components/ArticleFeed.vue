@@ -97,7 +97,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.page
 const highlightHtml = (text) => {
     const kw = props.highlightKeyword ? props.highlightKeyword.trim() : "";
     if (!kw || !text) return text;
-    const escaped = kw.replace(/[.*+?^()|[]\]/g, "\const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));");
+    const escaped = kw.replace(/[.*+?^()|\[\]\\]/g, '\\$&');
     return text.replace(new RegExp(escaped, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
 };
 const pageStart = computed(() => {
