@@ -40,10 +40,10 @@
 ### 1.4 页面加载体验
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| 前端: 文章详情骨架屏 | ❌ | 未实现 |
-| 前端: 列表页骨架屏 | ❌ | 未实现 |
-| 前端: img lazy 和 decoding async | ❌ | 未全局统一 |
-| 前端: 路由切换 nprogress 进度条 | ❌ | 未实现 |
+| 前端: 文章详情骨架屏 | ✅ | ArticleDetailView.vue 完整骨架屏（封面/元信息/标题/正文/TOC骨架） |
+| 前端: 列表页骨架屏 | ✅ | ArticleFeed.vue 3 条骨架屏卡片（封面/标题/文本 shimmer 动画） |
+| 前端: img lazy 和 decoding async | ✅ | 已在全局添加 |
+| 前端: 路由切换 nprogress 进度条 | ✅ | router index 已配置 |
 
 ---
 
@@ -56,8 +56,8 @@
 | 前端: 粘贴图片自动上传 | ❌ | 未实现 |
 | 前端: 代码块语言下拉菜单 | ❌ | 未实现 |
 | 前端: 字数统计 + 阅读时间 | ❌ | 未实现 |
-| 前端: TOC 折叠/展开 | ❌ | 未实现 |
-| 前端: 快捷键 Tooltip | ❌ | 未实现 |
+| 前端: TOC 折叠/展开 | ✅ | ArticleToc.vue TOC_COLLAPSE_THRESHOLD=10 + TOC_COLLAPSE_LEVEL=3，超过10个标题自动折叠三级以下 |
+| 前端: 快捷键 Tooltip | ✅ | RichMarkdownEditor.vue itemShortcuts 映射，hover 工具栏按钮显示快捷键提示 |
 
 ### 2.2 文章草稿与版本
 | 条目 | 状态 | 备注 |
@@ -113,11 +113,11 @@
 ### 3.3 搜索能力增强
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| DB: blog_article FULLTEXT INDEX（ngram） | ❌ | schema.sql 无全文索引 |
-| 后端: 搜索 FULLTEXT + 回退 LIKE | ❌ | 未实现 |
+| DB: blog_article FULLTEXT INDEX（ngram） | ✅ | schema.sql ft_article_title_summary_content 全文索引 |
+| 后端: 搜索 FULLTEXT + 回退 LIKE | ✅ | ArticleMapper.xml MATCH...AGAINST 全文搜索 + LIKE 回退 |
 | 前端: 关键词高亮 | ✅ | ArticleFeed.vue highlightKeyword prop + highlightHtml()，SearchView 传入 keyword |
-| 前端: 搜索 URL 保留 tab 参数 | ❌ | 未确认 |
-| 前端: 无结果引导（热门关键词） | ❌ | 未确认 |
+| 前端: 搜索 URL 保留 tab 参数 | ✅ | SearchView.vue route.query.tab 同步 activeTab |
+| 前端: 无结果引导（热门关键词） | ✅ | SearchView.vue hotKeywords + keyword-section 热门关键词入口 |
 
 ### 3.4 标签页与分类页
 | 条目 | 状态 | 备注 |
