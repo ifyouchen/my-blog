@@ -78,6 +78,9 @@ const richEditorRef = ref(null);
 const coverPreviewFailed = ref(false);
 const debouncedCoverUrl = ref('');
 let coverUrlDebounceTimer = null;
+const coverRetryCount = ref(0);
+const coverRetryKey = ref(0);
+let coverRetryTimer = null;
 const showBackToTop = ref(false);
 const publishValidation = ref({
     publishable: false,
@@ -142,12 +145,25 @@ const showPersistentStatus = computed(() => ['warning', 'error'].includes(feedba
 const showQuietStatus = computed(() => !showPersistentStatus.value && Boolean(statusMessage.value));
 const displayCoverUrl = computed(() => {
     const source = debouncedCoverUrl.value || DEFAULT_ARTICLE_COVER_URL;
-    return coverPreviewFailed.value ? resolveMediaUrl(DEFAULT_ARTICLE_COVER_URL, '') : resolveMediaUrl(source, '');
+    if (coverPreviewFailed.value) {
+        return resolveMediaUrl(DEFAULT_ARTICLE_COVER_URL, '');
+    }
+    let url = resolveMediaUrl(source, '');
+    if (coverRetryKey.value > 0) {
+        url += (url.includes('?') ? '&' : '?') + `_t=${coverRetryKey.value}`;
+    }
+    return url;
 });
 const isUsingDefaultCover = computed(() => !draft.coverUrl || draft.coverUrl === DEFAULT_ARTICLE_COVER_URL);
 
 watch(() => draft.coverUrl, (newUrl) => {
     coverPreviewFailed.value = false;
+    coverRetryCount.value = 0;
+    coverRetryKey.value = 0;
+    if (coverRetryTimer) {
+        clearTimeout(coverRetryTimer);
+        coverRetryTimer = null;
+    }
     if (coverUrlDebounceTimer) clearTimeout(coverUrlDebounceTimer);
     // 外部设置（上传/加载）直接更新预览，用户输入则等待停笔后再加载
     if (hydratingDraft.value) {
@@ -155,7 +171,7 @@ watch(() => draft.coverUrl, (newUrl) => {
     } else {
         coverUrlDebounceTimer = setTimeout(() => {
             debouncedCoverUrl.value = newUrl;
-        }, 800);
+        }, 2000);
     }
 });
 
@@ -503,15 +519,30 @@ async function handleCoverSelected(event) {
 
 function handleCoverPreviewLoad() {
     coverPreviewFailed.value = false;
+    coverRetryCount.value = 0;
+    coverRetryKey.value = 0;
+    if (coverRetryTimer) {
+        clearTimeout(coverRetryTimer);
+        coverRetryTimer = null;
+    }
 }
 
 function handleCoverPreviewError() {
-    if (!displayCoverUrl.value) {
+    if (!debouncedCoverUrl.value) {
         return;
     }
-    coverPreviewFailed.value = true;
-    statusMessage.value = '封面图片暂时无法访问，请检查链接或稍后重试';
-    feedbackType.value = 'error';
+    if (coverRetryCount.value >= 5) {
+        coverPreviewFailed.value = true;
+        statusMessage.value = '封面图片暂时无法访问，请检查链接或稍后重试';
+        feedbackType.value = 'error';
+        return;
+    }
+    coverRetryCount.value++;
+    const delay = coverRetryCount.value * 1000;
+    if (coverRetryTimer) clearTimeout(coverRetryTimer);
+    coverRetryTimer = setTimeout(() => {
+        coverRetryKey.value++;
+    }, delay);
 }
 
 function viewPublishedArticle() {
@@ -679,6 +710,9 @@ onUnmounted(() => {
     }
     if (coverUrlDebounceTimer) {
         clearTimeout(coverUrlDebounceTimer);
+    }
+    if (coverRetryTimer) {
+        clearTimeout(coverRetryTimer);
     }
 });
 </script>
