@@ -13,19 +13,19 @@ CREATE TABLE `blog_user` (
     `password_hash`    varchar(120)     NOT NULL COMMENT '密码哈希',
     `nickname`         varchar(50)      NOT NULL COMMENT '昵称',
     `avatar_url`       varchar(500)     NULL DEFAULT NULL COMMENT '头像地址',
-    `bio`                     varchar(500)     NULL DEFAULT NULL COMMENT '个人简介',
-    `website`                 varchar(500)     NULL DEFAULT NULL COMMENT '个人网站',
-    `github`                  varchar(200)     NULL DEFAULT NULL COMMENT 'GitHub 用户名',
-    `twitter`                 varchar(200)     NULL DEFAULT NULL COMMENT 'Twitter/X 用户名',
-    `location`                varchar(200)     NULL DEFAULT NULL COMMENT '所在地',
-    `disable_reason`          varchar(500)     NULL DEFAULT NULL COMMENT '禁用原因',
-    `password_reset_token`    varchar(128)     NULL DEFAULT NULL COMMENT '密码重置 Token',
-    `password_reset_expire`   datetime         NULL DEFAULT NULL COMMENT '密码重置 Token 过期时间',
-    `last_login_at`           datetime         NULL DEFAULT NULL COMMENT '最近登录时间',
-    `last_login_ip`           varchar(64)      NULL DEFAULT NULL COMMENT '最近登录 IP',
-    `last_username_changed_at` datetime        NULL DEFAULT NULL COMMENT '最近修改用户名时间',
-    `recommended`             tinyint(1)       NOT NULL DEFAULT 0 COMMENT '是否推荐：1-推荐 0-不推荐',
-    `recommend_weight` int              NOT NULL DEFAULT 0 COMMENT '推荐权重，值越大越靠前',
+    `bio`              varchar(500)     NULL DEFAULT NULL COMMENT '个人简介',
+    `website`          varchar(500)     NULL DEFAULT NULL COMMENT '个人网站',
+    `github`           varchar(200)     NULL DEFAULT NULL COMMENT 'GitHub 用户名',
+    `twitter`          varchar(200)     NULL DEFAULT NULL COMMENT 'Twitter/X 用户名',
+    `location`         varchar(200)     NULL DEFAULT NULL COMMENT '所在地',
+    `disable_reason`          varchar(500) NULL DEFAULT NULL COMMENT '禁用原因',
+    `password_reset_token`    varchar(128)  NULL DEFAULT NULL COMMENT '密码重置 Token',
+    `password_reset_expire`   datetime      NULL DEFAULT NULL COMMENT '密码重置 Token 过期时间',
+    `last_login_at`           datetime      NULL DEFAULT NULL COMMENT '最近登录时间',
+    `last_login_ip`           varchar(64)   NULL DEFAULT NULL COMMENT '最近登录 IP',
+    `last_username_changed_at` datetime      NULL DEFAULT NULL COMMENT '最近修改用户名时间',
+    `recommended`             tinyint(1)    NOT NULL DEFAULT 0 COMMENT '是否推荐：1-推荐 0-不推荐',
+    `recommend_weight`        int           NOT NULL DEFAULT 0 COMMENT '推荐权重，值越大越靠前',
     `role`             varchar(20)      NOT NULL DEFAULT 'USER' COMMENT '角色：USER-普通用户 ADMIN-管理员',
     `status`           varchar(20)      NOT NULL DEFAULT 'NORMAL' COMMENT '状态：NORMAL-正常 DISABLED-禁用 DELETED-删除',
     `created_at`       datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -639,7 +639,6 @@ CREATE TABLE `blog_announcement` (
 
 -- ----------------------------
 -- blog_invite_code
--- blog_invite_code
 -- ----------------------------
 DROP TABLE IF EXISTS `blog_invite_code`;
 CREATE TABLE `blog_invite_code` (
@@ -662,7 +661,9 @@ CREATE TABLE `blog_invite_code` (
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '邀请码表' ROW_FORMAT = Dynamic;
 
-DROP TABLE IF EXISTS `blog_sensitive_word`;
+-- ----------------------------
+-- blog_sensitive_word
+-- ----------------------------
 DROP TABLE IF EXISTS `blog_sensitive_word`;
 CREATE TABLE `blog_sensitive_word` (
     `id`          bigint unsigned  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -676,8 +677,13 @@ CREATE TABLE `blog_sensitive_word` (
     `version`     int              NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_sensitive_word` (`word`, `deleted_at`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '敏感词表';
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '敏感词表' ROW_FORMAT = Dynamic;
 
+-- ----------------------------
+-- blog_conversation
+-- ----------------------------
 DROP TABLE IF EXISTS `blog_conversation`;
 CREATE TABLE `blog_conversation` (
     `id`               bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '会话ID',
@@ -693,10 +699,15 @@ CREATE TABLE `blog_conversation` (
     `version`          bigint          NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_participants` (`participant_a_id`, `participant_b_id`),
-    INDEX `idx_participant_a` (`participant_a_id`, `a_deleted_at`, `last_message_at` DESC),
-    INDEX `idx_participant_b` (`participant_b_id`, `b_deleted_at`, `last_message_at` DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='私信会话表';
+    KEY `idx_participant_a` (`participant_a_id`, `a_deleted_at`, `last_message_at` DESC),
+    KEY `idx_participant_b` (`participant_b_id`, `b_deleted_at`, `last_message_at` DESC)
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '私信会话表' ROW_FORMAT = Dynamic;
 
+-- ----------------------------
+-- blog_message
+-- ----------------------------
 DROP TABLE IF EXISTS `blog_message`;
 CREATE TABLE `blog_message` (
     `id`              bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '消息ID',
@@ -705,7 +716,7 @@ CREATE TABLE `blog_message` (
     `content`         text            NOT NULL COMMENT '消息内容',
     `type`            varchar(20)     NOT NULL DEFAULT 'TEXT' COMMENT '消息类型：TEXT / IMAGE / SYSTEM',
     `read_at`         datetime        DEFAULT NULL COMMENT '已读时间',
-    `sender_deleted_at` datetime      DEFAULT NULL COMMENT '发送方删除时间',
+    `sender_deleted_at`   datetime    DEFAULT NULL COMMENT '发送方删除时间',
     `receiver_deleted_at` datetime    DEFAULT NULL COMMENT '接收方删除时间',
     `created_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -715,8 +726,13 @@ CREATE TABLE `blog_message` (
     INDEX `idx_conversation_time` (`conversation_id`, `created_at` DESC, `id` DESC),
     INDEX `idx_sender` (`sender_id`),
     INDEX `idx_receiver_unread` (`conversation_id`, `receiver_deleted_at`, `read_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='私信消息表';
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '私信消息表' ROW_FORMAT = Dynamic;
 
+-- ----------------------------
+-- blog_user_ad_dismissal
+-- ----------------------------
 DROP TABLE IF EXISTS `blog_user_ad_dismissal`;
 CREATE TABLE `blog_user_ad_dismissal` (
     `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -726,8 +742,11 @@ CREATE TABLE `blog_user_ad_dismissal` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_ad` (`user_id`, `ad_id`),
     INDEX `idx_user_dismissed` (`user_id`, `dismissed_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户广告关闭记录';
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '用户广告关闭记录表' ROW_FORMAT = Dynamic;
 
+-- ----------------------------
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES
