@@ -310,18 +310,28 @@ async function fetchMetadata() {
 }
 
 async function setupNewDraft() {
-    hydratingDraft.value = true;
+    const defaultSource = createDefaultDraft();
     const storedDraft = readStoredDraft(storageKey.value);
-    if (storedDraft) {
-        applyDraft(storedDraft);
-        statusMessage.value = `已恢复本地草稿，保存时间 ${formatSavedAt(storedDraft.savedAt)}`;
-        feedbackType.value = 'info';
-    } else {
-        applyDraft(createDefaultDraft());
-    }
+
+    hydratingDraft.value = true;
+    applyDraft(defaultSource);
     hydratingDraft.value = false;
     syncSavedSnapshot();
+
+    if (storedDraft && createDraftSnapshot(storedDraft) !== createDraftSnapshot(defaultSource)) {
+        recoveryInfo.value = {
+            draft: storedDraft,
+            savedAt: storedDraft.savedAt,
+            storageKey: storageKey.value
+        };
+        statusMessage.value = `检测到一份未发布本地草稿，保存时间 ${formatSavedAt(storedDraft.savedAt)}`;
+        feedbackType.value = 'warning';
+        return;
+    }
+
     recoveryInfo.value = null;
+    statusMessage.value = '';
+    feedbackType.value = 'info';
 }
 
 async function fetchArticle() {
@@ -759,11 +769,15 @@ onUnmounted(() => {
                 <div>
                     <p class="eyebrow">检测到本地恢复内容</p>
                     <strong>{{ isEditMode ? '这篇文章有一份未同步的本地编辑稿。' : '你上次有一份未发布草稿。' }}</strong>
-                    <span>保存时间 {{ formatSavedAt(recoveryInfo.savedAt) }}，你可以选择恢复继续写，或丢弃它继续使用当前内容。</span>
+                    <span>
+                        保存时间 {{ formatSavedAt(recoveryInfo.savedAt) }}，你可以选择恢复继续写，或丢弃它{{ isEditMode ? '继续使用当前内容' : '从空白文章开始' }}。
+                    </span>
                 </div>
                 <div class="editor-recovery-actions">
                     <button class="primary-action" type="button" @click="restoreRecoveredDraft">恢复本地草稿</button>
-                    <button type="button" @click="discardRecoveredDraft">使用当前版本</button>
+                    <button class="recovery-secondary-action" type="button" @click="discardRecoveredDraft">
+                        {{ isEditMode ? '使用当前版本' : '新建空白文章' }}
+                    </button>
                 </div>
             </section>
 
@@ -1073,6 +1087,35 @@ onUnmounted(() => {
     flex-wrap: wrap;
 }
 
+.recovery-secondary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 16px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.recovery-secondary-action:hover {
+    color: var(--brand-strong);
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.22);
+    transform: translateY(-1px);
+}
+
+.recovery-secondary-action:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.16);
+    outline-offset: 2px;
+}
+
 .editor-preview-head {
     display: flex;
     gap: 14px;
@@ -1356,6 +1399,11 @@ onUnmounted(() => {
 @media (max-width: 760px) {
     .editor-recovery-banner {
         grid-template-columns: 1fr;
+    }
+
+    .editor-recovery-actions .primary-action,
+    .recovery-secondary-action {
+        width: 100%;
     }
 
     .editor-preview-head {

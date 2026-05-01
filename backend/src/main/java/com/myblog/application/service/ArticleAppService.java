@@ -294,6 +294,7 @@ public class ArticleAppService {
     public ArticleDTO createArticle(CreateArticleCommand command) {
         User author = userRepository.findById(new UserId(command.getAuthorId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        ensureSlugAvailable(command.getSlug(), null);
         Article article = Article.create(
             articleRepository.nextId(),
             author.getId(),
@@ -343,6 +344,7 @@ public class ArticleAppService {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
+        ensureSlugAvailable(command.getSlug(), articleId);
         article.updateContent(
             command.getTitle(),
             command.getSummary(),
@@ -468,6 +470,18 @@ public class ArticleAppService {
             return coverUrl.trim();
         }
         return defaultArticleCoverUrl;
+    }
+
+    private void ensureSlugAvailable(String slug, Long currentArticleId) {
+        if (!StringUtils.hasText(slug)) {
+            return;
+        }
+        String normalizedSlug = slug.trim();
+        articleRepository.findBySlug(normalizedSlug).ifPresent(existing -> {
+            if (currentArticleId == null || !existing.getId().getValue().equals(currentArticleId)) {
+                throw new ApplicationException(ErrorCode.CONFLICT, "URL Slug 已存在，请换一个");
+            }
+        });
     }
 
     private ArticleDTO buildDto(Article article, User author, Long currentUserId) {

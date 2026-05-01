@@ -10,6 +10,8 @@ import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetr
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleMapper;
+import com.myblog.shared.exception.ApplicationException;
+import com.myblog.shared.exception.ErrorCode;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -280,17 +282,19 @@ public class MyBatisArticleRepository implements ArticleRepository {
         return toDomainList(articleDOList);
     }
 
-    /**
-     * 保存文章（使用 INSERT ... ON DUPLICATE KEY UPDATE，消除前置 countById 查询）。
-     *
-     * @param article 文章聚合根
-     * @return 保存后的文章
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Article save(Article article) {
         ArticleDO articleDO = ArticlePersistenceConverter.toData(article);
-        articleMapper.insertOrUpdate(articleDO);
+        int affectedRows;
+        if (articleMapper.countById(article.getId().getValue()) > 0) {
+            affectedRows = articleMapper.update(articleDO);
+        } else {
+            affectedRows = articleMapper.insert(articleDO);
+        }
+        if (affectedRows <= 0) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "文章已被其他操作修改，请刷新后重试");
+        }
         saveTags(article);
         return article;
     }
