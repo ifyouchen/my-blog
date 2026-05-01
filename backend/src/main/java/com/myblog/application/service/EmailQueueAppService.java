@@ -2,6 +2,7 @@ package com.myblog.application.service;
 
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class EmailQueueAppService {
 
     private final LinkedBlockingQueue<EmailTask> queue;
 
+    @Autowired
     public EmailQueueAppService(@Value("${my-blog.mail.queue-capacity:1000}") int queueCapacity) {
         this.queue = new LinkedBlockingQueue<EmailTask>(Math.max(queueCapacity, 1));
     }

@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ public class EmailRequestRateLimitService {
     private final Cache<String, LocalDateTime> latestRequestCache;
     private final long ipRateLimitSeconds;
 
+    @Autowired
     public EmailRequestRateLimitService(
         @Value("${my-blog.mail.ip-rate-limit-seconds:20}") long ipRateLimitSeconds) {
         this(ipRateLimitSeconds, false);
