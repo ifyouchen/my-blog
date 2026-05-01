@@ -297,11 +297,13 @@
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserDO">
         INSERT INTO blog_user
         (id, username, email, password_hash, nickname, avatar_url, bio, website, github, twitter, location,
-         disable_reason, role, status, created_at, updated_at)
+         disable_reason, password_reset_token, password_reset_expire, last_login_at, last_login_ip,
+         last_username_changed_at, role, status, created_at, updated_at)
         VALUES
         (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio},
-         #{website}, #{github}, #{twitter}, #{location}, #{disableReason}, #{role}, #{status},
-         #{createdAt}, #{updatedAt})
+         #{website}, #{github}, #{twitter}, #{location}, #{disableReason}, #{passwordResetToken},
+         #{passwordResetExpire}, #{lastLoginAt}, #{lastLoginIp}, #{lastUsernameChangedAt}, #{role},
+         #{status}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
             username = #{username},
             email = #{email},
@@ -314,9 +316,15 @@
             twitter = #{twitter},
             location = #{location},
             disable_reason = #{disableReason},
+            password_reset_token = #{passwordResetToken},
+            password_reset_expire = #{passwordResetExpire},
+            last_login_at = #{lastLoginAt},
+            last_login_ip = #{lastLoginIp},
+            last_username_changed_at = #{lastUsernameChangedAt},
             role = #{role},
             status = #{status},
-            updated_at = NOW()
+            updated_at = #{updatedAt},
+            version = version + 1
     </insert>
 
     <select id="selectRecommended" resultMap="BaseResultMap">

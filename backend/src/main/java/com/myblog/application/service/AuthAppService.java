@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -30,6 +31,7 @@ public class AuthAppService {
     private final UserRepository userRepository;
     private final PasswordDomainService passwordDomainService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RegisterEmailCodeAppService registerEmailCodeAppService;
     private InviteCodeAppService inviteCodeAppService;
 
     @Autowired(required = false)
@@ -46,10 +48,25 @@ public class AuthAppService {
      */
     public AuthAppService(UserRepository userRepository,
                           PasswordDomainService passwordDomainService,
-                          JwtTokenProvider jwtTokenProvider) {
+                          JwtTokenProvider jwtTokenProvider,
+                          RegisterEmailCodeAppService registerEmailCodeAppService) {
         this.userRepository = userRepository;
         this.passwordDomainService = passwordDomainService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.registerEmailCodeAppService = registerEmailCodeAppService;
+    }
+
+    /**
+     * 发送注册邮箱验证码。
+     *
+     * @param email 邮箱
+     */
+    public void sendRegisterEmailCode(String email) {
+        String normalizedEmail = normalizeEmail(email);
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "邮箱已存在");
+        }
+        registerEmailCodeAppService.sendCode(normalizedEmail);
     }
 
     /**
@@ -60,14 +77,16 @@ public class AuthAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public AuthDTO register(RegisterCommand command) {
+        String normalizedEmail = normalizeEmail(command.getEmail());
         if (userRepository.existsByUsername(command.getUsername())) {
             throw new ApplicationException(ErrorCode.CONFLICT, "用户名已存在");
         }
-        if (userRepository.existsByEmail(command.getEmail())) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ApplicationException(ErrorCode.CONFLICT, "邮箱已存在");
         }
+        registerEmailCodeAppService.verifyAndConsume(normalizedEmail, command.getEmailCode());
         String passwordHash = passwordDomainService.encode(command.getPassword());
-        User user = User.create(userRepository.nextId(), command.getUsername(), command.getEmail(), passwordHash);
+        User user = User.create(userRepository.nextId(), command.getUsername(), normalizedEmail, passwordHash);
         userRepository.save(user);
         if (inviteCodeAppService != null && command.getInviteCode() != null && !command.getInviteCode().isEmpty()) {
             inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
@@ -106,5 +125,12 @@ public class AuthAppService {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         return UserAssembler.toDTO(user);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "邮箱不能为空");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }

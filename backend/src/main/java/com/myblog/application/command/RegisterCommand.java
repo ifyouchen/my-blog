@@ -12,6 +12,7 @@ public class RegisterCommand {
     private String email;
     private String password;
     private String inviteCode;
+    private String emailCode;
 
     /**
      * 创建注册命令。
@@ -31,6 +32,14 @@ public class RegisterCommand {
         this.email = email;
         this.password = password;
         this.inviteCode = inviteCode;
+    }
+
+    public RegisterCommand(String username, String email, String password, String inviteCode, String emailCode) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.inviteCode = inviteCode;
+        this.emailCode = emailCode;
     }
 
     /**
@@ -62,5 +71,9 @@ public class RegisterCommand {
 
     public String getInviteCode() {
         return inviteCode;
+    }
+
+    public String getEmailCode() {
+        return emailCode;
     }
 }

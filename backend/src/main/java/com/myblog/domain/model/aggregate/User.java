@@ -225,13 +225,13 @@ public class User {
     }
 
     /**
-     * 生成密码重置 Token（有效期 1 小时）。
+     * 生成密码重置 Token（有效期 30 分钟）。
      *
      * @return 重置 Token
      */
     public String generatePasswordResetToken() {
         this.passwordResetToken = UUID.randomUUID().toString().replace("-", "");
-        this.passwordResetExpire = LocalDateTime.now().plusHours(1);
+        this.passwordResetExpire = LocalDateTime.now().plusMinutes(30);
         this.updatedAt = LocalDateTime.now();
         return this.passwordResetToken;
     }

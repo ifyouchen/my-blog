@@ -94,8 +94,14 @@ export const useSession = () => {
         saveSession(await loginApi({ account, password }));
     };
 
-    const register = async ({ username, email, password, inviteCode }) => {
-        saveSession(await registerApi({ username, email, password, inviteCode: inviteCode || undefined }));
+    const register = async ({ username, email, password, inviteCode, emailCode }) => {
+        saveSession(await registerApi({
+            username,
+            email,
+            password,
+            inviteCode: inviteCode || undefined,
+            emailCode
+        }));
     };
 
     const logout = () => {

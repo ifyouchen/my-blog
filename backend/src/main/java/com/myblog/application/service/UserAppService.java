@@ -7,6 +7,7 @@ import com.myblog.application.dto.MyArticleOverviewDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.application.dto.UserProfileDTO;
 import com.myblog.application.dto.UserSearchDTO;
+import com.myblog.application.port.EmailSender;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
@@ -20,6 +21,7 @@ import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,17 +48,23 @@ public class UserAppService {
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
     private final PasswordDomainService passwordDomainService;
+    private final EmailSender emailSender;
+    private final String frontendBaseUrl;
 
     public UserAppService(UserRepository userRepository,
                           ArticleRepository articleRepository,
                           UserFollowRepository userFollowRepository,
                           ArticleAssembler articleAssembler,
-                          PasswordDomainService passwordDomainService) {
+                          PasswordDomainService passwordDomainService,
+                          EmailSender emailSender,
+                          @Value("${my-blog.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
         this.passwordDomainService = passwordDomainService;
+        this.emailSender = emailSender;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -83,6 +91,9 @@ public class UserAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         if (!passwordDomainService.matches(currentPassword, user.getPasswordHash())) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "当前密码错误");
+        }
+        if (passwordDomainService.matches(newPassword, user.getPasswordHash())) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "新密码不能与当前密码相同");
         }
         String newHash = passwordDomainService.encode(newPassword);
         user.changePassword(newHash);
@@ -113,7 +124,7 @@ public class UserAppService {
     }
 
     /**
-     * 忘记密码：生成重置 Token 并记录（控制台 log 代替发邮件）。
+     * 忘记密码：生成重置 Token 并发送重置邮件。
      *
      * @param email 邮箱
      */
@@ -123,9 +134,11 @@ public class UserAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "该邮箱未注册"));
         String token = user.generatePasswordResetToken();
         userRepository.save(user);
-        // 第一阶段：log 到控制台代替真实发送
-        org.slf4j.LoggerFactory.getLogger(UserAppService.class)
-            .info("[密码重置] 用户 {} 请求重置密码，Token: {}", user.getUsername(), token);
+        try {
+            emailSender.sendPasswordResetLink(user.getEmail().getValue(), user.getUsername(), buildResetLink(token));
+        } catch (RuntimeException exception) {
+            throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "重置邮件发送失败，请稍后重试");
+        }
         return token;
     }
 
@@ -320,6 +333,16 @@ public class UserAppService {
         overviewDTO.setRecommendedActionText("查看已发布文章");
         overviewDTO.setRecommendedActionHint("你的内容已经在线，继续优化标题、摘要和互动表现会更有效。");
         overviewDTO.setRecommendedActionRoute("/dashboard/articles?status=PUBLISHED");
+    }
+
+    private String buildResetLink(String token) {
+        String baseUrl = frontendBaseUrl == null || frontendBaseUrl.trim().isEmpty()
+            ? "http://localhost:5173"
+            : frontendBaseUrl.trim();
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl + "/auth/reset-password?token=" + token;
     }
 
 

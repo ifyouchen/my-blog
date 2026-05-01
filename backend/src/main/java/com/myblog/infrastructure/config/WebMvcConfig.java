@@ -44,7 +44,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
             .addPathPatterns("/api/**")
             .excludePathPatterns(
                 "/api/auth/register",
+                "/api/auth/register/email-code",
                 "/api/auth/login",
+                "/api/auth/password/forgot",
+                "/api/auth/password/reset",
                 "/api/health",
                 "/api/uploads/files/**"
             );

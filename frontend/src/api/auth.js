@@ -25,6 +25,13 @@ export const registerApi = async (payload) => {
     };
 };
 
+export const sendRegisterEmailCodeApi = async (email) => {
+    return await request('/auth/register/email-code', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+    });
+};
+
 export const currentUserApi = async () => normalizeUser(await request('/users/me'));
 
 export const updateProfileApi = async (payload) => normalizeUser(await request('/users/me/profile', {

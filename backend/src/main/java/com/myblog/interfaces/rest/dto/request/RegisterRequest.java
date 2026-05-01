@@ -24,6 +24,10 @@ public class RegisterRequest {
     @Size(min = 6, max = 64, message = "密码长度必须在6到64之间")
     private String password;
 
+    @NotBlank(message = "邮箱验证码不能为空")
+    @Size(min = 6, max = 6, message = "邮箱验证码必须为6位")
+    private String emailCode;
+
     private String inviteCode;
 
     /**
@@ -78,6 +82,14 @@ public class RegisterRequest {
      */
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getEmailCode() {
+        return emailCode;
+    }
+
+    public void setEmailCode(String emailCode) {
+        this.emailCode = emailCode;
     }
 
     public String getInviteCode() {

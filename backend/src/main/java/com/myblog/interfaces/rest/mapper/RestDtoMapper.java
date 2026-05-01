@@ -41,7 +41,7 @@ public class RestDtoMapper {
      */
     public RegisterCommand toCommand(RegisterRequest request) {
         return new RegisterCommand(request.getUsername(), request.getEmail(),
-            request.getPassword(), request.getInviteCode());
+            request.getPassword(), request.getInviteCode(), request.getEmailCode());
     }
 
     /**

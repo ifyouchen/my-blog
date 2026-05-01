@@ -1,7 +1,8 @@
 <script setup>
-import {computed, reactive, ref, watch} from 'vue';
+import {computed, onBeforeUnmount, reactive, ref, watch} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
+import {sendRegisterEmailCodeApi} from '@/api/auth';
 import {useSession} from '@/stores/session';
 
 const route = useRoute();
@@ -14,6 +15,7 @@ const form = reactive({
     username: '',
     account: '',
     email: '',
+    emailCode: '',
     password: '',
     confirmPassword: ''
 });
@@ -22,6 +24,9 @@ const errors = reactive({});
 const successMessage = ref('');
 const showWelcome = ref(false);
 const welcomeUsername = ref('');
+const emailCodeSending = ref(false);
+const emailCodeCooldown = ref(0);
+let emailCodeTimer = null;
 
 const resetFeedback = () => {
     Object.keys(errors).forEach((key) => {
@@ -31,6 +36,57 @@ const resetFeedback = () => {
 };
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const emailCodeButtonText = computed(() => {
+    if (emailCodeSending.value) {
+        return '发送中...';
+    }
+    return emailCodeCooldown.value > 0 ? `${emailCodeCooldown.value}s 后重试` : '获取验证码';
+});
+
+const stopEmailCodeCooldown = () => {
+    if (emailCodeTimer) {
+        window.clearInterval(emailCodeTimer);
+        emailCodeTimer = null;
+    }
+};
+
+const startEmailCodeCooldown = () => {
+    stopEmailCodeCooldown();
+    emailCodeCooldown.value = 60;
+    emailCodeTimer = window.setInterval(() => {
+        emailCodeCooldown.value -= 1;
+        if (emailCodeCooldown.value <= 0) {
+            emailCodeCooldown.value = 0;
+            stopEmailCodeCooldown();
+        }
+    }, 1000);
+};
+
+const sendEmailCode = async () => {
+    if (!isRegister.value || emailCodeSending.value || emailCodeCooldown.value > 0) {
+        return;
+    }
+    errors.email = '';
+    errors.emailCode = '';
+    errors.submit = '';
+    successMessage.value = '';
+    const email = form.email.trim();
+    if (!validateEmail(email)) {
+        errors.email = '请输入正确的邮箱';
+        return;
+    }
+
+    emailCodeSending.value = true;
+    try {
+        await sendRegisterEmailCodeApi(email);
+        successMessage.value = '验证码已发送，请查看邮箱';
+        startEmailCodeCooldown();
+    } catch (error) {
+        errors.emailCode = error.message || '验证码发送失败，请稍后重试';
+    } finally {
+        emailCodeSending.value = false;
+    }
+};
 
 const validate = () => {
     resetFeedback();
@@ -42,6 +98,9 @@ const validate = () => {
     if (isRegister.value) {
         if (!validateEmail(form.email.trim())) {
             errors.email = '请输入正确的邮箱';
+        }
+        if (!/^\d{6}$/.test(form.emailCode.trim())) {
+            errors.emailCode = '请输入 6 位邮箱验证码';
         }
     } else if (!form.account.trim()) {
         errors.account = '请输入用户名或邮箱';
@@ -68,6 +127,7 @@ const submit = async () => {
             await register({
                 username: form.username.trim(),
                 email: form.email.trim(),
+                emailCode: form.emailCode.trim(),
                 password: form.password,
                 inviteCode: inviteCode.value || undefined
             });
@@ -95,6 +155,10 @@ const closeWelcome = () => {
 
 watch(isRegister, () => {
     resetFeedback();
+});
+
+onBeforeUnmount(() => {
+    stopEmailCodeCooldown();
 });
 </script>
 
@@ -145,6 +209,29 @@ watch(isRegister, () => {
                     >
                     <small v-if="isRegister && errors.email">{{ errors.email }}</small>
                     <small v-if="!isRegister && errors.account">{{ errors.account }}</small>
+                </label>
+                <label v-if="isRegister">
+                    <span>邮箱验证码</span>
+                    <div class="email-code-row">
+                        <input
+                            v-model.trim="form.emailCode"
+                            type="text"
+                            inputmode="numeric"
+                            maxlength="6"
+                            placeholder="请输入验证码"
+                            data-testid="register-email-code-input"
+                        >
+                        <button
+                            class="email-code-button"
+                            type="button"
+                            :disabled="emailCodeSending || emailCodeCooldown > 0"
+                            data-testid="register-email-code-submit"
+                            @click="sendEmailCode"
+                        >
+                            {{ emailCodeButtonText }}
+                        </button>
+                    </div>
+                    <small v-if="errors.emailCode">{{ errors.emailCode }}</small>
                 </label>
                 <label>
                     <span>密码</span>
@@ -231,6 +318,33 @@ watch(isRegister, () => {
 
 .auth-forgot a:hover {
     text-decoration: underline;
+}
+
+.email-code-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.email-code-button {
+    min-height: 42px;
+    padding: 0 14px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.email-code-button:disabled {
+    cursor: not-allowed;
+    color: var(--muted);
+    background: var(--surface-muted);
+    border-color: var(--line);
 }
 
 /* ── 欢迎弹窗 ──────────────────────────────────────────────────────── */
@@ -361,6 +475,10 @@ watch(isRegister, () => {
 @media (max-width: 480px) {
     .welcome-dialog {
         padding: 28px 20px;
+    }
+
+    .email-code-row {
+        grid-template-columns: 1fr;
     }
 }
 </style>

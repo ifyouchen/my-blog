@@ -8,6 +8,7 @@ import com.myblog.interfaces.rest.dto.request.ForgotPasswordRequest;
 import com.myblog.interfaces.rest.dto.request.LoginRequest;
 import com.myblog.interfaces.rest.dto.request.RegisterRequest;
 import com.myblog.interfaces.rest.dto.request.ResetPasswordRequest;
+import com.myblog.interfaces.rest.dto.request.SendRegisterEmailCodeRequest;
 import com.myblog.interfaces.rest.dto.response.AuthResponse;
 import com.myblog.interfaces.rest.dto.response.UserResponse;
 import com.myblog.interfaces.rest.mapper.RestDtoMapper;
@@ -19,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 /**
@@ -48,6 +48,18 @@ public class AuthController {
         this.authAppService = authAppService;
         this.userAppService = userAppService;
         this.restDtoMapper = restDtoMapper;
+    }
+
+    /**
+     * 发送注册邮箱验证码。
+     *
+     * @param request 发送验证码请求
+     * @return 成功响应
+     */
+    @PostMapping("/auth/register/email-code")
+    public Result<Void> sendRegisterEmailCode(@RequestBody @Valid SendRegisterEmailCodeRequest request) {
+        authAppService.sendRegisterEmailCode(request.getEmail());
+        return Result.success();
     }
 
     /**
@@ -85,7 +97,7 @@ public class AuthController {
     }
 
     /**
-     * 忘记密码 - 发送重置链接（第一阶段：log 到控制台）。
+     * 忘记密码 - 发送重置链接。
      *
      * @param request 忘记密码请求
      * @return 成功响应

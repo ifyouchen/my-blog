@@ -85,7 +85,12 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
     private boolean isPublicRequest(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
-        if ("/api/auth/register".equals(path) || "/api/auth/login".equals(path) || "/api/health".equals(path)) {
+        if ("/api/auth/register".equals(path)
+            || "/api/auth/register/email-code".equals(path)
+            || "/api/auth/login".equals(path)
+            || "/api/auth/password/forgot".equals(path)
+            || "/api/auth/password/reset".equals(path)
+            || "/api/health".equals(path)) {
             return true;
         }
         if (path.matches("^/api/ads/\\d+/(impression|click)$")) {
