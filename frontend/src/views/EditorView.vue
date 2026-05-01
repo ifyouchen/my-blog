@@ -76,6 +76,8 @@ const coverUploading = ref(false);
 const coverInputRef = ref(null);
 const richEditorRef = ref(null);
 const coverPreviewFailed = ref(false);
+const debouncedCoverUrl = ref('');
+let coverUrlDebounceTimer = null;
 const showBackToTop = ref(false);
 const publishValidation = ref({
     publishable: false,
@@ -139,13 +141,22 @@ const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编
 const showPersistentStatus = computed(() => ['warning', 'error'].includes(feedbackType.value));
 const showQuietStatus = computed(() => !showPersistentStatus.value && Boolean(statusMessage.value));
 const displayCoverUrl = computed(() => {
-    const source = draft.coverUrl || DEFAULT_ARTICLE_COVER_URL;
+    const source = debouncedCoverUrl.value || DEFAULT_ARTICLE_COVER_URL;
     return coverPreviewFailed.value ? resolveMediaUrl(DEFAULT_ARTICLE_COVER_URL, '') : resolveMediaUrl(source, '');
 });
 const isUsingDefaultCover = computed(() => !draft.coverUrl || draft.coverUrl === DEFAULT_ARTICLE_COVER_URL);
 
-watch(() => draft.coverUrl, () => {
+watch(() => draft.coverUrl, (newUrl) => {
     coverPreviewFailed.value = false;
+    if (coverUrlDebounceTimer) clearTimeout(coverUrlDebounceTimer);
+    // 外部设置（上传/加载）直接更新预览，用户输入则等待停笔后再加载
+    if (hydratingDraft.value) {
+        debouncedCoverUrl.value = newUrl;
+    } else {
+        coverUrlDebounceTimer = setTimeout(() => {
+            debouncedCoverUrl.value = newUrl;
+        }, 800);
+    }
 });
 
 function generateSlug(text) {
@@ -195,6 +206,7 @@ function applyDraft(source = {}) {
     draft.category = source.category || categoryOptions.value[0] || '';
     draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
     draft.coverUrl = source.coverUrl || '';
+    debouncedCoverUrl.value = source.coverUrl || '';
     draft.slug = source.slug || '';
     draft.seoTitle = source.seoTitle || '';
     draft.seoDescription = source.seoDescription || '';
@@ -477,6 +489,7 @@ async function handleCoverSelected(event) {
     try {
         const result = await uploadImageApi(file, 'cover');
         draft.coverUrl = result.url || defaultDraft.coverUrl;
+        debouncedCoverUrl.value = draft.coverUrl;
         coverPreviewFailed.value = false;
         statusMessage.value = '封面已上传，发布或保存草稿后会写入文章';
         feedbackType.value = 'success';
@@ -663,6 +676,9 @@ onUnmounted(() => {
     }
     if (autoSaveTimer) {
         clearTimeout(autoSaveTimer);
+    }
+    if (coverUrlDebounceTimer) {
+        clearTimeout(coverUrlDebounceTimer);
     }
 });
 </script>

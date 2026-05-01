@@ -66,8 +66,8 @@
 | 后端: GET /api/articles/{id}/versions | ✅ | ArticleController 已实现 |
 | 后端: GET /api/articles/{id}/versions/{versionNo} | ✅ | ArticleController 已实现 |
 | 后端: POST /api/articles/{id}/versions/{versionNo}/restore | ✅ | ArticleController 已实现 |
-| 前端: 编辑器历史版本侧边抽屉 | ❌ | EditorView.vue 未实现 |
-| 前端: 自动保存状态标识 | ❌ | 未实现 |
+| 前端: 编辑器历史版本侧边抽屉 | ✅ | EditorView.vue version-drawer 完整（列表+预览+恢复） |
+| 前端: 自动保存状态标识 | ✅ | EditorView.vue 30s 定时自动保存 + "已自动保存 xx:xx" 状态文字 |
 
 ### 2.3 专栏管理（创作者侧）
 | 条目 | 状态 | 备注 |
