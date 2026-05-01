@@ -1,4 +1,6 @@
 <script setup>
+import { formatAdminDateTime } from '@/views/admin/adminShared';
+
 const props = defineProps({
     open: {
         type: Boolean,
@@ -54,7 +56,7 @@ const hasLog = () => Boolean(props.log);
                     </div>
                     <div>
                         <dt>时间</dt>
-                        <dd>{{ log.createdAt || '-' }}</dd>
+                        <dd>{{ formatAdminDateTime(log.createdAt) }}</dd>
                     </div>
                     <div>
                         <dt>IP</dt>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue';
 import { getAdminInviteCodesApi, deleteAdminInviteCodeApi } from '@/api/admin.js';
+import { formatAdminDateTime } from '@/views/admin/adminShared';
 
 const list = ref([]);
 const total = ref(0);
@@ -53,8 +54,7 @@ function nextPage() {
 }
 
 function formatDate(dt) {
-    if (!dt) return '-';
-    return dt.replace('T', ' ').substring(0, 16);
+    return formatAdminDateTime(dt);
 }
 
 onMounted(fetchList);

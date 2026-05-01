@@ -1,4 +1,4 @@
-import {request} from './http';
+import {downloadFile, request} from './http';
 
 export const getAdminStatsApi = async () => {
     return await request(`/admin/stats`);
@@ -298,11 +298,10 @@ export const unpublishAdminAnnouncementApi = async (id) => {
 
 // ===== 敏感词管理 =====
 
-export const getAdminSensitiveWordsApi = async (page = 1, pageSize = 20, keyword = null, category = null, enabled = null) => {
+export const getAdminSensitiveWordsApi = async (page = 1, pageSize = 20, keyword = null, category = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (keyword) params.append('keyword', keyword);
     if (category) params.append('category', category);
-    if (enabled !== null) params.append('enabled', enabled);
     return await request(`/admin/sensitive-words?${params}`);
 };
 
@@ -328,25 +327,11 @@ export const deleteAdminSensitiveWordApi = async (id) => {
 
 // ======= 数据导出 =======
 export const exportAdminArticlesApi = () => {
-    const token = localStorage.getItem('token');
-    const url = '/api/admin/export/articles' + (token ? `?token=${encodeURIComponent(token)}` : '');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    return downloadFile('/admin/export/articles', 'articles.csv');
 };
 
 export const exportAdminUsersApi = () => {
-    const token = localStorage.getItem('token');
-    const url = '/api/admin/export/users' + (token ? `?token=${encodeURIComponent(token)}` : '');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    return downloadFile('/admin/export/users', 'users.csv');
 };
 
 // ======= 邀请码管理 =======

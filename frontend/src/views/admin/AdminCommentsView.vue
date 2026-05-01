@@ -6,6 +6,7 @@ import AdminPagination from '@/components/admin/AdminPagination.vue';
 import { deleteAdminCommentApi, getAdminCommentsApi } from '@/api/admin';
 import {
     createPagedState,
+    formatAdminDateTime,
     readPositiveInt,
     readQueryText,
     resolveAdminOverflowPage,
@@ -13,9 +14,11 @@ import {
     useAdminRefresh
 } from '@/views/admin/adminShared';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 const {
     confirmDialog,
     openConfirmDialog,
@@ -27,8 +30,6 @@ const state = reactive({
     ...createPagedState(),
     articleId: '',
     keyword: '',
-    feedback: '',
-    feedbackType: 'success',
     actionLoadingId: null
 });
 
@@ -112,12 +113,9 @@ const removeComment = async (comment) => {
             state.actionLoadingId = comment.id;
             try {
                 await deleteAdminCommentApi(comment.id);
-                state.feedback = '评论已删除';
-                state.feedbackType = 'success';
                 await loadComments();
             } catch (error) {
-                state.feedback = error.message || '评论删除失败';
-                state.feedbackType = 'error';
+                toast.error(error.message || '评论删除失败');
             } finally {
                 state.actionLoadingId = null;
             }
@@ -154,20 +152,11 @@ watch(
                     <button type="button" @click="resetFilters">重置</button>
                 </div>
             </form>
-            <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-                {{ state.feedback }}
-            </p>
         </div>
 
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新评论数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                评论数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -205,7 +194,7 @@ watch(
                                     <p class="admin-subtext">@{{ comment.username || comment.userId }}</p>
                                 </td>
                                 <td>{{ comment.content }}</td>
-                                <td>{{ comment.createdAt }}</td>
+                                <td>{{ formatAdminDateTime(comment.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button
                                         type="button"
@@ -213,7 +202,7 @@ watch(
                                         :disabled="state.actionLoadingId === comment.id"
                                         @click="removeComment(comment)"
                                     >
-                                        {{ state.actionLoadingId === comment.id ? '处理中...' : '删除' }}
+                                        删除
                                     </button>
                                 </td>
                             </tr>

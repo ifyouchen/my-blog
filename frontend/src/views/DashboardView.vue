@@ -7,7 +7,7 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {getMyColumnsApi} from '@/api/columns';
-import {deleteArticleApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
+import {deleteArticleApi, exportMyArticlesApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
 import {getDashboardArticlePerformanceApi, getDashboardInteractionsApi, getDashboardOverviewApi, getDashboardTrendsApi, getArticleStatsApi} from '@/api/dashboard';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
@@ -398,8 +398,15 @@ const removeArticle = async (article) => {
     });
 };
 
-const exportMyArticles = () => {
-    window.location.href = `/api/users/me/export/articles?_t=${Date.now()}`;
+const exportMyArticles = async () => {
+    try {
+        await exportMyArticlesApi();
+        feedback.value = '导出已开始';
+        feedbackType.value = 'success';
+    } catch (error) {
+        feedback.value = error.message || '导出失败';
+        feedbackType.value = 'error';
+    }
 };
 
 const overviewCards = computed(() => ([
@@ -449,7 +456,7 @@ const changePerformanceSort = async (sort) => {
 };
 
 const formatTrendDate = (date) => String(date || '').slice(5) || '--';
-const formatDate = (date) => date ? String(date).slice(0, 10) : '-';
+const formatDate = (date) => date ? String(date).replace('T', ' ').slice(0, 19) : '-';
 const getInteractionText = (notification) => getNotificationText(notification.type);
 const getInteractionDetail = (notification) => getNotificationDetail(notification);
 

@@ -18,9 +18,11 @@ import {
     useAdminRefresh
 } from '@/views/admin/adminShared';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 const {
     confirmDialog,
     openConfirmDialog,
@@ -36,8 +38,6 @@ const form = reactive({
 const state = reactive({
     ...createPagedState(8),
     enabled: '',
-    feedback: '',
-    feedbackType: 'success',
     submitting: false,
     editingId: null,
     editForm: {
@@ -55,11 +55,6 @@ const normalizeEnabledFilter = (value) => {
         return false;
     }
     return null;
-};
-
-const setFeedback = (message, type = 'success') => {
-    state.feedback = message;
-    state.feedbackType = type;
 };
 
 const applyRouteState = () => {
@@ -124,10 +119,9 @@ const submitTag = async () => {
         });
         form.name = '';
         form.description = '';
-        setFeedback('标签已创建');
         await loadTags();
     } catch (error) {
-        setFeedback(error.message || '标签创建失败', 'error');
+        toast.error(error.message || '标签创建失败');
     } finally {
         state.submitting = false;
     }
@@ -153,10 +147,9 @@ const saveEdit = async (tagId) => {
             enabled: Boolean(state.editForm.enabled)
         });
         state.editingId = null;
-        setFeedback('标签已更新');
         await loadTags();
     } catch (error) {
-        setFeedback(error.message || '标签更新失败', 'error');
+        toast.error(error.message || '标签更新失败');
     } finally {
         state.submitting = false;
     }
@@ -170,10 +163,9 @@ const toggleTag = async (tag) => {
             description: tag.description,
             enabled: !tag.enabled
         });
-        setFeedback(tag.enabled ? '标签已禁用' : '标签已启用');
         await loadTags();
     } catch (error) {
-        setFeedback(error.message || '标签更新失败', 'error');
+        toast.error(error.message || '标签更新失败');
     } finally {
         state.submitting = false;
     }
@@ -190,10 +182,9 @@ const removeTag = async (tag) => {
             state.submitting = true;
             try {
                 await deleteTagApi(tag.id);
-                setFeedback('标签已删除');
                 await loadTags();
             } catch (error) {
-                setFeedback(error.message || '标签删除失败', 'error');
+                toast.error(error.message || '标签删除失败');
             } finally {
                 state.submitting = false;
             }
@@ -226,7 +217,7 @@ watch(
                     <input v-model.trim="form.description" type="text" placeholder="标签说明">
                 </label>
                 <div class="admin-filter-actions">
-                    <button type="submit" :disabled="state.submitting">{{ state.submitting ? '提交中...' : '新增标签' }}</button>
+                    <button type="submit" :disabled="state.submitting">新增标签</button>
                 </div>
             </form>
 
@@ -242,19 +233,9 @@ watch(
             </div>
         </div>
 
-        <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-            {{ state.feedback }}
-        </p>
-
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新标签数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                标签数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -303,7 +284,7 @@ watch(
                                 <td class="table-actions">
                                     <template v-if="state.editingId === tag.id">
                                         <button type="button" class="admin-edit-btn primary" :disabled="state.submitting" @click="saveEdit(tag.id)">
-                                            {{ state.submitting ? '保存中...' : '保存' }}
+                                            保存
                                         </button>
                                         <button type="button" class="admin-edit-btn secondary" :disabled="state.submitting" @click="cancelEdit">取消</button>
                                     </template>

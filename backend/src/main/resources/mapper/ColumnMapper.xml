@@ -198,11 +198,17 @@
         SELECT <include refid="Base_Column_List"/>
         FROM blog_column c
         WHERE c.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (c.title LIKE CONCAT('%', #{keyword}, '%') OR c.summary LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
         ORDER BY c.sort_order ASC, c.id DESC
         LIMIT #{offset}, #{limit}
     </select>
     <select id="countAll" resultType="long">
         SELECT COUNT(1) FROM blog_column WHERE deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (title LIKE CONCAT('%', #{keyword}, '%') OR summary LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
     </select>
     <update id="softDelete">
         UPDATE blog_column SET deleted_at=NOW(),updated_at=NOW(),version=version+1 WHERE id=#{id} AND deleted_at IS NULL

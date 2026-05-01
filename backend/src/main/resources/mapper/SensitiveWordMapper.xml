@@ -8,7 +8,6 @@
         <result column="word" property="word"/>
         <result column="category" property="category"/>
         <result column="level" property="level"/>
-        <result column="enabled" property="enabled"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="deleted_at" property="deletedAt"/>
@@ -16,7 +15,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, word, category, level, enabled, created_at, updated_at, deleted_at, version
+        id, word, category, level, created_at, updated_at, deleted_at, version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -37,9 +36,6 @@
         <if test="category != null and category != ''">
             AND category = #{category}
         </if>
-        <if test="enabled != null">
-            AND enabled = #{enabled}
-        </if>
         ORDER BY id DESC
         LIMIT #{offset}, #{limit}
     </select>
@@ -54,23 +50,18 @@
         <if test="category != null and category != ''">
             AND category = #{category}
         </if>
-        <if test="enabled != null">
-            AND enabled = #{enabled}
-        </if>
     </select>
 
-    <select id="selectAllEnabledWords" resultType="string">
+    <select id="selectAllWords" resultType="string">
         SELECT word
         FROM blog_sensitive_word
-        WHERE enabled = 1
-        AND deleted_at IS NULL
+        WHERE deleted_at IS NULL
     </select>
 
-    <select id="selectEnabledWordsByLevel" resultType="string">
+    <select id="selectWordsByLevel" resultType="string">
         SELECT word
         FROM blog_sensitive_word
-        WHERE enabled = 1
-        AND level = #{level}
+        WHERE level = #{level}
         AND deleted_at IS NULL
     </select>
 
@@ -90,13 +81,12 @@
     </select>
 
     <insert id="insertOrUpdate" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO blog_sensitive_word (id, word, category, level, enabled, created_at, updated_at, version)
-        VALUES (#{id}, #{word}, #{category}, #{level}, #{enabled}, NOW(), NOW(), 0)
+        INSERT INTO blog_sensitive_word (id, word, category, level, created_at, updated_at, version)
+        VALUES (#{id}, #{word}, #{category}, #{level}, NOW(), NOW(), 0)
         ON DUPLICATE KEY UPDATE
             word       = VALUES(word),
             category   = VALUES(category),
             level      = VALUES(level),
-            enabled    = VALUES(enabled),
             updated_at = NOW(),
             version    = version + 1
     </insert>
@@ -107,7 +97,6 @@
             <if test="word != null">word = #{word},</if>
             <if test="category != null">category = #{category},</if>
             <if test="level != null">level = #{level},</if>
-            <if test="enabled != null">enabled = #{enabled},</if>
             updated_at = NOW(),
             version = version + 1
         </set>

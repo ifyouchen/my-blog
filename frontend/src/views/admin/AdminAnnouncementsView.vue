@@ -10,7 +10,7 @@ import {
   unpublishAdminAnnouncementApi,
   updateAdminAnnouncementApi
 } from '@/api/admin';
-import {createPagedState, useAdminRefresh} from '@/views/admin/adminShared';
+import {createPagedState, formatAdminDateTime, useAdminRefresh} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const toast = inject('toast', { success: () => {}, error: () => {} });
@@ -90,7 +90,6 @@ const handleCreate = async () => {
             target: form.target,
             expiresAt: form.expiresAt || undefined
         });
-        toast.success('公告创建成功');
         resetForm();
         await loadList(true);
     } catch (e) {
@@ -127,7 +126,6 @@ const handleUpdate = async (id) => {
             target: editForm.target,
             expiresAt: editForm.expiresAt || undefined
         });
-        toast.success('公告更新成功');
         state.editingId = null;
         await loadList(true);
     } catch (e) {
@@ -141,7 +139,6 @@ const handlePublish = async (item) => {
     state.actionLoadingId = item.id;
     try {
         await publishAdminAnnouncementApi(item.id);
-        toast.success('公告已发布');
         await loadList(true);
     } catch (e) {
         toast.error(e.message || '发布公告失败');
@@ -154,7 +151,6 @@ const handleUnpublish = async (item) => {
     state.actionLoadingId = item.id;
     try {
         await unpublishAdminAnnouncementApi(item.id);
-        toast.success('公告已撤回');
         await loadList(true);
     } catch (e) {
         toast.error(e.message || '撤回公告失败');
@@ -173,7 +169,6 @@ const handleDelete = (item) => {
             state.actionLoadingId = item.id;
             try {
                 await deleteAdminAnnouncementApi(item.id);
-                toast.success('公告已删除');
                 await loadList(true);
             } catch (e) {
                 toast.error(e.message || '删除公告失败');
@@ -245,7 +240,7 @@ onMounted(() => loadList());
                 </div>
                 <div class="form-actions">
                     <button class="primary-action" type="submit" :disabled="state.submitting">
-                        {{ state.submitting ? '创建中...' : '创建公告' }}
+                        创建公告
                     </button>
                 </div>
             </form>
@@ -260,9 +255,8 @@ onMounted(() => loadList());
                 </div>
             </div>
 
-            <p v-if="state.loading && !state.hasLoadedOnce" class="backend-state-text">加载中...</p>
-            <p v-else-if="state.error && !state.hasLoadedOnce" class="backend-state-text error-text">{{ state.error }}</p>
-            <p v-else-if="state.items.length === 0 && state.hasLoadedOnce" class="backend-state-text">暂无公告</p>
+            <p v-if="state.error && !state.hasLoadedOnce" class="backend-state-text error-text">{{ state.error }}</p>
+            <p v-if="state.items.length === 0 && state.hasLoadedOnce" class="backend-state-text">暂无公告</p>
 
             <div v-if="state.items.length > 0" class="announcement-table-wrap">
                 <table class="admin-table">
@@ -289,8 +283,8 @@ onMounted(() => loadList());
                                         {{ item.published ? '已发布' : '草稿' }}
                                     </span>
                                 </td>
-                                <td>{{ item.publishedAt || '-' }}</td>
-                                <td>{{ item.expiresAt || '永不过期' }}</td>
+                                <td>{{ formatAdminDateTime(item.publishedAt) }}</td>
+                                <td>{{ formatAdminDateTime(item.expiresAt, '永不过期') }}</td>
                                 <td class="td-actions">
                                     <button
                                         v-if="!item.published"
@@ -370,7 +364,7 @@ onMounted(() => loadList());
                                                 :disabled="state.submitting"
                                                 @click="handleUpdate(item.id)"
                                             >
-                                                {{ state.submitting ? '保存中...' : '保存' }}
+                                                保存
                                             </button>
                                             <button
                                                 class="secondary-action"
@@ -584,10 +578,6 @@ onMounted(() => loadList());
     border-color: var(--accent);
 }
 
-.action-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
 
 .editing-row {
     background: var(--brand-soft);

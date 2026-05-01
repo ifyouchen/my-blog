@@ -77,6 +77,7 @@ const writeArticle = () => {
                 <li v-for="(author, index) in props.authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
                     <RouterLink class="home-author-avatar" :to="`/users/${author.user.id}`">
+                        <img :src="author.user.avatar" :alt="`${author.user.name} 的头像`" loading="lazy" decoding="async" />
                     </RouterLink>
                     <div>
                         <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
@@ -89,12 +90,7 @@ const writeArticle = () => {
             </ol>
         </SidebarBlock>
 
-        <SidebarBlock eyebrow="开始创作" title="把项目经验写成下一篇文章" compact class="write-box" data-testid="home-write-box">
-            <p>标题、Markdown、分类、标签、封面图，第一版先把写作路径做顺。</p>
-            <button class="primary-action block" type="button" data-testid="home-write-button" @click="writeArticle">发布文章</button>
-        </SidebarBlock>
-
-        <AdBanner :slot-code="'home_sidebar'" />
+<AdBanner :slot-code="'home_sidebar'" />
     </aside>
 </template>
 

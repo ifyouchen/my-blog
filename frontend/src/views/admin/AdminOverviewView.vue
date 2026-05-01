@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getAdminLogsApi, getAdminStatsApi } from '@/api/admin';
-import { useAdminRefresh } from '@/views/admin/adminShared';
+import { formatAdminDateTime, useAdminRefresh } from '@/views/admin/adminShared';
 
 const loading = ref(false);
 const error = ref('');
@@ -123,10 +123,8 @@ onMounted(loadOverview);
                 </div>
             </div>
 
-            <p v-if="loading && stats" class="backend-state-text subtle">正在更新概览数据...</p>
             <p v-if="error && stats" class="backend-state-text error-text subtle">{{ error }}</p>
-            <p v-if="loading && !stats" class="backend-state-text">概览数据加载中...</p>
-            <p v-else-if="error && !stats" class="backend-state-text error-text">{{ error }}</p>
+            <p v-if="error && !stats" class="backend-state-text error-text">{{ error }}</p>
             <div v-else-if="stats" class="admin-overview-grid" data-testid="admin-overview-stats">
                 <article
                     v-for="card in statCards"
@@ -299,7 +297,7 @@ onMounted(loadOverview);
                         <strong>{{ log.operation }}</strong>
                         <p>{{ log.detail }}</p>
                     </div>
-                    <span>{{ log.createdAt }}</span>
+                    <span>{{ formatAdminDateTime(log.createdAt) }}</span>
                 </article>
             </div>
             <p v-else-if="!loading && !error" class="backend-state-text">最近还没有管理员操作记录</p>

@@ -1,28 +1,58 @@
 <script setup>
-/**
- * AdBanner — 广告位展示组件。
- *
- * 功能：
- * 1. 挂载时调用 /api/ads?slot=xxx 获取当前生效广告列表。
- * 2. 广告进入可视区后触发曝光上报（每个广告只上报一次）。
- * 3. 点击广告先上报点击，再用 window.open 打开目标链接。
- * 4. 广告必须显示"广告"或自定义标签。
- * 5. 目标链接始终在新窗口打开并携带 rel="noopener noreferrer"。
- */
-import {onBeforeUnmount, onMounted, ref} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import {getAdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
 
 const props = defineProps({
-    /** 广告位编码，如 home_sidebar / article_sidebar */
-    slotCode: {
-        type: String,
-        required: true
-    }
+    slotCode: { type: String, required: true }
 });
 
 const ads = ref([]);
 const impressionReported = ref(new Set());
+const dismissedIds = ref(new Set());
+const activePopoverAdId = ref(null);
 let intersectionObserver = null;
+let closeHoverTimer = null;
+const POPOVER_HOVER_DELAY = 200;
+
+const today = new Date();
+const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+const getDismissKey = (id) => `ad_dismissed_${id}_${todayStr}`;
+
+const isDismissedPermanently = (id) => {
+    try { return localStorage.getItem(getDismissKey(id)) === '1'; } catch (e) { return false; }
+};
+
+const visibleAds = computed(() => {
+    return ads.value.filter(ad => !dismissedIds.value.has(ad.id) && !isDismissedPermanently(ad.id));
+});
+
+const dismissSession = (id) => {
+    dismissedIds.value.add(id);
+    activePopoverAdId.value = null;
+};
+
+const dismissToday = (id) => {
+    try { localStorage.setItem(getDismissKey(id), '1'); } catch (e) {}
+    dismissedIds.value.add(id);
+    activePopoverAdId.value = null;
+};
+
+const openPopover = (id) => {
+    if (closeHoverTimer) clearTimeout(closeHoverTimer);
+    activePopoverAdId.value = id;
+};
+
+const closePopover = () => {
+    if (closeHoverTimer) clearTimeout(closeHoverTimer);
+    closeHoverTimer = window.setTimeout(() => {
+        activePopoverAdId.value = null;
+    }, POPOVER_HOVER_DELAY);
+};
+
+const cancelClosePopover = () => {
+    if (closeHoverTimer) clearTimeout(closeHoverTimer);
+};
 
 const fetchAds = async () => {
     try {
@@ -34,18 +64,12 @@ const fetchAds = async () => {
 };
 
 const handleClick = async (ad) => {
-    try {
-        await recordAdClickApi(ad.id);
-    } catch (e) {
-        // 点击上报失败不阻断跳转
-    }
+    try { await recordAdClickApi(ad.id); } catch (e) {}
     window.open(ad.targetUrl, '_blank', 'noopener,noreferrer');
 };
 
 const setupObserver = () => {
-    if (!('IntersectionObserver' in window)) {
-        return;
-    }
+    if (!('IntersectionObserver' in window)) return;
     intersectionObserver = new IntersectionObserver(
         (entries) => {
             entries.forEach((entry) => {
@@ -64,9 +88,7 @@ const setupObserver = () => {
 };
 
 const observeAds = () => {
-    if (!intersectionObserver) {
-        return;
-    }
+    if (!intersectionObserver) return;
     document.querySelectorAll(`[data-ad-slot="${props.slotCode}"] [data-ad-id]`).forEach((el) => {
         intersectionObserver.observe(el);
     });
@@ -79,36 +101,63 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-    if (intersectionObserver) {
-        intersectionObserver.disconnect();
-    }
+    if (intersectionObserver) intersectionObserver.disconnect();
 });
 </script>
 
 <template>
-    <div v-if="ads.length" class="ad-banner-list" :data-ad-slot="slotCode">
+    <div v-if="visibleAds.length" class="ad-banner-list" :data-ad-slot="slotCode">
         <div
-            v-for="ad in ads"
+            v-for="ad in visibleAds"
             :key="ad.id"
             class="ad-banner-item"
             :data-ad-id="String(ad.id)"
         >
-            <span class="ad-label">{{ ad.label || '广告' }}</span>
             <button
                 type="button"
                 class="ad-banner-body"
                 :title="`广告：${ad.title}`"
                 @click="handleClick(ad)"
             >
-                <img
-                    v-if="ad.imageUrl"
-                    class="ad-banner-image"
-                    :src="ad.imageUrl"
-                    :alt="ad.title"
-                    loading="lazy"
-                 decoding="async">
+                <div class="ad-image-wrap">
+                    <img
+                        v-if="ad.imageUrl"
+                        class="ad-banner-image"
+                        :src="ad.imageUrl"
+                        :alt="ad.title"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                    <span class="ad-label-tag">广告</span>
+                </div>
                 <span class="ad-banner-title">{{ ad.title }}</span>
             </button>
+
+            <button
+                type="button"
+                class="ad-close-btn"
+                aria-label="关闭广告"
+                @click="openPopover(ad.id)"
+                @mouseenter="cancelClosePopover"
+            >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+
+            <div
+                v-if="activePopoverAdId === ad.id"
+                class="ad-dismiss-popover"
+                @mouseenter="cancelClosePopover"
+                @mouseleave="closePopover"
+            >
+                <button type="button" class="dismiss-option" @click="dismissSession(ad.id)">
+                    关闭
+                </button>
+                <button type="button" class="dismiss-option" @click="dismissToday(ad.id)">
+                    今天内不再提示
+                </button>
+            </div>
         </div>
     </div>
 </template>
@@ -124,22 +173,7 @@ onBeforeUnmount(() => {
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface);
-    overflow: hidden;
-}
-
-.ad-label {
-    position: absolute;
-    top: 6px;
-    right: 8px;
-    z-index: 1;
-    padding: 2px 6px;
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(0, 0, 0, 0.06);
-    border-radius: 4px;
-    pointer-events: none;
-    user-select: none;
+    overflow: visible;
 }
 
 .ad-banner-body {
@@ -164,12 +198,34 @@ onBeforeUnmount(() => {
     outline-offset: -2px;
 }
 
+.ad-image-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
 .ad-banner-image {
     width: 100%;
     height: 80px;
     object-fit: cover;
-    border-radius: 4px;
     display: block;
+}
+
+.ad-label-tag {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 1;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 4px;
+    pointer-events: none;
+    user-select: none;
+    line-height: 1.4;
+    backdrop-filter: blur(2px);
 }
 
 .ad-banner-title {
@@ -183,5 +239,67 @@ onBeforeUnmount(() => {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 }
-</style>
 
+.ad-close-btn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    background: rgba(0, 0, 0, 0.06);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.ad-banner-item:hover .ad-close-btn {
+    opacity: 1;
+}
+
+.ad-close-btn:hover {
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.ad-dismiss-popover {
+    position: absolute;
+    top: 34px;
+    right: 4px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-width: 130px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.dismiss-option {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.dismiss-option:hover {
+    background: var(--surface-soft);
+}
+
+.dismiss-option + .dismiss-option {
+    border-top: 1px solid var(--line);
+}
+</style>

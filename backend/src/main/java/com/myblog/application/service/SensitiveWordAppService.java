@@ -33,13 +33,13 @@ public class SensitiveWordAppService {
     /**
      * 分页查询敏感词列表。
      */
-    public PageResult<Map<String, Object>> pageList(String keyword, String category, Boolean enabled,
+    public PageResult<Map<String, Object>> pageList(String keyword, String category,
                                                      int page, int pageSize) {
         int safePageSize = Math.max(1, Math.min(pageSize, 100));
         int safePage = Math.max(1, page);
         int offset = (safePage - 1) * safePageSize;
-        List<SensitiveWordDO> rows = sensitiveWordMapper.selectPage(keyword, category, enabled, offset, safePageSize);
-        long total = sensitiveWordMapper.countPage(keyword, category, enabled);
+        List<SensitiveWordDO> rows = sensitiveWordMapper.selectPage(keyword, category, offset, safePageSize);
+        long total = sensitiveWordMapper.countPage(keyword, category);
         List<Map<String, Object>> items = new ArrayList<Map<String, Object>>(rows.size());
         for (SensitiveWordDO row : rows) {
             items.add(toMap(row));
@@ -59,9 +59,8 @@ public class SensitiveWordAppService {
         SensitiveWordDO row = new SensitiveWordDO();
         row.setId(sensitiveWordMapper.selectNextId());
         row.setWord(word.trim());
-        row.setCategory(category);
+        row.setCategory(category != null && !category.trim().isEmpty() ? category.trim() : "GENERAL");
         row.setLevel(normalizeLevel(level));
-        row.setEnabled(true);
         sensitiveWordMapper.insertOrUpdate(row);
         return toMap(row);
     }
@@ -70,7 +69,7 @@ public class SensitiveWordAppService {
      * 更新敏感词。
      */
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> update(Long id, String word, String category, String level, Boolean enabled) {
+    public Map<String, Object> update(Long id, String word, String category, String level) {
         SensitiveWordDO row = sensitiveWordMapper.selectById(id);
         if (row == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "敏感词不存在");
@@ -87,9 +86,6 @@ public class SensitiveWordAppService {
         }
         if (level != null) {
             row.setLevel(normalizeLevel(level));
-        }
-        if (enabled != null) {
-            row.setEnabled(enabled);
         }
         sensitiveWordMapper.update(row);
         return toMap(row);
@@ -117,7 +113,7 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordMapper.selectAllEnabledWords();
+        List<String> words = sensitiveWordMapper.selectAllWords();
         List<String> hits = new ArrayList<String>();
         String lower = text.toLowerCase();
         for (String word : words) {
@@ -138,7 +134,7 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordMapper.selectEnabledWordsByLevel("BLOCK");
+        List<String> words = sensitiveWordMapper.selectWordsByLevel(2);
         List<String> hits = new ArrayList<String>();
         String lower = text.toLowerCase();
         for (String word : words) {
@@ -159,7 +155,7 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordMapper.selectEnabledWordsByLevel("WARN");
+        List<String> words = sensitiveWordMapper.selectWordsByLevel(1);
         List<String> hits = new ArrayList<String>();
         String lower = text.toLowerCase();
         for (String word : words) {
@@ -181,11 +177,11 @@ public class SensitiveWordAppService {
         }
     }
 
-    private String normalizeLevel(String level) {
+    private Integer normalizeLevel(String level) {
         if ("BLOCK".equalsIgnoreCase(level)) {
-            return "BLOCK";
+            return 2;
         }
-        return "WARN";
+        return 1;
     }
 
     private Map<String, Object> toMap(SensitiveWordDO row) {
@@ -193,8 +189,7 @@ public class SensitiveWordAppService {
         map.put("id", row.getId());
         map.put("word", row.getWord());
         map.put("category", row.getCategory());
-        map.put("level", row.getLevel());
-        map.put("enabled", row.getEnabled());
+        map.put("level", row.getLevel() == null ? "WARN" : (row.getLevel() == 2 ? "BLOCK" : "WARN"));
         map.put("createdAt", row.getCreatedAt());
         map.put("updatedAt", row.getUpdatedAt());
         return map;

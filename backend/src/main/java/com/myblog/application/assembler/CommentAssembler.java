@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
  */
 public final class CommentAssembler {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private CommentAssembler() {
     }

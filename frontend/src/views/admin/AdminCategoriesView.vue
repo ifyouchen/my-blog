@@ -18,9 +18,11 @@ import {
 } from '@/views/admin/adminShared';
 import { useRoute, useRouter } from 'vue-router';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 const {
     confirmDialog,
     openConfirmDialog,
@@ -37,8 +39,6 @@ const form = reactive({
 const state = reactive({
     ...createPagedState(8),
     enabled: '',
-    feedback: '',
-    feedbackType: 'success',
     submitting: false,
     editingId: null,
     editForm: {
@@ -57,11 +57,6 @@ const normalizeEnabledFilter = (value) => {
         return false;
     }
     return null;
-};
-
-const setFeedback = (message, type = 'success') => {
-    state.feedback = message;
-    state.feedbackType = type;
 };
 
 const applyRouteState = () => {
@@ -128,10 +123,9 @@ const submitCategory = async () => {
         form.name = '';
         form.description = '';
         form.sortOrder = 0;
-        setFeedback('分类已创建');
         await loadCategories();
     } catch (error) {
-        setFeedback(error.message || '分类创建失败', 'error');
+        toast.error(error.message || '分类创建失败');
     } finally {
         state.submitting = false;
     }
@@ -159,10 +153,9 @@ const saveEdit = async (categoryId) => {
             enabled: Boolean(state.editForm.enabled)
         });
         state.editingId = null;
-        setFeedback('分类已更新');
         await loadCategories();
     } catch (error) {
-        setFeedback(error.message || '分类更新失败', 'error');
+        toast.error(error.message || '分类更新失败');
     } finally {
         state.submitting = false;
     }
@@ -177,10 +170,9 @@ const toggleCategory = async (category) => {
             sortOrder: category.sortOrder || 0,
             enabled: !category.enabled
         });
-        setFeedback(category.enabled ? '分类已禁用' : '分类已启用');
         await loadCategories();
     } catch (error) {
-        setFeedback(error.message || '分类更新失败', 'error');
+        toast.error(error.message || '分类更新失败');
     } finally {
         state.submitting = false;
     }
@@ -197,10 +189,9 @@ const removeCategory = async (category) => {
             state.submitting = true;
             try {
                 await deleteCategoryApi(category.id);
-                setFeedback('分类已删除');
                 await loadCategories();
             } catch (error) {
-                setFeedback(error.message || '分类删除失败', 'error');
+                toast.error(error.message || '分类删除失败');
             } finally {
                 state.submitting = false;
             }
@@ -237,7 +228,7 @@ watch(
                     <input v-model.number="form.sortOrder" type="number" placeholder="排序值">
                 </label>
                 <div class="admin-filter-actions">
-                    <button type="submit" :disabled="state.submitting">{{ state.submitting ? '提交中...' : '新增分类' }}</button>
+                    <button type="submit" :disabled="state.submitting">新增分类</button>
                 </div>
             </form>
 
@@ -253,19 +244,9 @@ watch(
             </div>
         </div>
 
-        <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-            {{ state.feedback }}
-        </p>
-
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新分类数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                分类数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -320,7 +301,7 @@ watch(
                                 <td class="table-actions">
                                     <template v-if="state.editingId === category.id">
                                         <button type="button" class="admin-edit-btn primary" :disabled="state.submitting" @click="saveEdit(category.id)">
-                                            {{ state.submitting ? '保存中...' : '保存' }}
+                                            保存
                                         </button>
                                         <button type="button" class="admin-edit-btn secondary" :disabled="state.submitting" @click="cancelEdit">取消</button>
                                     </template>

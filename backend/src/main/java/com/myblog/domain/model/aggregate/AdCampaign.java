@@ -73,9 +73,10 @@ public class AdCampaign {
         return campaign;
     }
 
-    public void update(String title, String imageUrl, String targetUrl, String label,
+    public void update(String slotCode, String title, String imageUrl, String targetUrl, String label,
                        LocalDateTime startAt, LocalDateTime endAt,
                        Boolean enabled, Integer sortOrder) {
+        this.slotCode = slotCode;
         this.title = title;
         this.imageUrl = imageUrl;
         this.targetUrl = targetUrl;

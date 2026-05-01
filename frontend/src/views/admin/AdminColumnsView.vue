@@ -15,9 +15,11 @@ import {getColumnArticlesApi} from '@/api/columns';
 import {createPagedState, readPositiveInt, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useRoute, useRouter} from 'vue-router';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 const {
     confirmDialog,
     openConfirmDialog,
@@ -36,8 +38,6 @@ const form = reactive({
 const state = reactive({
     ...createPagedState(10),
     keyword: '',
-    feedback: '',
-    feedbackType: 'success',
     submitting: false,
     editingId: null,
     editForm: {
@@ -56,11 +56,6 @@ const state = reactive({
     searching: false,
     articleActionLoadingId: null
 });
-
-const setFeedback = (message, type = 'success') => {
-    state.feedback = message;
-    state.feedbackType = type;
-};
 
 const applyRouteState = () => {
     state.page = readPositiveInt(route.query.page, 1);
@@ -114,7 +109,7 @@ const changeFilter = async () => {
 
 const submitColumn = async () => {
     if (!form.authorId) {
-        setFeedback('请填写作者 ID', 'error');
+        toast.error('请填写作者 ID');
         return;
     }
     state.submitting = true;
@@ -131,10 +126,9 @@ const submitColumn = async () => {
         form.summary = '';
         form.coverUrl = '';
         form.sortOrder = 0;
-        setFeedback('专栏已创建');
         await loadColumns();
     } catch (error) {
-        setFeedback(error.message || '专栏创建失败', 'error');
+        toast.error(error.message || '专栏创建失败');
     } finally {
         state.submitting = false;
     }
@@ -164,10 +158,9 @@ const saveEdit = async (columnId) => {
             status: state.editForm.status
         });
         state.editingId = null;
-        setFeedback('专栏已更新');
         await loadColumns();
     } catch (error) {
-        setFeedback(error.message || '专栏更新失败', 'error');
+        toast.error(error.message || '专栏更新失败');
     } finally {
         state.submitting = false;
     }
@@ -200,7 +193,7 @@ const loadColumnArticles = async () => {
         state.columnArticles = result.items || [];
     } catch (error) {
         state.columnArticles = [];
-        setFeedback('加载专栏文章失败', 'error');
+        toast.error('加载专栏文章失败');
     } finally {
         state.columnArticlesLoading = false;
     }
@@ -218,7 +211,7 @@ const handleSearchArticles = async () => {
             (a) => !state.columnArticles.some((ca) => ca.id === a.id)
         );
     } catch (error) {
-        setFeedback('搜索文章失败', 'error');
+        toast.error('搜索文章失败');
         state.searchResults = [];
     } finally {
         state.searching = false;
@@ -230,11 +223,10 @@ const handleAddArticle = async (articleId) => {
     state.articleActionLoadingId = articleId;
     try {
         await addAdminColumnArticleApi(state.managingColumn.id, { articleId, sortOrder: 0 });
-        setFeedback('文章已添加到专栏');
         await loadColumnArticles();
         state.searchResults = state.searchResults.filter((a) => a.id !== articleId);
     } catch (error) {
-        setFeedback(error.message || '添加失败', 'error');
+        toast.error(error.message || '添加失败');
     } finally {
         state.articleActionLoadingId = null;
     }
@@ -245,10 +237,9 @@ const handleRemoveArticle = async (articleId) => {
     state.articleActionLoadingId = articleId;
     try {
         await removeAdminColumnArticleApi(state.managingColumn.id, articleId);
-        setFeedback('文章已从专栏移除');
         state.columnArticles = state.columnArticles.filter((a) => a.id !== articleId);
     } catch (error) {
-        setFeedback(error.message || '移除失败', 'error');
+        toast.error(error.message || '移除失败');
     } finally {
         state.articleActionLoadingId = null;
     }
@@ -265,10 +256,9 @@ const removeColumn = async (column) => {
             state.submitting = true;
             try {
                 await deleteAdminColumnApi(column.id);
-                setFeedback('专栏已删除');
                 await loadColumns();
             } catch (error) {
-                setFeedback(error.message || '专栏删除失败', 'error');
+                toast.error(error.message || '专栏删除失败');
             } finally {
                 state.submitting = false;
             }
@@ -315,7 +305,7 @@ watch(
                 </label>
                 <div class="admin-filter-actions">
                     <button type="submit" :disabled="state.submitting">
-                        {{ state.submitting ? '提交中...' : '新增专栏' }}
+                        新增专栏
                     </button>
                 </div>
             </form>
@@ -333,20 +323,9 @@ watch(
             </div>
         </div>
 
-        <p v-if="state.feedback"
-           :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-            {{ state.feedback }}
-        </p>
-
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新专栏数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                专栏数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -424,7 +403,7 @@ watch(
                                     <template v-if="state.editingId === column.id">
                                         <button type="button" class="admin-edit-btn primary" :disabled="state.submitting"
                                                 @click="saveEdit(column.id)">
-                                            {{ state.submitting ? '保存中...' : '保存' }}
+                                            保存
                                         </button>
                                         <button type="button" class="admin-edit-btn secondary" :disabled="state.submitting"
                                                 @click="cancelEdit">取消</button>
@@ -475,7 +454,7 @@ watch(
                                placeholder="搜索已发布文章标题，输入后按回车搜索"
                                @keyup.enter="handleSearchArticles">
                         <button type="button" :disabled="state.searching" @click="handleSearchArticles">
-                            {{ state.searching ? '搜索中...' : '搜索' }}
+                            搜索
                         </button>
                     </div>
 
@@ -709,10 +688,6 @@ watch(
     white-space: nowrap;
 }
 
-.modal-search button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
 
 .modal-search button:hover:not(:disabled) {
     filter: brightness(1.05);
@@ -805,10 +780,6 @@ watch(
     color: #fff;
 }
 
-.modal-article-row button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 .modal-hint {
     margin: 0;

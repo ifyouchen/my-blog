@@ -51,49 +51,40 @@ export const getAdminAdApi = async (id) => {
  * 后台创建广告。
  */
 export const createAdminAdApi = async (params) => {
-    const query = new URLSearchParams();
-    query.set('slotCode', params.slotCode || '');
-    query.set('title', params.title || '');
-    if (params.imageUrl) {
-        query.set('imageUrl', params.imageUrl);
-    }
-    query.set('targetUrl', params.targetUrl || '');
-    query.set('label', params.label || '广告');
-    if (params.startAt) {
-        query.set('startAt', params.startAt);
-    }
-    if (params.endAt) {
-        query.set('endAt', params.endAt);
-    }
-    query.set('enabled', params.enabled !== undefined ? String(params.enabled) : 'true');
-    query.set('sortOrder', params.sortOrder !== undefined ? String(params.sortOrder) : '0');
-    return await request(`/admin/ads?${query.toString()}`, { method: 'POST' });
+    return await request('/admin/ads', {
+        method: 'POST',
+        body: {
+            slotCode: params.slotCode || '',
+            title: params.title || '',
+            imageUrl: params.imageUrl || '',
+            targetUrl: params.targetUrl || '',
+            label: params.label || '广告',
+            startAt: params.startAt || null,
+            endAt: params.endAt || null,
+            enabled: params.enabled !== undefined ? params.enabled : true,
+            sortOrder: params.sortOrder !== undefined ? params.sortOrder : 0
+        }
+    });
 };
 
 /**
  * 后台更新广告。
  */
 export const updateAdminAdApi = async (id, params) => {
-    const query = new URLSearchParams();
-    query.set('title', params.title || '');
-    if (params.imageUrl !== undefined) {
-        query.set('imageUrl', params.imageUrl || '');
-    }
-    query.set('targetUrl', params.targetUrl || '');
-    query.set('label', params.label || '广告');
-    if (params.startAt) {
-        query.set('startAt', params.startAt);
-    }
-    if (params.endAt) {
-        query.set('endAt', params.endAt);
-    }
-    if (params.enabled !== undefined) {
-        query.set('enabled', String(params.enabled));
-    }
-    if (params.sortOrder !== undefined) {
-        query.set('sortOrder', String(params.sortOrder));
-    }
-    return await request(`/admin/ads/${id}?${query.toString()}`, { method: 'PUT' });
+    return await request(`/admin/ads/${id}`, {
+        method: 'PUT',
+        body: {
+            slotCode: params.slotCode || 'home_sidebar',
+            title: params.title || '',
+            imageUrl: params.imageUrl !== undefined ? params.imageUrl : '',
+            targetUrl: params.targetUrl || '',
+            label: params.label || '广告',
+            startAt: params.startAt || null,
+            endAt: params.endAt || null,
+            enabled: params.enabled !== undefined ? params.enabled : null,
+            sortOrder: params.sortOrder !== undefined ? params.sortOrder : null
+        }
+    });
 };
 
 /**

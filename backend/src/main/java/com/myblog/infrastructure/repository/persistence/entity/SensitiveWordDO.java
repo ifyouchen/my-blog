@@ -13,8 +13,7 @@ public class SensitiveWordDO {
     private Long id;
     private String word;
     private String category;
-    private String level;
-    private Boolean enabled;
+    private Integer level;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
@@ -29,11 +28,8 @@ public class SensitiveWordDO {
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
-    public String getLevel() { return level; }
-    public void setLevel(String level) { this.level = level; }
-
-    public Boolean getEnabled() { return enabled; }
-    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+    public Integer getLevel() { return level; }
+    public void setLevel(Integer level) { this.level = level; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

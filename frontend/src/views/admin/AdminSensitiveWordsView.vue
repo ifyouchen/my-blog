@@ -6,7 +6,10 @@ import {
     getAdminSensitiveWordsApi,
     updateAdminSensitiveWordApi
 } from '@/api/admin';
+import { useToast } from '@/composables/useToast';
 import { useAdminRefresh } from '@/views/admin/adminShared';
+
+const toast = useToast();
 
 const loading = ref(false);
 const error = ref('');
@@ -15,14 +18,13 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = 20;
 
-const filters = reactive({ keyword: '', category: '', enabled: '' });
+const filters = reactive({ keyword: '', category: '' });
 
 // ===== 弹窗 =====
 const showModal = ref(false);
 const saving = ref(false);
 const editingId = ref(null);
-const form = reactive({ word: '', category: '', level: 'WARN', enabled: true });
-const formError = ref('');
+const form = reactive({ word: '', category: '', level: 'WARN' });
 
 const LEVELS = [
     { value: 'WARN', label: '警告（显示提示）' },
@@ -35,12 +37,10 @@ const load = async () => {
     loading.value = true;
     error.value = '';
     try {
-        const enabledParam = filters.enabled === '' ? null : filters.enabled === 'true';
         const res = await getAdminSensitiveWordsApi(
             page.value, pageSize,
             filters.keyword || null,
-            filters.category || null,
-            enabledParam
+            filters.category || null
         );
         items.value = res.items || [];
         total.value = res.total || 0;
@@ -60,8 +60,6 @@ const openCreate = () => {
     form.word = '';
     form.category = '';
     form.level = 'WARN';
-    form.enabled = true;
-    formError.value = '';
     showModal.value = true;
 };
 
@@ -70,23 +68,19 @@ const openEdit = (item) => {
     form.word = item.word;
     form.category = item.category || '';
     form.level = item.level || 'WARN';
-    form.enabled = item.enabled !== false;
-    formError.value = '';
     showModal.value = true;
 };
 
 const closeModal = () => { showModal.value = false; };
 
 const save = async () => {
-    if (!form.word.trim()) { formError.value = '敏感词不能为空'; return; }
+    if (!form.word.trim()) { toast.error('敏感词不能为空'); return; }
     saving.value = true;
-    formError.value = '';
     try {
         const payload = {
             word: form.word.trim(),
             category: form.category || null,
-            level: form.level,
-            enabled: form.enabled
+            level: form.level
         };
         if (editingId.value) {
             await updateAdminSensitiveWordApi(editingId.value, payload);
@@ -96,7 +90,7 @@ const save = async () => {
         showModal.value = false;
         await load();
     } catch (e) {
-        formError.value = e.message || '保存失败';
+        toast.error(e.message || '保存失败');
     } finally {
         saving.value = false;
     }
@@ -108,16 +102,7 @@ const remove = async (item) => {
         await deleteAdminSensitiveWordApi(item.id);
         await load();
     } catch (e) {
-        alert(e.message || '删除失败');
-    }
-};
-
-const toggleEnabled = async (item) => {
-    try {
-        await updateAdminSensitiveWordApi(item.id, { enabled: !item.enabled });
-        item.enabled = !item.enabled;
-    } catch (e) {
-        alert(e.message || '操作失败');
+        toast.error(e.message || '删除失败');
     }
 };
 
@@ -144,26 +129,20 @@ onMounted(load);
                     <option value="">全部分类</option>
                     <option v-for="c in CATEGORIES" :key="c" :value="c">{{ c }}</option>
                 </select>
-                <select v-model="filters.enabled" class="admin-input">
-                    <option value="">全部状态</option>
-                    <option value="true">已启用</option>
-                    <option value="false">已禁用</option>
-                </select>
                 <button type="submit" class="admin-btn-sm">搜索</button>
             </form>
 
-            <p v-if="loading" class="backend-state-text">加载中...</p>
-            <p v-else-if="error" class="backend-state-text error-text">{{ error }}</p>
+            <p v-if="error && !items.length" class="backend-state-text error-text">{{ error }}</p>
+            <p v-if="error && items.length" class="backend-state-text error-text subtle">{{ error }}</p>
 
             <!-- 表格 -->
-            <div v-else-if="items.length" class="admin-table-wrap">
+            <div v-if="items.length" class="admin-table-wrap">
                 <table class="admin-table">
                     <thead>
                         <tr>
                             <th>敏感词</th>
                             <th>分类</th>
                             <th>等级</th>
-                            <th>状态</th>
                             <th>创建时间</th>
                             <th>操作</th>
                         </tr>
@@ -177,14 +156,7 @@ onMounted(load);
                                     {{ item.level === 'BLOCK' ? '拦截' : '警告' }}
                                 </span>
                             </td>
-                            <td>
-                                <button
-                                    class="toggle-btn"
-                                    :class="item.enabled ? 'enabled' : 'disabled'"
-                                    @click="toggleEnabled(item)"
-                                >{{ item.enabled ? '启用' : '禁用' }}</button>
-                            </td>
-                            <td class="text-sm">{{ item.createdAt ? String(item.createdAt).slice(0, 10) : '-' }}</td>
+                            <td class="text-sm">{{ item.createdAt ? String(item.createdAt).replace('T', ' ').slice(0, 19) : '-' }}</td>
                             <td>
                                 <div class="action-btns">
                                     <button class="admin-btn-sm" @click="openEdit(item)">编辑</button>
@@ -195,7 +167,7 @@ onMounted(load);
                     </tbody>
                 </table>
             </div>
-            <p v-else class="backend-state-text">暂无敏感词数据</p>
+            <p v-else class="backend-state-text">当前筛选条件下没有敏感词</p>
 
             <!-- 分页 -->
             <div v-if="total > pageSize" class="admin-pagination">
@@ -232,17 +204,10 @@ onMounted(load);
                     </select>
                 </label>
 
-                <label class="sw-field sw-field-inline">
-                    <input type="checkbox" v-model="form.enabled" />
-                    <span>启用该敏感词</span>
-                </label>
-
-                <p v-if="formError" class="error-text sw-error">{{ formError }}</p>
-
                 <div class="sw-modal-footer">
                     <button class="admin-btn-sm" @click="closeModal">取消</button>
                     <button class="primary-action" :disabled="saving" @click="save">
-                        {{ saving ? '保存中...' : '保存' }}
+                        保存
                     </button>
                 </div>
             </div>
@@ -289,16 +254,6 @@ onMounted(load);
 }
 .level-warn { background: #fef3c7; color: #92400e; }
 .level-block { background: #fee2e2; color: #991b1b; }
-.toggle-btn {
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-}
-.toggle-btn.enabled { background: #d1fae5; color: #065f46; }
-.toggle-btn.disabled { background: #f3f4f6; color: #6b7280; }
 .action-btns { display: flex; gap: 6px; }
 .admin-btn-sm {
     padding: 4px 10px;
@@ -312,7 +267,6 @@ onMounted(load);
 .admin-btn-sm:hover { background: var(--surface-hover, #f3f4f6); }
 .admin-btn-sm.danger { color: #dc2626; border-color: #fca5a5; }
 .admin-btn-sm.danger:hover { background: #fee2e2; }
-.admin-btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 .admin-pagination {
     display: flex;
     align-items: center;
@@ -354,8 +308,6 @@ onMounted(load);
     font-size: 13px;
 }
 .sw-field em { color: #dc2626; font-style: normal; }
-.sw-field-inline { flex-direction: row; align-items: center; gap: 8px; }
-.sw-error { font-size: 12px; color: #dc2626; margin-top: 4px; }
 .sw-modal-footer {
     display: flex;
     justify-content: flex-end;

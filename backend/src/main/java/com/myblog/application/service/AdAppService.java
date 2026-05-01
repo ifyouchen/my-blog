@@ -132,7 +132,7 @@ public class AdAppService {
      * 后台更新广告。
      */
     @Transactional(rollbackFor = Exception.class)
-    public AdCampaignDTO update(Long id, String title, String imageUrl, String targetUrl,
+    public AdCampaignDTO update(Long id, String slotCode, String title, String imageUrl, String targetUrl,
                                  String label, LocalDateTime startAt, LocalDateTime endAt,
                                  Boolean enabled, Integer sortOrder) {
         AdCampaign campaign = adCampaignRepository.findById(id).orElseThrow(
@@ -144,7 +144,7 @@ public class AdAppService {
         if (targetUrl == null || targetUrl.trim().isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "跳转链接不能为空");
         }
-        campaign.update(title.trim(), imageUrl, targetUrl.trim(), label, startAt, endAt, enabled, sortOrder);
+        campaign.update(slotCode, title.trim(), imageUrl, targetUrl.trim(), label, startAt, endAt, enabled, sortOrder);
         adCampaignRepository.save(campaign);
         return toAdminDTO(campaign);
     }

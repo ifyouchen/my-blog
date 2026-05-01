@@ -14,11 +14,13 @@ import {
   updateAdminArticleStatusApi
 } from '@/api/admin';
 import {getArticleApi} from '@/api/articles';
-import {createPagedState, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {createPagedState, formatAdminDateTime, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 const {
     confirmDialog,
     openConfirmDialog,
@@ -55,8 +57,6 @@ const state = reactive({
     category: '',
     categoryOptions: [],
     stats: null,
-    feedback: '',
-    feedbackType: 'success',
     actionLoadingId: null
 });
 
@@ -159,11 +159,6 @@ const changePage = async (targetPage) => {
     });
 };
 
-const setFeedback = (message, type = 'success') => {
-    state.feedback = message;
-    state.feedbackType = type;
-};
-
 const quickStatusCards = [
     { label: '全部文章', key: 'ALL', status: '', value: () => state.stats?.totalArticles || 0 },
     { label: '草稿', key: 'DRAFT', status: 'DRAFT', value: () => state.stats?.draftArticles || 0 },
@@ -186,10 +181,10 @@ const toggleArticleStatus = async (article) => {
             state.actionLoadingId = article.id;
             try {
                 await updateAdminArticleStatusApi(article.id, nextStatus);
-                setFeedback(nextStatus === 'OFFLINE' ? '文章已下架' : '文章已重新发布');
-                await Promise.all([loadArticles(), loadStats()]);
+                article.status = nextStatus;
+                await loadStats();
             } catch (error) {
-                setFeedback(error.message || '文章状态更新失败', 'error');
+                toast.error(error.message || '文章状态更新失败');
             } finally {
                 state.actionLoadingId = null;
             }
@@ -207,10 +202,16 @@ const deleteArticle = async (article) => {
             state.actionLoadingId = article.id;
             try {
                 await deleteAdminArticleApi(article.id);
-                setFeedback('文章已删除');
-                await Promise.all([loadArticles(), loadStats()]);
+                const idx = state.items.findIndex(item => item.id === article.id);
+                if (idx !== -1) state.items.splice(idx, 1);
+                state.total = Math.max(0, state.total - 1);
+                if (state.items.length === 0 && state.page > 1) {
+                    state.page--;
+                    state.jumpPage = String(state.page);
+                }
+                await loadStats();
             } catch (error) {
-                setFeedback(error.message || '文章删除失败', 'error');
+                toast.error(error.message || '文章删除失败');
             } finally {
                 state.actionLoadingId = null;
             }
@@ -228,11 +229,18 @@ const toggleFeatured = async (article) => {
             await unfeatureAdminArticleApi(article.id);
         }
         article.featured = newFeatured;
-        setFeedback(newFeatured ? '文章已设为精选' : '文章已取消精选');
     } catch (error) {
-        setFeedback(error.message || '精选操作失败', 'error');
+        toast.error(error.message || '精选操作失败');
     } finally {
         state.actionLoadingId = null;
+    }
+};
+
+const exportArticles = async () => {
+    try {
+        await exportAdminArticlesApi();
+    } catch (error) {
+        toast.error(error.message || '文章导出失败');
     }
 };
 
@@ -300,23 +308,14 @@ watch(
                 <div class="admin-filter-actions">
                     <button type="submit">查询</button>
                     <button type="button" @click="resetFilters">重置</button>
-                    <button type="button" class="btn-export" @click="exportAdminArticlesApi" title="导出所有文章为 CSV">导出 CSV</button>
+                    <button type="button" class="btn-export" @click="exportArticles" title="导出所有文章为 CSV">导出 CSV</button>
                 </div>
             </form>
-            <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-                {{ state.feedback }}
-            </p>
         </div>
 
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新文章数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                文章数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -354,14 +353,14 @@ watch(
                                     <span v-if="article.warnFlag" class="status-pill review-pending" title="含敏感词，待审核">待审核</span>
                                 </td>
                                 <td>
-                                    <span v-if="article.featured" class="status-pill brand">精选</span>
+                                    <span v-if="article.featured" class="status-pill">精选</span>
                                     <span v-else class="admin-subtext">—</span>
                                 </td>
                                 <td>
                                     {{ article.viewCount }} / {{ article.likeCount }} / {{ article.favoriteCount }} / {{ article.commentCount }}
                                 </td>
-                                <td>{{ article.publishedAt || '-' }}</td>
-                                <td>{{ article.createdAt }}</td>
+                                <td>{{ formatAdminDateTime(article.publishedAt) }}</td>
+                                <td>{{ formatAdminDateTime(article.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button
                                         v-if="article.status !== 'DELETED'"
@@ -369,7 +368,7 @@ watch(
                                         :disabled="state.actionLoadingId === article.id"
                                         @click="toggleArticleStatus(article)"
                                     >
-                                        {{ state.actionLoadingId === article.id ? '处理中...' : (article.status === 'PUBLISHED' ? '下架' : '发布') }}
+                                        {{ article.status === 'PUBLISHED' ? '下架' : '发布' }}
                                     </button>
                                     <span v-else class="admin-subtext">已删除</span>
                                     <button
@@ -378,7 +377,7 @@ watch(
                                         :disabled="state.actionLoadingId === article.id"
                                         @click="toggleFeatured(article)"
                                     >
-                                        {{ state.actionLoadingId === article.id ? '处理中...' : (article.featured ? '取消精选' : '精选') }}
+                                        {{ article.featured ? '取消精选' : '精选' }}
                                     </button>
                                     <button
                                         type="button"

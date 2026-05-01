@@ -1,4 +1,4 @@
-import {request} from './http';
+import {downloadFile, request} from './http';
 import {normalizeArticle} from './transformers';
 
 export const listArticlesApi = async (params = {}) => {
@@ -82,6 +82,10 @@ export const getMyArticlesApi = async ({ page = 1, pageSize = 10, status = '' } 
 
 export const getMyArticleOverviewApi = async () => {
     return await request('/users/me/articles/overview');
+};
+
+export const exportMyArticlesApi = () => {
+    return downloadFile(`/users/me/export/articles?_t=${Date.now()}`, 'my-articles.csv');
 };
 
 export const getUserArticlesApi = async (userId, { page = 1, pageSize = 10 } = {}) => {

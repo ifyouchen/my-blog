@@ -6,23 +6,26 @@ import com.myblog.application.service.AdAppService;
 import com.myblog.application.service.AdminLogAppService;
 import com.myblog.application.command.RecordAdminLogCommand;
 import com.myblog.infrastructure.security.AuthContext;
+import com.myblog.interfaces.rest.dto.request.CreateAdCampaignRequest;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
  * 后台广告管理接口。
@@ -77,21 +80,11 @@ public class AdminAdsController {
      * 后台创建广告。
      */
     @PostMapping
-    public Result<AdCampaignDTO> createAd(
-            @RequestParam String slotCode,
-            @RequestParam String title,
-            @RequestParam(required = false) String imageUrl,
-            @RequestParam String targetUrl,
-            @RequestParam(required = false, defaultValue = "广告") String label,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startAt,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endAt,
-            @RequestParam(required = false, defaultValue = "true") Boolean enabled,
-            @RequestParam(required = false, defaultValue = "0") Integer sortOrder,
-            @Nullable HttpServletRequest request) {
+    public Result<AdCampaignDTO> createAd(@RequestBody CreateAdCampaignRequest req, @Nullable HttpServletRequest request) {
         ensureAdmin();
-        AdCampaignDTO dto = adAppService.create(slotCode, title, imageUrl, targetUrl, label, startAt, endAt, enabled, sortOrder);
+        AdCampaignDTO dto = adAppService.create(req.getSlotCode(), req.getTitle(), req.getImageUrl(), req.getTargetUrl(), req.getLabel(), parseDateTime(req.getStartAt()), parseDateTime(req.getEndAt()), req.getEnabled() != null ? req.getEnabled() : true, req.getSortOrder() != null ? req.getSortOrder() : 0);
         adminLogAppService.recordOperation(buildLogCommand(
-            "CREATE_AD", "AD_CAMPAIGN", dto.getId(), "创建广告: " + title, null, dto, request
+            "CREATE_AD", "AD_CAMPAIGN", dto.getId(), "创建广告: " + req.getTitle(), null, dto, request
         ));
         return Result.success(dto);
     }
@@ -102,18 +95,11 @@ public class AdminAdsController {
     @PutMapping("/{id}")
     public Result<AdCampaignDTO> updateAd(
             @PathVariable Long id,
-            @RequestParam String title,
-            @RequestParam(required = false) String imageUrl,
-            @RequestParam String targetUrl,
-            @RequestParam(required = false, defaultValue = "广告") String label,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startAt,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endAt,
-            @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) Integer sortOrder,
+            @RequestBody CreateAdCampaignRequest req,
             @Nullable HttpServletRequest request) {
         ensureAdmin();
         AdCampaignDTO before = adAppService.getForAdmin(id);
-        AdCampaignDTO after = adAppService.update(id, title, imageUrl, targetUrl, label, startAt, endAt, enabled, sortOrder);
+        AdCampaignDTO after = adAppService.update(id, req.getSlotCode(), req.getTitle(), req.getImageUrl(), req.getTargetUrl(), req.getLabel(), parseDateTime(req.getStartAt()), parseDateTime(req.getEndAt()), req.getEnabled(), req.getSortOrder());
         adminLogAppService.recordOperation(buildLogCommand(
             "UPDATE_AD", "AD_CAMPAIGN", id, "更新广告 #" + id, before, after, request
         ));
@@ -170,6 +156,23 @@ public class AdminAdsController {
             return forwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    @Nullable
+    private static LocalDateTime parseDateTime(@Nullable String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String s = value.trim().replace('T', ' ');
+        try {
+            return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (DateTimeParseException e) {
+            try {
+                return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            } catch (DateTimeParseException e2) {
+                return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+            }
+        }
     }
 }
 

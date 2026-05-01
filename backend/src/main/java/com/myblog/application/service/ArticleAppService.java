@@ -774,8 +774,14 @@ public class ArticleAppService {
         java.util.Optional<com.myblog.domain.model.aggregate.Article> nextOpt =
             articleRepository.findNextPublished(articleId);
         java.util.Map<String, ArticleDTO> result = new java.util.LinkedHashMap<>();
-        result.put("prev", prevOpt.map(a -> articleAssembler.toDTO(a, null)).orElse(null));
-        result.put("next", nextOpt.map(a -> articleAssembler.toDTO(a, null)).orElse(null));
+        result.put("prev", prevOpt.map(this::toNeighborDTO).orElse(null));
+        result.put("next", nextOpt.map(this::toNeighborDTO).orElse(null));
         return result;
+    }
+
+    private ArticleDTO toNeighborDTO(Article article) {
+        return userRepository.findById(article.getAuthorId())
+            .map(author -> articleAssembler.toDTO(article, author))
+            .orElse(null);
     }
 }

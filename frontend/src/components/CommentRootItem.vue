@@ -34,7 +34,6 @@ const props = defineProps({
 const emit = defineEmits(['refresh', 'count-change']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
-const toast = inject('toast', { success: () => {} });
 const {
     confirmDialog,
     openConfirmDialog,
@@ -279,7 +278,6 @@ function closeReportDialog() {
 }
 
 function handleReportSuccess() {
-    toast.success('举报已提交，管理员会尽快处理');
     closeReportDialog();
 }
 
@@ -317,7 +315,6 @@ async function submitEditComment() {
         editingComment.value = false;
         editDraft.value = '';
         editFeedback.value = '';
-        toast.success('评论已更新');
     } catch (error) {
         editFeedback.value = error.message || '编辑失败';
     } finally {

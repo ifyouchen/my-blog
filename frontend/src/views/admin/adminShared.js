@@ -87,6 +87,14 @@ export const readQueryBooleanText = (route, key) => {
     return '';
 };
 
+export const formatAdminDateTime = (value, fallback = '-') => {
+    if (!value) {
+        return fallback;
+    }
+    const text = String(value).replace('T', ' ');
+    return text.length > 19 ? text.slice(0, 19) : text;
+};
+
 export const syncAdminQuery = async (router, route, patch = {}) => {
     const nextQuery = {
         ...route.query,

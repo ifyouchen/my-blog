@@ -134,9 +134,7 @@ const openReportUser = () => {
     reportDialogVisible.value = true;
 };
 
-const handleReportSuccess = () => {
-    toast.success('举报已提交，管理员会尽快处理');
-};
+const handleReportSuccess = () => {};
 
 const openFollowDialog = async (type) => {
     followDialogType.value = type;

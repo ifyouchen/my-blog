@@ -6,24 +6,25 @@ import AdminPagination from '@/components/admin/AdminPagination.vue';
 import { getAdminLogsApi } from '@/api/admin';
 import {
     createPagedState,
+    formatAdminDateTime,
     readPositiveInt,
     readQueryText,
     resolveAdminOverflowPage,
     syncAdminQuery,
     useAdminRefresh
 } from '@/views/admin/adminShared';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 
 const state = reactive({
     ...createPagedState(),
     actionType: '',
     resultStatus: '',
     dateFrom: '',
-    dateTo: '',
-    feedback: '',
-    feedbackType: 'success'
+    dateTo: ''
 });
 
 const selectedLog = ref(null);
@@ -94,11 +95,9 @@ const syncQuery = async (patch = {}) => {
 
 const submitFilters = async () => {
     if (state.dateFrom && state.dateTo && state.dateFrom > state.dateTo) {
-        state.feedback = '开始日期不能晚于结束日期';
-        state.feedbackType = 'error';
+        toast.error('开始日期不能晚于结束日期');
         return;
     }
-    state.feedback = '';
     state.page = 1;
     await syncQuery({
         page: undefined,
@@ -114,7 +113,6 @@ const resetFilters = async () => {
     state.resultStatus = '';
     state.dateFrom = '';
     state.dateTo = '';
-    state.feedback = '';
     state.page = 1;
     await syncQuery({
         page: undefined,
@@ -191,20 +189,11 @@ watch(
                     <button type="button" @click="resetFilters">重置</button>
                 </div>
             </form>
-            <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-                {{ state.feedback }}
-            </p>
         </div>
 
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新日志数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                日志数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -236,7 +225,7 @@ watch(
                                     </span>
                                 </td>
                                 <td>{{ log.targetType }} #{{ log.targetId ?? '-' }}</td>
-                                <td>{{ log.createdAt }}</td>
+                                <td>{{ formatAdminDateTime(log.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button type="button" @click="openDrawer(log)">查看</button>
                                 </td>

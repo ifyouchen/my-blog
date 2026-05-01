@@ -6,6 +6,7 @@ import AdminPagination from '@/components/admin/AdminPagination.vue';
 import { exportAdminUsersApi, getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
 import {
     createPagedState,
+    formatAdminDateTime,
     readPositiveInt,
     readQueryText,
     resolveAdminOverflowPage,
@@ -13,9 +14,11 @@ import {
     useAdminRefresh
 } from '@/views/admin/adminShared';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 const {
     confirmDialog,
     openConfirmDialog,
@@ -27,8 +30,6 @@ const state = reactive({
     ...createPagedState(),
     status: '',
     keyword: '',
-    feedback: '',
-    feedbackType: 'success',
     actionLoadingId: null
 });
 
@@ -118,17 +119,22 @@ const toggleUserStatus = async (user) => {
             state.actionLoadingId = user.id;
             try {
                 await updateAdminUserStatusApi(user.id, nextStatus);
-                state.feedback = nextStatus === 'DISABLED' ? '用户已禁用' : '用户已启用';
-                state.feedbackType = 'success';
                 await loadUsers();
             } catch (error) {
-                state.feedback = error.message || '用户状态更新失败';
-                state.feedbackType = 'error';
+                toast.error(error.message || '用户状态更新失败');
             } finally {
                 state.actionLoadingId = null;
             }
         }
     });
+};
+
+const exportUsers = async () => {
+    try {
+        await exportAdminUsersApi();
+    } catch (error) {
+        toast.error(error.message || '用户导出失败');
+    }
 };
 
 useAdminRefresh(loadUsers);
@@ -162,23 +168,14 @@ watch(
                 <div class="admin-filter-actions">
                     <button type="submit">查询</button>
                     <button type="button" @click="resetFilters">重置</button>
-                    <button type="button" class="btn-export" @click="exportAdminUsersApi" title="导出所有用户为 CSV">导出 CSV</button>
+                    <button type="button" class="btn-export" @click="exportUsers" title="导出所有用户为 CSV">导出 CSV</button>
                 </div>
             </form>
-            <p v-if="state.feedback" :class="['backend-state-text', state.feedbackType === 'error' ? 'error-text' : 'success-text']">
-                {{ state.feedback }}
-            </p>
         </div>
 
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新用户数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                用户数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -211,10 +208,10 @@ watch(
                                         {{ user.status === 'NORMAL' ? '正常' : '禁用' }}
                                     </span>
                                 </td>
-                                <td>{{ user.createdAt }}</td>
+                                <td>{{ formatAdminDateTime(user.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button type="button" :disabled="state.actionLoadingId === user.id" @click="toggleUserStatus(user)">
-                                        {{ state.actionLoadingId === user.id ? '处理中...' : (user.status === 'NORMAL' ? '禁用' : '启用') }}
+                                        {{ user.status === 'NORMAL' ? '禁用' : '启用' }}
                                     </button>
                                 </td>
                             </tr>

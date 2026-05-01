@@ -10,6 +10,7 @@ import {
 } from '@/api/admin';
 import {
     createPagedState,
+    formatAdminDateTime,
     readPositiveInt,
     readQueryText,
     resolveAdminOverflowPage,
@@ -170,14 +171,6 @@ const changePage = async (targetPage) => {
     });
 };
 
-const notifyFeedback = (message, type = 'success') => {
-    if (type === 'error') {
-        toast.error(message);
-        return;
-    }
-    toast.success(message);
-};
-
 const openDetail = async (report) => {
     state.selectedReport = report;
     state.detailLoading = true;
@@ -216,12 +209,10 @@ const openResolveDialog = (report, defaultAction = 'REJECT') => {
                 if (state.selectedReport && String(state.selectedReport.id) === String(result.id)) {
                     state.selectedReport = result;
                 }
-                const successMessage = actionSuccessMessages[state.resolveAction] || '举报已处理';
-                notifyFeedback(successMessage);
                 await loadReports();
                 state.resolveTargetReport = null;
             } catch (error) {
-                notifyFeedback(error.message || '举报处理失败', 'error');
+                toast.error(error.message || '举报处理失败');
                 throw error;
             } finally {
                 state.actionLoadingId = null;
@@ -323,14 +314,8 @@ watch(
         </div>
 
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新举报数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                举报数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -374,7 +359,7 @@ watch(
                                     <strong>{{ report.reporterNickname || report.reporterUsername || `#${report.reporterUserId}` }}</strong>
                                     <p class="admin-subtext">@{{ report.reporterUsername || report.reporterUserId }}</p>
                                 </td>
-                                <td>{{ report.createdAt }}</td>
+                                <td>{{ formatAdminDateTime(report.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button type="button" @click="openDetail(report)">详情</button>
                                     <button

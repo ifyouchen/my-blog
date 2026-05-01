@@ -30,6 +30,24 @@ const neighborPrev = ref(null);
 const neighborNext = ref(null);
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
+const article = computed(() => {
+    if (remoteArticle.value) {
+        return remoteArticle.value;
+    }
+    return useLocalFallback.value ? localArticle.value : null;
+});
+const articleMarkdown = computed(() => {
+    if (!article.value) {
+        return '';
+    }
+    if (article.value.rawContent) {
+        return article.value.rawContent;
+    }
+    if (Array.isArray(article.value.content)) {
+        return article.value.content.join('\n\n');
+    }
+    return article.value.content || '';
+});
 const pageTitle = computed(() => {
     if (article.value?.title) {
         return `${article.value.title} - my-blog`;
@@ -52,24 +70,6 @@ useHead({
         }];
     })
 });
-const article = computed(() => {
-    if (remoteArticle.value) {
-        return remoteArticle.value;
-    }
-    return useLocalFallback.value ? localArticle.value : null;
-});
-const articleMarkdown = computed(() => {
-    if (!article.value) {
-        return '';
-    }
-    if (article.value.rawContent) {
-        return article.value.rawContent;
-    }
-    if (Array.isArray(article.value.content)) {
-        return article.value.content.join('\n\n');
-    }
-    return article.value.content || '';
-});
 
 const liked = ref(false);
 const favorited = ref(false);
@@ -84,6 +84,22 @@ const reportDialogVisible = ref(false);
 const immersiveMode = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
+let shareHoverTimer = null;
+const SHARE_HOVER_DELAY = 280;
+
+const openShareMenu = () => {
+    if (shareHoverTimer) clearTimeout(shareHoverTimer);
+    shareHoverTimer = window.setTimeout(() => {
+        showShareMenu.value = true;
+    }, SHARE_HOVER_DELAY);
+};
+
+const closeShareMenu = () => {
+    if (shareHoverTimer) clearTimeout(shareHoverTimer);
+    shareHoverTimer = window.setTimeout(() => {
+        showShareMenu.value = false;
+    }, SHARE_HOVER_DELAY);
+};
 const currentUserId = computed(() => state.user?.id || null);
 const showAuthorFollow = computed(() => {
     if (!article.value?.author?.id) {
@@ -168,19 +184,20 @@ const handleAuthorFollowChange = (nextFollowed) => {
 };
 
 const fetchArticle = async () => {
-    const currentId = String(route.params.id);
+    const routeId = String(route.params.id);
+    const numericId = routeId.replace(/-.+$/, '');
     remoteArticle.value = null;
     useLocalFallback.value = false;
     loadError.value = '';
     isLoading.value = true;
     relatedArticles.value = [];
     try {
-        const detail = await getArticleApi(currentId);
-        if (String(route.params.id) === currentId) {
+        const detail = await getArticleApi(numericId);
+        if (String(route.params.id) === routeId) {
             remoteArticle.value = detail;
         }
     } catch (error) {
-        if (String(route.params.id) === currentId) {
+        if (String(route.params.id) === routeId) {
             if (localArticle.value) {
                 useLocalFallback.value = true;
                 return;
@@ -188,7 +205,7 @@ const fetchArticle = async () => {
             loadError.value = error.message || '文章不存在';
         }
     } finally {
-        if (String(route.params.id) === currentId) {
+        if (String(route.params.id) === routeId) {
             isLoading.value = false;
         }
     }
@@ -303,9 +320,7 @@ const openReportArticle = () => {
     reportDialogVisible.value = true;
 };
 
-const handleReportSuccess = () => {
-    toast.success('举报已提交，管理员会尽快处理');
-};
+const handleReportSuccess = () => {};
 
 const toggleImmersive = () => {
     immersiveMode.value = !immersiveMode.value;
@@ -343,12 +358,6 @@ const copyArticleLink = async () => {
     }
 };
 
-const closeShareIfOutside = (e) => {
-    if (!e.target.closest('.article-share-wrap')) {
-        showShareMenu.value = false;
-    }
-};
-
 const shareToWeibo = () => {
     if (!article.value) return;
     const url = encodeURIComponent(window.location.href);
@@ -380,14 +389,13 @@ watch(remoteArticle, (val) => {
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('keydown', handleImmersiveKeydown);
-    document.addEventListener('click', closeShareIfOutside);
 });
 
 onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('keydown', handleImmersiveKeydown);
-    document.removeEventListener('click', closeShareIfOutside);
     document.body.classList.remove('immersive-mode');
+    if (shareHoverTimer) clearTimeout(shareHoverTimer);
 });
 </script>
 
@@ -484,18 +492,30 @@ onUnmounted(() => {
                                 <span class="article-quick-label">举报</span>
                             </button>
                             <!-- 分享 -->
-                            <div class="article-share-wrap">
+                            <div
+                                class="article-share-wrap"
+                                @mouseenter="openShareMenu"
+                                @mouseleave="closeShareMenu"
+                            >
                                 <button
                                     type="button"
                                     :class="['article-quick-button', { active: shareCopied }]"
                                     :title="shareCopied ? '已复制链接' : '分享文章'"
-                                    @click="showShareMenu = !showShareMenu"
                                 >
                                     <span class="article-quick-label">{{ shareCopied ? '已复制' : '分享' }}</span>
                                 </button>
-                                <div v-if="showShareMenu" class="article-share-menu">
-                                    <button type="button" @click="copyArticleLink">复制链接</button>
-                                    <button type="button" @click="shareToWeibo">分享到微博</button>
+                                <div v-if="showShareMenu" class="article-share-card">
+                                    <div class="share-card-arrow"></div>
+                                    <div class="share-card-body">
+                                        <div class="share-option" @click="copyArticleLink">
+                                            <svg class="share-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                            <span>复制链接</span>
+                                        </div>
+                                        <div class="share-option" @click="shareToWeibo">
+                                            <svg class="share-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M10.98 13.9c-.77-.3-1.58-.28-2.3-.06.48.28.98.53 1.5.74.84.34 1.7.62 2.58.84.2-.5.26-1.03-.06-1.48-.26-.33-.68-.37-1.08-.48l-.64-.56zm1.06-2.3c.4.22.88.26 1.3.1.42-.17.72-.56.8-1 .04-.23-.02-.46-.17-.64-.35-.42-1-.58-1.5-.52-.44.06-.84.36-1.06.74-.22.38-.24.84-.04 1.24.02.03.04.06.06.08z"/><path d="M21.86 4.84c-.54-1.62-2.3-2.9-4.48-3.23-2.9-.44-6.1.7-8.58 2.97-.98.9-1.8 1.92-2.4 3.01L3.2 8.82c-.65.28-1.2.7-1.64 1.22-.8.93-1 2.14-.42 3.08.27.44.65.77 1.1.98l-.78.66c-.44.38-.72.9-.78 1.48-.12 1.06.52 2.08 1.56 2.6.25.12.52.2.8.26 1.18.28 2.44.54 3.6.86.1.64.54 1.2 1.18 1.64 1.66 1.14 4.08 1.4 6.4.54 1.42-.52 2.7-1.4 3.78-2.55 1.86-2 3.2-4.6 3.56-7.04.18-1.18.08-2.3-.22-3.3-.1-.32-.2-.64-.32-.94zM7.3 16.68c-1.26-.38-3.68-.82-4.66-1.7-.36-.32-.58-.74-.58-1.18 0-.74.56-1.38 1.32-1.5.52-.08 1.04.08 1.48.34.82.48 1.5 1.14 2.2 1.76.92.82 1.93 1.56 3.08 2.06-1.16-.02-2.26-.4-2.84-.78zm4.7 2.2c-2.1.16-4.06-.82-5.06-2.22-1-1.4-.74-3.08.9-3.88.86-.42 1.86-.4 2.74-.02 1.26.54 2.14 1.64 2.62 2.88.3.78.36 1.62.1 2.48-.08.28-.24.54-.44.76h-.86zm6.22-5.32c-1.1 1.48-2.94 2.36-4.44 2.6-.36.06-.72.08-1.08.06.32-.3.6-.64.8-1.02.4-.7.56-1.5.4-2.28-.26-1.28-1.14-2.42-2.3-3.2-1.12-.76-2.48-1.06-3.86-.82-.7.12-1.38.4-1.96.8-.28.2-.54.42-.78.66.46-1.22 1.18-2.3 2.1-3.16 2.06-1.88 4.76-2.8 7.18-2.46 1.72.24 3.16 1.14 3.64 2.32.02.04.04.08.06.12.5 1.38.5 3.12-.18 4.86-.14.36-.3.72-.48 1.06z"/></svg>
+                                            <span>微博</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <!-- 沉浸阅读 -->
@@ -1080,5 +1100,116 @@ onUnmounted(() => {
     .article-related-list {
         grid-template-columns: 1fr 1fr;
     }
+}
+
+/* 沉浸阅读模式 */
+.detail-immersive {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.detail-immersive .detail-side {
+    display: none;
+}
+
+.detail-immersive .article-main {
+    max-width: 800px;
+    margin: 0 auto;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+.detail-immersive .article-heading-panel {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.detail-immersive .article-body {
+    padding: 28px 24px;
+}
+
+/* 分享卡片（B 站风格） */
+.article-share-wrap {
+    position: relative;
+}
+
+.article-share-card {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    z-index: 100;
+    min-width: 150px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+    animation: share-card-in 0.2s ease;
+}
+
+@keyframes share-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.share-card-arrow {
+    position: absolute;
+    bottom: -6px;
+    right: 36px;
+    width: 12px;
+    height: 12px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    transform: rotate(45deg);
+}
+
+.share-card-body {
+    padding: 8px;
+}
+
+.share-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    font-size: 14px;
+    color: var(--text-strong);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.share-option:hover {
+    background: var(--surface-soft);
+}
+
+.share-icon {
+    flex: none;
+    color: var(--muted);
+}
+</style>
+
+<style>
+/* 沉浸阅读 — 全局规则（body/site-header 不受 scoped 限制） */
+body.immersive-mode .site-header {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+}
+
+body.immersive-mode {
+    background: #fff;
 }
 </style>

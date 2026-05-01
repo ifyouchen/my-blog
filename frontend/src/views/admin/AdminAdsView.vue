@@ -4,7 +4,7 @@ import {useRoute, useRouter} from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {createAdminAdApi, deleteAdminAdApi, getAdminAdsApi, getAdminAdStatsApi, updateAdminAdApi} from '@/api/ads';
-import {createPagedState, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {createPagedState, formatAdminDateTime, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const route = useRoute();
@@ -45,6 +45,7 @@ const form = reactive({
 });
 
 const editForm = reactive({
+    slotCode: 'home_sidebar',
     title: '',
     imageUrl: '',
     targetUrl: '',
@@ -151,7 +152,6 @@ const submitCreate = async () => {
             enabled: form.enabled,
             sortOrder: Number(form.sortOrder) || 0
         });
-        toast.success('广告创建成功');
         resetForm();
         await loadAds();
     } catch (error) {
@@ -163,6 +163,7 @@ const submitCreate = async () => {
 
 const startEdit = (ad) => {
     state.editingId = ad.id;
+    editForm.slotCode = ad.slotCode || 'home_sidebar';
     editForm.title = ad.title || '';
     editForm.imageUrl = ad.imageUrl || '';
     editForm.targetUrl = ad.targetUrl || '';
@@ -189,6 +190,7 @@ const submitEdit = async (ad) => {
     state.actionLoadingId = ad.id;
     try {
         await updateAdminAdApi(ad.id, {
+            slotCode: editForm.slotCode,
             title: editForm.title.trim(),
             imageUrl: editForm.imageUrl.trim() || null,
             targetUrl: editForm.targetUrl.trim(),
@@ -198,7 +200,6 @@ const submitEdit = async (ad) => {
             enabled: editForm.enabled,
             sortOrder: Number(editForm.sortOrder) || 0
         });
-        toast.success('广告更新成功');
         state.editingId = null;
         await loadAds();
     } catch (error) {
@@ -219,7 +220,6 @@ const confirmDelete = (ad) => {
             state.actionLoadingId = ad.id;
             try {
                 await deleteAdminAdApi(ad.id);
-                toast.success('广告已删除');
                 await loadAds();
             } catch (error) {
                 toast.error(error.message || '删除失败');
@@ -236,7 +236,7 @@ const getSlotLabel = (code) => {
     return opt ? opt.label : code;
 };
 
-const formatDate = (d) => (d ? String(d).slice(0, 16).replace('T', ' ') : '—');
+const formatDate = (d) => formatAdminDateTime(d, '—');
 
 // ======== 统计概览 ========
 const stats = ref(null);
@@ -382,7 +382,7 @@ watch(
                 </label>
                 <div class="admin-form-actions">
                     <button type="submit" :disabled="state.submitting">
-                        {{ state.submitting ? '提交中...' : '创建广告' }}
+                        创建广告
                     </button>
                 </div>
             </form>
@@ -417,14 +417,8 @@ watch(
 
         <!-- 列表 -->
         <div class="admin-table-shell">
-            <p v-if="state.loading && state.items.length" class="backend-state-text subtle">
-                正在更新广告数据...
-            </p>
             <p v-if="state.error && state.items.length" class="backend-state-text error-text subtle">
                 {{ state.error }}
-            </p>
-            <p v-if="state.loading && !state.items.length" class="backend-state-text">
-                广告数据加载中...
             </p>
             <p v-else-if="state.error && !state.items.length" class="backend-state-text error-text">
                 {{ state.error }}
@@ -488,6 +482,14 @@ watch(
                                         <form class="ad-inline-edit" @submit.prevent="submitEdit(ad)">
                                             <div class="ad-inline-edit-grid">
                                                 <label>
+                                                    <span>广告位</span>
+                                                    <select v-model="editForm.slotCode">
+                                                        <option v-for="opt in SLOT_OPTIONS" :key="opt.value" :value="opt.value">
+                                                            {{ opt.label }}
+                                                        </option>
+                                                    </select>
+                                                </label>
+                                                <label>
                                                     <span>标题 *</span>
                                                     <input v-model="editForm.title" type="text" maxlength="200" required>
                                                 </label>
@@ -525,7 +527,7 @@ watch(
                                                     type="submit"
                                                     :disabled="state.actionLoadingId === ad.id"
                                                 >
-                                                    {{ state.actionLoadingId === ad.id ? '保存中...' : '保存' }}
+                                                    保存
                                                 </button>
                                                 <button type="button" @click="cancelEdit">取消</button>
                                             </div>
@@ -632,10 +634,6 @@ watch(
     cursor: pointer;
 }
 
-.admin-form-actions button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
 
 .ad-label-badge {
     padding: 2px 8px;

@@ -807,10 +807,9 @@ public class AdminController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Boolean enabled) {
+            @RequestParam(required = false) String category) {
         ensureAdmin();
-        return Result.success(sensitiveWordAppService.pageList(keyword, category, enabled, page, pageSize));
+        return Result.success(sensitiveWordAppService.pageList(keyword, category, page, pageSize));
     }
 
     /**
@@ -841,8 +840,7 @@ public class AdminController {
         String word = (String) request.get("word");
         String category = (String) request.get("category");
         String level = (String) request.get("level");
-        Boolean enabled = request.get("enabled") instanceof Boolean ? (Boolean) request.get("enabled") : null;
-        Map<String, Object> result = sensitiveWordAppService.update(id, word, category, level, enabled);
+        Map<String, Object> result = sensitiveWordAppService.update(id, word, category, level);
         adminLogAppService.recordOperation(buildLogCommand(
             "UPDATE_SENSITIVE_WORD", "SENSITIVE_WORD", id,
             "更新敏感词 " + id, null, result, httpReq));

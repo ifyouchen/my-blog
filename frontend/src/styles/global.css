@@ -1538,12 +1538,12 @@ button:disabled {
 /* 作者信息块 */
 .article-author {
     display: inline-grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
     align-items: center;
     width: fit-content;
     max-width: min(100%, 300px);
-    padding: 10px 12px;
+    padding: 6px 10px;
     margin: 0;
     background: var(--surface);
     border: 1px solid var(--line);
@@ -1552,8 +1552,8 @@ button:disabled {
 }
 
 .article-author img {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     object-fit: cover;
     border-radius: 50%;
 }
@@ -1564,15 +1564,14 @@ button:disabled {
 }
 
 .article-author strong {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-strong);
 }
 
 .article-author span {
-    margin-top: 1px;
     color: var(--muted);
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
 /* 标签行 — 去掉胶囊 */

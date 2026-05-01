@@ -969,15 +969,19 @@
     <!-- 每日新增文章趋势（管理后台用） -->
     <select id="selectDailyArticleTrend"
             resultType="com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO">
-        SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date,
+        SELECT DATE_FORMAT(stat_date, '%Y-%m-%d') AS date,
                COUNT(1) AS newArticles,
                0 AS newUsers,
                0 AS newComments
-        FROM blog_article
-        WHERE deleted_at IS NULL
-        AND DATE(created_at) BETWEEN #{startDate} AND #{endDate}
-        GROUP BY DATE(created_at)
-        ORDER BY DATE(created_at) ASC
+        FROM (
+            SELECT DATE(created_at) AS stat_date
+            FROM blog_article
+            WHERE deleted_at IS NULL
+            AND created_at &gt;= #{startDate}
+            AND created_at &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+        ) article_daily
+        GROUP BY stat_date
+        ORDER BY stat_date ASC
     </select>
 
     <!-- 已发布文章分类分布统计（管理后台用） -->

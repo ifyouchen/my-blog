@@ -88,10 +88,14 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         if ("/api/auth/register".equals(path) || "/api/auth/login".equals(path) || "/api/health".equals(path)) {
             return true;
         }
+        if (path.matches("^/api/ads/\\d+/(impression|click)$")) {
+            return true;
+        }
         if (!"GET".equalsIgnoreCase(method)) {
             return false;
         }
         if ("/api/articles".equals(path)
+            || "/api/ads".equals(path)
             || "/api/categories".equals(path)
             || "/api/tags".equals(path)
             || "/api/home/stats".equals(path)
@@ -100,20 +104,33 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || "/api/rankings/authors".equals(path)
             || "/api/columns".equals(path)
             || "/api/columns/recommended".equals(path)
+            || "/api/topics".equals(path)
             || "/api/search/bootstrap".equals(path)
             || "/api/search/users".equals(path)
             || "/api/search/columns".equals(path)
             || "/api/search/hot-keywords".equals(path)
             || path.matches("^/api/articles/\\d+$")
+            || path.matches("^/api/articles/\\d+/related$")
+            || path.matches("^/api/articles/\\d+/neighbors$")
             || path.matches("^/api/articles/\\d+/comments$")
             || path.matches("^/api/comments/\\d+/replies$")
             || path.matches("^/api/articles/\\d+/like/status$")
             || path.matches("^/api/articles/\\d+/favorite/status$")
             || path.matches("^/api/users/\\d+$")
             || path.matches("^/api/users/\\d+/articles$")
+            || path.matches("^/api/users/\\d+/articles/hot$")
+            || path.matches("^/api/users/\\d+/followers$")
+            || path.matches("^/api/users/\\d+/following$")
+            || path.matches("^/api/users/\\d+/follow-status$")
             || "/api/announcements/active".equals(path)
+            || path.matches("^/api/categories/\\d+$")
             || path.matches("^/api/categories/\\d+/articles$")
+            || path.matches("^/api/tags/\\d+$")
             || path.matches("^/api/tags/\\d+/articles$")
+            || path.matches("^/api/columns/\\d+$")
+            || path.matches("^/api/columns/\\d+/articles$")
+            || path.matches("^/api/topics/\\d+$")
+            || path.matches("^/api/topics/\\d+/articles$")
             || "/api/tags/hot".equals(path)) {
             return true;
         }

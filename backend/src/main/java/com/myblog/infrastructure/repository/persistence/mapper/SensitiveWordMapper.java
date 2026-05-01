@@ -17,19 +17,17 @@ public interface SensitiveWordMapper {
 
     List<SensitiveWordDO> selectPage(@Param("keyword") String keyword,
                                      @Param("category") String category,
-                                     @Param("enabled") Boolean enabled,
                                      @Param("offset") int offset,
                                      @Param("limit") int limit);
 
     long countPage(@Param("keyword") String keyword,
-                   @Param("category") String category,
-                   @Param("enabled") Boolean enabled);
+                   @Param("category") String category);
 
-    /** 查询所有启用的敏感词（用于内容检测）。 */
-    List<String> selectAllEnabledWords();
+    /** 查询所有敏感词（用于内容检测）。 */
+    List<String> selectAllWords();
 
-    /** 查询指定等级的启用敏感词列表。 */
-    List<String> selectEnabledWordsByLevel(@Param("level") String level);
+    /** 查询指定等级的敏感词列表。 */
+    List<String> selectWordsByLevel(@Param("level") Integer level);
 
     int countByWord(@Param("word") String word, @Param("excludeId") Long excludeId);
 
