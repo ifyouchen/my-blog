@@ -1617,6 +1617,14 @@ button:disabled {
     line-height: 1.9;
 }
 
+/* 图片居中：使 text-align 对图片生效，且独立图片默认居中 */
+.markdown-preview img {
+    display: inline-block;
+}
+.markdown-preview p:has(> img:only-child) {
+    text-align: center;
+}
+
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3,

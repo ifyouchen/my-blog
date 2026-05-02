@@ -245,40 +245,46 @@ export const editorJsonToMarkdown = (json) => {
         return `${firstLine}\n${nestedBlocks.join('')}`;
     };
 
+    const renderImage = (node, context = {}) => {
+        const src = node.attrs.src || '';
+        const alt = node.attrs.alt || '';
+        let width = '';
+        if (node.attrs.containerStyle) {
+            const match = node.attrs.containerStyle.match(/width:\s*([0-9.]+)px/);
+            if (match) width = match[1];
+        }
+        const align = context.textAlign;
+        if (align && align !== 'left' && !context.inline) {
+            let style = '';
+            if (width) style = `width:${width}px;max-width:100%;`;
+            const imgTag = `<img src="${src}" alt="${alt}"${style ? ` style="${style}"` : ''}>`;
+            return `<div style="text-align:${align}">${imgTag}</div>`;
+        }
+        if (width) {
+            return `![${alt}|${width}x](${src})`;
+        }
+        return `![${alt}](${src})`;
+    };
+
     const processNode = (node, context = {}) => {
         if (node.type === 'imageResize') {
-            const src = node.attrs.src || '';
-            const alt = node.attrs.alt || '';
-            let width = '';
-            if (node.attrs.containerStyle) {
-                const match = node.attrs.containerStyle.match(/width:\s*([0-9.]+)px/);
-                if (match) width = match[1];
-            }
-            if (width) {
-                return `![${alt}|${width}x](${src})`;
-            }
-            return `![${alt}](${src})`;
+            return renderImage(node, context);
         }
         if (node.type === 'image') {
-            const src = node.attrs.src || '';
-            const alt = node.attrs.alt || '';
-            let width = '';
-            if (node.attrs.containerStyle) {
-                const match = node.attrs.containerStyle.match(/width:\s*([0-9.]+)px/);
-                if (match) width = match[1];
-            }
-            if (width) {
-                return `![${alt}|${width}x](${src})`;
-            }
-            return `![${alt}](${src})`;
+            return renderImage(node, context);
         }
         if (node.type === 'paragraph') {
-            const text = (node.content || []).map(processNode).join('');
+            const align = node.attrs?.textAlign;
+            const childContext = { ...context, textAlign: align };
+            const text = (node.content || []).map(child => processNode(child, childContext)).join('');
             if (context.inline) {
                 return text;
             }
-            const align = node.attrs?.textAlign;
             if (align && align !== 'left') {
+                const allImages = (node.content || []).every(c => c.type === 'imageResize' || c.type === 'image');
+                if (allImages) {
+                    return normalizeBlock(text);
+                }
                 return normalizeBlock(`<p style="text-align:${align}">${text}</p>`);
             }
             return normalizeBlock(text);
