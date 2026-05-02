@@ -2869,6 +2869,12 @@ button:disabled {
     border-left-color: var(--accent);
 }
 
+.status-pill.success {
+    color: #065f46;
+    background: #d1fae5;
+    border-left-color: #059669;
+}
+
 /* 收藏卡片 */
 .favorite-grid {
     display: grid;

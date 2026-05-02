@@ -21,6 +21,16 @@ export const updateAdminUserStatusApi = async (userId, status) => {
     });
 };
 
+export const disableAdminUserApi = async (userId, reason) => {
+    return await request(`/admin/users/${userId}/disable`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+    });
+};
+
 export const getAdminArticlesApi = async (page = 1, pageSize = 10, status = null, keyword = null, category = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (status) params.append('status', status);
@@ -59,11 +69,20 @@ export const batchDeleteAdminArticlesApi = async (ids) => {
     });
 };
 
-export const getAdminCommentsApi = async (page = 1, pageSize = 10, articleId = null, keyword = null) => {
+export const getAdminCommentsApi = async (page = 1, pageSize = 10, articleId = null, status = null, keyword = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (articleId) params.append('articleId', articleId);
+    if (status) params.append('status', status);
     if (keyword) params.append('keyword', keyword);
     return await request(`/admin/comments?${params}`);
+};
+
+export const approveAdminCommentApi = async (commentId) => {
+    return await request(`/admin/comments/${commentId}/approve`, { method: 'PUT' });
+};
+
+export const rejectAdminCommentApi = async (commentId) => {
+    return await request(`/admin/comments/${commentId}/reject`, { method: 'PUT' });
 };
 
 export const getAdminLogsApi = async (page = 1, pageSize = 10, filters = {}) => {

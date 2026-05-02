@@ -218,6 +218,8 @@ public class RestDtoMapper {
         response.setSeoTitle(dto.getSeoTitle());
         response.setSeoDescription(dto.getSeoDescription());
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
+        response.setOfflineReason(dto.getOfflineReason());
+        response.setWarnFlag(dto.isWarnFlag());
         response.setAuthor(toResponse(dto.getAuthor()));
         return response;
     }

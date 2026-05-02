@@ -38,15 +38,18 @@ public class AdminAppService {
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
+    private final CommentAppService commentAppService;
     private final ApplicationEventPublisher eventPublisher;
 
     public AdminAppService(UserRepository userRepository,
                          ArticleRepository articleRepository,
                          CommentRepository commentRepository,
+                         CommentAppService commentAppService,
                          ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.commentRepository = commentRepository;
+        this.commentAppService = commentAppService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -188,6 +191,7 @@ public class AdminAppService {
             map.put("nickname", user.getNickname());
             map.put("status", user.getStatus().name());
             map.put("role", user.getRole().name());
+            map.put("disableReason", user.getDisableReason());
             map.put("createdAt", user.getCreatedAt());
             map.put("updatedAt", user.getUpdatedAt());
             items.add(map);
@@ -456,10 +460,11 @@ public class AdminAppService {
      * @param keyword 关键字
      * @return 评论分页结果
      */
-    public PageResult<Map<String, Object>> getComments(int page, int pageSize, Long articleId, String keyword) {
+    public PageResult<Map<String, Object>> getComments(int page, int pageSize, Long articleId, String status, String keyword) {
         String normalizedKeyword = normalizeKeyword(keyword);
-        List<Comment> comments = commentRepository.findAdminPage(articleId, null, normalizedKeyword, page, pageSize);
-        long total = commentRepository.countAdminPage(articleId, null, normalizedKeyword);
+        String normalizedStatus = normalizeKeyword(status);
+        List<Comment> comments = commentRepository.findAdminPage(articleId, normalizedStatus, normalizedKeyword, page, pageSize);
+        long total = commentRepository.countAdminPage(articleId, normalizedStatus, normalizedKeyword);
         Map<Long, Article> articleMap = buildArticleMap(comments);
         Map<Long, User> userMap = buildUserMap(comments);
         List<Map<String, Object>> items = new ArrayList<Map<String, Object>>(comments.size());
@@ -474,6 +479,7 @@ public class AdminAppService {
             map.put("username", user == null ? null : user.getUsername());
             map.put("nickname", user == null ? null : user.getNickname());
             map.put("content", comment.getContent());
+            map.put("status", comment.getStatus().name());
             map.put("parentId", comment.getParentId());
             map.put("rootCommentId", comment.getRootCommentId());
             map.put("type", comment.isRootComment() ? "ROOT" : "REPLY");
@@ -504,6 +510,38 @@ public class AdminAppService {
         result.put("userId", comment.getUserId().getValue());
         result.put("content", comment.getContent());
         result.put("deleted", true);
+        return result;
+    }
+
+    /**
+     * 审核通过评论。
+     *
+     * @param commentId 评论 ID
+     * @return 审核后的评论信息
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> approveComment(Long commentId) {
+        com.myblog.application.dto.CommentDTO dto = commentAppService.approveComment(commentId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", dto.getId());
+        result.put("articleId", dto.getArticleId());
+        result.put("content", dto.getContent());
+        result.put("status", dto.getStatus());
+        return result;
+    }
+
+    /**
+     * 拒绝评论。
+     *
+     * @param commentId 评论 ID
+     * @return 操作结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> rejectComment(Long commentId) {
+        commentAppService.rejectComment(commentId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", commentId);
+        result.put("rejected", true);
         return result;
     }
 

@@ -18,7 +18,8 @@
       "Bash(taskkill *)",
       "Bash(kill -9 30864)",
       "Bash(/c/Windows/System32/taskkill.exe /PID 30864 /F)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(npx vue-cli-service *)"
     ]
   }
 }

@@ -32,6 +32,8 @@ public class ArticleDTO {
     private String seoTitle;
     private String seoDescription;
     private String scheduledPublishAt;
+    private String offlineReason;
+    private boolean warnFlag;
     private UserDTO author;
 
     /**
@@ -358,6 +360,22 @@ public class ArticleDTO {
 
     public void setScheduledPublishAt(String scheduledPublishAt) {
         this.scheduledPublishAt = scheduledPublishAt;
+    }
+
+    public String getOfflineReason() {
+        return offlineReason;
+    }
+
+    public void setOfflineReason(String offlineReason) {
+        this.offlineReason = offlineReason;
+    }
+
+    public boolean isWarnFlag() {
+        return warnFlag;
+    }
+
+    public void setWarnFlag(boolean warnFlag) {
+        this.warnFlag = warnFlag;
     }
 
     /**

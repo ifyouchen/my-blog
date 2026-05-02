@@ -55,6 +55,8 @@ public class ArticleAssembler {
         dto.setSlug(article.getSlug());
         dto.setSeoTitle(article.getSeoTitle());
         dto.setSeoDescription(article.getSeoDescription());
+        dto.setOfflineReason(article.getOfflineReason());
+        dto.setWarnFlag(article.isWarnFlag());
         if (article.getScheduledPublishAt() != null) {
             dto.setScheduledPublishAt(FORMATTER.format(article.getScheduledPublishAt()));
         }

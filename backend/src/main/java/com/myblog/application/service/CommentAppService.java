@@ -425,6 +425,45 @@ public class CommentAppService {
         commentRepository.save(comment);
     }
 
+    /**
+     * 审核通过评论（管理员）。
+     *
+     * @param commentId 评论 ID
+     * @return 审核后的评论
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public CommentDTO approveComment(Long commentId) {
+        Comment comment = commentRepository.findByIdForAdmin(new CommentId(commentId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
+        if (comment.isPublished()) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "评论已发布，无需重复审核");
+        }
+        if (comment.isDeleted()) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "已删除的评论不能审核通过");
+        }
+        comment.approve();
+        commentRepository.save(comment);
+        User user = userRepository.findById(comment.getUserId())
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        return CommentAssembler.toDTO(comment, user);
+    }
+
+    /**
+     * 拒绝评论（管理员，将评论标记为已删除）。
+     *
+     * @param commentId 评论 ID
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectComment(Long commentId) {
+        Comment comment = commentRepository.findByIdForAdmin(new CommentId(commentId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
+        if (comment.isDeleted()) {
+            throw new ApplicationException(ErrorCode.CONFLICT, "评论已删除");
+        }
+        comment.delete();
+        commentRepository.save(comment);
+    }
+
     private Article loadAccessibleArticle(Long articleId, Long currentUserId, String currentUserRole) {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));

@@ -322,6 +322,7 @@ public class ArticleAppService {
             command.getSeoDescription(),
             scheduledPublishAt
         );
+        applyWarnFlag(article, command.getTitle(), command.getContent());
         articleRepository.save(article);
         if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
@@ -381,6 +382,7 @@ public class ArticleAppService {
         );
         ArticleStatus oldStatus = article.getStatus();
         applyStatus(article, targetStatus, scheduledPublishAt);
+        applyWarnFlag(article, command.getTitle(), command.getContent());
         articleRepository.save(article);
         if (ArticleStatus.PUBLISHED.equals(article.getStatus()) && oldStatus != ArticleStatus.PUBLISHED) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
@@ -411,6 +413,7 @@ public class ArticleAppService {
         }
         ArticleStatus oldStatus = article.getStatus();
         applyStatus(article, status);
+        applyWarnFlag(article, article.getTitle(), article.getContent());
         articleRepository.save(article);
         if (ArticleStatus.PUBLISHED.equals(article.getStatus()) && oldStatus != ArticleStatus.PUBLISHED) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
@@ -572,6 +575,13 @@ public class ArticleAppService {
         if (!blockHits.isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR,
                 action + "失败：内容包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+        }
+    }
+
+    private void applyWarnFlag(Article article, String title, String content) {
+        List<String> warnHits = sensitiveWordAppService.detectWarnWords(title + "\n" + content);
+        if (!warnHits.isEmpty()) {
+            article.markWarnFlag();
         }
     }
 

@@ -3,7 +3,7 @@ import { reactive, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import { deleteAdminCommentApi, getAdminCommentsApi } from '@/api/admin';
+import { deleteAdminCommentApi, getAdminCommentsApi, approveAdminCommentApi, rejectAdminCommentApi } from '@/api/admin';
 import {
     createPagedState,
     formatAdminDateTime,
@@ -29,13 +29,22 @@ const {
 const state = reactive({
     ...createPagedState(),
     articleId: '',
+    status: '',
     keyword: '',
     actionLoadingId: null
 });
 
+const STATUS_OPTIONS = [
+    { value: '', label: '全部' },
+    { value: 'PENDING', label: '待审核' },
+    { value: 'PUBLISHED', label: '已发布' },
+    { value: 'DELETED', label: '已删除' }
+];
+
 const applyRouteState = () => {
     state.page = readPositiveInt(route.query.page, 1);
     state.articleId = readQueryText(route, 'articleId');
+    state.status = readQueryText(route, 'status');
     state.keyword = readQueryText(route, 'keyword');
     state.jumpPage = String(state.page);
 };
@@ -49,6 +58,7 @@ const loadComments = async () => {
             state.page,
             state.pageSize,
             Number.isNaN(articleIdValue) ? null : articleIdValue,
+            state.status || null,
             state.keyword || null
         );
         const overflowPage = resolveAdminOverflowPage(state, result);
@@ -75,6 +85,7 @@ const syncQuery = async (patch = {}) => {
     await syncAdminQuery(router, route, {
         page: patch.page ?? (state.page > 1 ? String(state.page) : undefined),
         articleId: patch.articleId ?? (state.articleId || undefined),
+        status: patch.status ?? (state.status || undefined),
         keyword: patch.keyword ?? (state.keyword || undefined)
     });
 };
@@ -84,15 +95,17 @@ const submitFilters = async () => {
     await syncQuery({
         page: undefined,
         articleId: state.articleId || undefined,
+        status: state.status || undefined,
         keyword: state.keyword || undefined
     });
 };
 
 const resetFilters = async () => {
     state.articleId = '';
+    state.status = '';
     state.keyword = '';
     state.page = 1;
-    await syncQuery({ page: undefined, articleId: undefined, keyword: undefined });
+    await syncQuery({ page: undefined, articleId: undefined, status: undefined, keyword: undefined });
 };
 
 const changePage = async (targetPage) => {
@@ -123,10 +136,54 @@ const removeComment = async (comment) => {
     });
 };
 
+const approveComment = async (comment) => {
+    openConfirmDialog({
+        eyebrow: '评论审核',
+        title: '审核通过',
+        message: `确定通过评论 #${comment.id} 吗？通过后该评论将对公众可见。`,
+        confirmText: '确认通过',
+        tone: 'primary',
+        onConfirm: async () => {
+            state.actionLoadingId = comment.id;
+            try {
+                await approveAdminCommentApi(comment.id);
+                toast.success('评论已审核通过');
+                await loadComments();
+            } catch (error) {
+                toast.error(error.message || '审核操作失败');
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
+};
+
+const rejectComment = async (comment) => {
+    openConfirmDialog({
+        eyebrow: '评论审核',
+        title: '拒绝评论',
+        message: `确定拒绝评论 #${comment.id} 吗？拒绝后该评论将被删除。`,
+        confirmText: '确认拒绝',
+        tone: 'danger',
+        onConfirm: async () => {
+            state.actionLoadingId = comment.id;
+            try {
+                await rejectAdminCommentApi(comment.id);
+                toast.success('评论已拒绝');
+                await loadComments();
+            } catch (error) {
+                toast.error(error.message || '审核操作失败');
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
+};
+
 useAdminRefresh(loadComments);
 
 watch(
-    () => [route.query.page, route.query.articleId, route.query.keyword],
+    () => [route.query.page, route.query.articleId, route.query.status, route.query.keyword],
     () => {
         applyRouteState();
         loadComments();
@@ -142,6 +199,12 @@ watch(
                 <label>
                     <span>文章 ID</span>
                     <input v-model.trim="state.articleId" type="number" min="1" placeholder="按文章筛选">
+                </label>
+                <label>
+                    <span>状态</span>
+                    <select v-model="state.status">
+                        <option v-for="opt in STATUS_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                    </select>
                 </label>
                 <label class="admin-filter-grow">
                     <span>关键词</span>
@@ -168,6 +231,7 @@ watch(
                             <tr>
                                 <th>ID</th>
                                 <th>类型</th>
+                                <th>状态</th>
                                 <th>所属文章</th>
                                 <th>评论人</th>
                                 <th>内容</th>
@@ -184,6 +248,15 @@ watch(
                                     </span>
                                 </td>
                                 <td>
+                                    <span class="status-pill" :class="{
+                                        warning: comment.status === 'PENDING',
+                                        success: comment.status === 'PUBLISHED',
+                                        danger: comment.status === 'DELETED'
+                                    }">
+                                        {{ comment.status === 'PENDING' ? '待审核' : comment.status === 'PUBLISHED' ? '已发布' : '已删除' }}
+                                    </span>
+                                </td>
+                                <td>
                                     <RouterLink :to="`/articles/${comment.articleId}`">
                                         {{ comment.articleTitle || `文章 #${comment.articleId}` }}
                                     </RouterLink>
@@ -197,6 +270,25 @@ watch(
                                 <td>{{ formatAdminDateTime(comment.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button
+                                        v-if="comment.status === 'PENDING'"
+                                        type="button"
+                                        class="success-link"
+                                        :disabled="state.actionLoadingId === comment.id"
+                                        @click="approveComment(comment)"
+                                    >
+                                        通过
+                                    </button>
+                                    <button
+                                        v-if="comment.status === 'PENDING'"
+                                        type="button"
+                                        class="danger-link"
+                                        :disabled="state.actionLoadingId === comment.id"
+                                        @click="rejectComment(comment)"
+                                    >
+                                        拒绝
+                                    </button>
+                                    <button
+                                        v-if="comment.status !== 'DELETED'"
                                         type="button"
                                         class="danger-link"
                                         :disabled="state.actionLoadingId === comment.id"
@@ -227,3 +319,13 @@ watch(
         />
     </section>
 </template>
+
+<style scoped>
+.success-link {
+    color: var(--success) !important;
+}
+.status-pill.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+</style>

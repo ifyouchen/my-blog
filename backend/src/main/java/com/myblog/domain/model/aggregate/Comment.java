@@ -66,7 +66,7 @@ public class Comment {
         comment.rootCommentId = rootCommentId != null && rootCommentId > 0 ? new CommentId(rootCommentId) : comment.id;
         comment.parentId = parentId != null && parentId > 0 ? new CommentId(parentId) : null;
         comment.content = content.trim();
-        comment.status = CommentStatus.PUBLISHED;
+        comment.status = CommentStatus.PENDING;
         comment.likeCount = 0;
         comment.editedAt = null;
         comment.editCount = 0;

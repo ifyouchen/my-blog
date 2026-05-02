@@ -234,6 +234,41 @@ const seoPreviewUrl = computed(() => {
     }
     return `${window.location.origin}${seoPreviewPath.value}`;
 });
+const seoKeywords = computed(() => {
+    const text = (draft.title + ' ' + plainContent.value).toLowerCase();
+    const words = text.match(/[一-龥]{2,}|[a-zA-Z]{3,}/g) || [];
+    const freq = {};
+    for (const w of words) {
+        freq[w] = (freq[w] || 0) + 1;
+    }
+    const minFreq = Math.max(2, Math.ceil(words.length * 0.005));
+    return Object.entries(freq)
+        .filter(([, count]) => count >= minFreq)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+        .map(([word, count]) => ({ word, count }));
+});
+const seoHealthChecks = computed(() => {
+    const titleLen = seoPreviewTitle.value.length;
+    const descLen = seoPreviewDescription.value.length;
+    const contentLen = plainContent.value.length;
+    const hasHeadings = /^#{1,3}\s/m.test(draft.content);
+    const hasImages = /!\[.*?]\(.*?\)/.test(draft.content);
+    return [
+        { key: 'title', label: 'SEO 标题', ok: titleLen > 0 && titleLen <= 60,
+            hint: titleLen === 0 ? '未设置，将使用文章标题' : `${titleLen} 字符` },
+        { key: 'description', label: 'SEO 描述', ok: descLen > 0 && descLen <= 160,
+            hint: descLen === 0 ? '未设置，将使用摘要或正文开头' : `${descLen} 字符` },
+        { key: 'slug', label: 'URL Slug', ok: Boolean(draft.slug),
+            hint: draft.slug ? draft.slug : '未设置，将使用文章 ID' },
+        { key: 'headings', label: '小标题结构', ok: hasHeadings,
+            hint: hasHeadings ? '包含小标题' : '建议使用 ## 小标题组织内容' },
+        { key: 'images', label: '配图', ok: hasImages,
+            hint: hasImages ? '包含图片' : '建议适当插入图片' },
+        { key: 'length', label: '内容长度', ok: contentLen >= 200,
+            hint: contentLen < 200 ? `${contentLen} 字，建议至少 200 字` : `${contentLen} 字` }
+    ];
+});
 const showPersistentStatus = computed(() => ['warning', 'error'].includes(feedbackType.value));
 const showQuietStatus = computed(() => !showPersistentStatus.value && Boolean(statusMessage.value));
 const displayCoverUrl = computed(() => {
@@ -1001,14 +1036,32 @@ onUnmounted(() => {
                         <span>{{ wordCount }} 字</span>
                     </div>
                 </div>
-                <section class="editor-seo-preview-card" aria-label="SEO 搜索摘要预览">
-                    <p class="editor-seo-preview-label">SEO 预览</p>
-                    <h3>{{ seoPreviewTitle }}</h3>
-                    <p class="editor-seo-preview-url">{{ seoPreviewUrl }}</p>
-                    <p class="editor-seo-preview-desc">{{ seoPreviewDescription }}</p>
-                    <div class="editor-seo-preview-metrics">
-                        <span :class="{ warning: seoPreviewTitle.length > 60 }">标题 {{ seoPreviewTitle.length }} / 60</span>
-                        <span :class="{ warning: seoPreviewDescription.length > 160 }">描述 {{ seoPreviewDescription.length }} / 160</span>
+                <section class="editor-seo-preview-section" aria-label="SEO 预览">
+                    <div class="editor-seo-preview-card">
+                        <p class="editor-seo-preview-label">Google 搜索结果预览</p>
+                        <div class="editor-seo-google-card">
+                            <p class="editor-seo-google-url">{{ seoPreviewUrl }}</p>
+                            <h3 class="editor-seo-google-title">{{ seoPreviewTitle }}</h3>
+                            <p class="editor-seo-google-desc">{{ seoPreviewDescription }}</p>
+                        </div>
+                    </div>
+                    <div class="editor-seo-health-section">
+                        <p class="editor-seo-preview-label">SEO 健康检查</p>
+                        <ul class="editor-seo-health-list">
+                            <li v-for="check in seoHealthChecks" :key="check.key" :class="['editor-seo-health-item', check.ok ? 'ok' : 'warn']">
+                                <span class="editor-seo-health-icon">{{ check.ok ? '✓' : '○' }}</span>
+                                <span class="editor-seo-health-label">{{ check.label }}</span>
+                                <span class="editor-seo-health-hint">{{ check.hint }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div v-if="seoKeywords.length" class="editor-seo-keywords-section">
+                        <p class="editor-seo-preview-label">关键词密度</p>
+                        <div class="editor-seo-keywords-list">
+                            <span v-for="kw in seoKeywords" :key="kw.word" class="editor-seo-keyword-tag">
+                                {{ kw.word }}<em class="editor-seo-keyword-count">{{ kw.count }}</em>
+                            </span>
+                        </div>
                     </div>
                 </section>
                 <p v-if="draft.summary" class="editor-preview-summary">{{ draft.summary }}</p>
@@ -1325,6 +1378,11 @@ onUnmounted(() => {
     justify-content: space-between;
 }
 
+.editor-seo-preview-section {
+    display: grid;
+    gap: 16px;
+}
+
 .editor-seo-preview-card {
     display: grid;
     gap: 6px;
@@ -1334,32 +1392,139 @@ onUnmounted(() => {
     border-radius: var(--radius-sm);
 }
 
-.editor-seo-preview-card h3 {
-    margin: 0;
+.editor-seo-google-card {
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.editor-seo-google-url {
+    margin: 0 0 2px;
+    color: #006621;
+    font-size: 13px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+.editor-seo-google-title {
+    margin: 0 0 2px;
     color: #1a0dab;
     font-size: 18px;
     line-height: 1.35;
     font-weight: 600;
+    cursor: pointer;
 }
 
-.editor-seo-preview-label,
-.editor-seo-preview-url,
-.editor-seo-preview-desc {
+.editor-seo-google-title:hover {
+    text-decoration: underline;
+}
+
+.editor-seo-google-desc {
     margin: 0;
+    color: #545454;
+    font-size: 13px;
+    line-height: 1.55;
+    word-break: break-word;
 }
 
 .editor-seo-preview-label {
+    margin: 0 0 8px;
     color: var(--muted);
     font-size: 12px;
     font-weight: 700;
 }
 
-.editor-seo-preview-url {
-    color: #188038;
-    font-size: 13px;
-    word-break: break-all;
+.editor-seo-health-section {
+    padding: 14px 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
 }
 
+.editor-seo-health-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.editor-seo-health-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.editor-seo-health-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.editor-seo-health-item.ok .editor-seo-health-icon {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.editor-seo-health-item.warn .editor-seo-health-icon {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.editor-seo-health-label {
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.editor-seo-health-hint {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.editor-seo-keywords-section {
+    padding: 14px 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.editor-seo-keywords-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.editor-seo-keyword-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+}
+
+.editor-seo-keyword-count {
+    font-style: normal;
+    font-size: 10px;
+    color: var(--muted);
+    padding: 1px 3px;
+    background: var(--surface-soft);
+    border-radius: 3px;
+}
 .editor-seo-preview-desc {
     color: var(--text);
     font-size: 13px;

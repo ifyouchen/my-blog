@@ -136,6 +136,7 @@ public class AdminController {
      * @param page 页码
      * @param pageSize 每页数量
      * @param articleId 文章 ID
+     * @param status 评论状态
      * @param keyword 关键字
      * @return 评论分页结果
      */
@@ -144,9 +145,10 @@ public class AdminController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) Long articleId,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword) {
         ensureAdmin();
-        return Result.success(adminAppService.getComments(page, pageSize, articleId, keyword));
+        return Result.success(adminAppService.getComments(page, pageSize, articleId, status, keyword));
     }
 
     /**
@@ -468,6 +470,52 @@ public class AdminController {
             "COMMENT",
             id,
             "删除评论 " + id,
+            result.getData(),
+            null,
+            request
+        ));
+        return result;
+    }
+
+    /**
+     * 审核通过评论。
+     *
+     * @param id 评论 ID
+     * @param request HTTP 请求
+     * @return 审核结果
+     */
+    @PutMapping("/comments/{id}/approve")
+    public Result<Map<String, Object>> approveComment(@PathVariable Long id, @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.approveComment(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "APPROVE_COMMENT",
+            "COMMENT",
+            id,
+            "审核通过评论 " + id,
+            result.getData(),
+            null,
+            request
+        ));
+        return result;
+    }
+
+    /**
+     * 拒绝评论。
+     *
+     * @param id 评论 ID
+     * @param request HTTP 请求
+     * @return 操作结果
+     */
+    @PutMapping("/comments/{id}/reject")
+    public Result<Map<String, Object>> rejectComment(@PathVariable Long id, @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.rejectComment(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "REJECT_COMMENT",
+            "COMMENT",
+            id,
+            "拒绝评论 " + id,
             result.getData(),
             null,
             request

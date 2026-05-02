@@ -3,7 +3,7 @@ import { reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import { exportAdminUsersApi, getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
+import { disableAdminUserApi, exportAdminUsersApi, getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
 import {
     createPagedState,
     formatAdminDateTime,
@@ -30,7 +30,8 @@ const state = reactive({
     ...createPagedState(),
     status: '',
     keyword: '',
-    actionLoadingId: null
+    actionLoadingId: null,
+    disableReason: {}
 });
 
 const applyRouteState = () => {
@@ -106,22 +107,48 @@ const changePage = async (targetPage) => {
 };
 
 const toggleUserStatus = async (user) => {
-    const nextStatus = user.status === 'NORMAL' ? 'DISABLED' : 'NORMAL';
+    if (user.status === 'NORMAL') {
+        openDisableDialog(user);
+    } else {
+        openConfirmDialog({
+            eyebrow: '用户状态确认',
+            title: '启用用户',
+            message: `确定启用用户 ${user.username} 吗？启用后该账号会恢复正常访问权限。`,
+            confirmText: '确认启用',
+            tone: 'primary',
+            onConfirm: async () => {
+                state.actionLoadingId = user.id;
+                try {
+                    await updateAdminUserStatusApi(user.id, 'NORMAL');
+                    await loadUsers();
+                    toast.success('用户已启用');
+                } catch (error) {
+                    toast.error(error.message || '用户状态更新失败');
+                } finally {
+                    state.actionLoadingId = null;
+                }
+            }
+        });
+    }
+};
+
+const openDisableDialog = (user) => {
+    state.disableReason = { ...state.disableReason, [user.id]: '' };
     openConfirmDialog({
-        eyebrow: '用户状态确认',
-        title: nextStatus === 'DISABLED' ? '禁用用户' : '启用用户',
-        message: nextStatus === 'DISABLED'
-            ? `确定禁用用户 ${user.username} 吗？禁用后该账号将无法正常使用站内能力。`
-            : `确定启用用户 ${user.username} 吗？启用后该账号会恢复正常访问权限。`,
-        confirmText: nextStatus === 'DISABLED' ? '确认禁用' : '确认启用',
-        tone: nextStatus === 'DISABLED' ? 'warning' : 'primary',
+        eyebrow: '用户禁用确认',
+        title: '禁用用户',
+        message: `确定禁用用户 ${user.username} 吗？禁用后该账号将无法正常使用站内能力。`,
+        confirmText: '确认禁用',
+        tone: 'warning',
         onConfirm: async () => {
             state.actionLoadingId = user.id;
             try {
-                await updateAdminUserStatusApi(user.id, nextStatus);
+                const reason = state.disableReason[user.id] || '';
+                await disableAdminUserApi(user.id, reason);
                 await loadUsers();
+                toast.success('用户已禁用');
             } catch (error) {
-                toast.error(error.message || '用户状态更新失败');
+                toast.error(error.message || '用户禁用失败');
             } finally {
                 state.actionLoadingId = null;
             }
@@ -193,6 +220,7 @@ watch(
                                 <th>邮箱</th>
                                 <th>角色</th>
                                 <th>状态</th>
+                                <th>禁用原因</th>
                                 <th>注册时间</th>
                                 <th>操作</th>
                             </tr>
@@ -211,6 +239,7 @@ watch(
                                         {{ user.status === 'NORMAL' ? '正常' : '禁用' }}
                                     </span>
                                 </td>
+                                <td>{{ user.disableReason || '-' }}</td>
                                 <td>{{ formatAdminDateTime(user.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button type="button" :disabled="state.actionLoadingId === user.id" @click="toggleUserStatus(user)">
@@ -236,6 +265,42 @@ watch(
             :loading="confirmDialog.loading"
             @close="closeConfirmDialog"
             @confirm="executeConfirmDialog"
-        />
+        >
+            <div v-if="confirmDialog.title === '禁用用户' && confirmDialog.visible" class="disable-reason-field">
+                <label>
+                    <span>禁用原因（可选）</span>
+                    <input
+                        v-model="state.disableReason[state.actionLoadingId || 0]"
+                        type="text"
+                        placeholder="请输入禁用原因"
+                        maxlength="200"
+                    >
+                </label>
+            </div>
+        </ConfirmDialog>
     </section>
 </template>
+
+<style scoped>
+.disable-reason-field {
+    margin-top: 16px;
+}
+.disable-reason-field label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.disable-reason-field span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+.disable-reason-field input {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+}
+</style>
