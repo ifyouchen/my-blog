@@ -3,8 +3,23 @@ import {inject, onMounted, reactive, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import {createAdminAdApi, deleteAdminAdApi, getAdminAdsApi, getAdminAdStatsApi, updateAdminAdApi} from '@/api/ads';
-import {createPagedState, formatAdminDateTime, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {
+    createAdminAdApi,
+    deleteAdminAdApi,
+    getAdminAdsApi,
+    getAdminAdStatsApi,
+    updateAdminAdApi
+} from '@/api/ads';
+import {uploadImageApi} from '@/api/uploads';
+import {
+    createPagedState,
+    formatAdminDateTime,
+    readPositiveInt,
+    readQueryText,
+    resolveAdminOverflowPage,
+    syncAdminQuery,
+    useAdminRefresh
+} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const route = useRoute();
@@ -29,8 +44,13 @@ const state = reactive({
     enabled: '',
     submitting: false,
     editingId: null,
-    actionLoadingId: null
+    actionLoadingId: null,
+    createImageUploading: false,
+    editImageUploading: false
 });
+
+const createImageInputRef = ref(null);
+const editImageInputRef = ref(null);
 
 const form = reactive({
     slotCode: 'home_sidebar',
@@ -66,6 +86,32 @@ const resetForm = () => {
     form.endAt = '';
     form.enabled = true;
     form.sortOrder = 0;
+};
+
+const triggerCreateImagePicker = () => {
+    createImageInputRef.value?.click();
+};
+
+const triggerEditImagePicker = () => {
+    editImageInputRef.value?.click();
+};
+
+const uploadAdImage = async (event, targetForm, uploadingKey) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+        return;
+    }
+    state[uploadingKey] = true;
+    try {
+        const result = await uploadImageApi(file, 'cover');
+        targetForm.imageUrl = result.url || '';
+        toast.success('广告封面上传成功');
+    } catch (error) {
+        toast.error(error.message || '广告封面上传失败');
+    } finally {
+        state[uploadingKey] = false;
+        event.target.value = '';
+    }
 };
 
 const applyRouteState = () => {
@@ -131,6 +177,10 @@ const resetFilters = async () => {
 };
 
 const submitCreate = async () => {
+    if (state.createImageUploading) {
+        toast.error('封面图片还在上传中');
+        return;
+    }
     if (!form.title.trim()) {
         toast.error('广告标题不能为空');
         return;
@@ -179,6 +229,10 @@ const cancelEdit = () => {
 };
 
 const submitEdit = async (ad) => {
+    if (state.editImageUploading) {
+        toast.error('封面图片还在上传中');
+        return;
+    }
     if (!editForm.title.trim()) {
         toast.error('广告标题不能为空');
         return;
@@ -331,22 +385,39 @@ watch(
                         :disabled="state.submitting"
                     >
                 </label>
-                <label>
-                    <span>图片地址</span>
+                <div class="ad-image-field">
+                    <label>
+                        <span>封面图片</span>
+                        <input
+                            v-model="form.imageUrl"
+                            type="text"
+                            placeholder="https://... 或 /api/uploads/files/..."
+                            :disabled="state.submitting || state.createImageUploading"
+                        >
+                    </label>
                     <input
-                        v-model="form.imageUrl"
-                        type="text"
-                        placeholder="https://..."
-                        :disabled="state.submitting"
+                        ref="createImageInputRef"
+                        type="file"
+                        accept="image/*"
+                        class="sr-only"
+                        @change="uploadAdImage($event, form, 'createImageUploading')"
                     >
-                </label>
+                    <button
+                        type="button"
+                        class="ad-image-upload-button"
+                        :disabled="state.submitting || state.createImageUploading"
+                        @click="triggerCreateImagePicker"
+                    >
+                        {{ state.createImageUploading ? '上传中...' : '上传图片' }}
+                    </button>
+                </div>
                 <label>
                     <span>跳转链接 *</span>
                     <input
                         v-model="form.targetUrl"
                         type="text"
                         placeholder="https://..."
-                        :disabled="state.submitting"
+                        :disabled="state.submitting || state.createImageUploading"
                     >
                 </label>
                 <label>
@@ -381,8 +452,8 @@ watch(
                     <span>立即启用</span>
                 </label>
                 <div class="admin-form-actions">
-                    <button type="submit" :disabled="state.submitting">
-                        创建广告
+                    <button type="submit" :disabled="state.submitting || state.createImageUploading">
+                        {{ state.submitting ? '创建中...' : '创建广告' }}
                     </button>
                 </div>
             </form>
@@ -493,10 +564,32 @@ watch(
                                                     <span>标题 *</span>
                                                     <input v-model="editForm.title" type="text" maxlength="200" required>
                                                 </label>
-                                                <label>
-                                                    <span>图片地址</span>
-                                                    <input v-model="editForm.imageUrl" type="text" placeholder="https://...">
-                                                </label>
+                                                <div class="ad-image-field">
+                                                    <label>
+                                                        <span>封面图片</span>
+                                                        <input
+                                                            v-model="editForm.imageUrl"
+                                                            type="text"
+                                                            placeholder="https://... 或 /api/uploads/files/..."
+                                                            :disabled="state.editImageUploading"
+                                                        >
+                                                    </label>
+                                                    <input
+                                                        ref="editImageInputRef"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        class="sr-only"
+                                                        @change="uploadAdImage($event, editForm, 'editImageUploading')"
+                                                    >
+                                                    <button
+                                                        type="button"
+                                                        class="ad-image-upload-button"
+                                                        :disabled="state.editImageUploading || state.actionLoadingId === ad.id"
+                                                        @click="triggerEditImagePicker"
+                                                    >
+                                                        {{ state.editImageUploading ? '上传中...' : '上传图片' }}
+                                                    </button>
+                                                </div>
                                                 <label>
                                                     <span>跳转链接 *</span>
                                                     <input v-model="editForm.targetUrl" type="text" required>
@@ -525,9 +618,9 @@ watch(
                                             <div class="ad-inline-actions">
                                                 <button
                                                     type="submit"
-                                                    :disabled="state.actionLoadingId === ad.id"
+                                                    :disabled="state.actionLoadingId === ad.id || state.editImageUploading"
                                                 >
-                                                    保存
+                                                    {{ state.actionLoadingId === ad.id ? '保存中...' : '保存' }}
                                                 </button>
                                                 <button type="button" @click="cancelEdit">取消</button>
                                             </div>
@@ -634,6 +727,39 @@ watch(
     cursor: pointer;
 }
 
+.ad-image-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.ad-image-field label {
+    min-width: 0;
+}
+
+.ad-image-upload-button {
+    min-height: 35px;
+    padding: 0 12px;
+    color: var(--brand);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.ad-image-upload-button:hover:not(:disabled) {
+    background: var(--surface-soft);
+}
+
+.ad-image-upload-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
 
 .ad-label-badge {
     padding: 2px 8px;
@@ -804,6 +930,10 @@ watch(
     .admin-slot-stats-grid,
     .admin-form-grid,
     .ad-inline-edit-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ad-image-field {
         grid-template-columns: 1fr;
     }
 }
