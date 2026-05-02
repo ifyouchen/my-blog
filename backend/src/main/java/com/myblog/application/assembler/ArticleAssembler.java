@@ -55,6 +55,9 @@ public class ArticleAssembler {
         dto.setSlug(article.getSlug());
         dto.setSeoTitle(article.getSeoTitle());
         dto.setSeoDescription(article.getSeoDescription());
+        if (article.getScheduledPublishAt() != null) {
+            dto.setScheduledPublishAt(FORMATTER.format(article.getScheduledPublishAt()));
+        }
         if (article.getPublishedAt() != null) {
             dto.setPublishedAt(FORMATTER.format(article.getPublishedAt()));
         }

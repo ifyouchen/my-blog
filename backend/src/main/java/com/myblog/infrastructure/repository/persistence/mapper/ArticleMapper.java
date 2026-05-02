@@ -7,6 +7,7 @@ import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPoi
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -336,6 +337,8 @@ public interface ArticleMapper {
     List<ArticleDO> selectRelated(@Param("category") String category,
                                   @Param("excludeId") Long excludeId,
                                   @Param("limit") int limit);
+
+    List<ArticleDO> selectDueScheduled(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
     /** 统计待审核文章数量（warn_flag=1 且未删除）。 */
     long countByWarnFlag();

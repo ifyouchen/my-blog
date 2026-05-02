@@ -152,6 +152,30 @@ public class Comment {
     }
 
     /**
+     * 标记为待审核。
+     */
+    public void markPending() {
+        if (CommentStatus.DELETED.equals(this.status)) {
+            throw new DomainException(ErrorCode.CONFLICT, "已删除评论不能进入审核队列");
+        }
+        this.status = CommentStatus.PENDING;
+        this.pinned = Boolean.FALSE;
+        this.pinnedAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 审核通过。
+     */
+    public void approve() {
+        if (CommentStatus.DELETED.equals(this.status)) {
+            throw new DomainException(ErrorCode.CONFLICT, "已删除评论不能审核通过");
+        }
+        this.status = CommentStatus.PUBLISHED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 点赞评论。
      */
     public void increaseLikeCount() {
@@ -196,6 +220,15 @@ public class Comment {
      */
     public boolean isDeleted() {
         return CommentStatus.DELETED.equals(this.status);
+    }
+
+    /**
+     * 判断评论是否已发布。
+     *
+     * @return 是否已发布
+     */
+    public boolean isPublished() {
+        return CommentStatus.PUBLISHED.equals(this.status);
     }
 
     /**
@@ -334,6 +367,7 @@ public class Comment {
     }
 
     public enum CommentStatus {
+        PENDING,
         PUBLISHED,
         DELETED
     }

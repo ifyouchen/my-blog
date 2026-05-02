@@ -133,6 +133,7 @@ const buildArticlePayload = (draft, status) => {
         status,
         slug: draft.slug || '',
         seoTitle: draft.seoTitle || '',
-        seoDescription: draft.seoDescription || ''
+        seoDescription: draft.seoDescription || '',
+        scheduledPublishAt: draft.scheduledPublishAt || ''
     };
 };

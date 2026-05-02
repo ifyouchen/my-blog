@@ -19,6 +19,7 @@
         <result column="seo_title" property="seoTitle"/>
         <result column="seo_description" property="seoDescription"/>
         <result column="status" property="status"/>
+        <result column="scheduled_publish_at" property="scheduledPublishAt"/>
         <result column="view_count" property="viewCount"/>
         <result column="like_count" property="likeCount"/>
         <result column="favorite_count" property="favoriteCount"/>
@@ -32,14 +33,14 @@
 
     <sql id="Base_Column_List">
         id, author_id, title, summary, content, cover_url, category, offline_reason, warn_flag, featured, featured_at,
-        slug, seo_title, seo_description, status,
+        slug, seo_title, seo_description, status, scheduled_publish_at,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Column_List">
         id, author_id, title, summary, cover_url, category, offline_reason, warn_flag, featured, featured_at,
-        slug, seo_title, seo_description, status,
+        slug, seo_title, seo_description, status, scheduled_publish_at,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
@@ -47,6 +48,7 @@
     <sql id="List_Alias_Column_List">
         a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.offline_reason,
         a.warn_flag, a.featured, a.featured_at, a.slug, a.seo_title, a.seo_description, a.status,
+        a.scheduled_publish_at,
         a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
         a.created_at, a.updated_at, a.deleted_at, a.version
     </sql>
@@ -166,6 +168,17 @@
         <if test="offset != null">
             OFFSET #{offset}
         </if>
+    </select>
+
+    <select id="selectDueScheduled" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE status = 'SCHEDULED'
+        AND scheduled_publish_at IS NOT NULL
+        AND scheduled_publish_at &lt;= #{now}
+        AND deleted_at IS NULL
+        ORDER BY scheduled_publish_at ASC, id ASC
+        LIMIT #{limit}
     </select>
 
     <select id="selectByAuthorId" resultMap="BaseResultMap">
@@ -410,6 +423,7 @@
             slug,
             seo_title,
             seo_description,
+            scheduled_publish_at,
             view_count,
             like_count,
             favorite_count,
@@ -434,6 +448,7 @@
             #{slug},
             #{seoTitle},
             #{seoDescription},
+            #{scheduledPublishAt},
             #{viewCount},
             #{likeCount},
             #{favoriteCount},
@@ -459,6 +474,7 @@
             slug = #{slug},
             seo_title = #{seoTitle},
             seo_description = #{seoDescription},
+            scheduled_publish_at = #{scheduledPublishAt},
             view_count = #{viewCount},
             like_count = #{likeCount},
             favorite_count = #{favoriteCount},
@@ -475,12 +491,12 @@
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article (
             id, author_id, title, summary, content, cover_url, category, offline_reason, warn_flag, status,
-            featured, featured_at, slug, seo_title, seo_description,
+            featured, featured_at, slug, seo_title, seo_description, scheduled_publish_at,
             view_count, like_count, favorite_count, comment_count, published_at,
             created_at, updated_at
         ) VALUES (
             #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{offlineReason}, #{warnFlag}, #{status},
-            #{featured}, #{featuredAt}, #{slug}, #{seoTitle}, #{seoDescription},
+            #{featured}, #{featuredAt}, #{slug}, #{seoTitle}, #{seoDescription}, #{scheduledPublishAt},
             #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
             #{createdAt}, #{updatedAt}
         )
@@ -498,6 +514,7 @@
             slug = #{slug},
             seo_title = #{seoTitle},
             seo_description = #{seoDescription},
+            scheduled_publish_at = #{scheduledPublishAt},
             view_count = #{viewCount},
             like_count = #{likeCount},
             favorite_count = #{favoriteCount},

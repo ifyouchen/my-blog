@@ -40,6 +40,13 @@
         AND status = 'PUBLISHED'
     </select>
 
+    <select id="selectByIdForAdmin" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_comment
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </select>
+
     <select id="selectAll" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_comment
@@ -78,6 +85,9 @@
         <if test="articleId != null">
             AND c.article_id = #{articleId}
         </if>
+        <if test="status != null and status != ''">
+            AND c.status = #{status}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (
                 c.content LIKE CONCAT('%', #{keyword}, '%')
@@ -97,6 +107,9 @@
         WHERE c.deleted_at IS NULL
         <if test="articleId != null">
             AND c.article_id = #{articleId}
+        </if>
+        <if test="status != null and status != ''">
+            AND c.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
             AND (

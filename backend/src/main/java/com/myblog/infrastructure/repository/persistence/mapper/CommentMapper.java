@@ -17,6 +17,8 @@ public interface CommentMapper {
 
     CommentDO selectById(@Param("id") Long id);
 
+    CommentDO selectByIdForAdmin(@Param("id") Long id);
+
     List<CommentDO> selectAll();
 
     long countAll();
@@ -26,11 +28,14 @@ public interface CommentMapper {
     long countCreatedSince(@Param("date") LocalDate date);
 
     List<CommentDO> selectAdminPage(@Param("articleId") Long articleId,
+                                    @Param("status") String status,
                                     @Param("keyword") String keyword,
                                     @Param("offset") int offset,
                                     @Param("limit") int limit);
 
-    long countAdminPage(@Param("articleId") Long articleId, @Param("keyword") String keyword);
+    long countAdminPage(@Param("articleId") Long articleId,
+                        @Param("status") String status,
+                        @Param("keyword") String keyword);
 
     List<CommentDO> selectByArticleId(@Param("articleId") Long articleId);
 

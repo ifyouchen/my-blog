@@ -35,6 +35,7 @@ public class ArticleResponse {
     private String slug;
     private String seoTitle;
     private String seoDescription;
+    private String scheduledPublishAt;
     private UserResponse author;
 
     /**
@@ -353,6 +354,14 @@ public class ArticleResponse {
 
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    public String getScheduledPublishAt() {
+        return scheduledPublishAt;
+    }
+
+    public void setScheduledPublishAt(String scheduledPublishAt) {
+        this.scheduledPublishAt = scheduledPublishAt;
     }
 
     /**

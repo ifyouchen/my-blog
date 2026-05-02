@@ -74,6 +74,7 @@ public class RestDtoMapper {
         command.setSlug(request.getSlug());
         command.setSeoTitle(request.getSeoTitle());
         command.setSeoDescription(request.getSeoDescription());
+        command.setScheduledPublishAt(request.getScheduledPublishAt());
         return command;
     }
 
@@ -216,6 +217,7 @@ public class RestDtoMapper {
         response.setSlug(dto.getSlug());
         response.setSeoTitle(dto.getSeoTitle());
         response.setSeoDescription(dto.getSeoDescription());
+        response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setAuthor(toResponse(dto.getAuthor()));
         return response;
     }

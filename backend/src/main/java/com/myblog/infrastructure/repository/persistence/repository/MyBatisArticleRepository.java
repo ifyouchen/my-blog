@@ -433,6 +433,12 @@ public class MyBatisArticleRepository implements ArticleRepository {
         int safeLimit = Math.max(1, limit);
         return toDomainList(articleMapper.selectRelated(category, excludeId, safeLimit));
     }
+
+    @Override
+    public List<Article> findDueScheduled(java.time.LocalDateTime now, int limit) {
+        return toDomainList(articleMapper.selectDueScheduled(now, Math.max(1, limit)));
+    }
+
     @Override
     public List<com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO> findDailyArticleTrend(
             java.time.LocalDate startDate, java.time.LocalDate endDate) {

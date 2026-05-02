@@ -54,6 +54,15 @@ public class MyBatisCommentRepository implements CommentRepository {
         return Optional.of(CommentPersistenceConverter.toDomain(commentDO));
     }
 
+    @Override
+    public Optional<Comment> findByIdForAdmin(CommentId commentId) {
+        CommentDO commentDO = commentMapper.selectByIdForAdmin(commentId.getValue());
+        if (commentDO == null) {
+            return Optional.empty();
+        }
+        return Optional.of(CommentPersistenceConverter.toDomain(commentDO));
+    }
+
     /**
      * 根据文章 ID 查询评论列表。
      *
@@ -71,11 +80,17 @@ public class MyBatisCommentRepository implements CommentRepository {
     }
 
     @Override
-    public List<Comment> findAdminPage(Long articleId, String keyword, int page, int pageSize) {
+    public List<Comment> findAdminPage(Long articleId, String status, String keyword, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int offset = (currentPage - 1) * currentPageSize;
-        List<CommentDO> commentDOList = commentMapper.selectAdminPage(articleId, keyword, offset, currentPageSize);
+        List<CommentDO> commentDOList = commentMapper.selectAdminPage(
+            articleId,
+            status,
+            keyword,
+            offset,
+            currentPageSize
+        );
         List<Comment> comments = new ArrayList<Comment>(commentDOList.size());
         for (CommentDO commentDO : commentDOList) {
             comments.add(CommentPersistenceConverter.toDomain(commentDO));
@@ -84,8 +99,8 @@ public class MyBatisCommentRepository implements CommentRepository {
     }
 
     @Override
-    public long countAdminPage(Long articleId, String keyword) {
-        return commentMapper.countAdminPage(articleId, keyword);
+    public long countAdminPage(Long articleId, String status, String keyword) {
+        return commentMapper.countAdminPage(articleId, status, keyword);
     }
 
     @Override

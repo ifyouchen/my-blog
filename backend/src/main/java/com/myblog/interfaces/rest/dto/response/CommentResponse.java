@@ -24,6 +24,7 @@ public class CommentResponse {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long parentId;
     private String content;
+    private String status;
     private String createdAt;
     private String editedAt;
     private Integer editCount;
@@ -85,6 +86,14 @@ public class CommentResponse {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getCreatedAt() {

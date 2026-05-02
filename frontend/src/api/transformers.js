@@ -97,6 +97,7 @@ export const normalizeArticle = (article) => {
         slug: article.slug || '',
         seoTitle: article.seoTitle || '',
         seoDescription: article.seoDescription || '',
+        scheduledPublishAt: article.scheduledPublishAt || '',
         stats: {
             views: `${article.viewCount || 0} 阅读`,
             likes: `${article.likeCount || 0} 赞`,

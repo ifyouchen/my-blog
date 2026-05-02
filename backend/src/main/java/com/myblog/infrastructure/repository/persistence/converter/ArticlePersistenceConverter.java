@@ -52,6 +52,7 @@ public final class ArticlePersistenceConverter {
             articleDO.getSlug(),
             articleDO.getSeoTitle(),
             articleDO.getSeoDescription(),
+            articleDO.getScheduledPublishAt(),
             articleDO.getPublishedAt(),
             articleDO.getCreatedAt(),
             articleDO.getUpdatedAt(),
@@ -86,6 +87,7 @@ public final class ArticlePersistenceConverter {
         articleDO.setSlug(article.getSlug());
         articleDO.setSeoTitle(article.getSeoTitle());
         articleDO.setSeoDescription(article.getSeoDescription());
+        articleDO.setScheduledPublishAt(article.getScheduledPublishAt());
         articleDO.setPublishedAt(article.getPublishedAt());
         articleDO.setCreatedAt(article.getCreatedAt());
         articleDO.setUpdatedAt(article.getUpdatedAt());

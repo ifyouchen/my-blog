@@ -12,5 +12,6 @@ public enum NotificationType {
     ARTICLE_COMMENT,
     COMMENT_REPLY,
     COMMENT_LIKE,
-    USER_FOLLOW
+    USER_FOLLOW,
+    ARTICLE_PUBLISH
 }

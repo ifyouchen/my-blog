@@ -9,7 +9,8 @@
       "Bash(echo \"BUILD_EXIT: $?\")",
       "Bash(lsof -ti:5173)",
       "Bash(xargs kill *)",
-      "Bash(grep -v \"//.*\\\\|from '\")"
+      "Bash(grep -v \"//.*\\\\|from '\")",
+      "Bash(mvn compile *)"
     ]
   }
 }

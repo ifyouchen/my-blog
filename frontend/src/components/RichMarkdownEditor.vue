@@ -38,6 +38,7 @@ const contextMenuRef = ref(null);
 const imageInputRef = ref(null);
 const imageUploading = ref(false);
 const uploadError = ref('');
+const dragOver = ref(false);
 
 const tableMarkdownPattern = /^\s*\|.+\|\s*\n\s*\|[\s:|-]+\|\s*\n(?:\s*\|.*\|\s*\n?)+/m;
 const markdownBlockPattern = /(^|\n)\s*(#{1,6}\s|[-*]\s|>\s|\|.+\|\s*\n\s*\|[\s:|-]+\||```|---\s*$)/m;
@@ -694,6 +695,8 @@ const insertImageMarkdown = (url, alt = '图片') => {
     editor.value.commands.setImage({ src: url, alt });
 };
 
+const isImageFile = (file) => Boolean(file?.type?.startsWith('image/'));
+
 const openImageUrlDialog = () => {
     imageUrlDialog.open = true;
     imageUrlDialog.url = '';
@@ -719,6 +722,10 @@ const cancelImageUrl = () => {
 };
 
 const uploadAndInsertImage = async (file) => {
+    if (!file || !isImageFile(file)) {
+        uploadError.value = '请选择图片文件';
+        return;
+    }
     if (!isLoggedIn.value) {
         uploadError.value = '请先登录后再上传图片';
         return;
@@ -739,30 +746,64 @@ const uploadAndInsertImage = async (file) => {
 
 const handleImageSelected = async (event) => {
     const [file] = event.target?.files || [];
+    event.target.value = '';
     if (!file) {
         return;
     }
-    if (!isLoggedIn.value) {
-        uploadError.value = '请先登录后再上传图片';
-        return;
-    }
-    event.target.value = '';
-    imageUploading.value = true;
-    uploadError.value = '';
-    try {
-        const result = await uploadImageApi(file, 'content');
-        if (result?.url) {
-            insertImageMarkdown(result.url, file.name || '图片');
-        }
-    } catch (error) {
-        uploadError.value = error.message || '图片上传失败';
-    } finally {
-        imageUploading.value = false;
-    }
+    await uploadAndInsertImage(file);
 };
 
 const triggerImageUpload = () => {
     imageInputRef.value?.click();
+};
+
+const getDraggedImageFiles = (event) => {
+    const files = Array.from(event.dataTransfer?.files || []);
+    return files.filter(isImageFile);
+};
+
+const focusDropPosition = (event) => {
+    if (!editor.value) {
+        return;
+    }
+    const position = editor.value.view.posAtCoords({
+        left: event.clientX,
+        top: event.clientY
+    });
+    if (position?.pos) {
+        editor.value.chain().focus().setTextSelection(position.pos).run();
+    } else {
+        editor.value.commands.focus();
+    }
+};
+
+const handleEditorDragOver = (event) => {
+    if (!getDraggedImageFiles(event).length) {
+        return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    dragOver.value = true;
+};
+
+const handleEditorDragLeave = (event) => {
+    if (!editorRoot.value?.contains(event.relatedTarget)) {
+        dragOver.value = false;
+    }
+};
+
+const handleEditorDrop = async (event) => {
+    const imageFiles = getDraggedImageFiles(event);
+    if (!imageFiles.length) {
+        dragOver.value = false;
+        return;
+    }
+    event.preventDefault();
+    dragOver.value = false;
+    focusDropPosition(event);
+    for (const file of imageFiles) {
+        await uploadAndInsertImage(file);
+    }
 };
 
 const clearHeadingJumpHighlights = () => {
@@ -1342,7 +1383,16 @@ const handleGlobalScroll = (event) => {
                 <button type="button" class="table-toolbar-btn table-toolbar-btn--danger" title="删除表格" @mousedown.prevent="keepEditorFocus" @click="deleteTable"><span v-html="itemIconsHtml('delete-table')"></span></button>
             </div>
         </div>
-        <div ref="editorRoot" class="editor-body" @contextmenu="handleEditorContextMenu">
+        <div
+            ref="editorRoot"
+            class="editor-body"
+            :class="{ 'drag-over': dragOver }"
+            @contextmenu="handleEditorContextMenu"
+            @dragover="handleEditorDragOver"
+            @dragleave="handleEditorDragLeave"
+            @drop="handleEditorDrop"
+        >
+            <div v-if="dragOver" class="editor-drop-hint" contenteditable="false">松开上传图片</div>
             <div
                 v-if="slashState.open"
                 class="slash-command-panel"
@@ -1523,6 +1573,30 @@ const handleGlobalScroll = (event) => {
     color: #d14343;
     font-size: 13px;
     background: rgba(209, 67, 67, 0.06);
+    border-radius: var(--radius-sm);
+}
+
+.editor-body {
+    position: relative;
+}
+
+.editor-body.drag-over {
+    outline: 2px dashed rgba(37, 99, 235, 0.55);
+    outline-offset: 4px;
+}
+
+.editor-drop-hint {
+    position: absolute;
+    inset: 10px;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    color: var(--brand);
+    font-size: 15px;
+    font-weight: 700;
+    pointer-events: none;
+    background: rgba(239, 246, 255, 0.82);
+    border: 1px solid rgba(37, 99, 235, 0.18);
     border-radius: var(--radius-sm);
 }
 

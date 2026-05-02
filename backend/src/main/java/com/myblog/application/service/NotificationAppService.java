@@ -199,6 +199,7 @@ public class NotificationAppService {
             case ARTICLE_LIKE:
             case ARTICLE_FAVORITE:
             case ARTICLE_COMMENT:
+            case ARTICLE_PUBLISH:
                 return "/articles/" + notification.getArticleId();
             case COMMENT_REPLY:
             case COMMENT_LIKE:

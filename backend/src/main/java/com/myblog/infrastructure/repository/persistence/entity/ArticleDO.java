@@ -25,6 +25,7 @@ public class ArticleDO {
     private String seoTitle;
     private String seoDescription;
     private String status;
+    private LocalDateTime scheduledPublishAt;
     private Integer viewCount;
     private Integer likeCount;
     private Integer favoriteCount;
@@ -254,6 +255,14 @@ public class ArticleDO {
      */
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getScheduledPublishAt() {
+        return scheduledPublishAt;
+    }
+
+    public void setScheduledPublishAt(LocalDateTime scheduledPublishAt) {
+        this.scheduledPublishAt = scheduledPublishAt;
     }
 
     /**

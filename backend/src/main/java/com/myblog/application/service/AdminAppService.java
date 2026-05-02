@@ -12,11 +12,13 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO;
 import com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
+import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,13 +38,16 @@ public class AdminAppService {
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminAppService(UserRepository userRepository,
                          ArticleRepository articleRepository,
-                         CommentRepository commentRepository) {
+                         CommentRepository commentRepository,
+                         ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.commentRepository = commentRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -58,6 +63,7 @@ public class AdminAppService {
         long disabledUserCount = userRepository.countByStatus(UserStatus.DISABLED);
         long articleCount = articleRepository.countVisible();
         long draftCount = articleRepository.countByStatus(ArticleStatus.DRAFT.name());
+        long scheduledCount = articleRepository.countByStatus(ArticleStatus.SCHEDULED.name());
         long publishedCount = articleRepository.countByStatus(ArticleStatus.PUBLISHED.name());
         long offlineCount = articleRepository.countByStatus(ArticleStatus.OFFLINE.name());
         long deletedCount = articleRepository.countByStatus(ArticleStatus.DELETED.name());
@@ -115,6 +121,7 @@ public class AdminAppService {
         stats.put("disabledUsers", disabledUserCount);
         stats.put("totalArticles", articleCount);
         stats.put("draftArticles", draftCount);
+        stats.put("scheduledArticles", scheduledCount);
         stats.put("publishedArticles", publishedCount);
         stats.put("offlineArticles", offlineCount);
         stats.put("deletedArticles", deletedCount);
@@ -272,12 +279,15 @@ public class AdminAppService {
             map.put("title", article.getTitle());
             map.put("category", article.getCategory());
             map.put("status", article.getStatus().name());
+            map.put("offlineReason", article.getOfflineReason());
+            map.put("warnFlag", article.isWarnFlag());
             map.put("viewCount", article.getViewCount());
             map.put("likeCount", article.getLikeCount());
             map.put("favoriteCount", article.getFavoriteCount());
             map.put("commentCount", article.getCommentCount());
             map.put("featured", article.isFeatured());
             map.put("featuredAt", article.getFeaturedAt());
+            map.put("scheduledPublishAt", article.getScheduledPublishAt());
             map.put("publishedAt", article.getPublishedAt());
             map.put("createdAt", article.getCreatedAt());
             map.put("updatedAt", article.getUpdatedAt());
@@ -305,6 +315,11 @@ public class AdminAppService {
         ArticleStatus previousStatus = article.getStatus();
         applyArticleStatus(article, newStatus);
         articleRepository.save(article);
+
+        if (ArticleStatus.PUBLISHED.equals(newStatus) && previousStatus != ArticleStatus.PUBLISHED) {
+            eventPublisher.publishEvent(new ArticlePublishedEvent(
+                article.getId().getValue(), article.getAuthorId().getValue()));
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", article.getId().getValue());
@@ -443,8 +458,8 @@ public class AdminAppService {
      */
     public PageResult<Map<String, Object>> getComments(int page, int pageSize, Long articleId, String keyword) {
         String normalizedKeyword = normalizeKeyword(keyword);
-        List<Comment> comments = commentRepository.findAdminPage(articleId, normalizedKeyword, page, pageSize);
-        long total = commentRepository.countAdminPage(articleId, normalizedKeyword);
+        List<Comment> comments = commentRepository.findAdminPage(articleId, null, normalizedKeyword, page, pageSize);
+        long total = commentRepository.countAdminPage(articleId, null, normalizedKeyword);
         Map<Long, Article> articleMap = buildArticleMap(comments);
         Map<Long, User> userMap = buildUserMap(comments);
         List<Map<String, Object>> items = new ArrayList<Map<String, Object>>(comments.size());

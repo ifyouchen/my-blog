@@ -11,6 +11,7 @@ import {
     updateArticleApi,
     validateArticleForPublishApi
 } from '@/api/articles';
+import {getToken} from '@/api/http';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
 import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -24,6 +25,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
+const AUTO_SAVE_DELAY_MS = 15000;
 
 const defaultDraft = {
     title: '',
@@ -36,7 +38,8 @@ const defaultDraft = {
     coverUrl: '',
     slug: '',
     seoTitle: '',
-    seoDescription: ''
+    seoDescription: '',
+    scheduledPublishAt: ''
 };
 
 const route = useRoute();
@@ -68,6 +71,7 @@ const categoryOptions = ref(topics.slice(1));
 const tagOptions = ref([]);
 const pageLoading = ref(false);
 const lastSavedSnapshot = ref('');
+const currentArticleStatus = ref('DRAFT');
 const previewVisible = ref(false);
 const recoveryInfo = ref(null);
 const hydratingDraft = ref(false);
@@ -103,23 +107,95 @@ const versionRestoring = ref(false);
 // ── 自动保存 ──────────────────────────────────────────────────────────
 const autoSaveStatus = ref(''); // '' | 'saving' | 'saved HH:mm' | 'error'
 let autoSaveTimer = null;
+let autoSaveInFlight = false;
+
+function clearAutoSaveTimer() {
+    if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+    }
+}
+
+function formatAutoSaveTime() {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+function hasAutoSaveableContent() {
+    const defaultContent = defaultDraft.content.trim();
+    return Boolean(
+        draft.title.trim()
+        || draft.summary.trim()
+        || draft.content.trim() !== defaultContent
+        || draft.coverUrl.trim()
+        || draft.slug.trim()
+        || draft.seoTitle.trim()
+        || draft.seoDescription.trim()
+        || draft.scheduledPublishAt.trim()
+    );
+}
+
+function canServerAutoSave() {
+    return !isEditMode.value || currentArticleStatus.value === 'DRAFT';
+}
+
+async function runAutoSaveDraft() {
+    if (publishLoading.value || pageLoading.value || recoveryInfo.value || autoSaveInFlight) {
+        return;
+    }
+    if (!canServerAutoSave() || !hasUnsavedChanges.value || !hasAutoSaveableContent() || !getToken()) {
+        return;
+    }
+
+    const previousStorageKey = storageKey.value;
+    autoSaveInFlight = true;
+    autoSaveStatus.value = 'saving';
+    try {
+        const article = isEditMode.value
+            ? await updateArticleApi(route.params.id, draft, 'DRAFT')
+            : await createArticleApi(draft, 'DRAFT');
+
+        hydratingDraft.value = true;
+        applyDraft({
+            title: article.title,
+            summary: article.summary,
+            content: article.rawContent,
+            category: article.category,
+            tags: article.tags,
+            coverUrl: article.coverUrl,
+            slug: article.slug || '',
+            seoTitle: article.seoTitle || '',
+            seoDescription: article.seoDescription || '',
+            scheduledPublishAt: normalizeDateTimeLocal(article.scheduledPublishAt || draft.scheduledPublishAt || '')
+        });
+        hydratingDraft.value = false;
+        currentArticleStatus.value = article.status || 'DRAFT';
+        syncSavedSnapshot();
+        clearStoredDraft(previousStorageKey);
+
+        if (!isEditMode.value && article.id) {
+            allowRouteLeave.value = true;
+            await router.replace(`/editor/${article.id}`);
+            allowRouteLeave.value = false;
+        }
+
+        autoSaveStatus.value = `saved ${formatAutoSaveTime()}`;
+    } catch {
+        autoSaveStatus.value = 'error';
+    } finally {
+        autoSaveInFlight = false;
+    }
+}
 
 function scheduleAutoSave() {
-    if (!isEditMode.value) return;
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(async () => {
-        if (!isEditMode.value || publishLoading.value) return;
-        autoSaveStatus.value = 'saving';
-        try {
-            await updateArticleApi(route.params.id, draft, 'DRAFT');
-            const now = new Date();
-            const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            autoSaveStatus.value = `saved ${hhmm}`;
-            syncSavedSnapshot();
-        } catch {
-            autoSaveStatus.value = 'error';
-        }
-    }, 30000);
+    clearAutoSaveTimer();
+    if (pageLoading.value || recoveryInfo.value || !hasUnsavedChanges.value || !hasAutoSaveableContent()) {
+        return;
+    }
+    if (!canServerAutoSave()) {
+        return;
+    }
+    autoSaveTimer = setTimeout(runAutoSaveDraft, AUTO_SAVE_DELAY_MS);
 }
 
 const autoSaveLabel = computed(() => {
@@ -141,6 +217,23 @@ const readingMinutes = computed(() => Math.max(1, Math.ceil(wordCount.value / 30
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
 const previewTags = computed(() => parseTags(draft.tags));
 const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编辑内容' : '预览待发布内容'));
+const plainContent = computed(() => stripMarkdown(draft.content));
+const seoPreviewTitle = computed(() => (draft.seoTitle || draft.title || '未填写标题').trim());
+const seoPreviewDescription = computed(() => {
+    const source = draft.seoDescription || draft.summary || plainContent.value;
+    const text = source.trim();
+    return text ? truncateText(text, 160) : '发布前补充摘要或 SEO 描述后，这里会展示搜索结果摘要。';
+});
+const seoPreviewPath = computed(() => {
+    const id = isEditMode.value ? editorArticleId.value : '发布后文章ID';
+    return `/articles/${id}${draft.slug ? '-' + draft.slug : ''}`;
+});
+const seoPreviewUrl = computed(() => {
+    if (typeof window === 'undefined') {
+        return seoPreviewPath.value;
+    }
+    return `${window.location.origin}${seoPreviewPath.value}`;
+});
 const showPersistentStatus = computed(() => ['warning', 'error'].includes(feedbackType.value));
 const showQuietStatus = computed(() => !showPersistentStatus.value && Boolean(statusMessage.value));
 const displayCoverUrl = computed(() => {
@@ -200,7 +293,8 @@ function createDraftSnapshot(currentDraft) {
         coverUrl: currentDraft.coverUrl || '',
         slug: currentDraft.slug || '',
         seoTitle: currentDraft.seoTitle || '',
-        seoDescription: currentDraft.seoDescription || ''
+        seoDescription: currentDraft.seoDescription || '',
+        scheduledPublishAt: currentDraft.scheduledPublishAt || ''
     });
 }
 
@@ -215,6 +309,26 @@ function parseTags(sourceTags) {
     return source.map((item) => String(item).trim()).filter(Boolean);
 }
 
+function stripMarkdown(source) {
+    return String(source || '')
+        .replace(/!\[[^\]]*]\([^)]+\)/g, '')
+        .replace(/\[[^\]]*]\(([^)]+)\)/g, '$1')
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^[>\-*+\d.\s]+/gm, '')
+        .replace(/[*_~|>#-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function truncateText(source, maxLength) {
+    if (!source || source.length <= maxLength) {
+        return source;
+    }
+    return `${source.slice(0, maxLength - 1).trim()}...`;
+}
+
 function applyDraft(source = {}) {
     draft.title = source.title || '';
     draft.summary = source.summary || '';
@@ -226,6 +340,7 @@ function applyDraft(source = {}) {
     draft.slug = source.slug || '';
     draft.seoTitle = source.seoTitle || '';
     draft.seoDescription = source.seoDescription || '';
+    draft.scheduledPublishAt = normalizeDateTimeLocal(source.scheduledPublishAt || '');
 }
 
 function syncSavedSnapshot() {
@@ -241,8 +356,8 @@ function readStoredDraft(targetKey) {
     }
 }
 
-function clearStoredDraft() {
-    localStorage.removeItem(storageKey.value);
+function clearStoredDraft(targetKey = storageKey.value) {
+    localStorage.removeItem(targetKey);
 }
 
 function persistLocalDraft() {
@@ -264,6 +379,42 @@ function formatSavedAt(savedAt) {
         return savedAt;
     }
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function normalizeDateTimeLocal(value) {
+    if (!value) {
+        return '';
+    }
+    const normalized = String(value).trim().replace(' ', 'T');
+    const matched = normalized.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+    return matched ? matched[1] : normalized;
+}
+
+function formatScheduledPublishAt(value) {
+    const normalized = normalizeDateTimeLocal(value);
+    if (!normalized) {
+        return '';
+    }
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+        return normalized.replace('T', ' ');
+    }
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function ensureScheduledTimeValid() {
+    if (!draft.scheduledPublishAt) {
+        statusMessage.value = '请先选择定时发布时间';
+        feedbackType.value = 'warning';
+        return false;
+    }
+    const scheduledTime = new Date(draft.scheduledPublishAt).getTime();
+    if (Number.isNaN(scheduledTime) || scheduledTime <= Date.now()) {
+        statusMessage.value = '定时发布时间必须晚于当前时间';
+        feedbackType.value = 'warning';
+        return false;
+    }
+    return true;
 }
 
 function buildDraftSourceLabel() {
@@ -312,6 +463,7 @@ async function fetchMetadata() {
 async function setupNewDraft() {
     const defaultSource = createDefaultDraft();
     const storedDraft = readStoredDraft(storageKey.value);
+    currentArticleStatus.value = 'DRAFT';
 
     hydratingDraft.value = true;
     applyDraft(defaultSource);
@@ -342,6 +494,7 @@ async function fetchArticle() {
     pageLoading.value = true;
     try {
         const article = await getEditableArticleApi(route.params.id);
+        currentArticleStatus.value = article.status || 'DRAFT';
         const serverDraft = {
             title: article.title || '',
             summary: article.summary || '',
@@ -351,7 +504,8 @@ async function fetchArticle() {
             coverUrl: article.coverUrl || defaultDraft.coverUrl,
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
-            seoDescription: article.seoDescription || ''
+            seoDescription: article.seoDescription || '',
+            scheduledPublishAt: article.scheduledPublishAt || ''
         };
         const storedDraft = readStoredDraft(storageKey.value);
 
@@ -372,6 +526,7 @@ async function fetchArticle() {
             recoveryInfo.value = null;
         }
     } catch (error) {
+        currentArticleStatus.value = 'DRAFT';
         statusMessage.value = error.message || '文章加载失败';
         feedbackType.value = 'error';
     } finally {
@@ -422,7 +577,10 @@ async function persistArticle(status) {
     if (publishLoading.value) {
         return null;
     }
-    const actionText = status === 'PUBLISHED' ? '发布' : '保存草稿';
+    clearAutoSaveTimer();
+    const actionText = status === 'PUBLISHED'
+        ? '发布'
+        : (status === 'SCHEDULED' ? '定时发布' : '保存草稿');
     const canContinue = loginModal.requireLogin(() => persistArticle(status), {
         title: `登录后${actionText}`,
         message: `登录后可以${actionText}文章，并在个人中心管理内容。`,
@@ -433,7 +591,10 @@ async function persistArticle(status) {
         feedbackType.value = 'warning';
         return null;
     }
-    if (status === 'PUBLISHED') {
+    if (status === 'SCHEDULED' && !ensureScheduledTimeValid()) {
+        return null;
+    }
+    if (status === 'PUBLISHED' || status === 'SCHEDULED') {
         const canPublish = await ensurePublishValidationPassed();
         if (!canPublish) {
             return null;
@@ -441,9 +602,12 @@ async function persistArticle(status) {
     }
 
     publishLoading.value = true;
-    statusMessage.value = status === 'PUBLISHED' ? '正在发布文章，请稍候...' : '正在保存草稿，请稍候...';
+    statusMessage.value = status === 'PUBLISHED'
+        ? '正在发布文章，请稍候...'
+        : (status === 'SCHEDULED' ? '正在设置定时发布，请稍候...' : '正在保存草稿，请稍候...');
     feedbackType.value = 'info';
     publishedArticle.value = null;
+    const previousStorageKey = storageKey.value;
 
     try {
         const article = isEditMode.value
@@ -459,19 +623,24 @@ async function persistArticle(status) {
             coverUrl: article.coverUrl,
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
-            seoDescription: article.seoDescription || ''
+            seoDescription: article.seoDescription || '',
+            scheduledPublishAt: article.scheduledPublishAt || ''
         });
         hydratingDraft.value = false;
+        currentArticleStatus.value = article.status || status;
         if (!isEditMode.value) {
             allowRouteLeave.value = true;
             await router.replace(`/editor/${article.id}`);
             allowRouteLeave.value = false;
         }
-        clearStoredDraft();
+        clearStoredDraft(previousStorageKey);
         recoveryInfo.value = null;
         if (status === 'PUBLISHED') {
             publishedArticle.value = article;
             statusMessage.value = `发布成功，文章 ID：${article.id}`;
+            feedbackType.value = 'success';
+        } else if (status === 'SCHEDULED') {
+            statusMessage.value = `已设置定时发布：${formatScheduledPublishAt(article.scheduledPublishAt || draft.scheduledPublishAt)}`;
             feedbackType.value = 'success';
         } else {
             statusMessage.value = `草稿已保存，文章 ID：${article.id}`;
@@ -496,6 +665,10 @@ async function saveDraft() {
 
 async function publishArticle() {
     await persistArticle('PUBLISHED');
+}
+
+async function scheduleArticle() {
+    await persistArticle('SCHEDULED');
 }
 
 function triggerCoverPicker() {
@@ -630,9 +803,11 @@ async function doRestoreVersion(versionNo) {
             coverUrl: article.coverUrl,
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
-            seoDescription: article.seoDescription || ''
+            seoDescription: article.seoDescription || '',
+            scheduledPublishAt: article.scheduledPublishAt || ''
         });
         hydratingDraft.value = false;
+        currentArticleStatus.value = article.status || 'DRAFT';
         syncSavedSnapshot();
         statusMessage.value = `已恢复为版本 v${versionNo} 的草稿，请确认后保存`;
         feedbackType.value = 'success';
@@ -664,6 +839,8 @@ function handleBeforeUnload(event) {
 watch(
     () => route.params.id,
     async () => {
+        clearAutoSaveTimer();
+        autoSaveStatus.value = '';
         publishedArticle.value = null;
         previewVisible.value = false;
         await fetchArticle();
@@ -671,7 +848,7 @@ watch(
 );
 
 watch(draft, () => {
-    if (!pageLoading.value) {
+    if (!pageLoading.value && !hydratingDraft.value) {
         persistLocalDraft();
         schedulePublishValidation();
         scheduleAutoSave();
@@ -716,7 +893,7 @@ onUnmounted(() => {
         window.clearTimeout(publishValidationTimer);
     }
     if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
+        clearAutoSaveTimer();
     }
     if (coverUrlDebounceTimer) {
         clearTimeout(coverUrlDebounceTimer);
@@ -749,6 +926,9 @@ onUnmounted(() => {
                         {{ previewVisible ? '收起预览' : '发布前预览' }}
                     </button>
                     <button type="button" :disabled="publishLoading || pageLoading" data-testid="editor-save-draft" @click="saveDraft">保存草稿</button>
+                    <button type="button" :disabled="publishLoading || pageLoading" data-testid="editor-schedule-button" @click="scheduleArticle">
+                        定时发布
+                    </button>
                     <button
                         class="primary-action"
                         type="button"
@@ -821,6 +1001,16 @@ onUnmounted(() => {
                         <span>{{ wordCount }} 字</span>
                     </div>
                 </div>
+                <section class="editor-seo-preview-card" aria-label="SEO 搜索摘要预览">
+                    <p class="editor-seo-preview-label">SEO 预览</p>
+                    <h3>{{ seoPreviewTitle }}</h3>
+                    <p class="editor-seo-preview-url">{{ seoPreviewUrl }}</p>
+                    <p class="editor-seo-preview-desc">{{ seoPreviewDescription }}</p>
+                    <div class="editor-seo-preview-metrics">
+                        <span :class="{ warning: seoPreviewTitle.length > 60 }">标题 {{ seoPreviewTitle.length }} / 60</span>
+                        <span :class="{ warning: seoPreviewDescription.length > 160 }">描述 {{ seoPreviewDescription.length }} / 160</span>
+                    </div>
+                </section>
                 <p v-if="draft.summary" class="editor-preview-summary">{{ draft.summary }}</p>
                 <div v-if="previewTags.length" class="editor-preview-tags">
                     <span v-for="tag in previewTags" :key="tag">{{ tag }}</span>
@@ -884,6 +1074,15 @@ onUnmounted(() => {
             <section class="editor-side-block">
                 <p class="eyebrow">标签</p>
                 <input v-model="draft.tags" type="text" maxlength="500" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
+            </section>
+            <section class="editor-side-block editor-schedule-section">
+                <div>
+                    <p class="eyebrow">定时发布</p>
+                    <span v-if="currentArticleStatus === 'SCHEDULED'" class="editor-schedule-status">
+                        已计划 {{ formatScheduledPublishAt(draft.scheduledPublishAt) }}
+                    </span>
+                </div>
+                <input v-model="draft.scheduledPublishAt" type="datetime-local">
             </section>
             <section class="upload-box">
                 <div class="cover-card-head">
@@ -1126,6 +1325,59 @@ onUnmounted(() => {
     justify-content: space-between;
 }
 
+.editor-seo-preview-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.editor-seo-preview-card h3 {
+    margin: 0;
+    color: #1a0dab;
+    font-size: 18px;
+    line-height: 1.35;
+    font-weight: 600;
+}
+
+.editor-seo-preview-label,
+.editor-seo-preview-url,
+.editor-seo-preview-desc {
+    margin: 0;
+}
+
+.editor-seo-preview-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.editor-seo-preview-url {
+    color: #188038;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.editor-seo-preview-desc {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.editor-seo-preview-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.editor-seo-preview-metrics .warning {
+    color: #b45309;
+}
+
 .editor-preview-meta span,
 .editor-preview-tags span {
     display: inline-flex;
@@ -1175,6 +1427,30 @@ onUnmounted(() => {
 .editor-side-block {
     display: grid;
     gap: 10px;
+}
+
+.editor-schedule-section {
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.editor-schedule-section > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.editor-schedule-section input {
+    width: 100%;
+}
+
+.editor-schedule-status {
+    color: var(--brand-strong);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .cover-card-head {

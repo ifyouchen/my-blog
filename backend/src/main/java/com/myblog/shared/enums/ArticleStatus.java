@@ -8,6 +8,7 @@ package com.myblog.shared.enums;
  */
 public enum ArticleStatus {
     DRAFT,
+    SCHEDULED,
     PUBLISHED,
     OFFLINE,
     DELETED

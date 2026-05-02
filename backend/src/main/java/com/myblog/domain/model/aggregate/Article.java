@@ -39,6 +39,7 @@ public class Article {
     private String slug;
     private String seoTitle;
     private String seoDescription;
+    private LocalDateTime scheduledPublishAt;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -63,7 +64,8 @@ public class Article {
      */
     public static Article create(Long id, UserId authorId, String title, String summary, String content,
                                  String coverUrl, String category, List<String> tags, ArticleStatus status,
-                                 String slug, String seoTitle, String seoDescription) {
+                                 String slug, String seoTitle, String seoDescription,
+                                 LocalDateTime scheduledPublishAt) {
         Article article = new Article();
         article.id = new ArticleId(id);
         article.authorId = authorId;
@@ -83,10 +85,13 @@ public class Article {
         article.slug = normalizeNullableText(slug);
         article.seoTitle = normalizeNullableText(seoTitle);
         article.seoDescription = normalizeNullableText(seoDescription);
+        article.scheduledPublishAt = null;
         article.createdAt = LocalDateTime.now();
         article.updatedAt = article.createdAt;
         article.version = 0;
-        if (requiresCompleteContent(article.status)) {
+        if (ArticleStatus.SCHEDULED.equals(article.status)) {
+            article.schedulePublish(scheduledPublishAt);
+        } else if (requiresCompleteContent(article.status)) {
             article.validatePublishable();
         }
         if (ArticleStatus.PUBLISHED.equals(article.status)) {
@@ -121,7 +126,8 @@ public class Article {
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
                                   boolean warnFlag, boolean featured, LocalDateTime featuredAt,
                                   String slug, String seoTitle, String seoDescription,
-                                  LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                  LocalDateTime scheduledPublishAt, LocalDateTime publishedAt,
+                                  LocalDateTime createdAt, LocalDateTime updatedAt,
                                   Integer version) {
         Article article = new Article();
         article.id = new ArticleId(id);
@@ -144,6 +150,7 @@ public class Article {
         article.slug = slug;
         article.seoTitle = seoTitle;
         article.seoDescription = seoDescription;
+        article.scheduledPublishAt = scheduledPublishAt;
         article.publishedAt = publishedAt;
         article.createdAt = createdAt;
         article.updatedAt = updatedAt;
@@ -223,6 +230,7 @@ public class Article {
         validatePublishable();
         this.status = ArticleStatus.PUBLISHED;
         this.offlineReason = null;
+        this.scheduledPublishAt = null;
         if (this.publishedAt == null) {
             this.publishedAt = LocalDateTime.now();
         }
@@ -238,6 +246,30 @@ public class Article {
         }
         this.status = ArticleStatus.DRAFT;
         this.offlineReason = null;
+        this.scheduledPublishAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 设为定时发布。
+     *
+     * @param publishAt 计划发布时间
+     */
+    public void schedulePublish(LocalDateTime publishAt) {
+        if (ArticleStatus.DELETED.equals(status)) {
+            throw new DomainException(ErrorCode.CONFLICT, "已删除文章不能定时发布");
+        }
+        if (publishAt == null) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "请选择定时发布时间");
+        }
+        if (!publishAt.isAfter(LocalDateTime.now())) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "定时发布时间必须晚于当前时间");
+        }
+        validatePublishable();
+        this.status = ArticleStatus.SCHEDULED;
+        this.offlineReason = null;
+        this.scheduledPublishAt = publishAt;
+        this.publishedAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -259,6 +291,7 @@ public class Article {
         }
         this.status = ArticleStatus.OFFLINE;
         this.offlineReason = normalizeNullableText(reason);
+        this.scheduledPublishAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -300,7 +333,9 @@ public class Article {
     }
 
     private static boolean requiresCompleteContent(ArticleStatus status) {
-        return ArticleStatus.PUBLISHED.equals(status) || ArticleStatus.OFFLINE.equals(status);
+        return ArticleStatus.PUBLISHED.equals(status)
+            || ArticleStatus.SCHEDULED.equals(status)
+            || ArticleStatus.OFFLINE.equals(status);
     }
 
     private static String normalizeText(String value) {
@@ -340,6 +375,7 @@ public class Article {
      */
     public void delete() {
         this.status = ArticleStatus.DELETED;
+        this.scheduledPublishAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -347,6 +383,9 @@ public class Article {
      * 更新文章状态。
      */
     public void updateStatus(ArticleStatus status) {
+        if (ArticleStatus.SCHEDULED.equals(status)) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "定时发布需要指定发布时间");
+        }
         this.status = status;
         if (ArticleStatus.PUBLISHED.equals(status) && this.publishedAt == null) {
             this.publishedAt = LocalDateTime.now();
@@ -354,6 +393,7 @@ public class Article {
         if (!ArticleStatus.OFFLINE.equals(status)) {
             this.offlineReason = null;
         }
+        this.scheduledPublishAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -544,6 +584,15 @@ public class Article {
      */
     public String getSeoDescription() {
         return seoDescription;
+    }
+
+    /**
+     * 获取计划发布时间。
+     *
+     * @return 计划发布时间
+     */
+    public LocalDateTime getScheduledPublishAt() {
+        return scheduledPublishAt;
     }
 
     /**

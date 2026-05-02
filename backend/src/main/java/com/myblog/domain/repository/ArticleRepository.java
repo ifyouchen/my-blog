@@ -6,6 +6,7 @@ import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetr
 import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -374,6 +375,16 @@ public interface ArticleRepository {
      * @return 相关文章列表
      */
     List<Article> findRelated(String category, Long excludeId, int limit);
+
+    /**
+     * 查询已到计划发布时间的定时文章。
+     *
+     * @param now 当前时间
+     * @param limit 返回数量限制
+     * @return 定时文章列表
+     */
+    List<Article> findDueScheduled(LocalDateTime now, int limit);
+
     /**
      * 查询指定日期范围内每日新增文章趋势。
      *

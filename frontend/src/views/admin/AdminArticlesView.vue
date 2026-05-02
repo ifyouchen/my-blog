@@ -162,6 +162,7 @@ const changePage = async (targetPage) => {
 const quickStatusCards = [
     { label: '全部文章', key: 'ALL', status: '', value: () => state.stats?.totalArticles || 0 },
     { label: '草稿', key: 'DRAFT', status: 'DRAFT', value: () => state.stats?.draftArticles || 0 },
+    { label: '定时发布', key: 'SCHEDULED', status: 'SCHEDULED', value: () => state.stats?.scheduledArticles || 0 },
     { label: '已发布', key: 'PUBLISHED', status: 'PUBLISHED', value: () => state.stats?.publishedArticles || 0 },
     { label: '待审核', key: 'REVIEW_PENDING', status: 'REVIEW_PENDING', value: () => state.stats?.reviewPendingArticles || 0 },
     { label: '已下架', key: 'OFFLINE', status: 'OFFLINE', value: () => state.stats?.offlineArticles || 0 },
@@ -290,6 +291,7 @@ watch(
                     <select v-model="state.status">
                         <option value="">全部</option>
                         <option value="PUBLISHED">已发布</option>
+                        <option value="SCHEDULED">定时发布</option>
                         <option value="REVIEW_PENDING">待审核</option>
                         <option value="DRAFT">草稿</option>
                         <option value="OFFLINE">已下架</option>
@@ -363,7 +365,10 @@ watch(
                                 <td>
                                     {{ article.viewCount }} / {{ article.likeCount }} / {{ article.favoriteCount }} / {{ article.commentCount }}
                                 </td>
-                                <td>{{ formatAdminDateTime(article.publishedAt) }}</td>
+                                <td>
+                                    <span v-if="article.status === 'SCHEDULED'">计划 {{ formatAdminDateTime(article.scheduledPublishAt) }}</span>
+                                    <span v-else>{{ formatAdminDateTime(article.publishedAt) }}</span>
+                                </td>
                                 <td>{{ formatAdminDateTime(article.createdAt) }}</td>
                                 <td class="table-actions">
                                     <button
@@ -459,7 +464,7 @@ watch(
 <style scoped>
 .admin-status-overview {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 18px;
 }

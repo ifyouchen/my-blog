@@ -124,6 +124,7 @@ const statsTrendMax = computed(() => {
 const statusOptions = [
     { label: '全部', value: '' },
     { label: '草稿', value: 'DRAFT' },
+    { label: '定时发布', value: 'SCHEDULED' },
     { label: '已发布', value: 'PUBLISHED' },
     { label: '已下架', value: 'OFFLINE' },
     { label: '已删除', value: 'DELETED' }
@@ -131,6 +132,7 @@ const statusOptions = [
 
 const articleStatusLabels = {
     DRAFT: '草稿',
+    SCHEDULED: '定时发布',
     PUBLISHED: '已发布',
     OFFLINE: '已下架',
     DELETED: '已删除'
@@ -469,6 +471,7 @@ const latestArticleEditorRoute = computed(() => (
 const getArticleStatusClass = (status) => ({
     published: status === 'PUBLISHED',
     draft: status === 'DRAFT',
+    scheduled: status === 'SCHEDULED',
     offline: status === 'OFFLINE',
     deleted: status === 'DELETED'
 });
@@ -883,13 +886,13 @@ watch(isLoggedIn, () => {
                                         {{ actionLoadingId === article.id ? '处理中...' : '下架' }}
                                     </button>
                                     <button
-                                        v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE'"
+                                        v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE' || article.status === 'SCHEDULED'"
                                         type="button"
                                         class="action-link action-link-primary"
                                         :disabled="actionLoadingId === article.id"
                                         @click="publishOrOfflineArticle(article, 'PUBLISHED')"
                                     >
-                                        {{ actionLoadingId === article.id ? '处理中...' : '发布' }}
+                                        {{ actionLoadingId === article.id ? '处理中...' : (article.status === 'SCHEDULED' ? '立即发布' : '发布') }}
                                     </button>
                                     <span v-else class="article-action-muted">不可操作</span>
                                 </div>
@@ -957,13 +960,13 @@ watch(isLoggedIn, () => {
                                 {{ actionLoadingId === article.id ? '处理中...' : '下架' }}
                             </button>
                             <button
-                                v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE'"
+                                v-else-if="article.status === 'DRAFT' || article.status === 'OFFLINE' || article.status === 'SCHEDULED'"
                                 type="button"
                                 class="action-link action-link-primary"
                                 :disabled="actionLoadingId === article.id"
                                 @click="publishOrOfflineArticle(article, 'PUBLISHED')"
                             >
-                                {{ actionLoadingId === article.id ? '处理中...' : '发布' }}
+                                {{ actionLoadingId === article.id ? '处理中...' : (article.status === 'SCHEDULED' ? '立即发布' : '发布') }}
                             </button>
                             <RouterLink class="action-link action-link-secondary" :to="'/articles/' + article.id">
                                 查看
@@ -1231,6 +1234,12 @@ watch(isLoggedIn, () => {
     color: #9a6700;
     background: rgba(240, 201, 73, 0.12);
     border-color: rgba(212, 160, 23, 0.24);
+}
+
+.creator-overview-status.scheduled {
+    color: #0f766e;
+    background: rgba(20, 184, 166, 0.1);
+    border-color: rgba(13, 148, 136, 0.18);
 }
 
 .creator-overview-status.offline {
@@ -1805,6 +1814,12 @@ watch(isLoggedIn, () => {
     color: #9a6700;
     background: rgba(240, 201, 73, 0.12);
     border-left-color: #d4a017;
+}
+
+.status-pill.scheduled {
+    color: #0f766e;
+    background: rgba(20, 184, 166, 0.1);
+    border-left-color: #0d9488;
 }
 
 .status-pill.offline {

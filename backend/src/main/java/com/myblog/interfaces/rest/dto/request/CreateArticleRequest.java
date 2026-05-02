@@ -39,6 +39,8 @@ public class CreateArticleRequest {
     @Size(max = 500, message = "SEO描述长度不能超过{max}个字符")
     private String seoDescription;
 
+    private String scheduledPublishAt;
+
     /**
      * 获取文章标题。
      *
@@ -187,5 +189,13 @@ public class CreateArticleRequest {
 
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    public String getScheduledPublishAt() {
+        return scheduledPublishAt;
+    }
+
+    public void setScheduledPublishAt(String scheduledPublishAt) {
+        this.scheduledPublishAt = scheduledPublishAt;
     }
 }

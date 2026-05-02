@@ -6,6 +6,7 @@ import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
 import com.myblog.application.dto.ArticleValidationItemDTO;
 import com.myblog.application.dto.ArticleVersionDTO;
+import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.application.event.ArticleViewedEvent;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.domain.model.aggregate.Article;
@@ -26,10 +27,12 @@ import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -298,7 +301,12 @@ public class ArticleAppService {
         User author = userRepository.findById(new UserId(command.getAuthorId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         ensureSlugAvailable(command.getSlug(), null);
-        checkSensitiveWords(command.getTitle(), command.getContent(), "创建文章");
+        ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
+        if (requiresPublishCheck(targetStatus)) {
+            checkSensitiveWords(command.getTitle(), command.getContent(), resolveActionText(targetStatus));
+        }
+        LocalDateTime scheduledPublishAt = ArticleStatus.SCHEDULED.equals(targetStatus)
+            ? parseScheduledPublishAt(command.getScheduledPublishAt()) : null;
         Article article = Article.create(
             articleRepository.nextId(),
             author.getId(),
@@ -308,12 +316,17 @@ public class ArticleAppService {
             resolveCoverUrl(command.getCoverUrl()),
             command.getCategory(),
             command.getTags(),
-            resolveCreateStatus(command.getStatus()),
+            targetStatus,
             command.getSlug(),
             command.getSeoTitle(),
-            command.getSeoDescription()
+            command.getSeoDescription(),
+            scheduledPublishAt
         );
         articleRepository.save(article);
+        if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+            eventPublisher.publishEvent(new ArticlePublishedEvent(
+                article.getId().getValue(), article.getAuthorId().getValue()));
+        }
         saveVersionSnapshot(article, command.getAuthorId());
         return buildDetailDto(article, author, command.getAuthorId());
     }
@@ -349,7 +362,12 @@ public class ArticleAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
         ensureSlugAvailable(command.getSlug(), articleId);
-        checkSensitiveWords(command.getTitle(), command.getContent(), "更新文章");
+        ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
+        if (requiresPublishCheck(targetStatus)) {
+            checkSensitiveWords(command.getTitle(), command.getContent(), resolveActionText(targetStatus));
+        }
+        LocalDateTime scheduledPublishAt = ArticleStatus.SCHEDULED.equals(targetStatus)
+            ? parseScheduledPublishAt(command.getScheduledPublishAt()) : null;
         article.updateContent(
             command.getTitle(),
             command.getSummary(),
@@ -361,8 +379,13 @@ public class ArticleAppService {
             command.getSeoTitle(),
             command.getSeoDescription()
         );
-        applyStatus(article, command.getStatus());
+        ArticleStatus oldStatus = article.getStatus();
+        applyStatus(article, targetStatus, scheduledPublishAt);
         articleRepository.save(article);
+        if (ArticleStatus.PUBLISHED.equals(article.getStatus()) && oldStatus != ArticleStatus.PUBLISHED) {
+            eventPublisher.publishEvent(new ArticlePublishedEvent(
+                article.getId().getValue(), article.getAuthorId().getValue()));
+        }
         saveVersionSnapshot(article, userId);
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
@@ -386,8 +409,13 @@ public class ArticleAppService {
         if (ArticleStatus.PUBLISHED.name().equals(status)) {
             checkSensitiveWords(article.getTitle(), article.getContent(), "发布文章");
         }
+        ArticleStatus oldStatus = article.getStatus();
         applyStatus(article, status);
         articleRepository.save(article);
+        if (ArticleStatus.PUBLISHED.equals(article.getStatus()) && oldStatus != ArticleStatus.PUBLISHED) {
+            eventPublisher.publishEvent(new ArticlePublishedEvent(
+                article.getId().getValue(), article.getAuthorId().getValue()));
+        }
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
     }
@@ -406,6 +434,22 @@ public class ArticleAppService {
         ensureCanManage(article, userId, currentUserRole);
         article.delete();
         articleRepository.save(article);
+    }
+
+    /**
+     * 定时发布到期文章。
+     */
+    @Scheduled(fixedDelayString = "${my-blog.article.scheduled-publish-interval-ms:60000}")
+    @Transactional(rollbackFor = Exception.class)
+    public void publishDueScheduledArticles() {
+        List<Article> articles = articleRepository.findDueScheduled(LocalDateTime.now(), 20);
+        for (Article article : articles) {
+            article.publish();
+            articleRepository.save(article);
+            eventPublisher.publishEvent(new ArticlePublishedEvent(
+                article.getId().getValue(), article.getAuthorId().getValue()));
+            saveVersionSnapshot(article, article.getAuthorId().getValue());
+        }
     }
 
     private ArticleDTO toDTO(Article article, Long currentUserId) {
@@ -449,29 +493,59 @@ public class ArticleAppService {
         if (ArticleStatus.PUBLISHED.name().equals(status)) {
             return ArticleStatus.PUBLISHED;
         }
+        if (ArticleStatus.SCHEDULED.name().equals(status)) {
+            return ArticleStatus.SCHEDULED;
+        }
         if (ArticleStatus.OFFLINE.name().equals(status)) {
             return ArticleStatus.OFFLINE;
         }
         return ArticleStatus.DRAFT;
     }
 
-    private void applyStatus(Article article, String status) {
-        if (!StringUtils.hasText(status)) {
+    private void applyStatus(Article article, ArticleStatus status, LocalDateTime scheduledPublishAt) {
+        if (status == null) {
             article.saveDraft();
             return;
         }
-        if (ArticleStatus.PUBLISHED.name().equals(status)) {
+        if (ArticleStatus.PUBLISHED.equals(status)) {
             article.publish();
             return;
         }
-        if (ArticleStatus.OFFLINE.name().equals(status)) {
+        if (ArticleStatus.SCHEDULED.equals(status)) {
+            article.schedulePublish(scheduledPublishAt);
+            return;
+        }
+        if (ArticleStatus.OFFLINE.equals(status)) {
             article.offline();
             return;
         }
-        if (!ArticleStatus.DRAFT.name().equals(status)) {
+        if (!ArticleStatus.DRAFT.equals(status)) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "不支持的文章状态");
         }
         article.saveDraft();
+    }
+
+    private void applyStatus(Article article, String status) {
+        applyStatus(article, resolveCreateStatus(status), null);
+    }
+
+    private boolean requiresPublishCheck(ArticleStatus status) {
+        return ArticleStatus.PUBLISHED.equals(status) || ArticleStatus.SCHEDULED.equals(status);
+    }
+
+    private String resolveActionText(ArticleStatus status) {
+        return ArticleStatus.SCHEDULED.equals(status) ? "定时发布文章" : "发布文章";
+    }
+
+    private LocalDateTime parseScheduledPublishAt(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim().replace(' ', 'T'));
+        } catch (RuntimeException ex) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "定时发布时间格式不正确");
+        }
     }
 
     private String resolveCoverUrl(String coverUrl) {

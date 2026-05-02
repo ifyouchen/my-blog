@@ -26,6 +26,14 @@ public interface CommentRepository {
     Optional<Comment> findById(CommentId commentId);
 
     /**
+     * 根据评论 ID 查询评论，包含待审核和已删除状态。
+     *
+     * @param commentId 评论 ID
+     * @return 评论 Optional
+     */
+    Optional<Comment> findByIdForAdmin(CommentId commentId);
+
+    /**
      * 根据文章 ID 查询评论列表。
      *
      * @param articleId 文章 ID
@@ -42,7 +50,7 @@ public interface CommentRepository {
      * @param pageSize 每页大小
      * @return 评论列表
      */
-    List<Comment> findAdminPage(Long articleId, String keyword, int page, int pageSize);
+    List<Comment> findAdminPage(Long articleId, String status, String keyword, int page, int pageSize);
 
     /**
      * 统计后台评论数量。
@@ -51,7 +59,7 @@ public interface CommentRepository {
      * @param keyword 关键字
      * @return 评论数量
      */
-    long countAdminPage(Long articleId, String keyword);
+    long countAdminPage(Long articleId, String status, String keyword);
 
     /**
      * 分页查询文章一级评论。

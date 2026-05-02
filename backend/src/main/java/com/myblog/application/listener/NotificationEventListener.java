@@ -12,6 +12,7 @@ import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.CommentRepository;
+import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.NotificationType;
 import com.myblog.shared.enums.UserStatus;
@@ -24,6 +25,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -44,17 +46,20 @@ public class NotificationEventListener {
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final UserFollowRepository userFollowRepository;
     private final ObjectMapper objectMapper;
 
     public NotificationEventListener(NotificationAppService notificationAppService,
                                      ArticleRepository articleRepository,
                                      CommentRepository commentRepository,
                                      UserRepository userRepository,
+                                     UserFollowRepository userFollowRepository,
                                      ObjectMapper objectMapper) {
         this.notificationAppService = notificationAppService;
         this.articleRepository = articleRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
+        this.userFollowRepository = userFollowRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -238,6 +243,53 @@ public class NotificationEventListener {
                 event.getFollowerUserId(), event.getFollowingUserId());
         } catch (Exception e) {
             log.error("Failed to create notification for UserFollowedEvent: {}", e.getMessage());
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onArticlePublished(ArticlePublishedEvent event) {
+        log.info("Processing ArticlePublishedEvent for article {}, author {}",
+            event.getArticleId(), event.getAuthorId());
+        try {
+            Optional<Article> articleOpt = articleRepository.findById(new ArticleId(event.getArticleId()));
+            if (!articleOpt.isPresent()) {
+                log.warn("Article {} not found for ArticlePublishedEvent", event.getArticleId());
+                return;
+            }
+
+            Long authorId = event.getAuthorId();
+            List<Long> followerIds = userFollowRepository.findFollowerUserIds(new UserId(authorId));
+
+            if (followerIds.isEmpty()) {
+                log.debug("No followers to notify for published article {}", event.getArticleId());
+                return;
+            }
+
+            int successCount = 0;
+            for (Long followerId : followerIds) {
+                if (followerId.equals(authorId)) {
+                    continue;
+                }
+                try {
+                    CreateNotificationCommand command = new CreateNotificationCommand();
+                    command.setReceiverUserId(followerId);
+                    command.setActorUserId(authorId);
+                    command.setType(NotificationType.ARTICLE_PUBLISH);
+                    command.setArticleId(event.getArticleId());
+                    command.setPayloadJson(buildArticlePayload(event.getArticleId(), authorId));
+
+                    notificationAppService.createNotification(command);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("Failed to create ARTICLE_PUBLISH notification for follower {}: {}",
+                        followerId, e.getMessage());
+                }
+            }
+
+            log.info("Created {} ARTICLE_PUBLISH notifications for article {}",
+                successCount, event.getArticleId());
+        } catch (Exception e) {
+            log.error("Failed to process ArticlePublishedEvent: {}", e.getMessage());
         }
     }
 
