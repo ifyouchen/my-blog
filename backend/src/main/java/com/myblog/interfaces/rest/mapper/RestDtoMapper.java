@@ -126,6 +126,7 @@ public class RestDtoMapper {
         response.setLastLoginAt(dto.getLastLoginAt());
         response.setLastLoginIp(dto.getLastLoginIp());
         response.setRole(dto.getRole());
+        response.setStatus(dto.getStatus());
         response.setFollowed(dto.getFollowed());
         response.setFollowerCount(dto.getFollowerCount());
         return response;

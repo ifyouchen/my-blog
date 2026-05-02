@@ -1,5 +1,5 @@
 <script setup>
-import {computed, useSlots} from 'vue';
+import {computed, onMounted, onUnmounted, ref, useSlots} from 'vue';
 
 const emit = defineEmits(['avatar-load', 'avatar-error', 'stat-click']);
 
@@ -55,6 +55,28 @@ const slots = useSlots();
 const displayBio = computed(() => props.bio || props.bioFallback);
 const hasActions = computed(() => Boolean(slots.actions));
 const hasExtra = computed(() => Boolean(slots.extra));
+
+const lightboxOpen = ref(false);
+
+const openLightbox = () => {
+    lightboxOpen.value = true;
+};
+
+const closeLightbox = () => {
+    lightboxOpen.value = false;
+};
+
+const onKeyDown = (e) => {
+    if (e.key === 'Escape') closeLightbox();
+};
+
+onMounted(() => {
+    document.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('keydown', onKeyDown);
+});
 </script>
 
 <template>
@@ -66,7 +88,8 @@ const hasExtra = computed(() => Boolean(slots.extra));
                 :alt="avatarAlt"
                 @load="$emit('avatar-load')"
                 @error="$emit('avatar-error')"
-             decoding="async">
+                decoding="async"
+                @click="openLightbox">
             <div class="profile-summary-copy">
                 <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
                 <div class="profile-summary-title-row">
@@ -100,6 +123,18 @@ const hasExtra = computed(() => Boolean(slots.extra));
             </div>
         </div>
     </section>
+
+    <!-- Avatar lightbox overlay -->
+    <Teleport to="body">
+        <div v-if="lightboxOpen" class="avatar-lightbox-overlay" @click.self="closeLightbox">
+            <img :src="avatarSrc" :alt="avatarAlt" class="avatar-lightbox-image">
+            <button class="avatar-lightbox-close" @click="closeLightbox" aria-label="关闭">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 6l12 12M18 6l-12 12"/>
+                </svg>
+            </button>
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -130,6 +165,7 @@ const hasExtra = computed(() => Boolean(slots.extra));
     object-fit: cover;
     border-radius: var(--radius-md);
     border: 2px solid var(--line);
+    cursor: pointer;
 }
 
 .profile-summary-copy {
@@ -297,5 +333,59 @@ const hasExtra = computed(() => Boolean(slots.extra));
     .profile-summary-actions :deep(button) {
         min-width: 0;
     }
+}
+</style>
+
+<style>
+.avatar-lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    cursor: zoom-out;
+    animation: avatar-lightbox-fade-in 0.2s ease;
+}
+
+.avatar-lightbox-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    cursor: default;
+}
+
+.avatar-lightbox-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.avatar-lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.avatar-lightbox-close svg {
+    width: 22px;
+    height: 22px;
+}
+
+@keyframes avatar-lightbox-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 </style>

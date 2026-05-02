@@ -29,6 +29,7 @@ const relatedLoading = ref(false);
 const neighborPrev = ref(null);
 const neighborNext = ref(null);
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
+const articleUrl = computed(() => `${window.location.origin}/articles/${articleId.value}`);
 const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
 const article = computed(() => {
     if (remoteArticle.value) {
@@ -340,7 +341,7 @@ const handleImmersiveKeydown = (e) => {
 };
 
 const copyArticleLink = async () => {
-    const url = window.location.href;
+    const url = articleUrl.value;
     try {
         if (navigator.clipboard?.writeText) {
             await navigator.clipboard.writeText(url);
@@ -362,7 +363,7 @@ const copyArticleLink = async () => {
 
 const shareToWeibo = () => {
     if (!article.value) return;
-    const url = encodeURIComponent(window.location.href);
+    const url = encodeURIComponent(articleUrl.value);
     const title = encodeURIComponent(article.value.title || '');
     window.open(`https://service.weibo.com/share/share.php?url=${url}&title=${title}`, '_blank');
     showShareMenu.value = false;
@@ -1243,7 +1244,55 @@ onUnmounted(() => {
         display: none;
     }
 }
-</style>
+
+/* 上下篇导航：上一篇在左，下一篇在右 */
+.article-neighbors {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+.article-neighbor {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.article-neighbor:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.article-neighbor--empty {
+    visibility: hidden;
+}
+
+.article-neighbor--next {
+    text-align: right;
+}
+
+.article-neighbor-label {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.article-neighbor-title {
+    font-size: 14px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 <style>
 /* 沉浸阅读 — 全局规则（body/site-header 不受 scoped 限制） */

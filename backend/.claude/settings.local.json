@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:refactoringguru.cn)",
+      "WebSearch",
+      "Bash(python generate_data.py)",
+      "Bash(python generate_seed_data.py)",
+      "Bash(mvn compile *)",
+      "Bash(mvn spring-boot:run)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /PID 28844)",
+      "Bash(taskkill.exe *)",
+      "Read(//f/software/IdeaProject/my-blog/frontend/**)",
+      "Bash(npx vue-tsc *)",
+      "Bash(npm run *)",
+      "Bash(npx vite *)",
+      "Bash(node -e ' *)",
+      "Bash(taskkill *)",
+      "Bash(kill -9 30864)",
+      "Bash(/c/Windows/System32/taskkill.exe /PID 30864 /F)",
+      "Bash(powershell *)"
+    ]
+  }
+}

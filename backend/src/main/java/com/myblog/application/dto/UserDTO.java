@@ -21,6 +21,7 @@ public class UserDTO {
     private String lastLoginAt;
     private String lastLoginIp;
     private String role;
+    private String status;
     private Boolean followed;
     private long followerCount;
 
@@ -196,6 +197,14 @@ public class UserDTO {
      */
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     /**

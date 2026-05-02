@@ -231,6 +231,11 @@ public class MessageController {
     @PostMapping("/conversations/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
         messageAppService.markAllRead(id);
+
+        Long userId = AuthContext.getRequiredUserId();
+        long unread = messageAppService.countUnread();
+        pushUnreadCount(userId, unread);
+
         return Result.success(null);
     }
 

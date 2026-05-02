@@ -13,7 +13,7 @@ const { state, updateCurrentUser } = useSession();
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=240&q=80';
 
 // ── Tab ──────────────────────────────────────────────────────────────────────
-const activeTab = ref('profile'); // 'profile' | 'security' | 'invite'
+const activeTab = ref('profile'); // 'profile' | 'security'
 
 // ── 个人资料 ──────────────────────────────────────────────────────────────────
 const loading = ref(false);
@@ -26,6 +26,8 @@ const fieldFeedbackType = ref('info');
 const avatarUploading = ref(false);
 const avatarInputRef = ref(null);
 const avatarPreviewFailed = ref(false);
+const debouncedAvatarUrl = ref('');
+let avatarUrlDebounceTimer = null;
 const profileStats = reactive({
     articleCount: 0,
     totalViewCount: 0,
@@ -67,10 +69,6 @@ const FIELD_LABELS = {
 const securityLoading = ref(false);
 const securityInfo = ref(null);
 
-const inviteCodes = ref([]);
-const inviteLoading = ref(false);
-const inviteGenerating = ref(false);
-const inviteFeedback = ref('');
 const pwdForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' });
 const pwdError = ref('');
 const pwdSuccess = ref('');
@@ -83,7 +81,7 @@ const emailLoading = ref(false);
 // ─────────────────────────────────────────────────────────────────────────────
 
 const roleLabel = computed(() => (state.user?.role === 'ADMIN' ? '管理员' : '普通用户'));
-const rawAvatar = computed(() => draft.avatarUrl || state.user?.avatarUrl || state.user?.avatar || '');
+const rawAvatar = computed(() => debouncedAvatarUrl.value || state.user?.avatarUrl || state.user?.avatar || '');
 const displayAvatar = computed(() => (
     avatarPreviewFailed.value ? DEFAULT_AVATAR : resolveMediaUrl(rawAvatar.value, DEFAULT_AVATAR)
 ));
@@ -99,6 +97,14 @@ watch(rawAvatar, () => {
     avatarPreviewFailed.value = false;
 });
 
+watch(() => draft.avatarUrl, (newUrl) => {
+    if (avatarUrlDebounceTimer) clearTimeout(avatarUrlDebounceTimer);
+    avatarUrlDebounceTimer = setTimeout(() => {
+        debouncedAvatarUrl.value = newUrl;
+        avatarUrlDebounceTimer = null;
+    }, 2000);
+});
+
 const syncFromSession = () => {
     draft.nickname = state.user?.nickname || '';
     draft.avatarUrl = state.user?.avatarUrl || state.user?.avatar || '';
@@ -107,6 +113,7 @@ const syncFromSession = () => {
     draft.github = state.user?.github || '';
     draft.twitter = state.user?.twitter || '';
     draft.location = state.user?.location || '';
+    debouncedAvatarUrl.value = draft.avatarUrl;
     avatarPreviewFailed.value = false;
     Object.assign(originalProfile, draft);
 };
@@ -177,6 +184,9 @@ const startEditField = (field) => {
 
 const cancelEditField = (field) => {
     draft[field] = getOriginalValue(field);
+    if (field === 'avatarUrl') {
+        debouncedAvatarUrl.value = getOriginalValue(field);
+    }
     activeField.value = '';
     fieldFeedback.value = '';
 };
@@ -231,6 +241,7 @@ const handleAvatarSelected = async (event) => {
     try {
         const result = await uploadImageApi(file, 'avatar');
         draft.avatarUrl = result.url || '';
+        debouncedAvatarUrl.value = result.url || '';
         avatarPreviewFailed.value = false;
         fieldFeedback.value = '图片已上传，保存资料后永久生效';
         fieldFeedbackType.value = 'success';
@@ -319,40 +330,6 @@ const changeEmail = async () => {
     }
 };
 
-const loadInviteCodes = async () => {
-    inviteLoading.value = true;
-    try {
-        inviteCodes.value = await getMyInviteCodesApi() || [];
-    } catch {
-        inviteCodes.value = [];
-    } finally {
-        inviteLoading.value = false;
-    }
-};
-
-const generateCode = async () => {
-    inviteGenerating.value = true;
-    inviteFeedback.value = '';
-    try {
-        await generateInviteCodeApi();
-        inviteFeedback.value = '邀请码生成成功！';
-        await loadInviteCodes();
-    } catch (e) {
-        inviteFeedback.value = e.message || '生成失败';
-    } finally {
-        inviteGenerating.value = false;
-    }
-};
-
-const copyCode = async (code) => {
-    try {
-        await navigator.clipboard.writeText(code);
-        inviteFeedback.value = '已复制到剪贴板';
-    } catch {
-        inviteFeedback.value = '复制失败，请手动复制';
-    }
-};
-
 const switchTab = (tab) => {
     activeTab.value = tab;
     if (tab === 'security' && !securityInfo.value) {
@@ -424,20 +401,6 @@ onMounted(async () => {
                     <path d="m7.5 10 1.75 1.75 3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 账号安全
-            </button>
-            <button
-                role="tab"
-                class="settings-tab"
-                :class="{ active: activeTab === 'invite' }"
-                :aria-selected="activeTab === 'invite'"
-                type="button"
-                @click="switchTab('invite')"
-            >
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d="M13 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM4 17c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                    <path d="M16 7v3m0 0v3m0-3h3m-3 0h-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                </svg>
-                邀请好友
             </button>
         </nav>
 
@@ -748,51 +711,7 @@ onMounted(async () => {
             </section>
         </div>
 
-        <!-- 账号安全 Tab -->
-        
-        <!-- 邀请好友 Tab -->
-        <div v-if="activeTab === 'invite'" class="settings-tab-panel">
-            <section class="settings-card">
-                <div class="settings-card-head">
-                    <h2>邀请好友</h2>
-                    <p>生成专属邀请码，邀请朋友加入社区，一起创作与分享。</p>
-                </div>
-                <div class="invite-actions">
-                    <button
-                        type="button"
-                        class="primary-action"
-                        :disabled="inviteGenerating"
-                        @click="generateCode"
-                    >
-                        {{ inviteGenerating ? '生成中...' : '生成新邀请码' }}
-                    </button>
-                    <p v-if="inviteFeedback" class="invite-feedback">{{ inviteFeedback }}</p>
-                </div>
-                <div v-if="inviteLoading" class="invite-loading">加载中...</div>
-                <ul v-else-if="inviteCodes.length" class="invite-code-list">
-                    <li v-for="item in inviteCodes" :key="item.id" class="invite-code-item">
-                        <code class="invite-code-value">{{ item.code }}</code>
-                        <div class="invite-code-meta">
-                            <span v-if="item.usedBy" class="invite-used">已被使用</span>
-                            <span v-else-if="item.expiredAt && new Date(item.expiredAt) < new Date()" class="invite-expired">已过期</span>
-                            <span v-else class="invite-available">可用</span>
-                            <span v-if="item.expiredAt" class="invite-expire-date">{{ item.expiredAt }} 过期</span>
-                        </div>
-                        <button
-                            v-if="!item.usedBy"
-                            type="button"
-                            class="copy-btn"
-                            @click="copyCode(item.code)"
-                        >
-                            复制
-                        </button>
-                    </li>
-                </ul>
-                <p v-else class="invite-empty">暂无邀请码，点击"生成新邀请码"创建。</p>
-            </section>
-        </div>
-
-<div v-if="activeTab === 'security'" class="settings-tab-panel">
+        <div v-if="activeTab === 'security'" class="settings-tab-panel">
             <section class="profile-settings-grid">
                 <!-- 修改密码 -->
                 <section class="profile-settings-panel">
@@ -874,28 +793,28 @@ onMounted(async () => {
 
                     <div v-if="securityLoading" class="profile-hot-state">加载中...</div>
                     <template v-else-if="securityInfo">
-                        <dl class="security-info-list">
+                        <div class="security-info-list">
                             <div class="security-info-item">
-                                <dt>上次登录时间</dt>
-                                <dd>{{ securityInfo.lastLoginAt || '暂无记录' }}</dd>
+                                <span class="security-info-label">上次登录时间</span>
+                                <span>{{ securityInfo.lastLoginAt || '暂无记录' }}</span>
                             </div>
                             <div class="security-info-item">
-                                <dt>上次登录 IP</dt>
-                                <dd>{{ securityInfo.lastLoginIp || '暂无记录' }}</dd>
+                                <span class="security-info-label">上次登录 IP</span>
+                                <span>{{ securityInfo.lastLoginIp || '暂无记录' }}</span>
                             </div>
                             <div class="security-info-item">
-                                <dt>注册邮箱</dt>
-                                <dd class="security-info-email">{{ securityInfo.email || '暂无' }}</dd>
+                                <span class="security-info-label">注册邮箱</span>
+                                <span class="security-info-email">{{ securityInfo.email || '暂无' }}</span>
                             </div>
                             <div class="security-info-item">
-                                <dt>账号状态</dt>
-                                <dd>
-                                    <span class="security-badge" :class="securityInfo.status === 'ACTIVE' ? 'active' : 'inactive'">
-                                        {{ securityInfo.status === 'ACTIVE' ? '正常' : '受限' }}
+                                <span class="security-info-label">账号状态</span>
+                                <span>
+                                    <span class="security-badge" :class="securityInfo.status === 'NORMAL' ? 'active' : 'inactive'">
+                                        {{ securityInfo.status === 'NORMAL' ? '正常' : '受限' }}
                                     </span>
-                                </dd>
+                                </span>
                             </div>
-                        </dl>
+                        </div>
                     </template>
                     <div v-else class="profile-hot-state">暂无安全信息</div>
                 </section>
@@ -1371,14 +1290,16 @@ onMounted(async () => {
     flex-wrap: wrap;
 }
 
-.security-info-item dt {
+.security-info-item dt,
+.security-info-item .security-info-label {
     color: var(--muted);
     font-size: 13px;
     font-weight: 500;
     min-width: 100px;
 }
 
-.security-info-item dd {
+.security-info-item dd,
+.security-info-item > span:last-child {
     color: var(--text);
     font-size: 14px;
     font-weight: 500;
@@ -1448,81 +1369,6 @@ onMounted(async () => {
         flex: 1;
         justify-content: center;
     }
-}
-.invite-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-}
-
-.invite-feedback {
-    font-size: 13px;
-    color: var(--brand);
-    margin: 0;
-}
-
-.invite-loading, .invite-empty {
-    color: var(--muted);
-    font-size: 14px;
-    padding: 8px 0;
-}
-
-.invite-code-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.invite-code-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--surface-soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
-.invite-code-value {
-    font-family: monospace;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-strong);
-    letter-spacing: 0.05em;
-    flex-shrink: 0;
-}
-
-.invite-code-meta {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-}
-
-.invite-available { color: #16a34a; }
-.invite-used, .invite-expired { color: var(--muted); }
-.invite-expire-date { color: var(--muted); }
-
-.copy-btn {
-    padding: 4px 12px;
-    font-size: 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    cursor: pointer;
-    color: var(--brand);
-    transition: background 0.12s;
-    flex-shrink: 0;
-}
-
-.copy-btn:hover {
-    background: var(--surface-soft);
 }
 
 </style>

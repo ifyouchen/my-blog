@@ -39,6 +39,7 @@ public final class UserAssembler {
         dto.setLastLoginAt(user.getLastLoginAt() != null ? user.getLastLoginAt().format(DATETIME_FORMATTER) : null);
         dto.setLastLoginIp(user.getLastLoginIp());
         dto.setRole(user.getRole().name());
+        dto.setStatus(user.getStatus().name());
         return dto;
     }
 }
