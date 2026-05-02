@@ -1,5 +1,5 @@
 <script setup>
-import {computed, ref, watch} from 'vue';
+import {computed, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -17,6 +17,7 @@ import {getNotificationDetail, getNotificationText} from '@/utils/notifications'
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn } = useSession();
+const SCHEDULED_ARTICLE_REFRESH_MS = 30000;
 const {
     confirmDialog,
     openConfirmDialog,
@@ -75,6 +76,7 @@ const feedback = ref('');
 const feedbackType = ref('success');
 const actionLoadingId = ref(null);
 const jumpPage = ref(String(currentPage.value));
+let scheduledArticleRefreshTimer = null;
 
 // 文章统计抽屉
 const statsDrawerVisible = ref(false);
@@ -459,6 +461,7 @@ const changePerformanceSort = async (sort) => {
 
 const formatTrendDate = (date) => String(date || '').slice(5) || '--';
 const formatDate = (date) => date ? String(date).replace('T', ' ').slice(0, 19) : '-';
+const formatScheduledPublishAt = (date) => date ? formatDate(date) : '-';
 const getInteractionText = (notification) => getNotificationText(notification.type);
 const getInteractionDetail = (notification) => getNotificationDetail(notification);
 
@@ -486,9 +489,13 @@ const getUpdatedTimeParts = (text) => {
         time: time || ''
     };
 };
+const getScheduledPublishTimeParts = (date) => getUpdatedTimeParts(formatScheduledPublishAt(date));
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const hasCurrentItems = computed(() => (isFavorites.value ? favorites.value.length > 0 : articles.value.length > 0));
+const hasScheduledArticles = computed(() => (
+    isArticles.value && articles.value.some((article) => article.status === 'SCHEDULED')
+));
 const showListLoading = computed(() => initialLoading.value || (refreshing.value && !hasCurrentItems.value));
 const showEmptyState = computed(() => (
     hasLoadedOnce.value
@@ -551,6 +558,20 @@ const submitJump = () => {
     changePage(targetPage);
 };
 
+const clearScheduledArticleRefreshTimer = () => {
+    if (scheduledArticleRefreshTimer) {
+        window.clearInterval(scheduledArticleRefreshTimer);
+        scheduledArticleRefreshTimer = null;
+    }
+};
+
+const refreshScheduledArticles = () => {
+    if (!hasScheduledArticles.value || isLoading.value || refreshing.value) {
+        return;
+    }
+    fetchArticles({ silent: true });
+};
+
 watch(
     () => [route.name, route.query.page, route.query.status, route.query.range, route.query.sort],
     (next, prev) => {
@@ -572,6 +593,20 @@ watch(
 
 watch(isLoggedIn, () => {
     fetchCurrentTab();
+});
+
+watch(hasScheduledArticles, (enabled) => {
+    clearScheduledArticleRefreshTimer();
+    if (enabled) {
+        scheduledArticleRefreshTimer = window.setInterval(
+            refreshScheduledArticles,
+            SCHEDULED_ARTICLE_REFRESH_MS
+        );
+    }
+}, { immediate: true });
+
+onUnmounted(() => {
+    clearScheduledArticleRefreshTimer();
 });
 </script>
 
@@ -850,6 +885,7 @@ watch(isLoggedIn, () => {
                             <th>收藏</th>
                             <th>评论</th>
                             <th>更新时间</th>
+                            <th>定时发布时间</th>
                             <th>状态操作</th>
                             <th>操作</th>
                         </tr>
@@ -872,6 +908,12 @@ watch(isLoggedIn, () => {
                                 <span>{{ getUpdatedTimeParts(article.updatedText).date }}</span>
                                 <small v-if="getUpdatedTimeParts(article.updatedText).time">
                                     {{ getUpdatedTimeParts(article.updatedText).time }}
+                                </small>
+                            </td>
+                            <td class="article-time-cell">
+                                <span>{{ getScheduledPublishTimeParts(article.scheduledPublishAt).date }}</span>
+                                <small v-if="getScheduledPublishTimeParts(article.scheduledPublishAt).time">
+                                    {{ getScheduledPublishTimeParts(article.scheduledPublishAt).time }}
                                 </small>
                             </td>
                             <td class="article-action-cell">
@@ -943,6 +985,10 @@ watch(isLoggedIn, () => {
                             <span class="article-card-time">{{ getUpdatedTimeParts(article.updatedText).date }}</span>
                         </div>
                         <div class="article-card-title">{{ article.title }}</div>
+                        <div class="article-card-times">
+                            <span>更新时间 {{ formatDate(article.updatedAt) }}</span>
+                            <span>定时发布时间 {{ formatScheduledPublishAt(article.scheduledPublishAt) }}</span>
+                        </div>
                         <div class="article-card-metrics">
                             <span>阅读 {{ article.viewCount }}</span>
                             <span>赞 {{ article.likeCount }}</span>
@@ -1921,6 +1967,13 @@ watch(isLoggedIn, () => {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.article-card-times {
+    display: grid;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .article-card-metrics {

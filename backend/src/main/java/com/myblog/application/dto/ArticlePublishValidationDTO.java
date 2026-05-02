@@ -2,6 +2,7 @@ package com.myblog.application.dto;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 文章发布校验结果。
@@ -14,7 +15,7 @@ public class ArticlePublishValidationDTO {
     private boolean publishable;
     private List<String> errors = new ArrayList<String>();
     private List<String> warnings = new ArrayList<String>();
-    private List<ArticleValidationItemDTO> checks = new ArrayList<ArticleValidationItemDTO>();
+    private List<Map<String, Object>> checks = new ArrayList<Map<String, Object>>();
 
     public boolean isPublishable() {
         return publishable;
@@ -40,11 +41,11 @@ public class ArticlePublishValidationDTO {
         this.warnings = warnings;
     }
 
-    public List<ArticleValidationItemDTO> getChecks() {
+    public List<Map<String, Object>> getChecks() {
         return checks;
     }
 
-    public void setChecks(List<ArticleValidationItemDTO> checks) {
+    public void setChecks(List<Map<String, Object>> checks) {
         this.checks = checks;
     }
 }

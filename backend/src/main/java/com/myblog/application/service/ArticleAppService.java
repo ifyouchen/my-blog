@@ -4,7 +4,6 @@ import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.command.CreateArticleCommand;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
-import com.myblog.application.dto.ArticleValidationItemDTO;
 import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.application.event.ArticleViewedEvent;
@@ -39,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -481,7 +481,12 @@ public class ArticleAppService {
     @Scheduled(fixedDelayString = "${my-blog.article.scheduled-publish-interval-ms:60000}")
     @Transactional(rollbackFor = Exception.class)
     public void publishDueScheduledArticles() {
+        long _start = System.currentTimeMillis();
         List<Article> articles = articleRepository.findDueScheduled(LocalDateTime.now(), 20);
+        if (articles.isEmpty()) {
+            return;
+        }
+        int publishedCount = 0;
         for (Article article : articles) {
             try {
                 sanitizeExistingArticleForPublish(article, "定时发布文章");
@@ -490,10 +495,20 @@ public class ArticleAppService {
                 eventPublisher.publishEvent(new ArticlePublishedEvent(
                     article.getId().getValue(), article.getAuthorId().getValue()));
                 saveVersionSnapshot(article, article.getAuthorId().getValue());
-            } catch (ApplicationException ex) {
+                publishedCount++;
+                log.info("{} | 系统 定时发布文章 | 入参({}) | 结果({}) | {}",
+                    BizLogHelper.trace(),
+                    BizLogHelper.params("articleId", article.getId().getValue(), "title", article.getTitle()),
+                    BizLogHelper.result("published=true"),
+                    BizLogHelper.elapsed(_start));
+            } catch (RuntimeException ex) {
                 log.warn("定时发布文章失败，articleId={}, reason={}", article.getId().getValue(), ex.getMessage());
             }
         }
+        log.info("{} | 系统 定时发布扫描 | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.result("dueCount=" + articles.size() + ", publishedCount=" + publishedCount),
+            BizLogHelper.elapsed(_start));
     }
 
     private ArticleDTO toDTO(Article article, Long currentUserId) {
@@ -847,7 +862,7 @@ public class ArticleAppService {
         ArticlePublishValidationDTO validation = new ArticlePublishValidationDTO();
         List<String> errors = new ArrayList<String>();
         List<String> warnings = new ArrayList<String>();
-        List<ArticleValidationItemDTO> checks = new ArrayList<ArticleValidationItemDTO>();
+        List<Map<String, Object>> checks = new ArrayList<Map<String, Object>>();
 
         String title = normalizeValue(command.getTitle());
         String summary = normalizeValue(command.getSummary());
@@ -940,7 +955,7 @@ public class ArticleAppService {
         return validation;
     }
 
-    private void appendCheck(List<ArticleValidationItemDTO> checks,
+    private void appendCheck(List<Map<String, Object>> checks,
                              List<String> messages,
                              String key,
                              String label,
@@ -948,12 +963,12 @@ public class ArticleAppService {
                              String level,
                              String passedMessage,
                              String failedMessage) {
-        ArticleValidationItemDTO item = new ArticleValidationItemDTO();
-        item.setKey(key);
-        item.setLabel(label);
-        item.setPassed(passed);
-        item.setLevel(level);
-        item.setMessage(passed ? passedMessage : failedMessage);
+        Map<String, Object> item = new LinkedHashMap<String, Object>();
+        item.put("key", key);
+        item.put("label", label);
+        item.put("passed", passed);
+        item.put("level", level);
+        item.put("message", passed ? passedMessage : failedMessage);
         checks.add(item);
         if (!passed) {
             messages.add(failedMessage);

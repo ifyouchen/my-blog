@@ -171,7 +171,7 @@
     </select>
 
     <select id="selectDueScheduled" resultMap="BaseResultMap">
-        SELECT <include refid="List_Column_List"/>
+        SELECT <include refid="Base_Column_List"/>
         FROM blog_article
         WHERE status = 'SCHEDULED'
         AND scheduled_publish_at IS NOT NULL

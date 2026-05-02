@@ -32,6 +32,10 @@ spring:
       mode: always
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/initdata.sql
+  task:
+    scheduling:
+      pool:
+        size: 4
   redis:
     host: ${REDIS_HOST:192.168.80.128}
     port: ${REDIS_PORT:6379}
