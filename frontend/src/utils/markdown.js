@@ -372,13 +372,23 @@ export const editorJsonToMarkdown = (json) => {
         if (node.type === 'text') {
             let text = node.text || '';
             if (node.marks) {
+                // CommonMark：当加粗/斜体文本首尾有标点时，**+34** 不会被识别为定界符
+                // 改用 HTML 标签 <strong>/<em> 避免此问题
+                const boundaryPunct = /^[\p{P}\p{S}]|[\p{P}\p{S}]$/u.test(text);
                 for (const mark of node.marks) {
-                    if (mark.type === 'bold') text = `**${text}**`;
-                    if (mark.type === 'italic') text = `*${text}*`;
-                    if (mark.type === 'underline') text = `<u>${text}</u>`;
-                    if (mark.type === 'code') text = `\`${text}\``;
-                    if (mark.type === 'strike') text = `~~${text}~~`;
-                    if (mark.type === 'link') text = `[${text}](${mark.attrs.href})`;
+                    if (mark.type === 'bold') {
+                        text = boundaryPunct ? `<strong>${text}</strong>` : `**${text}**`;
+                    } else if (mark.type === 'italic') {
+                        text = boundaryPunct ? `<em>${text}</em>` : `*${text}*`;
+                    } else if (mark.type === 'underline') {
+                        text = `<u>${text}</u>`;
+                    } else if (mark.type === 'code') {
+                        text = `\`${text}\``;
+                    } else if (mark.type === 'strike') {
+                        text = `~~${text}~~`;
+                    } else if (mark.type === 'link') {
+                        text = `[${text}](${mark.attrs.href})`;
+                    }
                 }
             }
             return text;

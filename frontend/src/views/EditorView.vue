@@ -839,12 +839,13 @@ onUnmounted(() => {
             <section v-if="!previewVisible">
             <label class="editor-title">
                 <span class="sr-only">文章标题</span>
-                <input v-model="draft.title" type="text" placeholder="请输入文章标题" data-testid="editor-title-input">
+                <input v-model="draft.title" type="text" placeholder="请输入文章标题" maxlength="120" data-testid="editor-title-input">
             </label>
 
             <label class="editor-summary">
                 <span>文章摘要</span>
-                <textarea v-model="draft.summary" placeholder="用一两句话介绍这篇文章" data-testid="editor-summary-input"></textarea>
+                <textarea v-model="draft.summary" placeholder="用一两句话介绍这篇文章" maxlength="300" data-testid="editor-summary-input"></textarea>
+                <span class="editor-charcount">{{ draft.summary.length }} / 300</span>
             </label>
 
             <RichMarkdownEditor ref="richEditorRef" v-model="draft.content" />
@@ -882,7 +883,7 @@ onUnmounted(() => {
             </section>
             <section class="editor-side-block">
                 <p class="eyebrow">标签</p>
-                <input v-model="draft.tags" type="text" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
+                <input v-model="draft.tags" type="text" maxlength="500" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
             </section>
             <section class="upload-box">
                 <div class="cover-card-head">
@@ -921,6 +922,7 @@ onUnmounted(() => {
                     <input
                         v-model.trim="draft.coverUrl"
                         type="text"
+                        maxlength="500"
                         placeholder="/api/uploads/files/2026/04/cover.jpg 或 https://example.com/cover.jpg"
                     >
                 </label>
@@ -942,19 +944,20 @@ onUnmounted(() => {
                     <label class="editor-seo-field">
                         <span>URL Slug</span>
                         <small>URL 中标识这篇文章的友好名称，用于搜索引擎和分享链接。</small>
-                        <input v-model="draft.slug" type="text" placeholder="my-article-slug">
+                        <input v-model="draft.slug" type="text" maxlength="255" placeholder="my-article-slug">
                         <code class="editor-seo-preview">/articles/{{ editorArticleId }}{{ draft.slug ? '-' + draft.slug : '' }}</code>
                     </label>
                     <label class="editor-seo-field">
                         <span>SEO 标题</span>
                         <small>显示在搜索引擎结果中的标题。留空则使用文章标题。</small>
-                        <input v-model="draft.seoTitle" type="text" :placeholder="draft.title || '文章标题'">
+                        <input v-model="draft.seoTitle" type="text" maxlength="255" :placeholder="draft.title || '文章标题'">
+                        <span class="editor-charcount">{{ draft.seoTitle.length }} / 255</span>
                     </label>
                     <label class="editor-seo-field">
                         <span>SEO 描述</span>
                         <small>显示在搜索引擎结果中的描述文本。推荐 50&#x2013;160 个字符。</small>
-                        <textarea v-model="draft.seoDescription" placeholder="用一句话概括这篇文章的内容..." rows="3"></textarea>
-                        <span class="editor-seo-charcount">{{ draft.seoDescription.length }} / 160</span>
+                        <textarea v-model="draft.seoDescription" placeholder="用一句话概括这篇文章的内容..." maxlength="500" rows="3"></textarea>
+                        <span class="editor-seo-charcount">{{ draft.seoDescription.length }} / 500</span>
                     </label>
                 </div>
             </details>
@@ -1342,6 +1345,36 @@ onUnmounted(() => {
     padding-top: 14px;
 }
 
+.editor-seo-field input,
+.editor-seo-field textarea {
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.editor-seo-field input:focus,
+.editor-seo-field textarea:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 2px var(--brand-soft);
+}
+
+.editor-seo-field textarea {
+    resize: vertical;
+    min-height: 72px;
+    font-family: inherit;
+}
+
+.editor-seo-field input::placeholder,
+.editor-seo-field textarea::placeholder {
+    color: var(--muted);
+}
+
 .editor-seo-field span {
     color: var(--text);
     font-size: 13px;
@@ -1364,7 +1397,8 @@ onUnmounted(() => {
     word-break: break-all;
 }
 
-.editor-seo-charcount {
+.editor-seo-charcount,
+.editor-charcount {
     text-align: right;
     font-size: 12px;
     color: var(--muted);

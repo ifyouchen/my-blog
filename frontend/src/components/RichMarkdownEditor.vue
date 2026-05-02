@@ -581,6 +581,9 @@ const editor = useEditor({
     onUpdate({ editor: currentEditor }) {
         refreshEditorState();
         syncSlashMenu(currentEditor);
+        if (currentEditor.view.composing) {
+            return;
+        }
         const json = currentEditor.getJSON();
         console.log('Editor JSON:', JSON.stringify(json, null, 2));
         const markdown = editorJsonToMarkdown(json);
@@ -610,6 +613,10 @@ onMounted(() => {
 
 watch(() => props.modelValue, (value) => {
     if (!editor.value) {
+        return;
+    }
+    // 输入法组合期间跳过 setContent，避免打断 IME 导致首字母重复
+    if (editor.value.view.composing) {
         return;
     }
     const currentMarkdown = editorJsonToMarkdown(editor.value.getJSON());

@@ -1,5 +1,7 @@
 package com.myblog.interfaces.rest.dto.request;
 
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 /**
@@ -10,24 +12,31 @@ import java.util.List;
  */
 public class CreateArticleRequest {
 
+    @Size(max = 120, message = "标题长度不能超过{max}个字符")
     private String title;
 
+    @Size(max = 300, message = "摘要长度不能超过{max}个字符")
     private String summary;
 
     private String content;
 
+    @Size(max = 500, message = "封面地址长度不能超过{max}个字符")
     private String coverUrl;
 
+    @Size(max = 50, message = "分类长度不能超过{max}个字符")
     private String category;
 
     private List<String> tags;
 
     private String status;
 
+    @Size(max = 255, message = "Slug长度不能超过{max}个字符")
     private String slug;
 
+    @Size(max = 255, message = "SEO标题长度不能超过{max}个字符")
     private String seoTitle;
 
+    @Size(max = 500, message = "SEO描述长度不能超过{max}个字符")
     private String seoDescription;
 
     /**
