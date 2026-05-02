@@ -1,6 +1,7 @@
 <script setup>
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import {dismissAdApi, getAdsApi, getDismissedAdIdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
+import {resolveMediaUrl} from '@/utils/media';
 
 const props = defineProps({
     slotCode: { type: String, required: true }
@@ -141,7 +142,7 @@ onBeforeUnmount(() => {
                     <img
                         v-if="ad.imageUrl"
                         class="ad-banner-image"
-                        :src="ad.imageUrl"
+                        :src="resolveMediaUrl(ad.imageUrl)"
                         :alt="ad.title"
                         loading="lazy"
                         decoding="async"
