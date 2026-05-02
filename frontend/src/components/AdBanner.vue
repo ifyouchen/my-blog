@@ -196,9 +196,9 @@ onBeforeUnmount(() => {
 
 .ad-banner-body {
     display: grid;
-    gap: 8px;
+    gap: 4px;
     width: 100%;
-    padding: 12px;
+    padding: 10px 10px 14px;
     color: var(--text);
     text-align: left;
     cursor: pointer;
@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
 
 .ad-banner-image {
     width: 100%;
-    height: 80px;
+    height: 140px;
     object-fit: cover;
     display: block;
 }
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
 .ad-banner-title {
     font-size: 13px;
     font-weight: 600;
-    line-height: 1.5;
+    line-height: 1.35;
     color: var(--text);
     overflow: hidden;
     text-overflow: ellipsis;
