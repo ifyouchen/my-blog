@@ -55,6 +55,7 @@ public class CommentAppService {
     private final CommentLikeRepository commentLikeRepository;
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
+    private final SensitiveWordAppService sensitiveWordAppService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -69,11 +70,13 @@ public class CommentAppService {
                              CommentLikeRepository commentLikeRepository,
                              ArticleRepository articleRepository,
                              UserRepository userRepository,
+                             SensitiveWordAppService sensitiveWordAppService,
                              ApplicationEventPublisher eventPublisher) {
         this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
+        this.sensitiveWordAppService = sensitiveWordAppService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -215,6 +218,13 @@ public class CommentAppService {
             }
         }
 
+        // 检测敏感词
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(command.getContent());
+        if (!blockHits.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR,
+                "评论包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+        }
+
         Long nextCommentId = commentRepository.nextId();
         Long targetRootCommentId = rootCommentId != null ? rootCommentId : nextCommentId;
         Comment comment = Comment.create(
@@ -263,6 +273,13 @@ public class CommentAppService {
         if (!comment.getUserId().getValue().equals(userId)) {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "只能编辑自己的评论");
         }
+        // 检测敏感词
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(newContent);
+        if (!blockHits.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR,
+                "编辑后的评论包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+        }
+
         // 仅允许发布后 10 分钟内编辑
         java.time.LocalDateTime deadline = comment.getCreatedAt().plusMinutes(10);
         if (java.time.LocalDateTime.now().isAfter(deadline)) {

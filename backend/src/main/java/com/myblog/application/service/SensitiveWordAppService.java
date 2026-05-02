@@ -25,9 +25,12 @@ import java.util.Map;
 public class SensitiveWordAppService {
 
     private final SensitiveWordMapper sensitiveWordMapper;
+    private final SensitiveWordCache sensitiveWordCache;
 
-    public SensitiveWordAppService(SensitiveWordMapper sensitiveWordMapper) {
+    public SensitiveWordAppService(SensitiveWordMapper sensitiveWordMapper,
+                                    SensitiveWordCache sensitiveWordCache) {
         this.sensitiveWordMapper = sensitiveWordMapper;
+        this.sensitiveWordCache = sensitiveWordCache;
     }
 
     /**
@@ -62,6 +65,7 @@ public class SensitiveWordAppService {
         row.setCategory(category != null && !category.trim().isEmpty() ? category.trim() : "GENERAL");
         row.setLevel(normalizeLevel(level));
         sensitiveWordMapper.insertOrUpdate(row);
+        sensitiveWordCache.invalidate();
         return toMap(row);
     }
 
@@ -88,6 +92,7 @@ public class SensitiveWordAppService {
             row.setLevel(normalizeLevel(level));
         }
         sensitiveWordMapper.update(row);
+        sensitiveWordCache.invalidate();
         return toMap(row);
     }
 
@@ -101,6 +106,7 @@ public class SensitiveWordAppService {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "敏感词不存在");
         }
         sensitiveWordMapper.softDelete(id);
+        sensitiveWordCache.invalidate();
     }
 
     /**
@@ -113,7 +119,7 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordMapper.selectAllWords();
+        List<String> words = sensitiveWordCache.getAllWords();
         List<String> hits = new ArrayList<String>();
         String lower = text.toLowerCase();
         for (String word : words) {
@@ -134,7 +140,7 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordMapper.selectWordsByLevel(2);
+        List<String> words = sensitiveWordCache.getBlockWords();
         List<String> hits = new ArrayList<String>();
         String lower = text.toLowerCase();
         for (String word : words) {
@@ -155,7 +161,7 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordMapper.selectWordsByLevel(1);
+        List<String> words = sensitiveWordCache.getWarnWords();
         List<String> hits = new ArrayList<String>();
         String lower = text.toLowerCase();
         for (String word : words) {

@@ -60,6 +60,7 @@ public class ArticleAppService {
     private final ArticleAssembler articleAssembler;
     private final ApplicationEventPublisher eventPublisher;
     private final ArticleVersionRepository articleVersionRepository;
+    private final SensitiveWordAppService sensitiveWordAppService;
     private final String defaultArticleCoverUrl;
 
     public ArticleAppService(ArticleRepository articleRepository,
@@ -70,6 +71,7 @@ public class ArticleAppService {
                              ArticleAssembler articleAssembler,
                              ApplicationEventPublisher eventPublisher,
                              ArticleVersionRepository articleVersionRepository,
+                             SensitiveWordAppService sensitiveWordAppService,
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl) {
         this.articleRepository = articleRepository;
         this.articleLikeRepository = articleLikeRepository;
@@ -79,6 +81,7 @@ public class ArticleAppService {
         this.articleAssembler = articleAssembler;
         this.eventPublisher = eventPublisher;
         this.articleVersionRepository = articleVersionRepository;
+        this.sensitiveWordAppService = sensitiveWordAppService;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
     }
@@ -295,6 +298,7 @@ public class ArticleAppService {
         User author = userRepository.findById(new UserId(command.getAuthorId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         ensureSlugAvailable(command.getSlug(), null);
+        checkSensitiveWords(command.getTitle(), command.getContent(), "创建文章");
         Article article = Article.create(
             articleRepository.nextId(),
             author.getId(),
@@ -345,6 +349,7 @@ public class ArticleAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
         ensureSlugAvailable(command.getSlug(), articleId);
+        checkSensitiveWords(command.getTitle(), command.getContent(), "更新文章");
         article.updateContent(
             command.getTitle(),
             command.getSummary(),
@@ -377,6 +382,10 @@ public class ArticleAppService {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
+        // 发布时检测敏感词
+        if (ArticleStatus.PUBLISHED.name().equals(status)) {
+            checkSensitiveWords(article.getTitle(), article.getContent(), "发布文章");
+        }
         applyStatus(article, status);
         articleRepository.save(article);
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())
@@ -482,6 +491,14 @@ public class ArticleAppService {
                 throw new ApplicationException(ErrorCode.CONFLICT, "URL Slug 已存在，请换一个");
             }
         });
+    }
+
+    private void checkSensitiveWords(String title, String content, String action) {
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(title + "\n" + content);
+        if (!blockHits.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR,
+                action + "失败：内容包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+        }
     }
 
     private ArticleDTO buildDto(Article article, User author, Long currentUserId) {
@@ -704,6 +721,21 @@ public class ArticleAppService {
             "已设置自定义封面",
             "当前会使用系统默认封面，建议上传更贴合主题的封面图"
         );
+
+        // 敏感词检测
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(title + "\n" + content);
+        if (!blockHits.isEmpty()) {
+            String msg = "内容包含被禁止的敏感词：" + String.join("、", blockHits);
+            appendCheck(checks, errors, "sensitive-block", "敏感词检测", false, "error",
+                "内容无敏感词", msg);
+        } else {
+            List<String> warnHits = sensitiveWordAppService.detectWarnWords(title + "\n" + content);
+            if (!warnHits.isEmpty()) {
+                String msg = "内容包含建议修改的敏感词：" + String.join("、", warnHits);
+                appendCheck(checks, warnings, "sensitive-warn", "敏感词检测", false, "warning",
+                    "内容无敏感词", msg);
+            }
+        }
 
         validation.setPublishable(errors.isEmpty());
         validation.setErrors(errors);
