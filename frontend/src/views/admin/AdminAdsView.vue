@@ -49,9 +49,6 @@ const state = reactive({
     editImageUploading: false
 });
 
-const createImageInputRef = ref(null);
-const editImageInputRef = ref(null);
-
 const form = reactive({
     slotCode: 'home_sidebar',
     title: '',
@@ -86,14 +83,6 @@ const resetForm = () => {
     form.endAt = '';
     form.enabled = true;
     form.sortOrder = 0;
-};
-
-const triggerCreateImagePicker = () => {
-    createImageInputRef.value?.click();
-};
-
-const triggerEditImagePicker = () => {
-    editImageInputRef.value?.click();
 };
 
 const uploadAdImage = async (event, targetForm, uploadingKey) => {
@@ -395,21 +384,19 @@ watch(
                             :disabled="state.submitting || state.createImageUploading"
                         >
                     </label>
-                    <input
-                        ref="createImageInputRef"
-                        type="file"
-                        accept="image/*"
-                        class="sr-only"
-                        @change="uploadAdImage($event, form, 'createImageUploading')"
-                    >
-                    <button
-                        type="button"
+                    <label
                         class="ad-image-upload-button"
-                        :disabled="state.submitting || state.createImageUploading"
-                        @click="triggerCreateImagePicker"
+                        :class="{ disabled: state.submitting || state.createImageUploading }"
                     >
-                        {{ state.createImageUploading ? '上传中...' : '上传图片' }}
-                    </button>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            class="sr-only"
+                            :disabled="state.submitting || state.createImageUploading"
+                            @change="uploadAdImage($event, form, 'createImageUploading')"
+                        >
+                        <span>{{ state.createImageUploading ? '上传中...' : '上传图片' }}</span>
+                    </label>
                 </div>
                 <label>
                     <span>跳转链接 *</span>
@@ -574,21 +561,19 @@ watch(
                                                             :disabled="state.editImageUploading"
                                                         >
                                                     </label>
-                                                    <input
-                                                        ref="editImageInputRef"
-                                                        type="file"
-                                                        accept="image/*"
-                                                        class="sr-only"
-                                                        @change="uploadAdImage($event, editForm, 'editImageUploading')"
-                                                    >
-                                                    <button
-                                                        type="button"
+                                                    <label
                                                         class="ad-image-upload-button"
-                                                        :disabled="state.editImageUploading || state.actionLoadingId === ad.id"
-                                                        @click="triggerEditImagePicker"
+                                                        :class="{ disabled: state.editImageUploading || state.actionLoadingId === ad.id }"
                                                     >
-                                                        {{ state.editImageUploading ? '上传中...' : '上传图片' }}
-                                                    </button>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            class="sr-only"
+                                                            :disabled="state.editImageUploading || state.actionLoadingId === ad.id"
+                                                            @change="uploadAdImage($event, editForm, 'editImageUploading')"
+                                                        >
+                                                        <span>{{ state.editImageUploading ? '上传中...' : '上传图片' }}</span>
+                                                    </label>
                                                 </div>
                                                 <label>
                                                     <span>跳转链接 *</span>
@@ -738,7 +723,10 @@ watch(
     min-width: 0;
 }
 
-.ad-image-upload-button {
+.ad-image-field .ad-image-upload-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 35px;
     padding: 0 12px;
     color: var(--brand);
@@ -752,11 +740,17 @@ watch(
     cursor: pointer;
 }
 
-.ad-image-upload-button:hover:not(:disabled) {
+.ad-image-field .ad-image-upload-button span {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.ad-image-field .ad-image-upload-button:hover:not(.disabled) {
     background: var(--surface-soft);
 }
 
-.ad-image-upload-button:disabled {
+.ad-image-field .ad-image-upload-button.disabled {
     cursor: not-allowed;
     opacity: 0.65;
 }
