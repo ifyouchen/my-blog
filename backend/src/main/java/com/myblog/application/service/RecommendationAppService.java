@@ -1,5 +1,6 @@
 package com.myblog.application.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.UserDTO;
@@ -14,6 +15,7 @@ import com.myblog.domain.repository.ColumnRepository;
 import com.myblog.domain.repository.ColumnSubscriptionRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -34,19 +36,22 @@ public class RecommendationAppService {
     private final ColumnSubscriptionRepository columnSubscriptionRepository;
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
+    private final Cache<String, List<ArticleDTO>> featuredArticlesCache;
 
     public RecommendationAppService(UserRepository userRepository,
                                     ColumnRepository columnRepository,
                                     ArticleRepository articleRepository,
                                     ColumnSubscriptionRepository columnSubscriptionRepository,
                                     UserFollowRepository userFollowRepository,
-                                    ArticleAssembler articleAssembler) {
+                                    ArticleAssembler articleAssembler,
+                                    @Qualifier("featuredArticlesCache") Cache<String, List<ArticleDTO>> featuredArticlesCache) {
         this.userRepository = userRepository;
         this.columnRepository = columnRepository;
         this.articleRepository = articleRepository;
         this.columnSubscriptionRepository = columnSubscriptionRepository;
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
+        this.featuredArticlesCache = featuredArticlesCache;
     }
 
     /**
@@ -82,7 +87,15 @@ public class RecommendationAppService {
      * 推荐/精选文章列表。
      */
     public List<ArticleDTO> listFeaturedArticles(int page, int pageSize) {
-        List<Article> articles = articleRepository.findFeatured(page, pageSize);
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        String cacheKey = currentPage + ":" + currentPageSize;
+        List<ArticleDTO> cached = featuredArticlesCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<Article> articles = articleRepository.findFeatured(currentPage, currentPageSize);
         List<ArticleDTO> items = new ArrayList<>(articles.size());
         for (Article article : articles) {
             User author = userRepository.findById(article.getAuthorId()).orElse(null);
@@ -91,7 +104,12 @@ public class RecommendationAppService {
             }
             items.add(articleAssembler.toDTO(article, author));
         }
+        featuredArticlesCache.put(cacheKey, items);
         return items;
+    }
+
+    public void evictFeaturedArticles() {
+        featuredArticlesCache.invalidateAll();
     }
 
     private ColumnDTO toColumnDTO(Column column, Long currentUserId) {

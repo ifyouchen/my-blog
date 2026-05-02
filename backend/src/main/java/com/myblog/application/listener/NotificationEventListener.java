@@ -16,6 +16,7 @@ import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.NotificationType;
 import com.myblog.shared.enums.UserStatus;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -65,18 +66,32 @@ public class NotificationEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onArticleLiked(ArticleLikedEvent event) {
-        log.info("Processing ArticleLikedEvent for article {}, user {}", event.getArticleId(), event.getUserId());
+        long _start = System.currentTimeMillis();
+        log.info("{} | {} 处理点赞事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             Optional<Article> articleOpt = articleRepository.findById(new ArticleId(event.getArticleId()));
             if (!articleOpt.isPresent()) {
-                log.warn("Article {} not found for ArticleLikedEvent", event.getArticleId());
+                log.warn("{} | {} 处理点赞事件 | 入参({}) | 结果({}) | {}",
+                    BizLogHelper.trace(),
+                    BizLogHelper.who(event.getUserId()),
+                    BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                    BizLogHelper.result("文章不存在"),
+                    BizLogHelper.elapsed(_start));
                 return;
             }
 
             Article article = articleOpt.get();
             // If liking own article, don't create notification
             if (article.getAuthorId().getValue().equals(event.getUserId())) {
-                log.debug("User {} liked own article {}, skipping notification", event.getUserId(), event.getArticleId());
+                log.debug("{} | {} 处理点赞事件 | 入参({}) | 结果({}) | {}",
+                    BizLogHelper.trace(),
+                    BizLogHelper.who(event.getUserId()),
+                    BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                    BizLogHelper.result("自己的文章，跳过通知"),
+                    BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -88,28 +103,41 @@ public class NotificationEventListener {
             command.setPayloadJson(buildArticlePayload(event.getArticleId(), event.getUserId()));
 
             notificationAppService.createNotification(command);
-            log.info("Created ARTICLE_LIKE notification for article {} from user {}",
-                event.getArticleId(), event.getUserId());
+            log.info("{} | {} 处理点赞事件 | 入参({}) | 结果(type=ARTICLE_LIKE, articleId={}, fromUser={}, toUser={}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                event.getArticleId(), event.getUserId(), article.getAuthorId().getValue(),
+                BizLogHelper.elapsed(_start));
         } catch (Exception e) {
-            log.error("Failed to create notification for ArticleLikedEvent: {}", e.getMessage());
+            log.error("{} | {} 处理点赞事件 | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()),
+                BizLogHelper.elapsed(_start));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onArticleFavorited(ArticleFavoritedEvent event) {
-        log.info("Processing ArticleFavoritedEvent for article {}, user {}", event.getArticleId(), event.getUserId());
+        long _start = System.currentTimeMillis();
+        String who = BizLogHelper.who(event.getUserId());
+        String params = BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId());
+        log.info("{} | {} 处理收藏事件 | 入参({})", BizLogHelper.trace(), who, params);
         try {
             Optional<Article> articleOpt = articleRepository.findById(new ArticleId(event.getArticleId()));
             if (!articleOpt.isPresent()) {
-                log.warn("Article {} not found for ArticleFavoritedEvent", event.getArticleId());
+                log.warn("{} | {} 处理收藏事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("文章不存在"), BizLogHelper.elapsed(_start));
                 return;
             }
 
             Article article = articleOpt.get();
             // If favoriting own article, don't create notification
             if (article.getAuthorId().getValue().equals(event.getUserId())) {
-                log.debug("User {} favorited own article {}, skipping notification",
-                    event.getUserId(), event.getArticleId());
+                log.debug("{} | {} 处理收藏事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("自己的文章，跳过通知"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -121,21 +149,25 @@ public class NotificationEventListener {
             command.setPayloadJson(buildArticlePayload(event.getArticleId(), event.getUserId()));
 
             notificationAppService.createNotification(command);
-            log.info("Created ARTICLE_FAVORITE notification for article {} from user {}",
-                event.getArticleId(), event.getUserId());
+            log.info("{} | {} 处理收藏事件 | 入参({}) | 结果(type=ARTICLE_FAVORITE, articleId={}, fromUser={}) | {}", BizLogHelper.trace(), who, params,
+                event.getArticleId(), event.getUserId(), BizLogHelper.elapsed(_start));
         } catch (Exception e) {
-            log.error("Failed to create notification for ArticleFavoritedEvent: {}", e.getMessage());
+            log.error("{} | {} 处理收藏事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCommentCreated(CommentCreatedEvent event) {
-        log.info("Processing CommentCreatedEvent for article {}, comment {}, author {}",
-            event.getArticleId(), event.getCommentId(), event.getAuthorId());
+        long _start = System.currentTimeMillis();
+        String who = BizLogHelper.who(event.getAuthorId());
+        String params = BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId(), "authorId", event.getAuthorId());
+        log.info("{} | {} 处理评论事件 | 入参({})", BizLogHelper.trace(), who, params);
         try {
             Optional<Comment> commentOpt = commentRepository.findById(new CommentId(event.getCommentId()));
             if (!commentOpt.isPresent()) {
-                log.warn("Comment {} not found for CommentCreatedEvent", event.getCommentId());
+                log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("评论不存在"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -147,19 +179,22 @@ public class NotificationEventListener {
                 // Root comment - notify article author
                 Optional<Article> articleOpt = articleRepository.findById(new ArticleId(event.getArticleId()));
                 if (!articleOpt.isPresent()) {
-                    log.warn("Article {} not found for CommentCreatedEvent", event.getArticleId());
+                    log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                        BizLogHelper.result("文章不存在"), BizLogHelper.elapsed(_start));
                     return;
                 }
                 receiverUserId = articleOpt.get().getAuthorId().getValue();
             } else {
                 // Reply - notify the parent comment author
                 if (comment.getParentId() == null) {
-                    log.warn("Comment {} has no parent but is not root comment", event.getCommentId());
+                    log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                        BizLogHelper.result("父评论不存在"), BizLogHelper.elapsed(_start));
                     return;
                 }
                 Optional<Comment> parentOpt = commentRepository.findById(new CommentId(comment.getParentId()));
                 if (!parentOpt.isPresent()) {
-                    log.warn("Parent comment {} not found for CommentCreatedEvent", comment.getParentId());
+                    log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                        BizLogHelper.result("父评论不存在"), BizLogHelper.elapsed(_start));
                     return;
                 }
                 receiverUserId = parentOpt.get().getUserId().getValue();
@@ -167,7 +202,8 @@ public class NotificationEventListener {
 
             // Don't notify if replying to own comment
             if (receiverUserId.equals(event.getAuthorId())) {
-                log.debug("User {} replied to own comment, skipping notification", event.getAuthorId());
+                log.debug("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("自己的评论，跳过通知"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -180,28 +216,33 @@ public class NotificationEventListener {
             command.setPayloadJson(buildCommentPayload(event.getArticleId(), event.getCommentId(), event.getAuthorId()));
 
             notificationAppService.createNotification(command);
-            log.info("Created {} notification for comment {} from user {} to user {}",
-                command.getType(), event.getCommentId(), event.getAuthorId(), receiverUserId);
+            log.info("{} | {} 处理评论事件 | 入参({}) | 结果(type={}, commentId={}, fromUser={}, toUser={}) | {}", BizLogHelper.trace(), who, params,
+                command.getType(), event.getCommentId(), event.getAuthorId(), receiverUserId, BizLogHelper.elapsed(_start));
         } catch (Exception e) {
-            log.error("Failed to create notification for CommentCreatedEvent: {}", e.getMessage());
+            log.error("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCommentLiked(CommentLikedEvent event) {
-        log.info("Processing CommentLikedEvent for comment {}, user {}", event.getCommentId(), event.getUserId());
+        long _start = System.currentTimeMillis();
+        String who = BizLogHelper.who(event.getUserId());
+        String params = BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId());
+        log.info("{} | {} 处理评论点赞事件 | 入参({})", BizLogHelper.trace(), who, params);
         try {
             Optional<Comment> commentOpt = commentRepository.findById(new CommentId(event.getCommentId()));
             if (!commentOpt.isPresent()) {
-                log.warn("Comment {} not found for CommentLikedEvent", event.getCommentId());
+                log.warn("{} | {} 处理评论点赞事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("评论不存在"), BizLogHelper.elapsed(_start));
                 return;
             }
 
             Comment comment = commentOpt.get();
             // If liking own comment, don't create notification
             if (comment.getUserId().getValue().equals(event.getUserId())) {
-                log.debug("User {} liked own comment {}, skipping notification",
-                    event.getUserId(), event.getCommentId());
+                log.debug("{} | {} 处理评论点赞事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("自己的评论，跳过通知"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -214,21 +255,25 @@ public class NotificationEventListener {
             command.setPayloadJson(buildCommentPayload(comment.getArticleId().getValue(), event.getCommentId(), event.getUserId()));
 
             notificationAppService.createNotification(command);
-            log.info("Created COMMENT_LIKE notification for comment {} from user {}",
-                event.getCommentId(), event.getUserId());
+            log.info("{} | {} 处理评论点赞事件 | 入参({}) | 结果(type=COMMENT_LIKE, commentId={}, fromUser={}) | {}", BizLogHelper.trace(), who, params,
+                event.getCommentId(), event.getUserId(), BizLogHelper.elapsed(_start));
         } catch (Exception e) {
-            log.error("Failed to create notification for CommentLikedEvent: {}", e.getMessage());
+            log.error("{} | {} 处理评论点赞事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onUserFollowed(UserFollowedEvent event) {
-        log.info("Processing UserFollowedEvent: user {} followed user {}",
-            event.getFollowerUserId(), event.getFollowingUserId());
+        long _start = System.currentTimeMillis();
+        String who = BizLogHelper.who(event.getFollowerUserId());
+        String params = BizLogHelper.params("followerUserId", event.getFollowerUserId(), "followingUserId", event.getFollowingUserId());
+        log.info("{} | {} 处理关注事件 | 入参({})", BizLogHelper.trace(), who, params);
         try {
             // Don't notify if following yourself (though business logic should prevent this)
             if (event.getFollowerUserId().equals(event.getFollowingUserId())) {
-                log.debug("User {} followed themselves, skipping notification", event.getFollowerUserId());
+                log.debug("{} | {} 处理关注事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("关注自己，跳过通知"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -239,21 +284,25 @@ public class NotificationEventListener {
             command.setPayloadJson(buildUserPayload(event.getFollowerUserId()));
 
             notificationAppService.createNotification(command);
-            log.info("Created USER_FOLLOW notification from user {} to user {}",
-                event.getFollowerUserId(), event.getFollowingUserId());
+            log.info("{} | {} 处理关注事件 | 入参({}) | 结果(type=USER_FOLLOW, fromUser={}, toUser={}) | {}", BizLogHelper.trace(), who, params,
+                event.getFollowerUserId(), event.getFollowingUserId(), BizLogHelper.elapsed(_start));
         } catch (Exception e) {
-            log.error("Failed to create notification for UserFollowedEvent: {}", e.getMessage());
+            log.error("{} | {} 处理关注事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onArticlePublished(ArticlePublishedEvent event) {
-        log.info("Processing ArticlePublishedEvent for article {}, author {}",
-            event.getArticleId(), event.getAuthorId());
+        long _start = System.currentTimeMillis();
+        String who = BizLogHelper.who(event.getAuthorId());
+        String params = BizLogHelper.params("articleId", event.getArticleId(), "authorId", event.getAuthorId());
+        log.info("{} | {} 处理发布事件 | 入参({})", BizLogHelper.trace(), who, params);
         try {
             Optional<Article> articleOpt = articleRepository.findById(new ArticleId(event.getArticleId()));
             if (!articleOpt.isPresent()) {
-                log.warn("Article {} not found for ArticlePublishedEvent", event.getArticleId());
+                log.warn("{} | {} 处理发布事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("文章不存在"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -261,7 +310,8 @@ public class NotificationEventListener {
             List<Long> followerIds = userFollowRepository.findFollowerUserIds(new UserId(authorId));
 
             if (followerIds.isEmpty()) {
-                log.debug("No followers to notify for published article {}", event.getArticleId());
+                log.debug("{} | {} 处理发布事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("没有粉丝，跳过通知"), BizLogHelper.elapsed(_start));
                 return;
             }
 
@@ -281,15 +331,16 @@ public class NotificationEventListener {
                     notificationAppService.createNotification(command);
                     successCount++;
                 } catch (Exception e) {
-                    log.error("Failed to create ARTICLE_PUBLISH notification for follower {}: {}",
-                        followerId, e.getMessage());
+                    log.error("{} | {} 处理发布事件 | 入参({}) | 结果(通知粉丝{}失败: {}) | {}", BizLogHelper.trace(), who, params,
+                        followerId, e.getMessage(), BizLogHelper.elapsed(_start));
                 }
             }
 
-            log.info("Created {} ARTICLE_PUBLISH notifications for article {}",
-                successCount, event.getArticleId());
+            log.info("{} | {} 处理发布事件 | 入参({}) | 结果(成功通知{}个粉丝) | {}", BizLogHelper.trace(), who, params,
+                successCount, BizLogHelper.elapsed(_start));
         } catch (Exception e) {
-            log.error("Failed to process ArticlePublishedEvent: {}", e.getMessage());
+            log.error("{} | {} 处理发布事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
         }
     }
 

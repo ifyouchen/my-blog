@@ -8,6 +8,8 @@ import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
 import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,7 @@ import java.util.concurrent.Executor;
 @Service
 public class HomeBootstrapAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(HomeBootstrapAppService.class);
     private static final String BOOTSTRAP_CACHE_KEY = "home-bootstrap";
 
     private final Cache<String, HomeBootstrapDTO> homeBootstrapCache;

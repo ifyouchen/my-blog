@@ -8,6 +8,9 @@ import com.myblog.application.dto.TagDTO;
 import com.myblog.domain.repository.UserSearchHistoryRepository;
 import com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class SearchHistoryAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(SearchHistoryAppService.class);
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int MAX_RECENT_KEYWORDS = 10;
     private static final int HOT_KEYWORDS_LIMIT = 20;
@@ -99,6 +103,7 @@ public class SearchHistoryAppService {
      * @param keyword 关键字
      */
     public void recordSearch(Long userId, String keyword) {
+        long _start = System.currentTimeMillis();
         if (userId == null || keyword == null || keyword.trim().isEmpty()) {
             return;
         }
@@ -126,6 +131,13 @@ public class SearchHistoryAppService {
         }
 
         invalidateUserCache(userId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "记录搜索",
+            BizLogHelper.params("keyword", trimmedKeyword),
+            BizLogHelper.result("recorded=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -160,8 +172,16 @@ public class SearchHistoryAppService {
      * @param userId 用户 ID
      */
     public void clearUserSearchHistory(Long userId) {
+        long _start = System.currentTimeMillis();
         userSearchHistoryRepository.deleteByUserId(userId);
         invalidateUserCache(userId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "清空搜索历史",
+            BizLogHelper.params(),
+            BizLogHelper.result("cleared=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**

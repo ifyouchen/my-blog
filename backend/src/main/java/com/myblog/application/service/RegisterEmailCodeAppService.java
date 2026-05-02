@@ -4,6 +4,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class RegisterEmailCodeAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(RegisterEmailCodeAppService.class);
     private static final int MAX_VERIFY_FAIL_COUNT = 5;
     private static final long CODE_EXPIRE_MILLIS = TimeUnit.MINUTES.toMillis(10);
 
@@ -53,6 +57,7 @@ public class RegisterEmailCodeAppService {
      * @param email 邮箱
      */
     public void sendCode(String email) {
+        long _start = System.currentTimeMillis();
         String normalizedEmail = normalizeEmail(email);
         RegisterEmailCode existingCode = emailCodeCache.getIfPresent(normalizedEmail);
         LocalDateTime now = LocalDateTime.now();
@@ -72,6 +77,12 @@ public class RegisterEmailCodeAppService {
             emailCodeCache.invalidate(normalizedEmail);
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "验证码发送失败，请稍后重试");
         }
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "发送注册验证码",
+            BizLogHelper.trace(),
+            BizLogHelper.params("email", normalizedEmail),
+            BizLogHelper.result("OK"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -81,6 +92,7 @@ public class RegisterEmailCodeAppService {
      * @param code 验证码
      */
     public void verifyAndConsume(String email, String code) {
+        long _start = System.currentTimeMillis();
         String normalizedEmail = normalizeEmail(email);
         RegisterEmailCode cachedCode = emailCodeCache.getIfPresent(normalizedEmail);
         if (cachedCode == null) {
@@ -98,6 +110,12 @@ public class RegisterEmailCodeAppService {
         }
 
         emailCodeCache.invalidate(normalizedEmail);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "校验验证码",
+            BizLogHelper.trace(),
+            BizLogHelper.params("email", normalizedEmail),
+            BizLogHelper.result("OK"),
+            BizLogHelper.elapsed(_start));
     }
 
     private String normalizeEmail(String email) {

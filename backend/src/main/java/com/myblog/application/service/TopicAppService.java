@@ -15,6 +15,9 @@ import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,8 @@ import java.util.List;
  */
 @Service
 public class TopicAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(TopicAppService.class);
 
     private final TopicRepository topicRepository;
     private final ArticleRepository articleRepository;
@@ -132,12 +137,20 @@ public class TopicAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public TopicDTO adminCreateTopic(String title, String summary, String coverUrl, Integer sortOrder) {
+        long _start = System.currentTimeMillis();
         Topic topic = Topic.create(
             topicRepository.nextId(),
             title, summary, coverUrl, sortOrder
         );
         topicRepository.save(topic);
-        return toAdminDTO(topic);
+        TopicDTO result = toAdminDTO(topic);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "后台创建专题",
+            BizLogHelper.params("title", title),
+            BizLogHelper.result("topicId=" + result.getId()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -146,11 +159,19 @@ public class TopicAppService {
     @Transactional(rollbackFor = Exception.class)
     public TopicDTO adminUpdateTopic(Long topicId, String title, String summary,
                                      String coverUrl, Integer sortOrder, String status) {
+        long _start = System.currentTimeMillis();
         Topic topic = topicRepository.findById(new TopicId(topicId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
         topic.update(title, summary, coverUrl, sortOrder, status);
         topicRepository.save(topic);
-        return toAdminDTO(topic);
+        TopicDTO result = toAdminDTO(topic);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "后台更新专题",
+            BizLogHelper.params("topicId", topicId, "title", title),
+            BizLogHelper.result("topicId=" + result.getId()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -158,10 +179,17 @@ public class TopicAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void adminDeleteTopic(Long topicId) {
+        long _start = System.currentTimeMillis();
         Topic topic = topicRepository.findById(new TopicId(topicId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
         topic.delete();
         topicRepository.save(topic);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "后台删除专题",
+            BizLogHelper.params("topicId", topicId),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -169,11 +197,18 @@ public class TopicAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void adminBindArticle(Long topicId, Long articleId, Integer sortOrder) {
+        long _start = System.currentTimeMillis();
         topicRepository.findById(new TopicId(topicId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
         articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         topicRepository.bindArticle(new TopicId(topicId), articleId, sortOrder == null ? 0 : sortOrder);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "专题绑定文章",
+            BizLogHelper.params("topicId", topicId, "articleId", articleId, "sortOrder", sortOrder),
+            BizLogHelper.result("bound=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -181,7 +216,14 @@ public class TopicAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void adminUnbindArticle(Long topicId, Long articleId) {
+        long _start = System.currentTimeMillis();
         topicRepository.unbindArticle(new TopicId(topicId), articleId);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "专题解绑文章",
+            BizLogHelper.params("topicId", topicId, "articleId", articleId),
+            BizLogHelper.result("unbound=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     private Topic loadPublishedTopic(Long topicId) {

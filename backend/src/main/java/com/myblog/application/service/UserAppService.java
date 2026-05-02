@@ -20,6 +20,9 @@ import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +44,7 @@ import java.util.stream.Collectors;
 public class UserAppService {
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final Logger log = LoggerFactory.getLogger(UserAppService.class);
 
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
@@ -69,12 +73,20 @@ public class UserAppService {
     @Transactional(rollbackFor = Exception.class)
     public UserDTO updateProfile(Long userId, String nickname, String avatarUrl, String bio,
                                  String website, String github, String twitter, String location) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         user.updateProfile(nickname, avatarUrl, bio);
         user.updateExtendedProfile(website, github, twitter, location);
         userRepository.save(user);
-        return UserAssembler.toDTO(user);
+        UserDTO result = UserAssembler.toDTO(user);
+        log.info("{} | {} 更新个人资料 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId, nickname),
+            BizLogHelper.params("nickname", nickname, "bio", bio, "website", website),
+            BizLogHelper.result("userId=" + userId),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -86,6 +98,7 @@ public class UserAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void changePassword(Long userId, String currentPassword, String newPassword) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         if (!passwordDomainService.matches(currentPassword, user.getPasswordHash())) {
@@ -97,6 +110,12 @@ public class UserAppService {
         String newHash = passwordDomainService.encode(newPassword);
         user.changePassword(newHash);
         userRepository.save(user);
+        log.info("{} | {} 修改密码 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            BizLogHelper.params("userId", userId),
+            BizLogHelper.result("changed=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -108,6 +127,7 @@ public class UserAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public com.myblog.application.dto.UserDTO changeEmail(Long userId, String newEmail, String password) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         if (!passwordDomainService.matches(password, user.getPasswordHash())) {
@@ -119,7 +139,14 @@ public class UserAppService {
         }
         user.changeEmail(newEmail);
         userRepository.save(user);
-        return UserAssembler.toDTO(user);
+        com.myblog.application.dto.UserDTO result = UserAssembler.toDTO(user);
+        log.info("{} | {} 更换邮箱 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            BizLogHelper.params("newEmail", newEmail),
+            BizLogHelper.result("userId=" + userId),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -129,6 +156,7 @@ public class UserAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public String forgotPassword(String email) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "该邮箱未注册"));
         String token = user.generatePasswordResetToken();
@@ -144,6 +172,12 @@ public class UserAppService {
         } catch (RuntimeException exception) {
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "重置邮件提交失败，请稍后重试");
         }
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "忘记密码",
+            BizLogHelper.params("email", email),
+            BizLogHelper.result("tokenIssued=true"),
+            BizLogHelper.elapsed(_start));
         return token;
     }
 
@@ -155,12 +189,18 @@ public class UserAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void resetPassword(String token, String newPassword) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findByPasswordResetToken(token)
             .orElseThrow(() -> new ApplicationException(ErrorCode.PARAM_ERROR, "重置链接无效或已过期"));
         user.validatePasswordResetToken(token);
         String newHash = passwordDomainService.encode(newPassword);
         user.changePassword(newHash);
         userRepository.save(user);
+        log.info("{} | {} | 结果({}) | {}",
+            BizLogHelper.trace(),
+            "重置密码",
+            BizLogHelper.result("changed=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -352,6 +392,7 @@ public class UserAppService {
 
 
     public byte[] exportMyArticlesCsv(Long userId, String status) {
+        long _start = System.currentTimeMillis();
         PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, status);
         StringBuilder sb = new StringBuilder();
         sb.append("id,title,category,status,viewCount,likeCount,commentCount,publishedAt,createdAt\n");
@@ -366,7 +407,15 @@ public class UserAppService {
             sb.append(escapeCsvUser(a.getPublishedAt()!=null?a.getPublishedAt().toString():"")).append(",");
             sb.append(escapeCsvUser(a.getUpdatedAt()!=null?a.getUpdatedAt():"" )).append("\n");
         }
-        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] result = sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "导出文章CSV",
+            BizLogHelper.params("status", status),
+            BizLogHelper.result("size=" + result.length),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
     private String escapeCsvUser(String v) {
         if (v == null) return "";

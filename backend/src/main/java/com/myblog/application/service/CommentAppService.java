@@ -25,6 +25,7 @@ import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -187,6 +188,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CommentDTO createComment(CreateCommentCommand command, String currentUserRole) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(command.getArticleId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
@@ -218,12 +220,7 @@ public class CommentAppService {
             }
         }
 
-        // 检测敏感词
-        List<String> blockHits = sensitiveWordAppService.detectBlockWords(command.getContent());
-        if (!blockHits.isEmpty()) {
-            throw new ApplicationException(ErrorCode.PARAM_ERROR,
-                "评论包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
-        }
+        SanitizedCommentContent sanitizedContent = sanitizeCommentContent(command.getContent(), "评论");
 
         Long nextCommentId = commentRepository.nextId();
         Long targetRootCommentId = rootCommentId != null ? rootCommentId : nextCommentId;
@@ -233,11 +230,17 @@ public class CommentAppService {
             user.getId(),
             targetRootCommentId,
             parentId,
-            command.getContent()
+            sanitizedContent.getContent()
         );
+        if (sanitizedContent.hasWarnHits()) {
+            comment.approve();
+        }
         commentRepository.save(comment);
-        eventPublisher.publishEvent(new CommentCreatedEvent(comment.getId().getValue(), article.getId().getValue(), user.getId().getValue()));
-        log.info("Comment {} created for article {}", comment.getId().getValue(), article.getId().getValue());
+        eventPublisher.publishEvent(new CommentCreatedEvent(
+            comment.getId().getValue(),
+            article.getId().getValue(),
+            user.getId().getValue()
+        ));
 
         CommentDTO dto = CommentAssembler.toDTO(comment, user);
         dto.setReplyCount(0);
@@ -252,6 +255,14 @@ public class CommentAppService {
                 dto.setReplyToUser(toUserDTO(replyToUser));
             }
         }
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(user.getId().getValue(), user.getNickname()),
+            "创建评论",
+            BizLogHelper.params("articleId", command.getArticleId(), "parentId", command.getParentId(),
+                "content", BizLogHelper.contentMeta(sanitizedContent.getContent())),
+            BizLogHelper.created("commentId", comment.getId().getValue()),
+            BizLogHelper.elapsed(_start));
         return dto;
     }
 
@@ -273,23 +284,49 @@ public class CommentAppService {
         if (!comment.getUserId().getValue().equals(userId)) {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "只能编辑自己的评论");
         }
-        // 检测敏感词
-        List<String> blockHits = sensitiveWordAppService.detectBlockWords(newContent);
-        if (!blockHits.isEmpty()) {
-            throw new ApplicationException(ErrorCode.PARAM_ERROR,
-                "编辑后的评论包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
-        }
+        SanitizedCommentContent sanitizedContent = sanitizeCommentContent(newContent, "编辑评论");
 
         // 仅允许发布后 10 分钟内编辑
         java.time.LocalDateTime deadline = comment.getCreatedAt().plusMinutes(10);
         if (java.time.LocalDateTime.now().isAfter(deadline)) {
             throw new ApplicationException(ErrorCode.CONFLICT, "评论发布超过 10 分钟，不可编辑");
         }
-        comment.edit(newContent);
+        comment.edit(sanitizedContent.getContent());
         commentRepository.save(comment);
         User user = userRepository.findById(comment.getUserId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         return CommentAssembler.toDTO(comment, user);
+    }
+
+    private SanitizedCommentContent sanitizeCommentContent(String content, String action) {
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(content);
+        if (!blockHits.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR,
+                action + "失败：内容包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+        }
+        List<String> warnHits = sensitiveWordAppService.detectWarnWords(content);
+        return new SanitizedCommentContent(
+            sensitiveWordAppService.maskWarnWords(content),
+            !warnHits.isEmpty()
+        );
+    }
+
+    private static class SanitizedCommentContent {
+        private final String content;
+        private final boolean warnHits;
+
+        SanitizedCommentContent(String content, boolean warnHits) {
+            this.content = content;
+            this.warnHits = warnHits;
+        }
+
+        String getContent() {
+            return content;
+        }
+
+        boolean hasWarnHits() {
+            return warnHits;
+        }
     }
 
     /**
@@ -301,7 +338,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteComment(Long commentId, Long userId, String currentUserRole) {
-        log.info("Deleting comment {}, userId={}", commentId, userId);
+        long _start = System.currentTimeMillis();
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
         Article article = articleRepository.findById(comment.getArticleId())
@@ -324,8 +361,13 @@ public class CommentAppService {
         }
 
         eventPublisher.publishEvent(new CommentDeletedEvent(commentId, articleId, deleteCount));
-        log.info("Comment {} deleted, {} comments removed from article {}",
-            commentId, deleteCount, articleId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "删除评论",
+            BizLogHelper.params("commentId", commentId, "articleId", articleId),
+            BizLogHelper.result("删除数量=" + deleteCount),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -336,7 +378,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void likeComment(Long commentId, Long userId) {
-        log.info("User {} liking comment {}", userId, commentId);
+        long _start = System.currentTimeMillis();
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
         UserId targetUserId = new UserId(userId);
@@ -354,7 +396,13 @@ public class CommentAppService {
         }
 
         eventPublisher.publishEvent(new CommentLikedEvent(commentId, userId));
-        log.info("User {} liked comment {}", userId, commentId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "点赞评论",
+            BizLogHelper.params("commentId", commentId),
+            BizLogHelper.result("liked=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -365,7 +413,7 @@ public class CommentAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void unlikeComment(Long commentId, Long userId) {
-        log.info("User {} unliking comment {}", userId, commentId);
+        long _start = System.currentTimeMillis();
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
         CommentLike commentLike = commentLikeRepository.findAnyByCommentAndUser(comment.getId(), new UserId(userId))
@@ -377,7 +425,13 @@ public class CommentAppService {
         commentLikeRepository.save(commentLike);
 
         eventPublisher.publishEvent(new CommentUnlikedEvent(commentId, userId));
-        log.info("User {} unliked comment {}", userId, commentId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "取消评论点赞",
+            BizLogHelper.params("commentId", commentId),
+            BizLogHelper.result("liked=false"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**

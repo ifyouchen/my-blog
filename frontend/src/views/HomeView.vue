@@ -23,7 +23,6 @@ const articles = ref([]);
 const currentPage = ref(1);
 const pageSize = 10;
 const total = ref(0);
-const topicItems = ref([]);
 const featuredArticles = ref([]);
 const sidebarColumns = ref([]);
 const sidebarAuthors = ref([]);
@@ -31,6 +30,39 @@ const sidebarTopics = ref([]);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
+
+const HOME_TOPIC_CACHE_KEY = 'home-topic-items-v1';
+const DEFAULT_TOPIC_ITEMS = ['全部'];
+
+const buildTopicItems = (categories = []) => {
+    const categoryNames = categories.map((item) => item.name).filter(Boolean);
+    return [...new Set([...DEFAULT_TOPIC_ITEMS, ...categoryNames])];
+};
+
+const readCachedTopicItems = () => {
+    try {
+        const cached = JSON.parse(localStorage.getItem(HOME_TOPIC_CACHE_KEY) || '[]');
+        if (!Array.isArray(cached)) {
+            return DEFAULT_TOPIC_ITEMS;
+        }
+        const items = cached
+            .filter((item) => typeof item === 'string' && item.trim())
+            .map((item) => item.trim());
+        return items.length ? [...new Set([...DEFAULT_TOPIC_ITEMS, ...items])] : DEFAULT_TOPIC_ITEMS;
+    } catch {
+        return DEFAULT_TOPIC_ITEMS;
+    }
+};
+
+const writeCachedTopicItems = (items) => {
+    if (items.length > 1) {
+        localStorage.setItem(HOME_TOPIC_CACHE_KEY, JSON.stringify(items));
+    } else {
+        localStorage.removeItem(HOME_TOPIC_CACHE_KEY);
+    }
+};
+
+const topicItems = ref(readCachedTopicItems());
 
 const {width: windowWidth} = useWindowSize();
 const SIDEBAR_BREAKPOINT = 980;
@@ -97,14 +129,15 @@ const loadHomeBootstrap = async () => {
                 totalColumns: bootstrap.stats.totalColumns || 0
             };
         }
-        const categoryNames = (bootstrap?.categories || []).map((item) => item.name).filter(Boolean);
-        topicItems.value = ['全部', ...categoryNames];
+        const nextTopicItems = buildTopicItems(bootstrap?.categories || []);
+        topicItems.value = nextTopicItems;
+        writeCachedTopicItems(nextTopicItems);
         featuredArticles.value = bootstrap?.featuredArticles || [];
         sidebarColumns.value = bootstrap?.recommendedColumns || [];
         sidebarAuthors.value = bootstrap?.authorRankings || [];
         sidebarTopics.value = bootstrap?.hotTopics || [];
     } catch (error) {
-        topicItems.value = ['全部'];
+        topicItems.value = topicItems.value.length ? topicItems.value : DEFAULT_TOPIC_ITEMS;
         sidebarColumns.value = [];
         sidebarAuthors.value = [];
         sidebarTopics.value = [];
@@ -238,10 +271,10 @@ onMounted(() => {
             :total-authors="homeStats.totalAuthors"
             :total-columns="homeStats.totalColumns"
         />
-        <TopicStrip :topics="topicItems" />
+        <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
         <FeaturedArticlesStrip
-            v-if="featuredArticles.length"
             :articles="featuredArticles"
+            :loading="!bootstrapLoaded"
         />
         <div class="content-grid">
             <ArticleFeed

@@ -1,21 +1,57 @@
 <script setup>
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 
-defineProps({
+const SKELETON_CARD_COUNT = 5;
+
+const props = defineProps({
     articles: {
         type: Array,
         default: () => []
+    },
+    loading: {
+        type: Boolean,
+        default: false
     }
 });
+
+const showSkeleton = computed(() => props.loading && props.articles.length === 0);
+const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.length > 0);
 </script>
 
 <template>
-    <section v-if="articles.length" class="featured-strip" aria-label="精选推荐">
+    <section
+        v-if="shouldRenderStrip"
+        class="featured-strip"
+        :class="{ 'is-loading': showSkeleton }"
+        aria-label="精选推荐"
+        :aria-busy="showSkeleton"
+    >
         <div class="featured-header">
             <p class="eyebrow">编辑精选</p>
             <h2>精选推荐</h2>
         </div>
-        <div class="featured-scroll">
+        <div v-if="showSkeleton" class="featured-scroll" aria-hidden="true">
+            <div
+                v-for="i in SKELETON_CARD_COUNT"
+                :key="i"
+                class="featured-card featured-card-skeleton"
+            >
+                <div class="featured-card-cover">
+                    <span class="featured-skeleton-cover"></span>
+                </div>
+                <div class="featured-card-body">
+                    <span class="featured-skeleton-block featured-skeleton-category"></span>
+                    <span class="featured-skeleton-block featured-skeleton-title"></span>
+                    <span class="featured-skeleton-block featured-skeleton-title short"></span>
+                    <div class="featured-skeleton-meta">
+                        <span class="featured-skeleton-block"></span>
+                        <span class="featured-skeleton-block short"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-else class="featured-scroll">
             <RouterLink
                 v-for="article in articles"
                 :key="article.id"
@@ -86,11 +122,14 @@ defineProps({
 .featured-card-cover {
     display: block;
     width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--surface-muted);
 }
 
 .featured-card-cover img {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 100%;
     object-fit: cover;
     display: block;
 }
@@ -99,6 +138,7 @@ defineProps({
     display: grid;
     gap: 6px;
     flex: 1;
+    min-height: 120px;
     padding: 12px 14px 14px;
 }
 
@@ -131,13 +171,69 @@ defineProps({
     display: flex;
     gap: 4px;
     align-items: center;
+    min-width: 0;
     color: var(--muted);
     font-size: 12px;
     margin-top: auto;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.featured-card-meta span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .middot {
     color: var(--line-strong);
+}
+
+.featured-card-skeleton {
+    cursor: default;
+    pointer-events: none;
+}
+
+.featured-skeleton-cover,
+.featured-skeleton-block {
+    display: block;
+    background: var(--surface-muted);
+    border-radius: var(--radius-sm);
+}
+
+.featured-skeleton-cover {
+    width: 100%;
+    height: 100%;
+}
+
+.featured-skeleton-category {
+    width: 42%;
+    height: 13px;
+}
+
+.featured-skeleton-title {
+    width: 88%;
+    height: 17px;
+}
+
+.featured-skeleton-title.short {
+    width: 66%;
+}
+
+.featured-skeleton-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: auto;
+}
+
+.featured-skeleton-meta .featured-skeleton-block {
+    width: 72px;
+    height: 13px;
+}
+
+.featured-skeleton-meta .featured-skeleton-block.short {
+    width: 42px;
 }
 
 @media (max-width: 1080px) {

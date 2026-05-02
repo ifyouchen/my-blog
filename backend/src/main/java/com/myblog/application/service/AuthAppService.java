@@ -12,6 +12,9 @@ import com.myblog.domain.service.PasswordDomainService;
 import com.myblog.infrastructure.security.JwtTokenProvider;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +30,8 @@ import java.util.Optional;
  */
 @Service
 public class AuthAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthAppService.class);
 
     private final UserRepository userRepository;
     private final PasswordDomainService passwordDomainService;
@@ -77,6 +82,7 @@ public class AuthAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public AuthDTO register(RegisterCommand command) {
+        long _start = System.currentTimeMillis();
         String normalizedEmail = normalizeEmail(command.getEmail());
         if (userRepository.existsByUsername(command.getUsername())) {
             throw new ApplicationException(ErrorCode.CONFLICT, "用户名已存在");
@@ -92,7 +98,15 @@ public class AuthAppService {
             inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
         }
         String token = jwtTokenProvider.createToken(user.getId().getValue(), user.getUsername(), user.getRole().name());
-        return new AuthDTO(token, UserAssembler.toDTO(user));
+        AuthDTO result = new AuthDTO(token, UserAssembler.toDTO(user));
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(user.getId().getValue(), user.getNickname()),
+            "注册账号",
+            BizLogHelper.params("username", command.getUsername(), "email", command.getEmail()),
+            BizLogHelper.created("userId", user.getId().getValue()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -102,6 +116,7 @@ public class AuthAppService {
      * @return 认证结果
      */
     public AuthDTO login(LoginCommand command) {
+        long _start = System.currentTimeMillis();
         Optional<User> optionalUser = userRepository.findByAccount(command.getAccount());
         if (!optionalUser.isPresent()) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "账号或密码错误");
@@ -112,7 +127,15 @@ public class AuthAppService {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "账号或密码错误");
         }
         String token = jwtTokenProvider.createToken(user.getId().getValue(), user.getUsername(), user.getRole().name());
-        return new AuthDTO(token, UserAssembler.toDTO(user));
+        AuthDTO result = new AuthDTO(token, UserAssembler.toDTO(user));
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(user.getId().getValue(), user.getNickname()),
+            "登录博客",
+            BizLogHelper.params("account", command.getAccount()),
+            BizLogHelper.loggedIn(user.getId().getValue()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**

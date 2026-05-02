@@ -11,6 +11,7 @@ import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,7 +50,7 @@ public class ArticleLikeAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void likeArticle(Long articleId, Long userId) {
-        log.info("User {} liking article {}", userId, articleId);
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -80,12 +81,18 @@ public class ArticleLikeAppService {
         // insertOrUpdate 保证：新记录 INSERT；已有记录 UPDATE deleted_at=NULL
         articleLikeRepository.save(likeToSave);
         eventPublisher.publishEvent(new ArticleLikedEvent(articleId, userId));
-        log.info("User {} liked article {}", userId, articleId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "点赞文章",
+            BizLogHelper.params("articleId", articleId, "title", article.getTitle()),
+            BizLogHelper.result("liked=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void unlikeArticle(Long articleId, Long userId) {
-        log.info("User {} un-liking article {}", userId, articleId);
+        long _start = System.currentTimeMillis();
         articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -100,7 +107,13 @@ public class ArticleLikeAppService {
         articleLike.delete();
         articleLikeRepository.save(articleLike);
         eventPublisher.publishEvent(new ArticleUnlikedEvent(articleId, userId));
-        log.info("User {} un-liked article {}", userId, articleId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "取消文章点赞",
+            BizLogHelper.params("articleId", articleId),
+            BizLogHelper.result("liked=false"),
+            BizLogHelper.elapsed(_start));
     }
 
     public boolean hasLiked(Long articleId, Long userId) {

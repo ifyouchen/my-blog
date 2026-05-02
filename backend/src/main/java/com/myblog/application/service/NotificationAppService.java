@@ -15,6 +15,7 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.NotificationType;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -122,16 +123,31 @@ public class NotificationAppService {
     }
 
     public void markRead(Long receiverUserId, Long notificationId) {
+        long _start = System.currentTimeMillis();
         notificationRepository.markRead(receiverUserId, notificationId);
         invalidateNotificationCaches(receiverUserId);
+        log.info("{} | {} 标记通知已读 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(receiverUserId),
+            BizLogHelper.params("notificationId", notificationId),
+            BizLogHelper.result("OK"),
+            BizLogHelper.elapsed(_start));
     }
 
     public void markAllRead(Long receiverUserId) {
+        long _start = System.currentTimeMillis();
         notificationRepository.markAllRead(receiverUserId);
         invalidateNotificationCaches(receiverUserId);
+        log.info("{} | {} 标记全部已读 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(receiverUserId),
+            BizLogHelper.params(),
+            BizLogHelper.result("OK"),
+            BizLogHelper.elapsed(_start));
     }
 
     public void createNotification(CreateNotificationCommand command) {
+        long _start = System.currentTimeMillis();
         Long nextId = notificationRepository.nextId();
         Notification notification = Notification.create(
             nextId,
@@ -143,8 +159,12 @@ public class NotificationAppService {
             command.getPayloadJson()
         );
         notificationRepository.save(notification);
-        log.info("Created notification: type={}, receiver={}, actor={}",
-            command.getType(), command.getReceiverUserId(), command.getActorUserId());
+        log.info("{} | {} 创建通知 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(command.getActorUserId()),
+            BizLogHelper.params("type", command.getType(), "receiver", command.getReceiverUserId()),
+            BizLogHelper.result("notificationId=" + nextId),
+            BizLogHelper.elapsed(_start));
         invalidateNotificationCaches(command.getReceiverUserId());
     }
 

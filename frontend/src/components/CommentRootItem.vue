@@ -15,6 +15,7 @@ import {
   unpinCommentApi
 } from '@/api/comments';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
+import {findWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
 
 const props = defineProps({
     articleId: {
@@ -129,7 +130,26 @@ function cancelReply() {
     replyFeedback.value = '';
 }
 
-async function submitReply() {
+async function confirmSensitiveComment(content, actionText, feedbackRef, onConfirm) {
+    const sensitiveHits = await findWarnSensitiveWords(content);
+    if (!sensitiveHits.length) {
+        return false;
+    }
+    const words = formatWarnSensitiveWords(sensitiveHits);
+    feedbackRef.value = `存在敏感词 ${words}，请修改或确认继续${actionText}`;
+    openConfirmDialog({
+        eyebrow: '敏感词提醒',
+        title: '评论包含警告词',
+        message: `存在敏感词 ${words}，提交后会自动替换为 ***。是否确认${actionText}？`,
+        confirmText: `确认${actionText}`,
+        cancelText: '返回修改',
+        tone: 'warning',
+        onConfirm
+    });
+    return true;
+}
+
+async function submitReply(options = {}) {
     const canContinue = loginModal.requireLogin(() => submitReply(), {
         title: '登录后回复评论',
         message: '登录后可以继续这段讨论，回复会展示在当前楼中楼中。',
@@ -143,6 +163,16 @@ async function submitReply() {
     if (!content || !activeReplyTarget.value) {
         replyFeedback.value = '回复内容不能为空';
         return;
+    }
+    if (options.skipSensitiveWarning !== true) {
+        replySubmitting.value = true;
+        const waitingConfirm = await confirmSensitiveComment(content, '发送回复', replyFeedback, async () => {
+            await submitReply({ skipSensitiveWarning: true });
+        });
+        replySubmitting.value = false;
+        if (waitingConfirm) {
+            return;
+        }
     }
     replySubmitting.value = true;
     try {
@@ -299,11 +329,21 @@ function cancelEditComment() {
     editFeedback.value = '';
 }
 
-async function submitEditComment() {
+async function submitEditComment(options = {}) {
     const content = editDraft.value.trim();
     if (!content) {
         editFeedback.value = '评论内容不能为空';
         return;
+    }
+    if (options.skipSensitiveWarning !== true) {
+        editSubmitting.value = true;
+        const waitingConfirm = await confirmSensitiveComment(content, '保存修改', editFeedback, async () => {
+            await submitEditComment({ skipSensitiveWarning: true });
+        });
+        editSubmitting.value = false;
+        if (waitingConfirm) {
+            return;
+        }
     }
     editSubmitting.value = true;
     try {
@@ -506,6 +546,7 @@ function goReplyPage(step) {
             :title="confirmDialog.title"
             :message="confirmDialog.message"
             :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
             :tone="confirmDialog.tone"
             :loading="confirmDialog.loading"
             @close="closeConfirmDialog"

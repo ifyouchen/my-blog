@@ -65,6 +65,9 @@ my-blog:
     email-resend-interval-seconds: ${MAIL_EMAIL_RESEND_INTERVAL_SECONDS:30}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId}] - %msg%n"
   level:
     root: INFO
     com.myblog: INFO

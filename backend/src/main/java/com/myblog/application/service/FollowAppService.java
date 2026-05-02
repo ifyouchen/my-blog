@@ -17,6 +17,7 @@ import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -53,7 +54,7 @@ public class FollowAppService {
 
     @Transactional(rollbackFor = Exception.class)
     public void followUser(Long targetUserId, Long currentUserId) {
-        log.info("User {} following user {}", currentUserId, targetUserId);
+        long _start = System.currentTimeMillis();
         validateFollowTarget(targetUserId, currentUserId);
         UserFollow existing = userFollowRepository.findByUsersIncludingDeleted(
             new UserId(currentUserId),
@@ -66,19 +67,26 @@ public class FollowAppService {
             existing.reactivate();
             userFollowRepository.save(existing);
             eventPublisher.publishEvent(new UserFollowedEvent(currentUserId, targetUserId));
-            return;
+        } else {
+            userFollowRepository.save(UserFollow.create(
+                userFollowRepository.nextId(),
+                new UserId(currentUserId),
+                new UserId(targetUserId)
+            ));
+            eventPublisher.publishEvent(new UserFollowedEvent(currentUserId, targetUserId));
         }
-        userFollowRepository.save(UserFollow.create(
-            userFollowRepository.nextId(),
-            new UserId(currentUserId),
-            new UserId(targetUserId)
-        ));
-        eventPublisher.publishEvent(new UserFollowedEvent(currentUserId, targetUserId));
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "关注用户",
+            BizLogHelper.params("targetUserId", targetUserId),
+            BizLogHelper.result("followed=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void unfollowUser(Long targetUserId, Long currentUserId) {
-        log.info("User {} un-following user {}", currentUserId, targetUserId);
+        long _start = System.currentTimeMillis();
         UserFollow follow = userFollowRepository.findByUsersIncludingDeleted(
             new UserId(currentUserId),
             new UserId(targetUserId)
@@ -89,6 +97,13 @@ public class FollowAppService {
         follow.delete();
         userFollowRepository.save(follow);
         eventPublisher.publishEvent(new UserUnfollowedEvent(currentUserId, targetUserId));
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "取消关注用户",
+            BizLogHelper.params("targetUserId", targetUserId),
+            BizLogHelper.result("followed=false"),
+            BizLogHelper.elapsed(_start));
     }
 
     public List<UserDTO> listFollowingUsers(Long currentUserId) {

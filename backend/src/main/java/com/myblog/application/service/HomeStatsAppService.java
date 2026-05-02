@@ -3,6 +3,7 @@ package com.myblog.application.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.ColumnRepository;
+import com.myblog.shared.util.BizLogHelper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,12 @@ public class HomeStatsAppService {
 
     @PostConstruct
     public void init() {
-        log.info("Initializing home stats cache");
+        long _start = System.currentTimeMillis();
         refreshStats();
+        log.info("{} | 系统 初始化首页缓存 | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.result("OK"),
+            BizLogHelper.elapsed(_start));
     }
 
     public HomeStats getStats() {
@@ -41,11 +46,13 @@ public class HomeStatsAppService {
 
     @Scheduled(fixedRate = 180000)
     public void refreshStats() {
-        log.info("Refreshing home stats cache");
+        long _start = System.currentTimeMillis();
         HomeStats stats = loadStats();
         homeStatsCache.put(HOME_STATS_KEY, stats);
-        log.info("Home stats cached: articles={}, authors={}, columns={}",
-            stats.totalArticles, stats.totalAuthors, stats.totalColumns);
+        log.info("{} | 系统 刷新首页缓存 | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.result("articles=" + stats.totalArticles + ", authors=" + stats.totalAuthors + ", columns=" + stats.totalColumns),
+            BizLogHelper.elapsed(_start));
     }
 
     private HomeStats loadStats() {

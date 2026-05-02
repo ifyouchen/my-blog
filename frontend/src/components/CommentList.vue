@@ -3,8 +3,11 @@ import { computed, inject, ref, watch } from 'vue';
 import { createCommentApi, pageCommentsApi } from '@/api/comments';
 import CommentComposer from '@/components/CommentComposer.vue';
 import CommentRootItem from '@/components/CommentRootItem.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { useStableListRequest } from '@/composables/useStableListRequest';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useSession } from '@/stores/session';
+import {findWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
 
 const props = defineProps({
     articleId: {
@@ -21,6 +24,12 @@ const emit = defineEmits(['count-change']);
 
 const { state } = useSession();
 const loginModal = inject('loginModal', { requireLogin: () => false });
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const composerDraft = ref('');
 const composerFeedback = ref('');
@@ -92,7 +101,26 @@ async function fetchComments(page = currentPage.value, { reset = false } = {}) {
     currentPage.value = nextPage;
 }
 
-async function submitComment() {
+async function confirmSensitiveComment(content, actionText, onConfirm) {
+    const sensitiveHits = await findWarnSensitiveWords(content);
+    if (!sensitiveHits.length) {
+        return false;
+    }
+    const words = formatWarnSensitiveWords(sensitiveHits);
+    composerFeedback.value = `存在敏感词 ${words}，请修改或确认继续${actionText}`;
+    openConfirmDialog({
+        eyebrow: '敏感词提醒',
+        title: '评论包含警告词',
+        message: `存在敏感词 ${words}，发送后会自动替换为 ***。是否确认${actionText}？`,
+        confirmText: `确认${actionText}`,
+        cancelText: '返回修改',
+        tone: 'warning',
+        onConfirm
+    });
+    return true;
+}
+
+async function submitComment(options = {}) {
     const canContinue = loginModal.requireLogin(() => submitComment(), {
         title: '登录后发表评论',
         message: '登录后可以参与讨论，和其他读者一起把评论区聊热起来。',
@@ -106,6 +134,16 @@ async function submitComment() {
     if (!content) {
         composerFeedback.value = '评论内容不能为空';
         return;
+    }
+    if (options.skipSensitiveWarning !== true) {
+        composerSubmitting.value = true;
+        const waitingConfirm = await confirmSensitiveComment(content, '发表评论', async () => {
+            await submitComment({ skipSensitiveWarning: true });
+        });
+        composerSubmitting.value = false;
+        if (waitingConfirm) {
+            return;
+        }
     }
     composerSubmitting.value = true;
     try {
@@ -241,6 +279,19 @@ watch(() => props.articleId, () => {
                 </button>
             </div>
         </footer>
+
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
 

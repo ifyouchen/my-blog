@@ -21,6 +21,7 @@ import RichMarkdownEditor from '@/components/RichMarkdownEditor.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import {topics} from '@/data/home';
 import {resolveMediaUrl} from '@/utils/media';
+import {findArticleWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
@@ -144,6 +145,10 @@ async function runAutoSaveDraft() {
         return;
     }
     if (!canServerAutoSave() || !hasUnsavedChanges.value || !hasAutoSaveableContent() || !getToken()) {
+        return;
+    }
+    const sensitiveHits = await findArticleWarnSensitiveWords(draft);
+    if (sensitiveHits.length) {
         return;
     }
 
@@ -608,7 +613,7 @@ async function ensurePublishValidationPassed() {
     return true;
 }
 
-async function persistArticle(status) {
+async function persistArticle(status, options = {}) {
     if (publishLoading.value) {
         return null;
     }
@@ -632,6 +637,26 @@ async function persistArticle(status) {
     if (status === 'PUBLISHED' || status === 'SCHEDULED') {
         const canPublish = await ensurePublishValidationPassed();
         if (!canPublish) {
+            return null;
+        }
+    }
+    if (options.skipSensitiveWarning !== true) {
+        const sensitiveHits = await findArticleWarnSensitiveWords(draft);
+        if (sensitiveHits.length) {
+            const words = formatWarnSensitiveWords(sensitiveHits);
+            statusMessage.value = `存在敏感词 ${words}，请修改或确认继续${actionText}`;
+            feedbackType.value = 'warning';
+            openConfirmDialog({
+                eyebrow: '敏感词提醒',
+                title: '内容包含警告词',
+                message: `存在敏感词 ${words}，提交后会自动替换为 ***。是否确认${actionText}？`,
+                confirmText: `确认${actionText}`,
+                cancelText: '返回修改',
+                tone: 'warning',
+                onConfirm: async () => {
+                    await persistArticle(status, { skipSensitiveWarning: true });
+                }
+            });
             return null;
         }
     }
@@ -1231,6 +1256,7 @@ onUnmounted(() => {
         :title="confirmDialog.title"
         :message="confirmDialog.message"
         :confirm-text="confirmDialog.confirmText"
+        :cancel-text="confirmDialog.cancelText"
         :tone="confirmDialog.tone"
         :loading="confirmDialog.loading"
         @close="closeConfirmDialog"

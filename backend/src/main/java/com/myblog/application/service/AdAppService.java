@@ -7,6 +7,9 @@ import com.myblog.domain.repository.AdCampaignRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.myblog.infrastructure.repository.persistence.mapper.AdDismissalMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,8 @@ import java.util.List;
 public class AdAppService {
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static final Logger log = LoggerFactory.getLogger(AdAppService.class);
 
     private final AdCampaignRepository adCampaignRepository;
     private final AdDismissalMapper adDismissalMapper;
@@ -60,10 +65,17 @@ public class AdAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void recordImpression(Long campaignId, Long userId, String ipAddress, String userAgent) {
+        long _start = System.currentTimeMillis();
         adCampaignRepository.findById(campaignId).orElseThrow(
             () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         adCampaignRepository.recordEvent(campaignId, "IMPRESSION", userId, ipAddress, userAgent);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "记录广告曝光",
+            BizLogHelper.trace(),
+            BizLogHelper.params("campaignId", campaignId, "userId", userId),
+            BizLogHelper.result("recorded=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -71,10 +83,17 @@ public class AdAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void recordClick(Long campaignId, Long userId, String ipAddress, String userAgent) {
+        long _start = System.currentTimeMillis();
         adCampaignRepository.findById(campaignId).orElseThrow(
             () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         adCampaignRepository.recordEvent(campaignId, "CLICK", userId, ipAddress, userAgent);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "记录广告点击",
+            BizLogHelper.trace(),
+            BizLogHelper.params("campaignId", campaignId, "userId", userId),
+            BizLogHelper.result("recorded=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -85,7 +104,14 @@ public class AdAppService {
         if (userId == null) {
             return;
         }
+        long _start = System.currentTimeMillis();
         adDismissalMapper.insert(userId, campaignId, LocalDateTime.now());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "关闭广告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("campaignId", campaignId, "userId", userId),
+            BizLogHelper.result("dismissed=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -137,6 +163,7 @@ public class AdAppService {
     public AdCampaignDTO create(String slotCode, String title, String imageUrl, String targetUrl,
                                  String label, LocalDateTime startAt, LocalDateTime endAt,
                                  Boolean enabled, Integer sortOrder) {
+        long _start = System.currentTimeMillis();
         if (slotCode == null || slotCode.trim().isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "广告位编码不能为空");
         }
@@ -151,6 +178,12 @@ public class AdAppService {
             label, startAt, endAt, enabled, sortOrder
         );
         AdCampaign saved = adCampaignRepository.save(campaign);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "创建广告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("title", title, "slotCode", slotCode),
+            BizLogHelper.result("campaignId=" + saved.getId()),
+            BizLogHelper.elapsed(_start));
         return toAdminDTO(saved);
     }
 
@@ -161,6 +194,7 @@ public class AdAppService {
     public AdCampaignDTO update(Long id, String slotCode, String title, String imageUrl, String targetUrl,
                                  String label, LocalDateTime startAt, LocalDateTime endAt,
                                  Boolean enabled, Integer sortOrder) {
+        long _start = System.currentTimeMillis();
         AdCampaign campaign = adCampaignRepository.findById(id).orElseThrow(
             () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
@@ -172,6 +206,12 @@ public class AdAppService {
         }
         campaign.update(slotCode, title.trim(), imageUrl, targetUrl.trim(), label, startAt, endAt, enabled, sortOrder);
         adCampaignRepository.save(campaign);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "更新广告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("campaignId", id, "title", title),
+            BizLogHelper.result("campaignId=" + id),
+            BizLogHelper.elapsed(_start));
         return toAdminDTO(campaign);
     }
 
@@ -180,11 +220,18 @@ public class AdAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        long _start = System.currentTimeMillis();
         AdCampaign campaign = adCampaignRepository.findById(id).orElseThrow(
             () -> new ApplicationException(ErrorCode.NOT_FOUND, "广告不存在")
         );
         campaign.delete();
         adCampaignRepository.save(campaign);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "删除广告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("campaignId", id),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**

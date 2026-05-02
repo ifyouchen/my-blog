@@ -6,6 +6,9 @@ import com.myblog.infrastructure.repository.persistence.mapper.AnnouncementMappe
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,8 @@ public class AnnouncementAppService {
             .appendLiteral('T')
             .appendPattern("HH:mm[:ss]")
             .toFormatter();
+
+    private static final Logger log = LoggerFactory.getLogger(AnnouncementAppService.class);
 
     private final AnnouncementMapper announcementMapper;
 
@@ -83,8 +88,10 @@ public class AnnouncementAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public AnnouncementDTO create(Map<String, Object> params) {
+        long _start = System.currentTimeMillis();
         AnnouncementDO d = new AnnouncementDO();
-        d.setTitle(getString(params, "title"));
+        String title = getString(params, "title");
+        d.setTitle(title);
         d.setContent(getString(params, "content"));
         String target = getString(params, "target");
         d.setTarget(target != null ? target : "ALL");
@@ -94,6 +101,12 @@ public class AnnouncementAppService {
             d.setExpiresAt(LocalDateTime.parse(expiresAt, FMT));
         }
         announcementMapper.insert(d);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "创建公告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("title", title),
+            BizLogHelper.result("announcementId=" + d.getId()),
+            BizLogHelper.elapsed(_start));
         return toDTO(d);
     }
 
@@ -106,13 +119,15 @@ public class AnnouncementAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public AnnouncementDTO update(Long id, Map<String, Object> params) {
+        long _start = System.currentTimeMillis();
         AnnouncementDO existing = announcementMapper.selectById(id);
         if (existing == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "公告不存在");
         }
         AnnouncementDO d = new AnnouncementDO();
         d.setId(id);
-        d.setTitle(getString(params, "title"));
+        String title = getString(params, "title");
+        d.setTitle(title);
         d.setContent(getString(params, "content"));
         d.setTarget(getString(params, "target"));
         String expiresAt = getString(params, "expiresAt");
@@ -120,6 +135,12 @@ public class AnnouncementAppService {
             d.setExpiresAt(LocalDateTime.parse(expiresAt, FMT));
         }
         announcementMapper.updateByPrimaryKeySelective(d);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "更新公告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("announcementId", id, "title", title),
+            BizLogHelper.result("announcementId=" + id),
+            BizLogHelper.elapsed(_start));
         return toDTO(announcementMapper.selectById(id));
     }
 
@@ -130,11 +151,18 @@ public class AnnouncementAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        long _start = System.currentTimeMillis();
         AnnouncementDO existing = announcementMapper.selectById(id);
         if (existing == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "公告不存在");
         }
         announcementMapper.softDelete(id);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "删除公告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("announcementId", id),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -145,6 +173,7 @@ public class AnnouncementAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public AnnouncementDTO publish(Long id) {
+        long _start = System.currentTimeMillis();
         AnnouncementDO existing = announcementMapper.selectById(id);
         if (existing == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "公告不存在");
@@ -154,6 +183,12 @@ public class AnnouncementAppService {
         d.setPublished(1);
         d.setPublishedAt(LocalDateTime.now());
         announcementMapper.updateByPrimaryKeySelective(d);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "发布公告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("announcementId", id),
+            BizLogHelper.result("published=true"),
+            BizLogHelper.elapsed(_start));
         return toDTO(announcementMapper.selectById(id));
     }
 
@@ -165,6 +200,7 @@ public class AnnouncementAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public AnnouncementDTO unpublish(Long id) {
+        long _start = System.currentTimeMillis();
         AnnouncementDO existing = announcementMapper.selectById(id);
         if (existing == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "公告不存在");
@@ -173,6 +209,12 @@ public class AnnouncementAppService {
         d.setId(id);
         d.setPublished(0);
         announcementMapper.updateByPrimaryKeySelective(d);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "撤回公告",
+            BizLogHelper.trace(),
+            BizLogHelper.params("announcementId", id),
+            BizLogHelper.result("published=false"),
+            BizLogHelper.elapsed(_start));
         return toDTO(announcementMapper.selectById(id));
     }
 

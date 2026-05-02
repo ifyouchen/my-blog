@@ -5,14 +5,22 @@ import com.myblog.infrastructure.repository.persistence.mapper.SensitiveWordMapp
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 敏感词应用服务。
@@ -23,6 +31,8 @@ import java.util.Map;
 @Service
 @Profile("!memory")
 public class SensitiveWordAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(SensitiveWordAppService.class);
 
     private final SensitiveWordMapper sensitiveWordMapper;
     private final SensitiveWordCache sensitiveWordCache;
@@ -55,6 +65,7 @@ public class SensitiveWordAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> create(String word, String category, String level) {
+        long _start = System.currentTimeMillis();
         validateWord(word);
         if (sensitiveWordMapper.countByWord(word.trim(), null) > 0) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "敏感词已存在：" + word);
@@ -66,6 +77,12 @@ public class SensitiveWordAppService {
         row.setLevel(normalizeLevel(level));
         sensitiveWordMapper.insertOrUpdate(row);
         sensitiveWordCache.invalidate();
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "创建敏感词",
+            BizLogHelper.trace(),
+            BizLogHelper.params("word", row.getWord(), "category", row.getCategory(), "level", row.getLevel() == null ? "WARN" : (row.getLevel() == 2 ? "BLOCK" : "WARN")),
+            BizLogHelper.result("wordId=" + row.getId()),
+            BizLogHelper.elapsed(_start));
         return toMap(row);
     }
 
@@ -74,6 +91,7 @@ public class SensitiveWordAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> update(Long id, String word, String category, String level) {
+        long _start = System.currentTimeMillis();
         SensitiveWordDO row = sensitiveWordMapper.selectById(id);
         if (row == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "敏感词不存在");
@@ -93,6 +111,12 @@ public class SensitiveWordAppService {
         }
         sensitiveWordMapper.update(row);
         sensitiveWordCache.invalidate();
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "更新敏感词",
+            BizLogHelper.trace(),
+            BizLogHelper.params("sensitiveWordId", id, "word", word, "category", category, "level", level),
+            BizLogHelper.result("wordId=" + id),
+            BizLogHelper.elapsed(_start));
         return toMap(row);
     }
 
@@ -101,12 +125,19 @@ public class SensitiveWordAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        long _start = System.currentTimeMillis();
         SensitiveWordDO row = sensitiveWordMapper.selectById(id);
         if (row == null) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "敏感词不存在");
         }
         sensitiveWordMapper.softDelete(id);
         sensitiveWordCache.invalidate();
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "删除敏感词",
+            BizLogHelper.trace(),
+            BizLogHelper.params("sensitiveWordId", id),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -116,18 +147,7 @@ public class SensitiveWordAppService {
      * @return 命中的敏感词列表
      */
     public List<String> detect(String text) {
-        if (text == null || text.isEmpty()) {
-            return new ArrayList<String>();
-        }
-        List<String> words = sensitiveWordCache.getAllWords();
-        List<String> hits = new ArrayList<String>();
-        String lower = text.toLowerCase();
-        for (String word : words) {
-            if (lower.contains(word.toLowerCase())) {
-                hits.add(word);
-            }
-        }
-        return hits;
+        return findHits(text, sensitiveWordCache.getAllWords());
     }
 
     /**
@@ -137,18 +157,7 @@ public class SensitiveWordAppService {
      * @return 命中的 BLOCK 级别敏感词列表
      */
     public List<String> detectBlockWords(String text) {
-        if (text == null || text.isEmpty()) {
-            return new ArrayList<String>();
-        }
-        List<String> words = sensitiveWordCache.getBlockWords();
-        List<String> hits = new ArrayList<String>();
-        String lower = text.toLowerCase();
-        for (String word : words) {
-            if (lower.contains(word.toLowerCase())) {
-                hits.add(word);
-            }
-        }
-        return hits;
+        return findHits(text, sensitiveWordCache.getBlockWords());
     }
 
     /**
@@ -161,15 +170,62 @@ public class SensitiveWordAppService {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        List<String> words = sensitiveWordCache.getWarnWords();
+        return findHits(text, sensitiveWordCache.getWarnWords());
+    }
+
+    /**
+     * 获取 WARN 级别敏感词列表，供前端做提交前提示。
+     *
+     * @return WARN 级别敏感词列表
+     */
+    public List<String> listWarnWords() {
+        return normalizeWords(sensitiveWordCache.getWarnWords());
+    }
+
+    /**
+     * 将 WARN 级别敏感词替换为统一掩码。
+     *
+     * @param text 原始文本
+     * @return 脱敏后的文本
+     */
+    public String maskWarnWords(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        String result = text;
+        for (String word : normalizeWords(sensitiveWordCache.getWarnWords())) {
+            Pattern pattern = Pattern.compile(Pattern.quote(word), Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+            result = pattern.matcher(result).replaceAll(Matcher.quoteReplacement("***"));
+        }
+        return result;
+    }
+
+    private List<String> findHits(String text, List<String> words) {
+        if (text == null || text.isEmpty()) {
+            return new ArrayList<String>();
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
         List<String> hits = new ArrayList<String>();
-        String lower = text.toLowerCase();
-        for (String word : words) {
-            if (lower.contains(word.toLowerCase())) {
+        for (String word : normalizeWords(words)) {
+            if (lower.contains(word.toLowerCase(Locale.ROOT))) {
                 hits.add(word);
             }
         }
         return hits;
+    }
+
+    private List<String> normalizeWords(List<String> words) {
+        Set<String> normalized = new LinkedHashSet<String>();
+        if (words != null) {
+            for (String word : words) {
+                if (word != null && !word.trim().isEmpty()) {
+                    normalized.add(word.trim());
+                }
+            }
+        }
+        List<String> result = new ArrayList<String>(normalized);
+        result.sort((left, right) -> Integer.compare(right.length(), left.length()));
+        return result;
     }
 
     // ========== 私有方法 ==========

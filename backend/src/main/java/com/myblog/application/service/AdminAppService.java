@@ -18,9 +18,14 @@ import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,21 +40,32 @@ import java.util.stream.Collectors;
 @Service
 public class AdminAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminAppService.class);
+
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
     private final CommentAppService commentAppService;
+    private final HomeBootstrapAppService homeBootstrapAppService;
+    private final RecommendationAppService recommendationAppService;
+    private final SensitiveWordAppService sensitiveWordAppService;
     private final ApplicationEventPublisher eventPublisher;
 
     public AdminAppService(UserRepository userRepository,
-                         ArticleRepository articleRepository,
-                         CommentRepository commentRepository,
-                         CommentAppService commentAppService,
-                         ApplicationEventPublisher eventPublisher) {
+                           ArticleRepository articleRepository,
+                           CommentRepository commentRepository,
+                           CommentAppService commentAppService,
+                           HomeBootstrapAppService homeBootstrapAppService,
+                           RecommendationAppService recommendationAppService,
+                           SensitiveWordAppService sensitiveWordAppService,
+                           ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.commentRepository = commentRepository;
         this.commentAppService = commentAppService;
+        this.homeBootstrapAppService = homeBootstrapAppService;
+        this.recommendationAppService = recommendationAppService;
+        this.sensitiveWordAppService = sensitiveWordAppService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -208,6 +224,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> updateUserStatus(Long userId, String status) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
 
@@ -221,6 +238,12 @@ public class AdminAppService {
         result.put("username", user.getUsername());
         result.put("previousStatus", previousStatus.name());
         result.put("status", newStatus.name());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 变更用户状态",
+            BizLogHelper.trace(),
+            BizLogHelper.params("userId", userId, "status", status),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), newStatus.name())),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -233,6 +256,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> disableUser(Long userId, String reason) {
+        long _start = System.currentTimeMillis();
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
 
@@ -246,6 +270,12 @@ public class AdminAppService {
         result.put("previousStatus", previousStatus.name());
         result.put("status", UserStatus.DISABLED.name());
         result.put("disableReason", user.getDisableReason());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 禁用用户",
+            BizLogHelper.trace(),
+            BizLogHelper.params("userId", userId, "reason", reason),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), UserStatus.DISABLED.name())),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -312,11 +342,15 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> updateArticleStatus(Long articleId, String status) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
         ArticleStatus newStatus = ArticleStatus.valueOf(status);
         ArticleStatus previousStatus = article.getStatus();
+        if (ArticleStatus.PUBLISHED.equals(newStatus)) {
+            sanitizeArticleBeforeAdminPublish(article);
+        }
         applyArticleStatus(article, newStatus);
         articleRepository.save(article);
 
@@ -330,6 +364,12 @@ public class AdminAppService {
         result.put("title", article.getTitle());
         result.put("previousStatus", previousStatus.name());
         result.put("status", newStatus.name());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 变更文章状态",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleId", articleId, "status", status),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), newStatus.name())),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -342,6 +382,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> offlineArticle(Long articleId, String reason) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -355,6 +396,12 @@ public class AdminAppService {
         result.put("previousStatus", previousStatus.name());
         result.put("status", ArticleStatus.OFFLINE.name());
         result.put("offlineReason", article.getOfflineReason());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 下架文章",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleId", articleId, "reason", reason),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), ArticleStatus.OFFLINE.name())),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -366,6 +413,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> deleteArticle(Long articleId) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         String previousStatus = article.getStatus().name();
@@ -378,6 +426,12 @@ public class AdminAppService {
         result.put("previousStatus", previousStatus);
         result.put("status", ArticleStatus.DELETED.name());
         result.put("deleted", true);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 删除文章",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleId", articleId),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus, ArticleStatus.DELETED.name())),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -390,6 +444,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> batchUpdateArticleStatus(List<Long> articleIds, String status) {
+        long _start = System.currentTimeMillis();
         if (articleIds == null || articleIds.isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择至少一篇文章");
         }
@@ -405,6 +460,9 @@ public class AdminAppService {
             if (ArticleStatus.DELETED.equals(article.getStatus())) {
                 continue;
             }
+            if (ArticleStatus.PUBLISHED.equals(newStatus)) {
+                sanitizeArticleBeforeAdminPublish(article);
+            }
             applyArticleStatus(article, newStatus);
             articleRepository.save(article);
             processedCount++;
@@ -414,6 +472,12 @@ public class AdminAppService {
         result.put("status", newStatus.name());
         result.put("processedCount", processedCount);
         result.put("ids", processedIds);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 批量变更文章状态",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleCount", articleIds.size(), "status", status),
+            BizLogHelper.result("processedCount=" + processedCount),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -425,6 +489,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> batchDeleteArticles(List<Long> articleIds) {
+        long _start = System.currentTimeMillis();
         if (articleIds == null || articleIds.isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择至少一篇文章");
         }
@@ -448,6 +513,12 @@ public class AdminAppService {
         result.put("deleted", true);
         result.put("processedCount", processedCount);
         result.put("ids", processedIds);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 批量删除文章",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleCount", articleIds.size()),
+            BizLogHelper.result("processedCount=" + processedCount),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -498,6 +569,7 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> deleteComment(Long commentId) {
+        long _start = System.currentTimeMillis();
         Comment comment = commentRepository.findById(new CommentId(commentId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "评论不存在"));
 
@@ -510,6 +582,12 @@ public class AdminAppService {
         result.put("userId", comment.getUserId().getValue());
         result.put("content", comment.getContent());
         result.put("deleted", true);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 删除评论",
+            BizLogHelper.trace(),
+            BizLogHelper.params("commentId", commentId),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -521,12 +599,19 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> approveComment(Long commentId) {
+        long _start = System.currentTimeMillis();
         com.myblog.application.dto.CommentDTO dto = commentAppService.approveComment(commentId);
         Map<String, Object> result = new HashMap<>();
         result.put("id", dto.getId());
         result.put("articleId", dto.getArticleId());
         result.put("content", dto.getContent());
         result.put("status", dto.getStatus());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 审核通过评论",
+            BizLogHelper.trace(),
+            BizLogHelper.params("commentId", commentId),
+            BizLogHelper.result("approved=true"),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -538,10 +623,17 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> rejectComment(Long commentId) {
+        long _start = System.currentTimeMillis();
         commentAppService.rejectComment(commentId);
         Map<String, Object> result = new HashMap<>();
         result.put("id", commentId);
         result.put("rejected", true);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 拒绝评论",
+            BizLogHelper.trace(),
+            BizLogHelper.params("commentId", commentId),
+            BizLogHelper.result("rejected=true"),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -629,6 +721,38 @@ public class AdminAppService {
         article.updateStatus(status);
     }
 
+    private void sanitizeArticleBeforeAdminPublish(Article article) {
+        String sensitiveText = buildArticleSensitiveText(article);
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
+        if (!blockHits.isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR,
+                "发布文章失败：内容包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+        }
+        List<String> warnHits = sensitiveWordAppService.detectWarnWords(sensitiveText);
+        article.updateContent(
+            sensitiveWordAppService.maskWarnWords(article.getTitle()),
+            sensitiveWordAppService.maskWarnWords(article.getSummary()),
+            sensitiveWordAppService.maskWarnWords(article.getContent()),
+            article.getCoverUrl(),
+            article.getCategory(),
+            article.getTags(),
+            article.getSlug(),
+            article.getSeoTitle(),
+            article.getSeoDescription()
+        );
+        article.updateWarnFlag(!warnHits.isEmpty());
+    }
+
+    private String buildArticleSensitiveText(Article article) {
+        return normalizeText(article.getTitle()) + "\n"
+            + normalizeText(article.getSummary()) + "\n"
+            + normalizeText(article.getContent());
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     private Map<Long, User> buildAuthorMap(List<Article> articles) {
         if (articles == null || articles.isEmpty()) {
             return Collections.emptyMap();
@@ -672,15 +796,23 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> featureArticle(Long articleId) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         article.feature();
         articleRepository.save(article);
+        evictFeaturedArticleCachesAfterCommit();
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", article.getId().getValue());
         result.put("title", article.getTitle());
         result.put("featured", article.isFeatured());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 设为精选",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleId", articleId, "title", article.getTitle()),
+            BizLogHelper.result("featured=true"),
+            BizLogHelper.elapsed(_start));
         return result;
     }
 
@@ -689,16 +821,39 @@ public class AdminAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> unfeatureArticle(Long articleId) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         article.unfeature();
         articleRepository.save(article);
+        evictFeaturedArticleCachesAfterCommit();
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", article.getId().getValue());
         result.put("title", article.getTitle());
         result.put("featured", article.isFeatured());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 取消精选",
+            BizLogHelper.trace(),
+            BizLogHelper.params("articleId", articleId, "title", article.getTitle()),
+            BizLogHelper.result("featured=false"),
+            BizLogHelper.elapsed(_start));
         return result;
+    }
+
+    private void evictFeaturedArticleCachesAfterCommit() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            recommendationAppService.evictFeaturedArticles();
+            homeBootstrapAppService.evict();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                recommendationAppService.evictFeaturedArticles();
+                homeBootstrapAppService.evict();
+            }
+        });
     }
 
     /**

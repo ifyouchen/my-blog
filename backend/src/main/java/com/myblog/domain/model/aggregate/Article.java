@@ -546,6 +546,16 @@ public class Article {
         this.updatedAt = java.time.LocalDateTime.now();
     }
 
+    /**
+     * 更新敏感词警告标记。
+     *
+     * @param warnFlag 是否命中过 WARN 级别敏感词
+     */
+    public void updateWarnFlag(boolean warnFlag) {
+        this.warnFlag = warnFlag;
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
+
     public boolean isFeatured() {
         return featured;
     }

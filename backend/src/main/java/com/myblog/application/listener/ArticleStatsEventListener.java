@@ -11,6 +11,7 @@ import com.myblog.application.event.CommentLikedEvent;
 import com.myblog.application.event.CommentUnlikedEvent;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.CommentRepository;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -47,99 +48,162 @@ public class ArticleStatsEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onArticleViewed(ArticleViewedEvent event) {
-        log.debug("Processing ArticleViewedEvent for article {}", event.getArticleId());
+        log.debug("{} | {} 处理浏览事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(0L),
+            BizLogHelper.params("articleId", event.getArticleId()));
         try {
             articleRepository.incrementViewCount(event.getArticleId());
         } catch (Exception e) {
-            log.error("Failed to increment view count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理浏览事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(0L),
+                BizLogHelper.params("articleId", event.getArticleId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onArticleLiked(ArticleLikedEvent event) {
-        log.debug("Processing ArticleLikedEvent for article {}, user {}", event.getArticleId(), event.getUserId());
+        log.debug("{} | {} 处理点赞事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.incrementLikeCount(event.getArticleId());
         } catch (Exception e) {
-            log.error("Failed to increment like count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理点赞事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onArticleUnliked(ArticleUnlikedEvent event) {
-        log.debug("Processing ArticleUnlikedEvent for article {}, user {}", event.getArticleId(), event.getUserId());
+        log.debug("{} | {} 处理取消点赞事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.decrementLikeCount(event.getArticleId());
         } catch (Exception e) {
-            log.error("Failed to decrement like count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理取消点赞事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onArticleFavorited(ArticleFavoritedEvent event) {
-        log.debug("Processing ArticleFavoritedEvent for article {}, user {}", event.getArticleId(), event.getUserId());
+        log.debug("{} | {} 处理收藏事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.incrementFavoriteCount(event.getArticleId());
         } catch (Exception e) {
-            log.error("Failed to increment favorite count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理收藏事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onArticleUnfavorited(ArticleUnfavoritedEvent event) {
-        log.debug("Processing ArticleUnfavoritedEvent for article {}, user {}", event.getArticleId(), event.getUserId());
+        log.debug("{} | {} 处理取消收藏事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.decrementFavoriteCount(event.getArticleId());
         } catch (Exception e) {
-            log.error("Failed to decrement favorite count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理取消收藏事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onCommentCreated(CommentCreatedEvent event) {
-        log.debug("Processing CommentCreatedEvent for article {}, comment {}", event.getArticleId(), event.getCommentId());
+        log.debug("{} | {} 处理评论事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(0L),
+            BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()));
         try {
             articleRepository.incrementCommentCount(event.getArticleId());
         } catch (Exception e) {
-            log.error("Failed to increment comment count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理评论事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(0L),
+                BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onCommentDeleted(CommentDeletedEvent event) {
-        log.debug("Processing CommentDeletedEvent for article {}, decrement={}", event.getArticleId(), event.getDecrement());
+        log.debug("{} | {} 处理删除评论事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(0L),
+            BizLogHelper.params("articleId", event.getArticleId(), "decrement", event.getDecrement()));
         try {
             articleRepository.decrementCommentCount(event.getArticleId(), event.getDecrement());
         } catch (Exception e) {
-            log.error("Failed to decrement comment count for article {}: {}", event.getArticleId(), e.getMessage());
+            log.error("{} | {} 处理删除评论事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(0L),
+                BizLogHelper.params("articleId", event.getArticleId(), "decrement", event.getDecrement()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onCommentLiked(CommentLikedEvent event) {
-        log.debug("Processing CommentLikedEvent for comment {}, user {}", event.getCommentId(), event.getUserId());
+        log.debug("{} | {} 处理评论点赞事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()));
         try {
             commentRepository.incrementLikeCount(event.getCommentId());
         } catch (Exception e) {
-            log.error("Failed to increment like count for comment {}: {}", event.getCommentId(), e.getMessage());
+            log.error("{} | {} 处理评论点赞事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(rollbackFor = Exception.class)
     public void onCommentUnliked(CommentUnlikedEvent event) {
-        log.debug("Processing CommentUnlikedEvent for comment {}, user {}", event.getCommentId(), event.getUserId());
+        log.debug("{} | {} 处理评论取消点赞事件 | 入参({})",
+            BizLogHelper.trace(),
+            BizLogHelper.who(event.getUserId()),
+            BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()));
         try {
             commentRepository.decrementLikeCount(event.getCommentId());
         } catch (Exception e) {
-            log.error("Failed to decrement like count for comment {}: {}", event.getCommentId(), e.getMessage());
+            log.error("{} | {} 处理评论取消点赞事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(event.getUserId()),
+                BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()),
+                BizLogHelper.result("失败: " + e.getMessage()));
         }
     }
 }

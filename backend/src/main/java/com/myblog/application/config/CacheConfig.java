@@ -39,6 +39,7 @@ public class CacheConfig {
     @Bean
     public Cache<String, List<CategoryDTO>> categoriesCache() {
         return Caffeine.newBuilder()
+                .maximumSize(8)
                 .expireAfterWrite(3, TimeUnit.MINUTES)
                 .build();
     }
@@ -53,6 +54,14 @@ public class CacheConfig {
     @Bean
     public Cache<Integer, List<ArticleDTO>> articleRankingsCache() {
         return Caffeine.newBuilder()
+                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<ArticleDTO>> featuredArticlesCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(128)
                 .expireAfterWrite(45, TimeUnit.SECONDS)
                 .build();
     }

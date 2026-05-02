@@ -14,6 +14,9 @@ import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,8 @@ public class MessageAppService {
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    private static final Logger log = LoggerFactory.getLogger(MessageAppService.class);
+
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
@@ -50,6 +55,7 @@ public class MessageAppService {
      */
     @Transactional
     public ConversationDTO getOrCreateConversation(Long participantId) {
+        long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
         if (currentUserId.equals(participantId)) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "不能和自己发起会话");
@@ -70,7 +76,15 @@ public class MessageAppService {
                 return conversationRepository.save(newConv);
             });
 
-        return toConversationDTO(conversation, currentUserId);
+        ConversationDTO convResult = toConversationDTO(conversation, currentUserId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "发起会话",
+            BizLogHelper.params("participantId", participantId),
+            BizLogHelper.result("conversationId=" + convResult.getId()),
+            BizLogHelper.elapsed(_start));
+        return convResult;
     }
 
     /**
@@ -100,12 +114,20 @@ public class MessageAppService {
      */
     @Transactional
     public void deleteConversation(Long conversationId) {
+        long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
         Conversation conversation = conversationRepository.findById(conversationId)
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
 
         conversation.deleteByUser(currentUserId);
         conversationRepository.deleteByUser(conversationId, currentUserId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "删除会话",
+            BizLogHelper.params("conversationId", conversationId),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -139,6 +161,7 @@ public class MessageAppService {
      */
     @Transactional
     public MessageDTO sendMessage(Long conversationId, String content) {
+        long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
 
         if (content == null || content.trim().isEmpty()) {
@@ -156,6 +179,14 @@ public class MessageAppService {
         conversation.updateLastMessage(content.trim());
         conversationRepository.updateLastMessage(conversationId, conversation.getLastMessage(), conversation.getLastMessageAt());
 
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "发送消息",
+            BizLogHelper.params("conversationId", conversationId, "content", BizLogHelper.contentMeta(content)),
+            BizLogHelper.result("messageId=" + id),
+            BizLogHelper.elapsed(_start));
+
         return toMessageDTO(message);
     }
 
@@ -164,8 +195,17 @@ public class MessageAppService {
      */
     @Transactional
     public int markAllRead(Long conversationId) {
+        long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
-        return messageRepository.markAllRead(conversationId, currentUserId);
+        int updated = messageRepository.markAllRead(conversationId, currentUserId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "标记已读",
+            BizLogHelper.params("conversationId", conversationId),
+            BizLogHelper.result("count=" + updated),
+            BizLogHelper.elapsed(_start));
+        return updated;
     }
 
     /**

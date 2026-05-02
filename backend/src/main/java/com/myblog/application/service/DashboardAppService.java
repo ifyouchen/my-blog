@@ -13,7 +13,10 @@ import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.BusinessException;
 import com.myblog.shared.exception.ErrorCode;
+import com.myblog.shared.util.BizLogHelper;
 import com.myblog.domain.repository.UserFollowRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,8 @@ public class DashboardAppService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static final Logger log = LoggerFactory.getLogger(DashboardAppService.class);
 
     private final ArticleRepository articleRepository;
     private final UserFollowRepository userFollowRepository;

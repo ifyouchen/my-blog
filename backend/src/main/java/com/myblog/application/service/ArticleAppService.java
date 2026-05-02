@@ -25,6 +25,9 @@ import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -49,6 +52,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ArticleAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(ArticleAppService.class);
 
     private static final String LEGACY_DEFAULT_COVER_URL = "/api/uploads/files/default/article-cover.png";
     private static final String DEFAULT_COVER_URL = "/api/uploads/files/default/article-cover.svg";
@@ -298,21 +303,25 @@ public class ArticleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ArticleDTO createArticle(CreateArticleCommand command) {
+        long _start = System.currentTimeMillis();
         User author = userRepository.findById(new UserId(command.getAuthorId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         ensureSlugAvailable(command.getSlug(), null);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
-        if (requiresPublishCheck(targetStatus)) {
-            checkSensitiveWords(command.getTitle(), command.getContent(), resolveActionText(targetStatus));
-        }
+        SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
+            command.getTitle(),
+            command.getSummary(),
+            command.getContent(),
+            resolveActionText(targetStatus)
+        );
         LocalDateTime scheduledPublishAt = ArticleStatus.SCHEDULED.equals(targetStatus)
             ? parseScheduledPublishAt(command.getScheduledPublishAt()) : null;
         Article article = Article.create(
             articleRepository.nextId(),
             author.getId(),
-            command.getTitle(),
-            command.getSummary(),
-            command.getContent(),
+            sanitizedContent.getTitle(),
+            sanitizedContent.getSummary(),
+            sanitizedContent.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
             command.getCategory(),
             command.getTags(),
@@ -322,14 +331,22 @@ public class ArticleAppService {
             command.getSeoDescription(),
             scheduledPublishAt
         );
-        applyWarnFlag(article, command.getTitle(), command.getContent());
+        applyWarnFlag(article, sanitizedContent);
         articleRepository.save(article);
         if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
         }
         saveVersionSnapshot(article, command.getAuthorId());
-        return buildDetailDto(article, author, command.getAuthorId());
+        ArticleDTO result = buildDetailDto(article, author, command.getAuthorId());
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(author.getId().getValue(), author.getNickname()),
+            "创建文章",
+            BizLogHelper.params("title", command.getTitle(), "status", targetStatus),
+            BizLogHelper.created("articleId", article.getId().getValue(), "status=" + article.getStatus()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -359,20 +376,25 @@ public class ArticleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ArticleDTO updateArticle(Long articleId, CreateArticleCommand command, Long userId, String currentUserRole) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
         ensureSlugAvailable(command.getSlug(), articleId);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
-        if (requiresPublishCheck(targetStatus)) {
-            checkSensitiveWords(command.getTitle(), command.getContent(), resolveActionText(targetStatus));
-        }
-        LocalDateTime scheduledPublishAt = ArticleStatus.SCHEDULED.equals(targetStatus)
-            ? parseScheduledPublishAt(command.getScheduledPublishAt()) : null;
-        article.updateContent(
+        SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             command.getTitle(),
             command.getSummary(),
             command.getContent(),
+            resolveActionText(targetStatus)
+        );
+        LocalDateTime scheduledPublishAt = ArticleStatus.SCHEDULED.equals(targetStatus)
+            ? parseScheduledPublishAt(command.getScheduledPublishAt()) : null;
+        ArticleStatus oldStatus = article.getStatus();
+        article.updateContent(
+            sanitizedContent.getTitle(),
+            sanitizedContent.getSummary(),
+            sanitizedContent.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
             command.getCategory(),
             command.getTags(),
@@ -380,17 +402,24 @@ public class ArticleAppService {
             command.getSeoTitle(),
             command.getSeoDescription()
         );
-        ArticleStatus oldStatus = article.getStatus();
         applyStatus(article, targetStatus, scheduledPublishAt);
-        applyWarnFlag(article, command.getTitle(), command.getContent());
+        applyWarnFlag(article, sanitizedContent);
         articleRepository.save(article);
         if (ArticleStatus.PUBLISHED.equals(article.getStatus()) && oldStatus != ArticleStatus.PUBLISHED) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
         }
         saveVersionSnapshot(article, userId);
-        return buildDetailDto(article, userRepository.findById(article.getAuthorId())
+        ArticleDTO result = buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "更新文章",
+            BizLogHelper.params("articleId", articleId, "title", command.getTitle(), "status", targetStatus),
+            BizLogHelper.statusChanged(String.valueOf(oldStatus), String.valueOf(article.getStatus())),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -404,23 +433,30 @@ public class ArticleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ArticleDTO updateArticleStatus(Long articleId, String status, Long userId, String currentUserRole) {
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
-        // 发布时检测敏感词
-        if (ArticleStatus.PUBLISHED.name().equals(status)) {
-            checkSensitiveWords(article.getTitle(), article.getContent(), "发布文章");
-        }
         ArticleStatus oldStatus = article.getStatus();
+        if (ArticleStatus.PUBLISHED.name().equals(status)) {
+            sanitizeExistingArticleForPublish(article, "发布文章");
+        }
         applyStatus(article, status);
-        applyWarnFlag(article, article.getTitle(), article.getContent());
         articleRepository.save(article);
         if (ArticleStatus.PUBLISHED.equals(article.getStatus()) && oldStatus != ArticleStatus.PUBLISHED) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
         }
-        return buildDetailDto(article, userRepository.findById(article.getAuthorId())
+        ArticleDTO result = buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "变更文章状态",
+            BizLogHelper.params("articleId", articleId, "targetStatus", status),
+            BizLogHelper.statusChanged(String.valueOf(oldStatus), String.valueOf(article.getStatus())),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -447,11 +483,16 @@ public class ArticleAppService {
     public void publishDueScheduledArticles() {
         List<Article> articles = articleRepository.findDueScheduled(LocalDateTime.now(), 20);
         for (Article article : articles) {
-            article.publish();
-            articleRepository.save(article);
-            eventPublisher.publishEvent(new ArticlePublishedEvent(
-                article.getId().getValue(), article.getAuthorId().getValue()));
-            saveVersionSnapshot(article, article.getAuthorId().getValue());
+            try {
+                sanitizeExistingArticleForPublish(article, "定时发布文章");
+                article.publish();
+                articleRepository.save(article);
+                eventPublisher.publishEvent(new ArticlePublishedEvent(
+                    article.getId().getValue(), article.getAuthorId().getValue()));
+                saveVersionSnapshot(article, article.getAuthorId().getValue());
+            } catch (ApplicationException ex) {
+                log.warn("定时发布文章失败，articleId={}, reason={}", article.getId().getValue(), ex.getMessage());
+            }
         }
     }
 
@@ -532,12 +573,14 @@ public class ArticleAppService {
         applyStatus(article, resolveCreateStatus(status), null);
     }
 
-    private boolean requiresPublishCheck(ArticleStatus status) {
-        return ArticleStatus.PUBLISHED.equals(status) || ArticleStatus.SCHEDULED.equals(status);
-    }
-
     private String resolveActionText(ArticleStatus status) {
-        return ArticleStatus.SCHEDULED.equals(status) ? "定时发布文章" : "发布文章";
+        if (ArticleStatus.SCHEDULED.equals(status)) {
+            return "定时发布文章";
+        }
+        if (ArticleStatus.PUBLISHED.equals(status)) {
+            return "发布文章";
+        }
+        return "保存文章";
     }
 
     private LocalDateTime parseScheduledPublishAt(String value) {
@@ -570,18 +613,79 @@ public class ArticleAppService {
         });
     }
 
-    private void checkSensitiveWords(String title, String content, String action) {
-        List<String> blockHits = sensitiveWordAppService.detectBlockWords(title + "\n" + content);
+    private SanitizedArticleContent sanitizeArticleContent(String title, String summary,
+                                                           String content, String action) {
+        String sensitiveText = buildArticleSensitiveText(title, summary, content);
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
         if (!blockHits.isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR,
                 action + "失败：内容包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
         }
+        List<String> warnHits = sensitiveWordAppService.detectWarnWords(sensitiveText);
+        return new SanitizedArticleContent(
+            sensitiveWordAppService.maskWarnWords(title),
+            sensitiveWordAppService.maskWarnWords(summary),
+            sensitiveWordAppService.maskWarnWords(content),
+            !warnHits.isEmpty()
+        );
     }
 
-    private void applyWarnFlag(Article article, String title, String content) {
-        List<String> warnHits = sensitiveWordAppService.detectWarnWords(title + "\n" + content);
-        if (!warnHits.isEmpty()) {
-            article.markWarnFlag();
+    private void sanitizeExistingArticleForPublish(Article article, String action) {
+        SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
+            article.getTitle(),
+            article.getSummary(),
+            article.getContent(),
+            action
+        );
+        article.updateContent(
+            sanitizedContent.getTitle(),
+            sanitizedContent.getSummary(),
+            sanitizedContent.getContent(),
+            article.getCoverUrl(),
+            article.getCategory(),
+            article.getTags(),
+            article.getSlug(),
+            article.getSeoTitle(),
+            article.getSeoDescription()
+        );
+        applyWarnFlag(article, sanitizedContent);
+    }
+
+    private void applyWarnFlag(Article article, SanitizedArticleContent sanitizedContent) {
+        article.updateWarnFlag(sanitizedContent.hasWarnHits());
+    }
+
+    private String buildArticleSensitiveText(String title, String summary, String content) {
+        return normalizeValue(title) + "\n" + normalizeValue(summary) + "\n" + normalizeValue(content);
+    }
+
+    private static class SanitizedArticleContent {
+        private final String title;
+        private final String summary;
+        private final String content;
+        private final boolean warnHits;
+
+        SanitizedArticleContent(String title, String summary, String content, boolean warnHits) {
+            this.title = title;
+            this.summary = summary;
+            this.content = content;
+            this.warnHits = warnHits;
+        }
+
+        String getTitle() {
+            return title;
+        }
+
+        String getSummary() {
+            return summary;
+        }
+
+        String getContent() {
+            return content;
+        }
+
+        boolean hasWarnHits() {
+            return warnHits;
         }
     }
 
@@ -670,11 +774,17 @@ public class ArticleAppService {
         ArticleVersionDO version = articleVersionRepository
             .findByArticleIdAndVersionNo(articleId, versionNo)
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "版本不存在"));
-        // 用版本内容更新文章并保存为草稿
-        article.updateContent(
+        SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             version.getTitle(),
             version.getSummary(),
             version.getContent(),
+            "恢复文章版本"
+        );
+        // 用版本内容更新文章并保存为草稿
+        article.updateContent(
+            sanitizedContent.getTitle(),
+            sanitizedContent.getSummary(),
+            sanitizedContent.getContent(),
             article.getCoverUrl(),
             article.getCategory(),
             article.getTags(),
@@ -683,6 +793,7 @@ public class ArticleAppService {
             article.getSeoDescription()
         );
         article.saveDraft();
+        applyWarnFlag(article, sanitizedContent);
         articleRepository.save(article);
         // 恢复操作本身也生成一条新版本快照
         saveVersionSnapshot(article, userId);
@@ -807,15 +918,16 @@ public class ArticleAppService {
         );
 
         // 敏感词检测
-        List<String> blockHits = sensitiveWordAppService.detectBlockWords(title + "\n" + content);
+        String sensitiveText = buildArticleSensitiveText(title, summary, content);
+        List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
         if (!blockHits.isEmpty()) {
             String msg = "内容包含被禁止的敏感词：" + String.join("、", blockHits);
             appendCheck(checks, errors, "sensitive-block", "敏感词检测", false, "error",
                 "内容无敏感词", msg);
         } else {
-            List<String> warnHits = sensitiveWordAppService.detectWarnWords(title + "\n" + content);
+            List<String> warnHits = sensitiveWordAppService.detectWarnWords(sensitiveText);
             if (!warnHits.isEmpty()) {
-                String msg = "内容包含建议修改的敏感词：" + String.join("、", warnHits);
+                String msg = "内容包含警告类敏感词，发布后会自动替换为 ***：" + String.join("、", warnHits);
                 appendCheck(checks, warnings, "sensitive-warn", "敏感词检测", false, "warning",
                     "内容无敏感词", msg);
             }

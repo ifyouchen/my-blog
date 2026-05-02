@@ -13,6 +13,7 @@ import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -57,14 +58,24 @@ public class RankingAppService {
     }
 
     public List<ArticleDTO> listArticleRankings(int limit) {
-        log.info("Fetching article rankings, limit={}", limit);
+        long _start = System.currentTimeMillis();
         List<ArticleDTO> cached = articleRankingsCache.getIfPresent(limit);
         if (cached != null) {
+            log.info("{} | 系统 查询文章排行榜 | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.params("limit", limit),
+                BizLogHelper.result("cached, size=" + cached.size()),
+                BizLogHelper.elapsed(_start));
             return cached;
         }
         List<Article> articles = articleRepository.findPublishedWithLimit(null, null, null, "hot", limit, 0);
 
         if (articles.isEmpty()) {
+            log.info("{} | 系统 查询文章排行榜 | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.params("limit", limit),
+                BizLogHelper.result("size=0"),
+                BizLogHelper.elapsed(_start));
             return new ArrayList<>();
         }
 
@@ -87,18 +98,36 @@ public class RankingAppService {
             }
         }
         articleRankingsCache.put(limit, items);
+        log.info("{} | 系统 查询文章排行榜 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.params("limit", limit),
+            BizLogHelper.result("size=" + items.size()),
+            BizLogHelper.elapsed(_start));
         return items;
     }
 
     public List<AuthorRankingDTO> listAuthorRankings(int limit, Long currentUserId) {
-        log.info("Fetching author rankings, limit={}, currentUserId={}", limit, currentUserId);
+        long _start = System.currentTimeMillis();
         List<AuthorRankingDTO> cachedBase = authorRankingsCache.getIfPresent(limit);
         if (cachedBase != null) {
-            return applyFollowStatus(copyAuthorRankings(cachedBase), currentUserId);
+            List<AuthorRankingDTO> result = applyFollowStatus(copyAuthorRankings(cachedBase), currentUserId);
+            log.info("{} | {} 查询作者排行榜 | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.who(currentUserId),
+                BizLogHelper.params("limit", limit),
+                BizLogHelper.result("cached, size=" + result.size()),
+                BizLogHelper.elapsed(_start));
+            return result;
         }
         List<AuthorArticleStatsDO> statsList = articleRepository.findAuthorArticleStats(limit);
 
         if (statsList.isEmpty()) {
+            log.info("{} | {} 查询作者排行榜 | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.who(currentUserId),
+                BizLogHelper.params("limit", limit),
+                BizLogHelper.result("size=0"),
+                BizLogHelper.elapsed(_start));
             return new ArrayList<>();
         }
 
@@ -143,7 +172,14 @@ public class RankingAppService {
             item.setFollowed(false);
         }
         authorRankingsCache.put(limit, baseForCache);
-        return applyFollowStatus(result, currentUserId);
+        List<AuthorRankingDTO> finalResult = applyFollowStatus(result, currentUserId);
+        log.info("{} | {} 查询作者排行榜 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            BizLogHelper.params("limit", limit),
+            BizLogHelper.result("size=" + finalResult.size()),
+            BizLogHelper.elapsed(_start));
+        return finalResult;
     }
 
     private Map<Long, Boolean> buildFollowStatusMap(Long currentUserId, List<Long> authorIds) {

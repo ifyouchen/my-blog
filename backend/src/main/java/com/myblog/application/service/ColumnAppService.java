@@ -19,6 +19,9 @@ import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,8 @@ import java.util.List;
  */
 @Service
 public class ColumnAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(ColumnAppService.class);
 
     private final ColumnRepository columnRepository;
     private final ColumnSubscriptionRepository columnSubscriptionRepository;
@@ -138,6 +143,7 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void subscribeColumn(Long columnId, Long userId) {
+        long _start = System.currentTimeMillis();
         Column column = loadPublishedColumn(columnId);
         ColumnSubscription existing = columnSubscriptionRepository.findByColumnAndUserIncludingDeleted(
             new ColumnId(columnId),
@@ -158,6 +164,13 @@ public class ColumnAppService {
         }
         column.increaseSubscriberCount();
         columnRepository.save(column);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "订阅专栏",
+            BizLogHelper.params("columnId", columnId),
+            BizLogHelper.result("subscribed=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -168,6 +181,7 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void unsubscribeColumn(Long columnId, Long userId) {
+        long _start = System.currentTimeMillis();
         Column column = loadPublishedColumn(columnId);
         ColumnSubscription subscription = columnSubscriptionRepository.findByColumnAndUserIncludingDeleted(
             new ColumnId(columnId),
@@ -180,6 +194,13 @@ public class ColumnAppService {
         columnSubscriptionRepository.save(subscription);
         column.decreaseSubscriberCount();
         columnRepository.save(column);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "取消订阅专栏",
+            BizLogHelper.params("columnId", columnId),
+            BizLogHelper.result("subscribed=false"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -220,6 +241,7 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addColumnArticle(Long columnId, Long articleId, int sortOrder) {
+        long _start = System.currentTimeMillis();
         Column column = loadPublishedColumn(columnId);
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
@@ -227,6 +249,12 @@ public class ColumnAppService {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "只能将已发布文章添加到专栏");
         }
         columnRepository.bindArticle(column.getId(), articleId, sortOrder);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "专栏添加文章",
+            BizLogHelper.trace(),
+            BizLogHelper.params("columnId", columnId, "articleId", articleId, "sortOrder", sortOrder),
+            BizLogHelper.result("bound=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -237,9 +265,16 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void removeColumnArticle(Long columnId, Long articleId) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         columnRepository.unbindArticle(column.getId(), articleId);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "专栏移除文章",
+            BizLogHelper.trace(),
+            BizLogHelper.params("columnId", columnId, "articleId", articleId),
+            BizLogHelper.result("unbound=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     // ==================== 创作者专栏管理方法 ====================
@@ -275,6 +310,7 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ColumnDTO createMyColumn(Long userId, String title, String summary, String coverUrl) {
+        long _start = System.currentTimeMillis();
         userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         int existing = columnRepository.countByAuthorId(userId);
@@ -284,7 +320,15 @@ public class ColumnAppService {
         }
         Column column = Column.create(columnRepository.nextId(), new UserId(userId), title, summary, coverUrl, 0);
         columnRepository.save(column);
-        return toAdminDTO(column);
+        ColumnDTO result = toAdminDTO(column);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "创建专栏",
+            BizLogHelper.params("title", title),
+            BizLogHelper.created("columnId", result.getId()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -299,12 +343,21 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ColumnDTO updateMyColumn(Long columnId, Long userId, String title, String summary, String coverUrl) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         ensureColumnOwner(column, userId);
         column.update(title, summary, coverUrl, column.getSortOrder(), column.getStatus());
         columnRepository.save(column);
-        return toAdminDTO(column);
+        ColumnDTO result = toAdminDTO(column);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "更新专栏",
+            BizLogHelper.params("columnId", columnId, "title", title),
+            BizLogHelper.created("columnId", result.getId()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -315,11 +368,19 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteMyColumn(Long columnId, Long userId) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         ensureColumnOwner(column, userId);
         column.delete();
         columnRepository.save(column);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "删除专栏",
+            BizLogHelper.params("columnId", columnId),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -331,6 +392,7 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addMyColumnArticle(Long columnId, Long articleId, Long userId) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         ensureColumnOwner(column, userId);
@@ -341,6 +403,13 @@ public class ColumnAppService {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "只能将自己的文章加入专栏");
         }
         columnRepository.bindArticle(column.getId(), articleId, 0);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "专栏添加文章",
+            BizLogHelper.params("columnId", columnId, "articleId", articleId),
+            BizLogHelper.result("bound=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     /**
@@ -352,10 +421,18 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void removeMyColumnArticle(Long columnId, Long articleId, Long userId) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         ensureColumnOwner(column, userId);
         columnRepository.unbindArticle(column.getId(), articleId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "专栏移除文章",
+            BizLogHelper.params("columnId", columnId, "articleId", articleId),
+            BizLogHelper.result("unbound=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     private void ensureColumnOwner(Column column, Long userId) {
@@ -386,6 +463,7 @@ public class ColumnAppService {
     @Transactional(rollbackFor = Exception.class)
     public ColumnDTO adminCreateColumn(Long authorId, String title, String summary,
                                        String coverUrl, Integer sortOrder) {
+        long _start = System.currentTimeMillis();
         userRepository.findById(new UserId(authorId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "作者不存在"));
         Column column = Column.create(
@@ -394,7 +472,14 @@ public class ColumnAppService {
             title, summary, coverUrl, sortOrder
         );
         columnRepository.save(column);
-        return toAdminDTO(column);
+        ColumnDTO result = toAdminDTO(column);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "后台创建专栏",
+            BizLogHelper.trace(),
+            BizLogHelper.params("title", title, "authorId", authorId),
+            BizLogHelper.result("columnId=" + result.getId()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -403,11 +488,19 @@ public class ColumnAppService {
     @Transactional(rollbackFor = Exception.class)
     public ColumnDTO adminUpdateColumn(Long columnId, String title, String summary,
                                        String coverUrl, Integer sortOrder, String status) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         column.update(title, summary, coverUrl, sortOrder, status);
         columnRepository.save(column);
-        return toAdminDTO(column);
+        ColumnDTO result = toAdminDTO(column);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "后台更新专栏",
+            BizLogHelper.trace(),
+            BizLogHelper.params("columnId", columnId, "title", title),
+            BizLogHelper.result("columnId=" + columnId),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -415,10 +508,17 @@ public class ColumnAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void adminDeleteColumn(Long columnId) {
+        long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         column.delete();
         columnRepository.save(column);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "后台删除专栏",
+            BizLogHelper.trace(),
+            BizLogHelper.params("columnId", columnId),
+            BizLogHelper.result("deleted=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     private ColumnDTO toAdminDTO(Column column) {

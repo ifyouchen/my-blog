@@ -26,6 +26,9 @@ import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -49,6 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ReportAppService {
 
     private static final int MAX_REPORTS_PER_WINDOW = 10;
+    private static final Logger log = LoggerFactory.getLogger(ReportAppService.class);
 
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
@@ -82,6 +86,7 @@ public class ReportAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ReportDTO createReport(CreateReportCommand command) {
+        long _start = System.currentTimeMillis();
         Long reporterUserId = command.getReporterUserId();
         User reporter = userRepository.findById(new UserId(reporterUserId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
@@ -114,7 +119,14 @@ public class ReportAppService {
 
         Map<Long, User> userMap = new HashMap<Long, User>();
         userMap.put(reporter.getId().getValue(), reporter);
-        return toDTO(report, userMap, false);
+        ReportDTO result = toDTO(report, userMap, false);
+        log.info("{} | {} 创建举报 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(reporterUserId),
+            BizLogHelper.params("targetType", targetType, "reasonType", reasonType),
+            BizLogHelper.result("reportId=" + result.getId()),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     /**
@@ -170,6 +182,7 @@ public class ReportAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ReportDTO resolveReport(ResolveReportCommand command) {
+        long _start = System.currentTimeMillis();
         Report report = reportRepository.findById(new ReportId(command.getReportId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "举报不存在"));
         UserId handlerUserId = new UserId(command.getHandlerUserId());
@@ -179,7 +192,15 @@ public class ReportAppService {
         if (ReportResolveAction.REJECT.equals(action)) {
             report.reject(handlerUserId, handleNote);
             reportRepository.save(report);
-            return getReportDetail(report.getId().getValue());
+            ReportDTO rejectResult = getReportDetail(report.getId().getValue());
+            log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.who(command.getHandlerUserId()),
+                "处理举报",
+                BizLogHelper.params("reportId", command.getReportId(), "action", command.getAction()),
+                BizLogHelper.result("resolved=true"),
+                BizLogHelper.elapsed(_start));
+            return rejectResult;
         }
 
         if (ReportResolveAction.OFFLINE_ARTICLE.equals(action)) {
@@ -195,7 +216,15 @@ public class ReportAppService {
 
         report.resolve(handlerUserId, handleNote);
         reportRepository.save(report);
-        return getReportDetail(report.getId().getValue());
+        ReportDTO result = getReportDetail(report.getId().getValue());
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(command.getHandlerUserId()),
+            "处理举报",
+            BizLogHelper.params("reportId", command.getReportId(), "action", command.getAction()),
+            BizLogHelper.result("resolved=true"),
+            BizLogHelper.elapsed(_start));
+        return result;
     }
 
     private void ensureCreateRate(Long reporterUserId) {

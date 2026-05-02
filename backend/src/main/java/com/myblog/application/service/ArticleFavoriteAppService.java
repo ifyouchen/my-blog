@@ -16,6 +16,7 @@ import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,7 +68,7 @@ public class ArticleFavoriteAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void favoriteArticle(Long articleId, Long userId) {
-        log.info("User {} favoriting article {}", userId, articleId);
+        long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -99,12 +100,17 @@ public class ArticleFavoriteAppService {
 
         articleFavoriteRepository.save(favoriteToSave);
         eventPublisher.publishEvent(new ArticleFavoritedEvent(articleId, userId));
-        log.info("User {} favorited article {}", userId, articleId);
+        log.info("{} | {} 收藏文章 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            BizLogHelper.params("articleId", articleId, "title", article.getTitle()),
+            BizLogHelper.result("favorited=true"),
+            BizLogHelper.elapsed(_start));
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void unfavoriteArticle(Long articleId, Long userId) {
-        log.info("User {} unfavoriting article {}", userId, articleId);
+        long _start = System.currentTimeMillis();
         articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
 
@@ -119,7 +125,12 @@ public class ArticleFavoriteAppService {
         favorite.delete();
         articleFavoriteRepository.save(favorite);
         eventPublisher.publishEvent(new ArticleUnfavoritedEvent(articleId, userId));
-        log.info("User {} unfavorited article {}", userId, articleId);
+        log.info("{} | {} 取消收藏文章 | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            BizLogHelper.params("articleId", articleId),
+            BizLogHelper.result("favorited=false"),
+            BizLogHelper.elapsed(_start));
     }
 
     public boolean hasFavorited(Long articleId, Long userId) {
