@@ -63,10 +63,20 @@ const writeCachedTopicItems = (items) => {
 };
 
 const topicItems = ref(readCachedTopicItems());
+const desktopTopicsExpanded = ref(false);
+const TOPIC_COLLAPSE_THRESHOLD = 8;
 
 const {width: windowWidth} = useWindowSize();
 const SIDEBAR_BREAKPOINT = 980;
 const showSidebar = computed(() => windowWidth.value >= SIDEBAR_BREAKPOINT);
+const isMobile = computed(() => windowWidth.value < SIDEBAR_BREAKPOINT);
+const shouldCollapseTopics = computed(() => topicItems.value.length > TOPIC_COLLAPSE_THRESHOLD);
+const visibleTopicItems = computed(() => {
+    if (!shouldCollapseTopics.value || desktopTopicsExpanded.value || isMobile.value) {
+        return topicItems.value;
+    }
+    return topicItems.value.slice(0, TOPIC_COLLAPSE_THRESHOLD);
+});
 
 // 公告横幅
 const activeBanners = ref([]);
@@ -243,6 +253,12 @@ onMounted(() => {
     loadHomeBootstrap();
     loadBanners();
 });
+
+watch(isMobile, (mobile) => {
+    if (mobile) {
+        desktopTopicsExpanded.value = false;
+    }
+});
 </script>
 
 <template>
@@ -266,12 +282,29 @@ onMounted(() => {
                 >×</button>
             </div>
         </div>
-        <HomeIntro
-            :total-articles="homeStats.totalArticles"
-            :total-authors="homeStats.totalAuthors"
-            :total-columns="homeStats.totalColumns"
-        />
-        <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
+        <section class="home-top-layout" aria-label="首页推荐内容">
+            <HomeIntro
+                :total-articles="homeStats.totalArticles"
+                :total-authors="homeStats.totalAuthors"
+                :total-columns="homeStats.totalColumns"
+            />
+            <FeaturedArticlesStrip
+                class="home-featured-primary"
+                :articles="featuredArticles"
+                :loading="!bootstrapLoaded"
+            />
+        </section>
+        <section class="home-filter-bar" aria-label="内容筛选">
+            <TopicStrip :topics="visibleTopicItems" :loading="!bootstrapLoaded" />
+            <button
+                v-if="!isMobile && shouldCollapseTopics"
+                class="topic-toggle"
+                type="button"
+                @click="desktopTopicsExpanded = !desktopTopicsExpanded"
+            >
+                {{ desktopTopicsExpanded ? '收起分类' : '更多分类' }}
+            </button>
+        </section>
         <div class="content-grid">
             <ArticleFeed
                 :articles="articles"
@@ -291,17 +324,41 @@ onMounted(() => {
             />
             <HomeSidebar v-if="showSidebar" :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" />
         </div>
-        <FeaturedArticlesStrip
-            class="home-featured-after-feed"
-            :articles="featuredArticles"
-            :loading="!bootstrapLoaded"
-        />
     </main>
 </template>
 
 <style scoped>
-.home-featured-after-feed {
-    margin-top: 20px;
+.home-top-layout {
+    display: grid;
+    gap: 14px;
+}
+
+.home-featured-primary {
+    margin-bottom: 2px;
+}
+
+.home-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: start;
+}
+
+.topic-toggle {
+    margin-top: 10px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.topic-toggle:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-soft);
 }
 
 .announcement-banners {
@@ -359,5 +416,12 @@ onMounted(() => {
 .announcement-banner-close:hover {
     color: var(--text);
     background: var(--surface-muted);
+}
+
+@media (max-width: 980px) {
+    .home-filter-bar {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
 }
 </style>
