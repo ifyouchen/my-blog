@@ -92,19 +92,24 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 }
 
 .featured-scroll {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
     gap: 10px;
 }
 
 .featured-card {
     display: flex;
     flex-direction: column;
+    flex: 0 0 240px;
     overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     text-decoration: none;
+    scroll-snap-align: start;
     transition: background 0.12s, border-color 0.12s;
 }
 
@@ -237,20 +242,20 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 }
 
 @media (max-width: 1080px) {
-    .featured-scroll {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+    .featured-card {
+        flex-basis: 220px;
     }
 }
 
 @media (max-width: 720px) {
-    .featured-scroll {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .featured-card {
+        flex-basis: 200px;
     }
 }
 
 @media (max-width: 480px) {
-    .featured-scroll {
-        grid-template-columns: 1fr;
+    .featured-card {
+        flex-basis: calc(100vw - 64px);
     }
 }
 </style>
