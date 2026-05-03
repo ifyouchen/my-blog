@@ -85,6 +85,7 @@ const reportDialogVisible = ref(false);
 const immersiveMode = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
+const tocDrawerOpen = ref(false);
 let shareHoverTimer = null;
 const SHARE_HOVER_DELAY = 280;
 
@@ -337,6 +338,10 @@ const toggleImmersive = () => {
 const handleImmersiveKeydown = (e) => {
     if (e.key === 'Escape' && immersiveMode.value) {
         toggleImmersive();
+        return;
+    }
+    if (e.key === 'Escape' && tocDrawerOpen.value) {
+        tocDrawerOpen.value = false;
     }
 };
 
@@ -399,6 +404,10 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleImmersiveKeydown);
     document.body.classList.remove('immersive-mode');
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
+});
+
+watch(() => route.fullPath, () => {
+    tocDrawerOpen.value = false;
 });
 </script>
 
@@ -610,11 +619,42 @@ onUnmounted(() => {
         </article>
 
         <aside class="detail-side">
+            <section
+                v-if="article?.author"
+                class="article-side-card"
+                aria-label="作者信息"
+            >
+                <p class="article-side-eyebrow">作者</p>
+                <RouterLink class="side-author-link" :to="`/users/${article.author.id}`">
+                    <img
+                        v-if="article.author.avatar"
+                        class="side-author-avatar"
+                        :src="article.author.avatar"
+                        :alt="article.author.name"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                    <span class="side-author-avatar-fallback" v-else>{{ article.author.name?.[0] }}</span>
+                    <div>
+                        <strong>{{ article.author.name }}</strong>
+                        <p>{{ article.author.followerCount || 0 }} 粉丝</p>
+                    </div>
+                </RouterLink>
+            </section>
             <ArticleToc
                 v-if="remoteArticle"
                 :content="articleMarkdown"
                 class="detail-toc"
             />
+            <section v-if="neighborPrev || neighborNext" class="article-side-card" aria-label="继续阅读">
+                <p class="article-side-eyebrow">继续阅读</p>
+                <RouterLink v-if="neighborPrev" class="side-neighbor-link" :to="`/articles/${neighborPrev.id}`">
+                    ← {{ neighborPrev.title }}
+                </RouterLink>
+                <RouterLink v-if="neighborNext" class="side-neighbor-link" :to="`/articles/${neighborNext.id}`">
+                    → {{ neighborNext.title }}
+                </RouterLink>
+            </section>
             <AdBanner :slot-code="'article_sidebar'" />
         </aside>
     </main>
@@ -676,6 +716,23 @@ onUnmounted(() => {
     >
         ↑
     </button>
+    <button
+        v-if="remoteArticle"
+        class="mobile-toc-trigger"
+        type="button"
+        @click="tocDrawerOpen = true"
+    >
+        目录
+    </button>
+    <div v-if="tocDrawerOpen" class="mobile-toc-overlay" @click.self="tocDrawerOpen = false">
+        <section class="mobile-toc-drawer" aria-label="文章目录抽屉">
+            <div class="mobile-toc-header">
+                <h3>文章目录</h3>
+                <button type="button" @click="tocDrawerOpen = false">关闭</button>
+            </div>
+            <ArticleToc :content="articleMarkdown" />
+        </section>
+    </div>
     <ReportDialog
         v-if="article"
         :visible="reportDialogVisible"
@@ -699,6 +756,113 @@ onUnmounted(() => {
     border-radius: 0 2px 2px 0;
     transition: width 0.1s linear;
     pointer-events: none;
+}
+
+.article-side-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.article-side-eyebrow {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.side-author-link {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.side-author-avatar,
+.side-author-avatar-fallback {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.side-author-avatar-fallback {
+    display: grid;
+    place-items: center;
+    background: var(--brand-soft);
+    color: var(--brand);
+    font-weight: 700;
+}
+
+.side-author-link p {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.side-neighbor-link {
+    display: block;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+    font-size: 13px;
+}
+
+.mobile-toc-trigger {
+    position: fixed;
+    right: 16px;
+    bottom: 72px;
+    z-index: 70;
+    display: none;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--brand);
+    color: #fff;
+    box-shadow: var(--shadow-md);
+}
+
+.mobile-toc-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: grid;
+    align-items: end;
+    background: rgba(15, 23, 42, 0.38);
+}
+
+.mobile-toc-drawer {
+    max-height: 72vh;
+    overflow: auto;
+    padding: 14px;
+    background: var(--surface);
+    border-radius: 14px 14px 0 0;
+}
+
+.mobile-toc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mobile-toc-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.mobile-toc-header button {
+    border: 0;
+    background: transparent;
+    color: var(--brand);
+}
+
+@media (max-width: 980px) {
+    .mobile-toc-trigger {
+        display: inline-flex;
+    }
 }
 
 /* 骨架屏动画 */
