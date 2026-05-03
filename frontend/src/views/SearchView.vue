@@ -1,4 +1,5 @@
-<script setup>import {computed, onMounted, ref, Teleport, watch} from 'vue';
+<script setup>
+import {computed, onMounted, ref, Teleport, watch} from 'vue';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
