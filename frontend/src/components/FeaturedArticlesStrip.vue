@@ -171,6 +171,7 @@ const secondaryArticles = computed(() => visibleArticles.value.slice(1));
 .featured-card {
     display: flex;
     flex-direction: column;
+    flex: 0 0 240px;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
