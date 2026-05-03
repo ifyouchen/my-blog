@@ -78,23 +78,23 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 <style scoped>
 .featured-strip {
     display: grid;
-    gap: 14px;
+    gap: 10px;
 }
 
 .featured-header {
     display: grid;
-    gap: 4px;
+    gap: 2px;
 }
 
 .featured-header h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 17px;
 }
 
 .featured-scroll {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
 }
 
 .featured-card {
@@ -122,7 +122,7 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 .featured-card-cover {
     display: block;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 16 / 8;
     overflow: hidden;
     background: var(--surface-muted);
 }
@@ -136,10 +136,10 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 
 .featured-card-body {
     display: grid;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
-    min-height: 120px;
-    padding: 12px 14px 14px;
+    min-height: 98px;
+    padding: 10px 12px 12px;
 }
 
 .featured-card-category {
@@ -153,7 +153,7 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 .featured-card h3 {
     margin: 0;
     color: var(--text);
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.45;
     display: -webkit-box;
     overflow: hidden;
@@ -169,7 +169,7 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 
 .featured-card-meta {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     align-items: center;
     min-width: 0;
     color: var(--muted);
@@ -222,7 +222,7 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 
 .featured-skeleton-meta {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
     margin-top: auto;
 }

@@ -106,7 +106,7 @@ const router = useRouter();
 
 // 双通道 feedTab
 const VALID_FEED_TABS = ['recommend', 'following'];
-const resolveDefaultFeedTab = () => isLoggedIn.value ? 'following' : 'recommend';
+const resolveDefaultFeedTab = () => 'recommend';
 const feedTab = ref(VALID_FEED_TABS.includes(route.query.feedTab) ? route.query.feedTab : resolveDefaultFeedTab());
 
 const switchFeedTab = async (tab) => {
