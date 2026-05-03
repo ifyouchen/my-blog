@@ -272,10 +272,6 @@ onMounted(() => {
             :total-columns="homeStats.totalColumns"
         />
         <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
-        <FeaturedArticlesStrip
-            :articles="featuredArticles"
-            :loading="!bootstrapLoaded"
-        />
         <div class="content-grid">
             <ArticleFeed
                 :articles="articles"
@@ -295,10 +291,19 @@ onMounted(() => {
             />
             <HomeSidebar v-if="showSidebar" :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" />
         </div>
+        <FeaturedArticlesStrip
+            class="home-featured-after-feed"
+            :articles="featuredArticles"
+            :loading="!bootstrapLoaded"
+        />
     </main>
 </template>
 
 <style scoped>
+.home-featured-after-feed {
+    margin-top: 20px;
+}
+
 .announcement-banners {
     display: grid;
     gap: 8px;

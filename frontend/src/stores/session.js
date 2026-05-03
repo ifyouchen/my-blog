@@ -28,6 +28,7 @@ const readSession = () => {
 };
 
 const initialSession = readSession();
+let initializePromise = null;
 
 const state = reactive({
     user: initialSession ? initialSession.user : null,
@@ -49,6 +50,7 @@ const clearSession = () => {
     state.token = '';
     state.verified = false;
     state.ready = true;
+    initializePromise = null;
     localStorage.removeItem(STORAGE_KEY);
 };
 
@@ -64,30 +66,46 @@ export const useSession = () => {
 
     const initializeSession = async () => {
         if (!state.token) {
+            state.ready = true;
             return;
+        }
+        if (state.ready && state.verified) {
+            return;
+        }
+        if (initializePromise) {
+            return initializePromise;
         }
         state.ready = false;
 
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                const user = await currentUserApi();
-                saveSession({
-                    token: state.token,
-                    user
-                });
-                return;
-            } catch (error) {
-                if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-                    clearSession();
+        initializePromise = (async () => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const user = await currentUserApi();
+                    saveSession({
+                        token: state.token,
+                        user
+                    });
                     return;
-                }
-                if (attempt < 2) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (error) {
+                    if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+                        clearSession();
+                        return;
+                    }
+                    if (attempt < 2) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
                 }
             }
-        }
 
-        state.ready = true;
+            state.ready = true;
+        })();
+
+        try {
+            await initializePromise;
+        } finally {
+            initializePromise = null;
+            state.ready = true;
+        }
     };
 
     const login = async ({ account, password }) => {

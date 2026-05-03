@@ -232,9 +232,7 @@ public class CommentAppService {
             parentId,
             sanitizedContent.getContent()
         );
-        if (sanitizedContent.hasWarnHits()) {
-            comment.approve();
-        }
+        comment.approve();
         commentRepository.save(comment);
         eventPublisher.publishEvent(new CommentCreatedEvent(
             comment.getId().getValue(),
@@ -247,6 +245,7 @@ public class CommentAppService {
         dto.setLiked(Boolean.FALSE);
         dto.setCanDelete(Boolean.TRUE);
         dto.setCanPin(Boolean.TRUE.equals(canPin(comment, article, command.getUserId(), currentUserRole)));
+        dto.setCanEdit(canEdit(comment, command.getUserId()));
         dto.setAuthor(article.getAuthorId().getValue().equals(command.getUserId()));
         dto.setReplyPreview(new ArrayList<CommentDTO>());
         if (parentComment != null) {

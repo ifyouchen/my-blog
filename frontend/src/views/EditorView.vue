@@ -595,6 +595,11 @@ async function refreshPublishValidation(options = {}) {
 }
 
 function schedulePublishValidation() {
+    if (!getToken()) {
+        publishValidationError.value = '';
+        validationErrors.value = [];
+        return;
+    }
     if (publishValidationTimer) {
         window.clearTimeout(publishValidationTimer);
     }
@@ -943,7 +948,9 @@ onMounted(async () => {
     window.addEventListener('scroll', handleScroll);
     await fetchMetadata();
     await fetchArticle();
-    await refreshPublishValidation({ silent: true });
+    if (getToken()) {
+        await refreshPublishValidation({ silent: true });
+    }
 });
 
 onUnmounted(() => {

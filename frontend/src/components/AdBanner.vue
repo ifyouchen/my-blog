@@ -2,10 +2,13 @@
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import {dismissAdApi, getAdsApi, getDismissedAdIdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
 import {resolveMediaUrl} from '@/utils/media';
+import {getToken} from '@/api/http';
 
 const props = defineProps({
     slotCode: { type: String, required: true }
 });
+
+const isAuthenticated = () => Boolean(getToken());
 
 const ads = ref([]);
 const impressionReported = ref(new Set());
@@ -36,14 +39,18 @@ const visibleAds = computed(() => {
 const dismissSession = (id) => {
     dismissedIds.value.add(id);
     activePopoverAdId.value = null;
-    dismissAdApi(id).catch(() => {});
+    if (isAuthenticated()) {
+        dismissAdApi(id).catch(() => {});
+    }
 };
 
 const dismissToday = (id) => {
     try { localStorage.setItem(getDismissKey(id), '1'); } catch (e) {}
     dismissedIds.value.add(id);
     activePopoverAdId.value = null;
-    dismissAdApi(id).catch(() => {});
+    if (isAuthenticated()) {
+        dismissAdApi(id).catch(() => {});
+    }
 };
 
 const openPopover = (id) => {
@@ -103,6 +110,10 @@ const observeAds = () => {
 };
 
 const fetchDismissedIds = async () => {
+    if (!isAuthenticated()) {
+        serverDismissedIds.value = new Set();
+        return;
+    }
     try {
         const result = await getDismissedAdIdsApi();
         if (result?.ids?.length) {

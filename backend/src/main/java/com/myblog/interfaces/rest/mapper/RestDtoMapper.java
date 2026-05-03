@@ -238,6 +238,7 @@ public class RestDtoMapper {
         response.setRootCommentId(dto.getRootCommentId());
         response.setParentId(dto.getParentId());
         response.setContent(dto.getContent());
+        response.setStatus(dto.getStatus());
         response.setReplyCount(dto.getReplyCount());
         response.setLikeCount(dto.getLikeCount());
         response.setLiked(dto.getLiked());

@@ -164,7 +164,7 @@ public class NotificationEventListener {
         String params = BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId(), "authorId", event.getAuthorId());
         log.info("{} | {} 处理评论事件 | 入参({})", BizLogHelper.trace(), who, params);
         try {
-            Optional<Comment> commentOpt = commentRepository.findById(new CommentId(event.getCommentId()));
+            Optional<Comment> commentOpt = commentRepository.findByIdForAdmin(new CommentId(event.getCommentId()));
             if (!commentOpt.isPresent()) {
                 log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
                     BizLogHelper.result("评论不存在"), BizLogHelper.elapsed(_start));
@@ -172,6 +172,12 @@ public class NotificationEventListener {
             }
 
             Comment comment = commentOpt.get();
+            if (!comment.isPublished()) {
+                log.debug("{} | {} 处理评论事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                    BizLogHelper.result("评论未发布，跳过通知"), BizLogHelper.elapsed(_start));
+                return;
+            }
+
             Long receiverUserId;
             Long articleId = event.getArticleId();
 
@@ -372,7 +378,7 @@ public class NotificationEventListener {
             if (articleOpt.isPresent()) {
                 payload.put("articleTitle", articleOpt.get().getTitle());
             }
-            Optional<Comment> commentOpt = commentRepository.findById(new CommentId(commentId));
+            Optional<Comment> commentOpt = commentRepository.findByIdForAdmin(new CommentId(commentId));
             if (commentOpt.isPresent()) {
                 String content = commentOpt.get().getContent();
                 payload.put("commentExcerpt", content.length() > 50 ? content.substring(0, 50) + "..." : content);

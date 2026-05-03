@@ -21,6 +21,7 @@ const hideWriteButton = computed(() =>
     route.path.startsWith('/editor')
 );
 const mobileMenuOpen = ref(false);
+const mobileSearchOpen = ref(false);
 const userMenuRef = ref(null);
 const notificationOpen = ref(false);
 const notificationRef = ref(null);
@@ -45,10 +46,24 @@ const messageUnreadCount = ref(0);
 let unsubscribeMessageStream = null;
 
 const submitSearch = () => {
+    const q = keyword.value.trim();
+    mobileSearchOpen.value = false;
+    mobileMenuOpen.value = false;
     router.push({
         path: '/search',
-        query: keyword.value ? { keyword: keyword.value } : {}
+        query: q ? { keyword: q } : {}
     });
+};
+
+const openMobileSearch = () => {
+    userMenuOpen.value = false;
+    notificationOpen.value = false;
+    mobileMenuOpen.value = false;
+    mobileSearchOpen.value = true;
+};
+
+const closeMobileSearch = () => {
+    mobileSearchOpen.value = false;
 };
 
 const logoutAndGoHome = () => {
@@ -313,6 +328,17 @@ const handleNotificationsRefresh = () => {
 
             <div class="header-actions">
                 <button
+                    class="mobile-search-toggle"
+                    type="button"
+                    aria-label="搜索"
+                    @click="openMobileSearch"
+                >
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                        <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button
                     class="mobile-menu-toggle"
                     type="button"
                     aria-label="展开导航菜单"
@@ -459,7 +485,7 @@ const handleNotificationsRefresh = () => {
                 <RouterLink v-else class="text-link" to="/login" data-testid="header-login-link">登录</RouterLink>
                 <button
                     v-if="!hideWriteButton"
-                    class="primary-action"
+                    class="primary-action desktop-write-action"
                     type="button"
                     data-testid="header-write-article"
                     @click="writeArticle"
@@ -504,7 +530,7 @@ const handleNotificationsRefresh = () => {
                 </RouterLink>
             </nav>
             <div class="mobile-menu-actions">
-                <button class="primary-action block" type="button" @click="writeArticle; mobileMenuOpen = false">写文章</button>
+                <button class="primary-action block" type="button" @click="mobileMenuOpen = false; writeArticle()">写文章</button>
                 <template v-if="isLoggedIn">
                     <RouterLink class="mobile-menu-link" :to="`/users/${state.user?.id}`" @click="mobileMenuOpen = false">个人主页</RouterLink>
                     <RouterLink class="mobile-menu-link" to="/notifications" @click="mobileMenuOpen = false">
@@ -524,6 +550,25 @@ const handleNotificationsRefresh = () => {
                 </template>
                 <RouterLink v-else class="mobile-menu-link" to="/login" @click="mobileMenuOpen = false">登录</RouterLink>
             </div>
+        </div>
+    </Teleport>
+
+    <!-- Mobile search panel -->
+    <Teleport to="body">
+        <div v-if="mobileSearchOpen" class="mobile-search-overlay" @click="closeMobileSearch"></div>
+        <div v-if="mobileSearchOpen" class="mobile-search-panel">
+            <form class="mobile-search-form" @submit.prevent="submitSearch">
+                <button type="button" class="mobile-search-cancel" @click="closeMobileSearch">取消</button>
+                <input
+                    v-model="keyword"
+                    type="search"
+                    placeholder="搜文章、作者、专栏、技术问题"
+                    class="mobile-search-input"
+                    data-testid="mobile-site-search-input"
+                    autofocus
+                >
+                <button type="submit" class="mobile-search-submit" data-testid="mobile-site-search-submit">搜索</button>
+            </form>
         </div>
     </Teleport>
 </template>

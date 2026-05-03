@@ -224,6 +224,29 @@ const showKeywordChips = computed(() =>
     columns.value.length === 0
 );
 const recentKeywords = computed(() => bootstrap.value?.recentKeywords || guestRecentSearches.value);
+const suggestedCategories = computed(() =>
+    categoryOptions.value.filter((item) => item !== '全部').slice(0, 8)
+);
+const suggestedTags = computed(() =>
+    tagOptions.value.filter((item) => item !== '全部').slice(0, 12)
+);
+const hasArticleFilters = computed(() => Boolean(
+    activeCategory.value
+    || activeTag.value
+    || !isDefaultArticleSort(activeSort.value)
+    || authorKeyword.value
+    || dateFrom.value
+    || dateTo.value
+    || followingOnly.value
+));
+const hasSearchIntent = computed(() => Boolean(
+    keyword.value.trim()
+    || hasArticleFilters.value
+    || activeTab.value !== 'articles'
+));
+const showSearchDefaultState = computed(() =>
+    activeTab.value === 'articles' && !hasSearchIntent.value
+);
 
 const syncRoute = (overrides = {}) => {
     const query = {
@@ -406,6 +429,18 @@ const changePage = (page) => {
 };
 
 const fetchCurrentTab = async () => {
+    if (showSearchDefaultState.value) {
+        resetStableRequest();
+        mobileSheetOpen.value = false;
+        mobileSheetVisible.value = false;
+        articles.value = [];
+        articleTotal.value = 0;
+        users.value = [];
+        userTotal.value = 0;
+        columns.value = [];
+        columnTotal.value = 0;
+        return;
+    }
     switch (activeTab.value) {
         case 'articles':
             await fetchArticles();
@@ -422,6 +457,22 @@ const fetchCurrentTab = async () => {
 const clickKeyword = (kw) => {
     keyword.value = kw;
     runSearch();
+};
+
+const clickCategorySuggestion = (category) => {
+    activeTab.value = 'articles';
+    activeCategory.value = category;
+    activeTag.value = '';
+    currentPage.value = 1;
+    syncRoute({ tab: 'articles', page: 1, category });
+};
+
+const clickTagSuggestion = (tag) => {
+    activeTab.value = 'articles';
+    activeCategory.value = '';
+    activeTag.value = tag;
+    currentPage.value = 1;
+    syncRoute({ tab: 'articles', page: 1, tag });
 };
 
 const clearRecentSearches = async () => {
@@ -513,7 +564,7 @@ onMounted(fetchBootstrap);
             </form>
 
             <!-- Recent + Hot Keywords -->
-            <div v-if="showKeywordChips && (recentKeywords.length || hotKeywords.length)" class="keyword-section">
+            <div v-if="!showSearchDefaultState && showKeywordChips && (recentKeywords.length || hotKeywords.length)" class="keyword-section">
                 <div v-if="recentKeywords.length" class="keyword-group">
                     <span class="keyword-label">最近搜索</span>
                     <div class="keyword-row">
@@ -572,7 +623,7 @@ onMounted(fetchBootstrap);
 
             <!-- Mobile filter toggle -->
             <button
-                v-if="activeTab === 'articles'"
+                v-if="activeTab === 'articles' && !showSearchDefaultState"
                 class="mobile-filter-toggle"
                 type="button"
                 @click="isMobile ? openMobileSheet() : (filtersExpanded = !filtersExpanded)"
@@ -585,7 +636,7 @@ onMounted(fetchBootstrap);
             </button>
 
             <!-- Article Filters -->
-            <div v-if="activeTab === 'articles' && !isMobile" class="search-filters" :class="{ collapsed: !filtersExpanded }">
+            <div v-if="activeTab === 'articles' && !showSearchDefaultState && !isMobile" class="search-filters" :class="{ collapsed: !filtersExpanded }">
                 <div class="filter-group sort-row">
                     <span>排序方式</span>
                     <div class="sort-buttons">
@@ -705,7 +756,7 @@ onMounted(fetchBootstrap);
             </div>
 
             <!-- Active filter chips -->
-            <div v-if="activeTab === 'articles' && activeFilters.length" class="active-filter-bar">
+            <div v-if="activeTab === 'articles' && !showSearchDefaultState && activeFilters.length" class="active-filter-bar">
                 <span class="active-filter-label">已筛选：</span>
                 <span
                     v-for="f in activeFilters"
@@ -718,18 +769,87 @@ onMounted(fetchBootstrap);
                 <button type="button" class="chip-clear-all" @click="clearAllFilters">清空全部</button>
             </div>
 
-            <p class="result-note">
+            <section v-if="showSearchDefaultState" class="search-default-panel" aria-label="搜索建议">
+                <div class="search-default-copy">
+                    <p class="eyebrow">探索内容</p>
+                    <h2>从你关心的主题开始</h2>
+                    <p>技术文章、作者和专栏都可以在这里汇总查找。</p>
+                </div>
+                <div class="search-suggestion-grid">
+                    <div v-if="recentKeywords.length" class="search-suggestion-section">
+                        <span class="search-suggestion-label">最近搜索</span>
+                        <div class="search-suggestion-row">
+                            <button
+                                v-for="kw in recentKeywords"
+                                :key="kw"
+                                type="button"
+                                class="search-suggestion-chip"
+                                @click="clickKeyword(kw)"
+                            >
+                                {{ kw }}
+                            </button>
+                            <button type="button" class="search-suggestion-chip subtle" @click="clearRecentSearches">
+                                清空
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="hotKeywords.length" class="search-suggestion-section">
+                        <span class="search-suggestion-label">热门关键词</span>
+                        <div class="search-suggestion-row">
+                            <button
+                                v-for="kw in hotKeywords"
+                                :key="kw"
+                                type="button"
+                                class="search-suggestion-chip hot"
+                                @click="clickKeyword(kw)"
+                            >
+                                {{ kw }}
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="suggestedCategories.length" class="search-suggestion-section">
+                        <span class="search-suggestion-label">热门分类</span>
+                        <div class="search-suggestion-row">
+                            <button
+                                v-for="category in suggestedCategories"
+                                :key="category"
+                                type="button"
+                                class="search-suggestion-chip"
+                                @click="clickCategorySuggestion(category)"
+                            >
+                                {{ category }}
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="suggestedTags.length" class="search-suggestion-section">
+                        <span class="search-suggestion-label">热门标签</span>
+                        <div class="search-suggestion-row">
+                            <button
+                                v-for="tag in suggestedTags"
+                                :key="tag"
+                                type="button"
+                                class="search-suggestion-chip"
+                                @click="clickTagSuggestion(tag)"
+                            >
+                                {{ tag }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <p v-if="!showSearchDefaultState" class="result-note">
                 <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章</template>
                 <template v-else-if="activeTab === 'users'">共找到 {{ userTotal }} 位作者</template>
                 <template v-else>共找到 {{ columnTotal }} 个专栏</template>
             </p>
 
-            <AdBanner :slot-code="'search_top'" class="search-ad-banner" />
+            <AdBanner v-if="!showSearchDefaultState" :slot-code="'search_top'" class="search-ad-banner" />
         </section>
 
         <!-- Mobile bottom sheet for filters -->
         <Teleport to="body">
-            <div v-if="mobileSheetOpen" class="mobile-sheet-overlay" :class="{ visible: mobileSheetVisible }" @click.self="closeMobileSheet">
+            <div v-if="mobileSheetOpen && !showSearchDefaultState" class="mobile-sheet-overlay" :class="{ visible: mobileSheetVisible }" @click.self="closeMobileSheet">
                 <div class="mobile-sheet" :class="{ visible: mobileSheetVisible }">
                     <div class="mobile-sheet-header">
                         <span class="mobile-sheet-title">筛选条件</span>
@@ -789,7 +909,7 @@ onMounted(fetchBootstrap);
         </Teleport>
 
         <ArticleFeed
-            v-if="activeTab === 'articles'"
+            v-if="activeTab === 'articles' && !showSearchDefaultState"
             hide-sort
             :articles="articles"
             :page="currentPage"
@@ -1004,6 +1124,95 @@ onMounted(fetchBootstrap);
 .keyword-clear:hover {
     color: var(--error);
     border-color: var(--error);
+}
+
+.search-default-panel {
+    display: grid;
+    gap: 18px;
+    padding: 18px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.search-default-copy {
+    display: grid;
+    gap: 6px;
+}
+
+.search-default-copy .eyebrow,
+.search-default-copy h2,
+.search-default-copy p {
+    margin: 0;
+}
+
+.search-default-copy h2 {
+    color: var(--text-strong);
+    font-size: 18px;
+}
+
+.search-default-copy p {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.search-suggestion-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.search-suggestion-section {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.search-suggestion-label {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.search-suggestion-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.search-suggestion-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 10px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.search-suggestion-chip:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.search-suggestion-chip.hot {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #fcd34d;
+}
+
+.search-suggestion-chip.subtle {
+    color: var(--muted);
+    border-style: dashed;
 }
 
 .expand-btn {
@@ -1313,6 +1522,10 @@ onMounted(fetchBootstrap);
 }
 
 @media (max-width: 720px) {
+    .search-suggestion-grid {
+        grid-template-columns: 1fr;
+    }
+
     .mobile-filter-toggle {
         display: flex;
     }

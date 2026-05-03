@@ -1,10 +1,8 @@
-<script setup>import {computed, inject} from 'vue';
-import {RouterLink, useRouter} from 'vue-router';
+<script setup>
+import {RouterLink} from 'vue-router';
 import SidebarBlock from '@/components/SidebarBlock.vue';
 import AdBanner from '@/components/AdBanner.vue';
 
-const router = useRouter();
-const loginModal = inject('loginModal', { requireLogin: () => false });
 const props = defineProps({
     specials: {
         type: Array,
@@ -23,19 +21,6 @@ const props = defineProps({
         default: () => []
     }
 });
-const loading = computed(() => false);
-
-const writeArticle = () => {
-    const canContinue = loginModal.requireLogin(() => router.push('/editor/new'), {
-        title: '登录后开始创作',
-        message: '登录后可以保存草稿、发布文章，并在个人中心管理内容。',
-        actionText: '登录并写文章'
-    });
-    if (canContinue) {
-        router.push('/editor/new');
-    }
-};
-
 </script>
 
 <template>
@@ -51,7 +36,27 @@ const writeArticle = () => {
             </ol>
         </SidebarBlock>
 
-        <SidebarBlock eyebrow="本周" title="热门专题" compact data-testid="home-specials">
+        <SidebarBlock v-if="props.specials.length" eyebrow="专栏" title="推荐专栏" compact data-testid="home-specials">
+            <div class="special-list">
+                <RouterLink
+                    v-for="column in props.specials"
+                    :key="column.id"
+                    class="special-item"
+                    :to="`/columns/${column.id}`"
+                >
+                    <img
+                        v-if="column.coverUrl"
+                        :src="column.coverUrl"
+                        :alt="`${column.title} 封面`"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                    <span>{{ column.title }}</span>
+                </RouterLink>
+            </div>
+        </SidebarBlock>
+
+        <SidebarBlock v-if="props.topics.length" eyebrow="本周" title="热门专题" compact data-testid="home-topics">
             <div class="special-list">
                 <RouterLink
                     v-for="topic in props.topics"
@@ -68,11 +73,10 @@ const writeArticle = () => {
                     >
                     <span>{{ topic.title }}</span>
                 </RouterLink>
-                <p v-if="!loading && !props.topics.length" class="sidebar-empty">专题内容正在整理中。</p>
             </div>
         </SidebarBlock>
 
-        <SidebarBlock eyebrow="创作者" title="活跃作者" compact data-testid="home-authors">
+        <SidebarBlock v-if="props.authors.length" eyebrow="创作者" title="活跃作者" compact data-testid="home-authors">
             <ol class="author-rank">
                 <li v-for="(author, index) in props.authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
@@ -84,27 +88,14 @@ const writeArticle = () => {
                         <span>{{ author.totalViewCount }} 阅读 · {{ author.articleCount }} 篇</span>
                     </div>
                 </li>
-                <li v-if="!loading && !props.authors.length" class="sidebar-empty">
-                    作者榜正在生成中。
-                </li>
             </ol>
         </SidebarBlock>
 
-<AdBanner :slot-code="'home_sidebar'" />
+        <AdBanner :slot-code="'home_sidebar'" />
     </aside>
 </template>
 
 <style scoped>
-.sidebar-empty {
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 1.6;
-    padding: 12px;
-    background: var(--surface-soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
 .special-item:hover,
 .special-item:focus-visible {
     background: var(--surface-soft);

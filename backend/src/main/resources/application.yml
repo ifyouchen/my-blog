@@ -27,11 +27,11 @@ spring:
             enable: ${MAIL_SMTP_SSL_ENABLE:true}
           starttls:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/schema.sql
-      data-locations: classpath:db/initdata.sql
+#  sql:
+#    init:
+#      mode: always
+#      schema-locations: classpath:db/schema.sql
+#      data-locations: classpath:db/initdata.sql
   task:
     scheduling:
       pool:

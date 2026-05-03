@@ -1,6 +1,8 @@
 import {createRouter, createWebHistory} from 'vue-router';
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
+import {useLoginModal} from '@/composables/useLoginModal';
+import {useSession} from '@/stores/session';
 
 NProgress.configure({ showSpinner: false, trickleSpeed: 200, minimum: 0.15 });
 
@@ -88,7 +90,8 @@ const routes = [
         name: 'editor',
         component: EditorView,
         meta: {
-            title: '写文章'
+            title: '写文章',
+            requiresAuth: true
         }
     },
     {
@@ -96,7 +99,8 @@ const routes = [
         name: 'editorEdit',
         component: EditorView,
         meta: {
-            title: '编辑文章'
+            title: '编辑文章',
+            requiresAuth: true
         }
     },
     {
@@ -184,7 +188,8 @@ const routes = [
         name: 'messages',
         component: MessagesView,
         meta: {
-            title: '私信'
+            title: '私信',
+            requiresAuth: true
         }
     },
     {
@@ -192,7 +197,8 @@ const routes = [
         name: 'notifications',
         component: NotificationsView,
         meta: {
-            title: '通知中心'
+            title: '通知中心',
+            requiresAuth: true
         }
     },
     {
@@ -216,7 +222,8 @@ const routes = [
         name: 'dashboardOverview',
         component: DashboardView,
         meta: {
-            title: '创作概览'
+            title: '创作概览',
+            requiresAuth: true
         }
     },
     {
@@ -224,7 +231,8 @@ const routes = [
         name: 'dashboardArticles',
         component: DashboardView,
         meta: {
-            title: '我的文章'
+            title: '我的文章',
+            requiresAuth: true
         }
     },
     {
@@ -232,7 +240,8 @@ const routes = [
         name: 'favorites',
         component: DashboardView,
         meta: {
-            title: '我的收藏'
+            title: '我的收藏',
+            requiresAuth: true
         }
     },
     {
@@ -240,7 +249,8 @@ const routes = [
         name: 'dashboardColumns',
         component: DashboardColumnsView,
         meta: {
-            title: '我的专栏'
+            title: '我的专栏',
+            requiresAuth: true
         }
     },
     {
@@ -248,14 +258,16 @@ const routes = [
         name: 'profileSettings',
         component: ProfileSettingsView,
         meta: {
-            title: '个人资料'
+            title: '个人资料',
+            requiresAuth: true
         }
     },
     {
         path: '/admin',
         component: AdminLayout,
         meta: {
-            title: '管理后台'
+            title: '管理后台',
+            requiresAuth: true
         },
         children: [
             {
@@ -425,10 +437,29 @@ const router = createRouter({
     }
 });
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
     if (to.path !== from.path) {
         NProgress.start();
     }
+    if (!to.matched.some((record) => record.meta.requiresAuth)) {
+        return true;
+    }
+
+    const { initializeSession, isLoggedIn } = useSession();
+    await initializeSession();
+    if (isLoggedIn.value) {
+        return true;
+    }
+
+    const { showLoginModal } = useLoginModal();
+    showLoginModal(() => {
+        router.push(to.fullPath);
+    }, {
+        title: '登录后继续访问',
+        message: '登录后可以继续访问个人内容、通知、私信和管理功能。',
+        actionText: '登录并继续'
+    });
+    return { path: '/', replace: true };
 });
 
 router.afterEach(() => {

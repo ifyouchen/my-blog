@@ -9,6 +9,8 @@ import com.myblog.application.event.CommentCreatedEvent;
 import com.myblog.application.event.CommentDeletedEvent;
 import com.myblog.application.event.CommentLikedEvent;
 import com.myblog.application.event.CommentUnlikedEvent;
+import com.myblog.domain.model.aggregate.Comment;
+import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.CommentRepository;
 import com.myblog.shared.util.BizLogHelper;
@@ -19,6 +21,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.Optional;
 
 /**
  * 文章 / 评论统计数据事件监听器。
@@ -143,6 +147,23 @@ public class ArticleStatsEventListener {
             BizLogHelper.who(0L),
             BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()));
         try {
+            Optional<Comment> commentOpt = commentRepository.findByIdForAdmin(new CommentId(event.getCommentId()));
+            if (!commentOpt.isPresent()) {
+                log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({})",
+                    BizLogHelper.trace(),
+                    BizLogHelper.who(0L),
+                    BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
+                    BizLogHelper.result("评论不存在"));
+                return;
+            }
+            if (!commentOpt.get().isPublished()) {
+                log.debug("{} | {} 处理评论事件 | 入参({}) | 结果({})",
+                    BizLogHelper.trace(),
+                    BizLogHelper.who(0L),
+                    BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
+                    BizLogHelper.result("评论未发布，跳过计数"));
+                return;
+            }
             articleRepository.incrementCommentCount(event.getArticleId());
         } catch (Exception e) {
             log.error("{} | {} 处理评论事件 | 入参({}) | 结果({})",
