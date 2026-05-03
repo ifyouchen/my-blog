@@ -91,6 +91,8 @@ export const normalizeArticle = (article) => {
         likeCount: article.likeCount || 0,
         favoriteCount: article.favoriteCount || 0,
         commentCount: article.commentCount || 0,
+        featured: Boolean(article.featured),
+        featuredAt: article.featuredAt || '',
         favoritedAt: article.favoritedAt || '',
         liked: Boolean(article.liked),
         favorited: Boolean(article.favorited),

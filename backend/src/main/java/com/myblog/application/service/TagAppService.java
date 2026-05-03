@@ -47,13 +47,15 @@ public class TagAppService {
      * @param page 页码
      * @param pageSize 每页数量
      * @param enabled 启用状态
+     * @param keyword 关键字
      * @return 标签分页结果
      */
-    public PageResult<TagDTO> getTagPage(int page, int pageSize, Boolean enabled) {
+    public PageResult<TagDTO> getTagPage(int page, int pageSize, Boolean enabled, String keyword) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
-        long total = tagRepository.count(enabled);
-        List<TagDTO> items = tagRepository.findPage(enabled, currentPage, currentPageSize).stream()
+        String normalizedKeyword = normalizeKeyword(keyword);
+        long total = tagRepository.count(enabled, normalizedKeyword);
+        List<TagDTO> items = tagRepository.findPage(enabled, normalizedKeyword, currentPage, currentPageSize).stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
         return new PageResult<TagDTO>(items, currentPage, currentPageSize, total);
@@ -124,6 +126,14 @@ public class TagAppService {
 
     private void invalidateTagCache() {
         tagsCache.invalidateAll();
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private List<TagDTO> copyTags(List<TagDTO> source) {

@@ -42,11 +42,11 @@ public class MyBatisTagRepository implements TagRepository {
     }
 
     @Override
-    public List<Tag> findPage(Boolean enabled, int page, int pageSize) {
+    public List<Tag> findPage(Boolean enabled, String keyword, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int offset = (currentPage - 1) * currentPageSize;
-        List<TagDO> tagDOList = tagMapper.selectPage(enabled, offset, currentPageSize);
+        List<TagDO> tagDOList = tagMapper.selectPage(enabled, keyword, offset, currentPageSize);
         List<Tag> tags = new ArrayList<>(tagDOList.size());
         for (TagDO tagDO : tagDOList) {
             tags.add(TagPersistenceConverter.toDomain(tagDO));
@@ -55,8 +55,8 @@ public class MyBatisTagRepository implements TagRepository {
     }
 
     @Override
-    public long count(Boolean enabled) {
-        return tagMapper.countAll(enabled);
+    public long count(Boolean enabled, String keyword) {
+        return tagMapper.countAll(enabled, keyword);
     }
 
     @Override

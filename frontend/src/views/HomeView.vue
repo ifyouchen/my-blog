@@ -8,7 +8,12 @@ import {getActiveAnnouncementsApi} from '@/api/notifications';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useWindowSize} from '@/composables/useWindowSize';
-import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
+import {
+    ARTICLE_SORT_ITEMS,
+    ARTICLE_SORT_LATEST,
+    isDefaultArticleSort,
+    normalizeArticleSort
+} from '@/constants/articleSort';
 import FeaturedArticlesStrip from '@/components/FeaturedArticlesStrip.vue';
 import HomeIntro from '@/components/HomeIntro.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
@@ -66,22 +71,11 @@ const writeCachedTopicItems = (items) => {
 };
 
 const topicItems = ref(readCachedTopicItems());
-const desktopTopicsExpanded = ref(false);
-const TOPIC_COLLAPSE_THRESHOLD = 8;
 
 const {width: windowWidth} = useWindowSize();
 const {isLoggedIn} = useSession();
 const SIDEBAR_BREAKPOINT = 980;
 const showSidebar = computed(() => windowWidth.value >= SIDEBAR_BREAKPOINT);
-const isMobile = computed(() => windowWidth.value < SIDEBAR_BREAKPOINT);
-
-const shouldCollapseTopics = computed(() => topicItems.value.length > TOPIC_COLLAPSE_THRESHOLD);
-const visibleTopicItems = computed(() => {
-    if (!shouldCollapseTopics.value || desktopTopicsExpanded.value || isMobile.value) {
-        return topicItems.value;
-    }
-    return topicItems.value.slice(0, TOPIC_COLLAPSE_THRESHOLD);
-});
 
 // 公告横幅
 const activeBanners = ref([]);
@@ -311,12 +305,6 @@ onMounted(() => {
     loadBanners();
     track('home_feed_tab_exposed', {tab: feedTab.value, is_login: isLoggedIn.value});
 });
-
-watch(isMobile, (mobile) => {
-    if (mobile) {
-        desktopTopicsExpanded.value = false;
-    }
-});
 </script>
 
 <template>
@@ -350,6 +338,7 @@ watch(isMobile, (mobile) => {
                 class="home-featured-primary"
                 :articles="featuredArticles"
                 :loading="!bootstrapLoaded"
+                @article-click="(payload) => track('home_featured_article_clicked', payload)"
             />
         </section>
         <section class="home-filter-bar" aria-label="内容筛选">
@@ -370,17 +359,11 @@ watch(isMobile, (mobile) => {
                     @click="switchFeedTab('following')"
                 >关注</button>
                 </div>
-                <p class="feed-result-hint">{{ feedTab === 'following' ? '关注' : '推荐' }} · {{ activeCategory || '全部' }}（{{ total }}）</p>
-                <TopicStrip :topics="visibleTopicItems" :loading="!bootstrapLoaded" />
+                <p class="feed-result-hint">
+                    {{ feedTab === 'following' ? '关注' : '推荐' }} · {{ activeCategory || '全部' }}（{{ total }}）
+                </p>
+                <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
             </div>
-            <button
-                v-if="!isMobile && shouldCollapseTopics"
-                class="topic-toggle"
-                type="button"
-                @click="desktopTopicsExpanded = !desktopTopicsExpanded"
-            >
-                {{ desktopTopicsExpanded ? '收起分类' : '更多分类' }}
-            </button>
         </section>
         <div class="content-grid">
             <ArticleFeed
@@ -400,7 +383,12 @@ watch(isMobile, (mobile) => {
                 @page-change="changePage"
                 @sort-change="changeSort"
             />
-            <HomeSidebar v-if="showSidebar" :specials="sidebarColumns" :authors="sidebarAuthors" :topics="sidebarTopics" />
+            <HomeSidebar
+                v-if="showSidebar"
+                :specials="sidebarColumns"
+                :authors="sidebarAuthors"
+                :topics="sidebarTopics"
+            />
         </div>
     </main>
 </template>
@@ -451,31 +439,11 @@ watch(isMobile, (mobile) => {
 }
 
 .home-filter-bar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: start;
+    display: block;
 }
 
 .home-filter-main {
     min-width: 0;
-}
-
-.topic-toggle {
-    margin-top: 10px;
-    padding: 6px 10px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-.topic-toggle:hover {
-    border-color: var(--brand);
-    color: var(--brand);
-    background: var(--brand-soft);
 }
 
 .announcement-banners {
@@ -533,12 +501,5 @@ watch(isMobile, (mobile) => {
 .announcement-banner-close:hover {
     color: var(--text);
     background: var(--surface-muted);
-}
-
-@media (max-width: 980px) {
-    .home-filter-bar {
-        grid-template-columns: 1fr;
-        gap: 0;
-    }
 }
 </style>

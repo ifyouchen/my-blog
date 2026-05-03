@@ -142,6 +142,7 @@ public class ArticleAppService {
                     query.getKeyword(),
                     query.getCategory(),
                     query.getTag(),
+                    query.getSort(),
                     query.getAuthorKeyword(),
                     query.getDateFrom(),
                     query.getDateTo()
@@ -153,7 +154,7 @@ public class ArticleAppService {
                     page,
                     pageSize
                 );
-                total = articleRepository.countPublishedByAuthorIds(followingIds);
+                total = articleRepository.countPublishedByAuthorIds(followingIds, query.getSort());
             }
         } else if (needsEnhancedSearch) {
             articles = articleRepository.findPublishedEnhanced(
@@ -172,6 +173,7 @@ public class ArticleAppService {
                 query.getKeyword(),
                 query.getCategory(),
                 query.getTag(),
+                query.getSort(),
                 query.getAuthorKeyword(),
                 query.getDateFrom(),
                 query.getDateTo(),
@@ -189,7 +191,8 @@ public class ArticleAppService {
             total = articleRepository.countPublished(
                 query.getKeyword(),
                 query.getCategory(),
-                query.getTag()
+                query.getTag(),
+                query.getSort()
             );
         }
 

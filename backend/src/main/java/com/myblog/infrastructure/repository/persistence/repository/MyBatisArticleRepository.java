@@ -99,8 +99,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 已发布文章数量
      */
     @Override
-    public long countPublished(String keyword, String category, String tag) {
-        return articleMapper.countPublished(keyword, category, tag);
+    public long countPublished(String keyword, String category, String tag, String sort) {
+        return articleMapper.countPublished(keyword, category, tag, sort);
     }
 
     /**
@@ -115,16 +115,16 @@ public class MyBatisArticleRepository implements ArticleRepository {
     }
 
     @Override
-    public List<Article> findByAuthorId(Long authorId, String status, int page, int pageSize) {
+    public List<Article> findByAuthorId(Long authorId, String status, String keyword, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int offset = (currentPage - 1) * currentPageSize;
-        return toDomainList(articleMapper.selectByAuthorIdWithStatus(authorId, status, offset, currentPageSize));
+        return toDomainList(articleMapper.selectByAuthorIdWithStatus(authorId, status, keyword, offset, currentPageSize));
     }
 
     @Override
-    public long countByAuthorId(Long authorId, String status) {
-        return articleMapper.countByAuthorIdWithStatus(authorId, status);
+    public long countByAuthorId(Long authorId, String status, String keyword) {
+        return articleMapper.countByAuthorIdWithStatus(authorId, status, keyword);
     }
 
     /**
@@ -187,11 +187,11 @@ public class MyBatisArticleRepository implements ArticleRepository {
     }
 
     @Override
-    public long countPublishedByAuthorIds(List<Long> authorIds) {
+    public long countPublishedByAuthorIds(List<Long> authorIds, String sort) {
         if (authorIds == null || authorIds.isEmpty()) {
             return 0L;
         }
-        return articleMapper.countPublishedByAuthorIds(authorIds);
+        return articleMapper.countPublishedByAuthorIds(authorIds, sort);
     }
 
     @Override
@@ -204,8 +204,10 @@ public class MyBatisArticleRepository implements ArticleRepository {
 
     @Override
     public long countPublishedEnhanced(String keyword, String category, String tag,
-                                      String authorKeyword, String dateFrom, String dateTo, boolean useFulltext) {
-        return articleMapper.countPublishedEnhanced(keyword, category, tag, authorKeyword, dateFrom, dateTo, useFulltext);
+                                       String sort, String authorKeyword, String dateFrom, String dateTo,
+                                       boolean useFulltext) {
+        return articleMapper.countPublishedEnhanced(
+            keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, useFulltext);
     }
 
     @Override
@@ -223,12 +225,13 @@ public class MyBatisArticleRepository implements ArticleRepository {
 
     @Override
     public long countPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
-                                                 String tag, String authorKeyword, String dateFrom, String dateTo) {
+                                                  String tag, String sort, String authorKeyword, String dateFrom,
+                                                  String dateTo) {
         if (authorIds == null || authorIds.isEmpty()) {
             return 0L;
         }
         return articleMapper.countPublishedEnhancedByAuthorIds(
-            authorIds, keyword, category, tag, authorKeyword, dateFrom, dateTo);
+            authorIds, keyword, category, tag, sort, authorKeyword, dateFrom, dateTo);
     }
 
     /**

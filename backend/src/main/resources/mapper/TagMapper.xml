@@ -49,6 +49,10 @@
         <if test="enabled != null">
             AND enabled = #{enabled}
         </if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
         ORDER BY id ASC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
@@ -59,6 +63,10 @@
         WHERE deleted_at IS NULL
         <if test="enabled != null">
             AND enabled = #{enabled}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%'))
         </if>
     </select>
 

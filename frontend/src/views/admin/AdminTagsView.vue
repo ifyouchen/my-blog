@@ -13,6 +13,7 @@ import {
     createPagedState,
     readPositiveInt,
     readQueryBooleanText,
+    readQueryText,
     resolveAdminOverflowPage,
     syncAdminQuery,
     useAdminRefresh
@@ -38,6 +39,7 @@ const form = reactive({
 const state = reactive({
     ...createPagedState(8),
     enabled: '',
+    keyword: '',
     submitting: false,
     editingId: null,
     editForm: {
@@ -60,6 +62,7 @@ const normalizeEnabledFilter = (value) => {
 const applyRouteState = () => {
     state.page = readPositiveInt(route.query.page, 1);
     state.enabled = readQueryBooleanText(route, 'enabled');
+    state.keyword = readQueryText(route, 'keyword');
     state.jumpPage = String(state.page);
 };
 
@@ -70,7 +73,8 @@ const loadTags = async () => {
         const result = await getAdminTagsApi(
             state.page,
             state.pageSize,
-            normalizeEnabledFilter(state.enabled)
+            normalizeEnabledFilter(state.enabled),
+            state.keyword || null
         );
         const overflowPage = resolveAdminOverflowPage(state, result);
         if (overflowPage) {
@@ -91,9 +95,10 @@ const loadTags = async () => {
 };
 
 const syncQuery = async (patch = {}) => {
-    await syncAdminQuery(router, route, {
+    return await syncAdminQuery(router, route, {
         page: patch.page ?? (state.page > 1 ? String(state.page) : undefined),
-        enabled: patch.enabled ?? (state.enabled || undefined)
+        enabled: patch.enabled ?? (state.enabled || undefined),
+        keyword: patch.keyword ?? (state.keyword || undefined)
     });
 };
 
@@ -102,12 +107,30 @@ const changePage = async (targetPage) => {
     await syncQuery({ page: targetPage > 1 ? String(targetPage) : undefined });
 };
 
-const changeFilter = async () => {
+const submitFilters = async () => {
     state.page = 1;
-    await syncQuery({
+    const changed = await syncQuery({
         page: undefined,
-        enabled: state.enabled || undefined
+        enabled: state.enabled || undefined,
+        keyword: state.keyword || undefined
     });
+    if (!changed) {
+        await loadTags();
+    }
+};
+
+const resetFilters = async () => {
+    state.enabled = '';
+    state.keyword = '';
+    state.page = 1;
+    const changed = await syncQuery({
+        page: undefined,
+        enabled: undefined,
+        keyword: undefined
+    });
+    if (!changed) {
+        await loadTags();
+    }
 };
 
 const submitTag = async () => {
@@ -195,7 +218,7 @@ const removeTag = async (tag) => {
 useAdminRefresh(loadTags);
 
 watch(
-    () => [route.query.page, route.query.enabled],
+    () => [route.query.page, route.query.enabled, route.query.keyword],
     () => {
         applyRouteState();
         loadTags();
@@ -221,16 +244,24 @@ watch(
                 </div>
             </form>
 
-            <div class="admin-filter-toolbar">
+            <form class="admin-filter-toolbar" @submit.prevent="submitFilters">
                 <label>
                     <span>状态筛选</span>
-                    <select v-model="state.enabled" @change="changeFilter">
+                    <select v-model="state.enabled">
                         <option value="">全部</option>
                         <option value="true">仅启用</option>
                         <option value="false">仅禁用</option>
                     </select>
                 </label>
-            </div>
+                <label class="admin-filter-grow">
+                    <span>关键词</span>
+                    <input v-model.trim="state.keyword" type="text" placeholder="搜索标签名称或说明">
+                </label>
+                <div class="admin-filter-actions">
+                    <button type="submit">查询</button>
+                    <button type="button" @click="resetFilters">重置</button>
+                </div>
+            </form>
         </div>
 
         <div class="admin-table-shell">

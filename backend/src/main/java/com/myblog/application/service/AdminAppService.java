@@ -84,6 +84,7 @@ public class AdminAppService {
         long draftCount = articleRepository.countByStatus(ArticleStatus.DRAFT.name());
         long scheduledCount = articleRepository.countByStatus(ArticleStatus.SCHEDULED.name());
         long publishedCount = articleRepository.countByStatus(ArticleStatus.PUBLISHED.name());
+        long featuredCount = articleRepository.countAdminPage("FEATURED", null, null);
         long offlineCount = articleRepository.countByStatus(ArticleStatus.OFFLINE.name());
         long deletedCount = articleRepository.countByStatus(ArticleStatus.DELETED.name());
         long commentCount = commentRepository.countAll();
@@ -142,6 +143,7 @@ public class AdminAppService {
         stats.put("draftArticles", draftCount);
         stats.put("scheduledArticles", scheduledCount);
         stats.put("publishedArticles", publishedCount);
+        stats.put("featuredArticles", featuredCount);
         stats.put("offlineArticles", offlineCount);
         stats.put("deletedArticles", deletedCount);
         stats.put("totalComments", commentCount);

@@ -174,15 +174,17 @@ public class AdminController {
      * @param page 页码
      * @param pageSize 每页数量
      * @param enabled 启用状态
+     * @param keyword 关键字
      * @return 标签分页结果
      */
     @GetMapping("/tags")
     public Result<PageResult<TagDTO>> getTags(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) Boolean enabled) {
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) String keyword) {
         ensureAdmin();
-        return Result.success(tagAppService.getTagPage(page, pageSize, enabled));
+        return Result.success(tagAppService.getTagPage(page, pageSize, enabled, keyword));
     }
 
     @PostMapping("/categories")

@@ -155,9 +155,10 @@ export const getTagsApi = async (enabled = null) => {
     return await request(`/tags${params}`);
 };
 
-export const getAdminTagsApi = async (page = 1, pageSize = 10, enabled = null) => {
+export const getAdminTagsApi = async (page = 1, pageSize = 10, enabled = null, keyword = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (enabled !== null) params.append('enabled', enabled);
+    if (keyword) params.append('keyword', keyword);
     return await request(`/admin/tags?${params}`);
 };
 
@@ -358,15 +359,4 @@ export const exportAdminUsersApi = (params = {}) => {
     if (params.status) query.set('status', params.status);
     if (params.keyword) query.set('keyword', params.keyword);
     return downloadFile(`/admin/export/users?${query.toString()}`, 'users.csv');
-};
-
-// ======= 邀请码管理 =======
-export const getAdminInviteCodesApi = async (page = 1, pageSize = 20, keyword = '') => {
-    const params = new URLSearchParams({ page, pageSize });
-    if (keyword) params.append('keyword', keyword);
-    return await request(`/invite-codes/admin?${params.toString()}`);
-};
-
-export const deleteAdminInviteCodeApi = async (id) => {
-    return await request(`/invite-codes/admin/${id}`, { method: 'DELETE' });
 };

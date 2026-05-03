@@ -80,6 +80,9 @@
         WHERE deleted_at IS NULL
         AND status != 'DELETED'
         <choose>
+            <when test="status != null and status == 'FEATURED'">
+                AND featured = 1
+            </when>
             <when test="status != null and status == 'REVIEW_PENDING'">
                 AND warn_flag = 1
             </when>
@@ -103,6 +106,9 @@
         WHERE deleted_at IS NULL
         AND status != 'DELETED'
         <choose>
+            <when test="status != null and status == 'FEATURED'">
+                AND featured = 1
+            </when>
             <when test="status != null and status == 'REVIEW_PENDING'">
                 AND warn_flag = 1
             </when>
@@ -151,12 +157,15 @@
                 AND deleted_at IS NULL
             )
         </if>
+        <if test="sort == 'featured'">
+            AND featured = 1
+        </if>
         <choose>
             <when test="sort == 'hot'">
                 ORDER BY view_count DESC, published_at DESC, id DESC
             </when>
             <when test="sort == 'featured'">
-                ORDER BY like_count DESC, published_at DESC, id DESC
+                ORDER BY featured_at DESC, published_at DESC, id DESC
             </when>
             <otherwise>
                 ORDER BY published_at DESC, id DESC
@@ -197,6 +206,12 @@
         <if test="status != null and status != ''">
             AND status = #{status}
         </if>
+        <if test="keyword != null and keyword != ''">
+            AND (title LIKE CONCAT('%', #{keyword}, '%')
+                OR summary LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR content LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
         ORDER BY updated_at DESC, id DESC
         LIMIT #{offset}, #{limit}
     </select>
@@ -208,6 +223,12 @@
         AND deleted_at IS NULL
         <if test="status != null and status != ''">
             AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (title LIKE CONCAT('%', #{keyword}, '%')
+                OR summary LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR content LIKE CONCAT('%', #{keyword}, '%'))
         </if>
     </select>
 
@@ -368,9 +389,12 @@
         </foreach>
         AND status = 'PUBLISHED'
         AND deleted_at IS NULL
+        <if test="sort == 'featured'">
+            AND featured = 1
+        </if>
         <choose>
             <when test="sort == 'featured'">
-                ORDER BY like_count DESC, published_at DESC, id DESC
+                ORDER BY featured_at DESC, published_at DESC, id DESC
             </when>
             <when test="sort == 'latest'">
                 ORDER BY published_at DESC, id DESC
@@ -391,6 +415,9 @@
         </foreach>
         AND status = 'PUBLISHED'
         AND deleted_at IS NULL
+        <if test="sort == 'featured'">
+            AND featured = 1
+        </if>
     </select>
 
     <select id="countById" resultType="int">
@@ -596,6 +623,9 @@
                 AND deleted_at IS NULL
             )
         </if>
+        <if test="sort == 'featured'">
+            AND featured = 1
+        </if>
     </select>
 
     <select id="selectPublishedEnhanced" resultMap="BaseResultMap">
@@ -642,6 +672,9 @@
         <if test="dateTo != null and dateTo != ''">
             AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
+        <if test="sort == 'featured'">
+            AND a.featured = 1
+        </if>
         <choose>
             <when test="keyword != null and keyword != '' and useFulltext == true and sort != 'hot' and sort != 'featured'">
                 ORDER BY MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE) DESC, a.published_at DESC, a.id DESC
@@ -650,7 +683,7 @@
                 ORDER BY a.view_count DESC, a.published_at DESC, a.id DESC
             </when>
             <when test="sort == 'featured'">
-                ORDER BY a.like_count DESC, a.published_at DESC, a.id DESC
+                ORDER BY a.featured_at DESC, a.published_at DESC, a.id DESC
             </when>
             <otherwise>
                 ORDER BY a.published_at DESC, a.id DESC
@@ -708,6 +741,9 @@
         <if test="dateTo != null and dateTo != ''">
             AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
+        <if test="sort == 'featured'">
+            AND a.featured = 1
+        </if>
     </select>
 
     <select id="selectPublishedEnhancedByAuthorIds" resultMap="BaseResultMap">
@@ -751,9 +787,12 @@
         <if test="dateTo != null and dateTo != ''">
             AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
         </if>
+        <if test="sort == 'featured'">
+            AND a.featured = 1
+        </if>
         <choose>
             <when test="sort == 'featured'">
-                ORDER BY a.like_count DESC, a.published_at DESC, a.id DESC
+                ORDER BY a.featured_at DESC, a.published_at DESC, a.id DESC
             </when>
             <when test="sort == 'latest'">
                 ORDER BY a.published_at DESC, a.id DESC
@@ -810,6 +849,9 @@
         </if>
         <if test="dateTo != null and dateTo != ''">
             AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
+        </if>
+        <if test="sort == 'featured'">
+            AND a.featured = 1
         </if>
     </select>
 

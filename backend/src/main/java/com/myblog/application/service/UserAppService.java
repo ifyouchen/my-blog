@@ -240,10 +240,11 @@ public class UserAppService {
         List<Article> publishedArticles = articleRepository.findByAuthorId(
             userId,
             ArticleStatus.PUBLISHED.name(),
+            null,
             page,
             pageSize
         );
-        long total = articleRepository.countByAuthorId(userId, ArticleStatus.PUBLISHED.name());
+        long total = articleRepository.countByAuthorId(userId, ArticleStatus.PUBLISHED.name(), null);
         return buildArticlePage(publishedArticles, author, page, pageSize, total);
     }
 
@@ -253,12 +254,19 @@ public class UserAppService {
         return buildArticleItems(articleRepository.findHotPublishedByAuthorId(userId, limit), author);
     }
 
-    public PageResult<ArticleDTO> pageMyArticles(Long userId, int page, int pageSize, String status) {
+    public PageResult<ArticleDTO> pageMyArticles(Long userId, int page, int pageSize, String status, String keyword) {
         User author = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         String normalizedStatus = status == null || status.trim().isEmpty() ? null : status.trim();
-        List<Article> ownArticles = articleRepository.findByAuthorId(userId, normalizedStatus, page, pageSize);
-        long total = articleRepository.countByAuthorId(userId, normalizedStatus);
+        String normalizedKeyword = normalizeKeyword(keyword);
+        List<Article> ownArticles = articleRepository.findByAuthorId(
+            userId,
+            normalizedStatus,
+            normalizedKeyword,
+            page,
+            pageSize
+        );
+        long total = articleRepository.countByAuthorId(userId, normalizedStatus, normalizedKeyword);
         return buildArticlePage(ownArticles, author, page, pageSize, total);
     }
 
@@ -390,10 +398,17 @@ public class UserAppService {
         return baseUrl + "/auth/reset-password?token=" + token;
     }
 
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 
-    public byte[] exportMyArticlesCsv(Long userId, String status) {
+    public byte[] exportMyArticlesCsv(Long userId, String status, String keyword) {
         long _start = System.currentTimeMillis();
-        PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, status);
+        PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, status, keyword);
         StringBuilder sb = new StringBuilder();
         sb.append("id,title,category,status,viewCount,likeCount,commentCount,publishedAt,createdAt\n");
         for (ArticleDTO a : page.getItems()) {
@@ -412,7 +427,7 @@ public class UserAppService {
             BizLogHelper.trace(),
             BizLogHelper.who(userId),
             "导出文章CSV",
-            BizLogHelper.params("status", status),
+            BizLogHelper.params("status", status, "keyword", keyword),
             BizLogHelper.result("size=" + result.length),
             BizLogHelper.elapsed(_start));
         return result;

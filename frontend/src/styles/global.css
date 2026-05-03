@@ -3096,11 +3096,15 @@ button:disabled {
     top: 72px;
     display: grid;
     gap: 12px;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 16px;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow);
+    scrollbar-gutter: stable;
 }
 
 .admin-sidebar-head h2,
@@ -3902,6 +3906,8 @@ button:disabled {
     .dashboard-nav,
     .admin-sidebar {
         position: static;
+        max-height: none;
+        overflow-y: visible;
     }
 
     .dashboard-nav,

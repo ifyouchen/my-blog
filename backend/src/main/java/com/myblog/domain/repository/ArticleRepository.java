@@ -58,7 +58,7 @@ public interface ArticleRepository {
      * @param tag 标签
      * @return 已发布文章数量
      */
-    long countPublished(String keyword, String category, String tag);
+    long countPublished(String keyword, String category, String tag, String sort);
 
     /**
      * 查询作者自己的文章列表。
@@ -73,20 +73,22 @@ public interface ArticleRepository {
      *
      * @param authorId 作者 ID
      * @param status 状态筛选
+     * @param keyword 关键字
      * @param page 页码
      * @param pageSize 每页数量
      * @return 作者文章列表
      */
-    List<Article> findByAuthorId(Long authorId, String status, int page, int pageSize);
+    List<Article> findByAuthorId(Long authorId, String status, String keyword, int page, int pageSize);
 
     /**
      * 统计作者文章数量。
      *
      * @param authorId 作者 ID
      * @param status 状态筛选
+     * @param keyword 关键字
      * @return 文章数量
      */
-    long countByAuthorId(Long authorId, String status);
+    long countByAuthorId(Long authorId, String status, String keyword);
 
     /**
      * 查询作者已发布文章列表。
@@ -159,7 +161,7 @@ public interface ArticleRepository {
      * @param authorIds 作者 ID 列表
      * @return 文章数量
      */
-    long countPublishedByAuthorIds(List<Long> authorIds);
+    long countPublishedByAuthorIds(List<Long> authorIds, String sort);
 
     /**
      * 增强分页查询已发布文章。
@@ -191,7 +193,8 @@ public interface ArticleRepository {
      * @return 已发布文章数量
      */
     long countPublishedEnhanced(String keyword, String category, String tag,
-                               String authorKeyword, String dateFrom, String dateTo, boolean useFulltext);
+                                String sort, String authorKeyword, String dateFrom, String dateTo,
+                                boolean useFulltext);
 
     /**
      * 增强分页查询关注作者的已发布文章。
@@ -226,7 +229,8 @@ public interface ArticleRepository {
      * @return 文章数量
      */
     long countPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
-                                           String tag, String authorKeyword, String dateFrom, String dateTo);
+                                           String tag, String sort, String authorKeyword, String dateFrom,
+                                           String dateTo);
 
     /**
      * 分页查询后台文章列表。

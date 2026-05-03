@@ -117,7 +117,7 @@ const loadArticles = async () => {
 };
 
 const syncQuery = async (patch = {}) => {
-    await syncAdminQuery(router, route, {
+    return await syncAdminQuery(router, route, {
         page: patch.page ?? (state.page > 1 ? String(state.page) : undefined),
         status: patch.status ?? (state.status || undefined),
         keyword: patch.keyword ?? (state.keyword || undefined),
@@ -127,12 +127,15 @@ const syncQuery = async (patch = {}) => {
 
 const submitFilters = async () => {
     state.page = 1;
-    await syncQuery({
+    const routeChanged = await syncQuery({
         page: undefined,
         status: state.status || undefined,
         keyword: state.keyword || undefined,
         category: state.category || undefined
     });
+    if (!routeChanged) {
+        await loadArticles();
+    }
 };
 
 const resetFilters = async () => {
@@ -164,6 +167,7 @@ const quickStatusCards = [
     { label: '草稿', key: 'DRAFT', status: 'DRAFT', value: () => state.stats?.draftArticles || 0 },
     { label: '定时发布', key: 'SCHEDULED', status: 'SCHEDULED', value: () => state.stats?.scheduledArticles || 0 },
     { label: '已发布', key: 'PUBLISHED', status: 'PUBLISHED', value: () => state.stats?.publishedArticles || 0 },
+    { label: '精选', key: 'FEATURED', status: 'FEATURED', value: () => state.stats?.featuredArticles || 0 },
     { label: '待审核', key: 'REVIEW_PENDING', status: 'REVIEW_PENDING', value: () => state.stats?.reviewPendingArticles || 0 },
     { label: '已下架', key: 'OFFLINE', status: 'OFFLINE', value: () => state.stats?.offlineArticles || 0 },
     { label: '已删除', key: 'DELETED', status: 'DELETED', value: () => state.stats?.deletedArticles || 0 }
@@ -291,6 +295,7 @@ watch(
                     <select v-model="state.status">
                         <option value="">全部</option>
                         <option value="PUBLISHED">已发布</option>
+                        <option value="FEATURED">精选</option>
                         <option value="SCHEDULED">定时发布</option>
                         <option value="REVIEW_PENDING">待审核</option>
                         <option value="DRAFT">草稿</option>
@@ -382,6 +387,7 @@ watch(
                                     <span v-else class="admin-subtext">已删除</span>
                                     <button
                                         v-if="article.status === 'PUBLISHED'"
+                                        class="featured-action-button"
                                         type="button"
                                         :disabled="state.actionLoadingId === article.id"
                                         @click="toggleFeatured(article)"
@@ -523,6 +529,19 @@ watch(
     border-color: #fb923c;
     background: #fff7ed;
 }
+
+.admin-table th:nth-child(5),
+.admin-table td:nth-child(5) {
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+    white-space: nowrap;
+}
+
+.featured-action-button {
+    min-width: 72px;
+}
+
 .preview-overlay {
     position: fixed;
     inset: 0;

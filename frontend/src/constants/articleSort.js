@@ -5,7 +5,7 @@ export const ARTICLE_SORT_FEATURED = 'featured';
 export const ARTICLE_SORT_ITEMS = [
     { label: '最新', value: ARTICLE_SORT_LATEST },
     { label: '最热', value: ARTICLE_SORT_HOT },
-    { label: '高赞', value: ARTICLE_SORT_FEATURED }
+    { label: '精选', value: ARTICLE_SORT_FEATURED }
 ];
 
 export const normalizeArticleSort = (value) => {

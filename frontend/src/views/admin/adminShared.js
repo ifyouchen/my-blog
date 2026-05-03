@@ -108,9 +108,23 @@ export const syncAdminQuery = async (router, route, patch = {}) => {
         }
     });
 
+    const serializeQuery = (query) => {
+        return JSON.stringify(
+            Object.keys(query).sort().reduce((result, key) => {
+                const value = query[key];
+                result[key] = Array.isArray(value) ? value.map(String) : String(value);
+                return result;
+            }, {})
+        );
+    };
+    if (serializeQuery(route.query) === serializeQuery(nextQuery)) {
+        return false;
+    }
+
     await router.replace({
         query: nextQuery
     });
+    return true;
 };
 
 export const resolveAdminOverflowPage = (state, result) => {

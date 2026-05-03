@@ -95,7 +95,8 @@ public interface ArticleMapper {
      */
     long countPublished(@Param("keyword") String keyword,
                         @Param("category") String category,
-                        @Param("tag") String tag);
+                        @Param("tag") String tag,
+                        @Param("sort") String sort);
 
     /**
      * 查询作者自己的文章列表。
@@ -107,10 +108,13 @@ public interface ArticleMapper {
 
     List<ArticleDO> selectByAuthorIdWithStatus(@Param("authorId") Long authorId,
                                                @Param("status") String status,
+                                               @Param("keyword") String keyword,
                                                @Param("offset") int offset,
                                                @Param("limit") int limit);
 
-    long countByAuthorIdWithStatus(@Param("authorId") Long authorId, @Param("status") String status);
+    long countByAuthorIdWithStatus(@Param("authorId") Long authorId,
+                                   @Param("status") String status,
+                                   @Param("keyword") String keyword);
 
     /**
      * 查询作者已发布文章列表。
@@ -147,7 +151,8 @@ public interface ArticleMapper {
                                                @Param("offset") int offset,
                                                @Param("limit") int limit);
 
-    long countPublishedByAuthorIds(@Param("authorIds") List<Long> authorIds);
+    long countPublishedByAuthorIds(@Param("authorIds") List<Long> authorIds,
+                                   @Param("sort") String sort);
 
     List<ArticleDO> selectPublishedEnhanced(@Param("keyword") String keyword,
                                             @Param("category") String category,
@@ -163,6 +168,7 @@ public interface ArticleMapper {
     long countPublishedEnhanced(@Param("keyword") String keyword,
                                 @Param("category") String category,
                                 @Param("tag") String tag,
+                                @Param("sort") String sort,
                                 @Param("authorKeyword") String authorKeyword,
                                 @Param("dateFrom") String dateFrom,
                                 @Param("dateTo") String dateTo,
@@ -183,6 +189,7 @@ public interface ArticleMapper {
                                            @Param("keyword") String keyword,
                                            @Param("category") String category,
                                            @Param("tag") String tag,
+                                           @Param("sort") String sort,
                                            @Param("authorKeyword") String authorKeyword,
                                            @Param("dateFrom") String dateFrom,
                                            @Param("dateTo") String dateTo);

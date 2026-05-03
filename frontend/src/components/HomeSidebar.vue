@@ -15,27 +15,12 @@ const props = defineProps({
     topics: {
         type: Array,
         default: () => []
-    },
-    featured: {
-        type: Array,
-        default: () => []
     }
 });
 </script>
 
 <template>
     <aside class="sidebar" aria-label="侧边栏" data-testid="home-sidebar">
-        <SidebarBlock v-if="props.featured.length" eyebrow="本周" title="精选推荐" compact data-testid="home-featured">
-            <ol class="featured-sidebar-list">
-                <li v-for="article in props.featured.slice(0, 3)" :key="article.id">
-                    <RouterLink :to="`/articles/${article.id}`" class="featured-sidebar-item">
-                        <span class="featured-sidebar-badge">⭐</span>
-                        <span class="featured-sidebar-title">{{ article.title }}</span>
-                    </RouterLink>
-                </li>
-            </ol>
-        </SidebarBlock>
-
         <SidebarBlock v-if="props.specials.length" eyebrow="专栏" title="推荐专栏" compact data-testid="home-specials">
             <div class="special-list">
                 <RouterLink
@@ -81,7 +66,12 @@ const props = defineProps({
                 <li v-for="(author, index) in props.authors" :key="author.user.id">
                     <span class="rank-no">{{ index + 1 }}</span>
                     <RouterLink class="home-author-avatar" :to="`/users/${author.user.id}`">
-                        <img :src="author.user.avatar" :alt="`${author.user.name} 的头像`" loading="lazy" decoding="async" />
+                        <img
+                            :src="author.user.avatar"
+                            :alt="`${author.user.name} 的头像`"
+                            loading="lazy"
+                            decoding="async"
+                        />
                     </RouterLink>
                     <div>
                         <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
@@ -121,43 +111,4 @@ const props = defineProps({
     display: inline-flex;
 }
 
-.featured-sidebar-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.featured-sidebar-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 6px 8px;
-    border-radius: var(--radius-sm);
-    text-decoration: none;
-    color: var(--text);
-    transition: background 0.12s;
-    font-size: 13px;
-}
-
-.featured-sidebar-item:hover {
-    background: var(--surface-soft);
-    color: var(--brand);
-}
-
-.featured-sidebar-badge {
-    flex-shrink: 0;
-    font-size: 11px;
-    margin-top: 2px;
-}
-
-.featured-sidebar-title {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    line-height: 1.5;
-}
 </style>

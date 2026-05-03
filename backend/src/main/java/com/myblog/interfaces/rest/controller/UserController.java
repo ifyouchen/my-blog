@@ -161,12 +161,13 @@ public class UserController {
     @GetMapping("/me/articles")
     public Result<PageResult<ArticleResponse>> getMyArticles(@RequestParam(defaultValue = "1") int page,
                                                              @RequestParam(defaultValue = "10") int pageSize,
-                                                             @RequestParam(required = false) String status) {
+                                                             @RequestParam(required = false) String status,
+                                                             @RequestParam(required = false) String keyword) {
         Long userId = AuthContext.getRequiredUserId();
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        return Result.success(toArticlePage(userAppService.pageMyArticles(userId, page, pageSize, status)));
+        return Result.success(toArticlePage(userAppService.pageMyArticles(userId, page, pageSize, status, keyword)));
     }
 
     /**
@@ -341,12 +342,14 @@ public class UserController {
     }
 
     @GetMapping("/me/export/articles")
-    public void exportMyArticles(@RequestParam(required = false) String status, HttpServletResponse response) throws IOException {
+    public void exportMyArticles(@RequestParam(required = false) String status,
+                                 @RequestParam(required = false) String keyword,
+                                 HttpServletResponse response) throws IOException {
         Long userId = AuthContext.getRequiredUserId();
         String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=" + filename);
-        byte[] data = userAppService.exportMyArticlesCsv(userId, status);
+        byte[] data = userAppService.exportMyArticlesCsv(userId, status, keyword);
         response.getOutputStream().write(0xEF);
         response.getOutputStream().write(0xBB);
         response.getOutputStream().write(0xBF);

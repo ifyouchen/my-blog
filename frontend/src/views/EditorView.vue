@@ -221,6 +221,27 @@ const wordCount = computed(() => {
 const readingMinutes = computed(() => Math.max(1, Math.ceil(wordCount.value / 300)));
 const hasUnsavedChanges = computed(() => createDraftSnapshot(draft) !== lastSavedSnapshot.value);
 const previewTags = computed(() => parseTags(draft.tags));
+const configuredTagNameSet = computed(() => {
+    return new Set(
+        tagOptions.value
+            .map((item) => String(item || '').trim().toLowerCase())
+            .filter(Boolean)
+    );
+});
+const unconfiguredDraftTags = computed(() => {
+    if (!configuredTagNameSet.value.size) {
+        return [];
+    }
+    const seen = new Set();
+    return previewTags.value.filter((tag) => {
+        const key = tag.toLowerCase();
+        if (configuredTagNameSet.value.has(key) || seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
+});
 const previewPublishedText = computed(() => (isEditMode.value ? '预览当前编辑内容' : '预览待发布内容'));
 const plainContent = computed(() => stripMarkdown(draft.content));
 const seoPreviewTitle = computed(() => (draft.seoTitle || draft.title || '未填写标题').trim());
@@ -347,6 +368,18 @@ watch(() => draft.title, (newTitle) => {
 function parseTags(sourceTags) {
     const source = Array.isArray(sourceTags) ? sourceTags : String(sourceTags || '').split(',');
     return source.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function appendDraftTag(tagName) {
+    const tag = String(tagName || '').trim();
+    if (!tag) {
+        return;
+    }
+    const currentTags = parseTags(draft.tags);
+    if (currentTags.some((item) => item.toLowerCase() === tag.toLowerCase())) {
+        return;
+    }
+    draft.tags = [...currentTags, tag].join(', ');
 }
 
 function stripMarkdown(source) {
@@ -1158,7 +1191,29 @@ onUnmounted(() => {
             </section>
             <section class="editor-side-block">
                 <p class="eyebrow">标签</p>
-                <input v-model="draft.tags" type="text" maxlength="500" :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'">
+                <input
+                    v-model="draft.tags"
+                    type="text"
+                    maxlength="500"
+                    list="editor-tag-options"
+                    :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'"
+                >
+                <datalist id="editor-tag-options">
+                    <option v-for="tag in tagOptions" :key="tag" :value="tag"></option>
+                </datalist>
+                <div v-if="tagOptions.length" class="editor-tag-suggestions">
+                    <button
+                        v-for="tag in tagOptions.slice(0, 8)"
+                        :key="tag"
+                        type="button"
+                        @click="appendDraftTag(tag)"
+                    >
+                        {{ tag }}
+                    </button>
+                </div>
+                <p v-if="unconfiguredDraftTags.length" class="editor-tag-warning">
+                    未收录标签「{{ unconfiguredDraftTags.join('、') }}」不会出现在搜索页标签筛选项里。
+                </p>
             </section>
             <section class="editor-side-block editor-schedule-section">
                 <div>
@@ -1625,6 +1680,36 @@ onUnmounted(() => {
 .editor-side-block {
     display: grid;
     gap: 10px;
+}
+
+.editor-tag-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.editor-tag-suggestions button {
+    min-height: 28px;
+    padding: 0 8px;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.editor-tag-suggestions button:hover {
+    color: var(--brand-strong);
+    border-color: rgba(37, 99, 235, 0.32);
+}
+
+.editor-tag-warning {
+    margin: 0;
+    color: var(--warning);
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 .editor-schedule-section {

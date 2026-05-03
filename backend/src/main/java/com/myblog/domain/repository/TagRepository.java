@@ -12,9 +12,9 @@ public interface TagRepository {
 
     List<Tag> findAll(Boolean enabled);
 
-    List<Tag> findPage(Boolean enabled, int page, int pageSize);
+    List<Tag> findPage(Boolean enabled, String keyword, int page, int pageSize);
 
-    long count(Boolean enabled);
+    long count(Boolean enabled, String keyword);
 
     boolean existsByName(String name, TagId excludeId);
 
