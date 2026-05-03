@@ -17,9 +17,11 @@ const props = defineProps({
 
 const showSkeleton = computed(() => props.loading && props.articles.length === 0);
 const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.length > 0);
-const FEATURED_PREVIEW_COUNT = 4;
+const FEATURED_PREVIEW_COUNT = 5;
 const expanded = ref(false);
 const visibleArticles = computed(() => expanded.value ? props.articles : props.articles.slice(0, FEATURED_PREVIEW_COUNT));
+const primaryArticle = computed(() => visibleArticles.value[0]);
+const secondaryArticles = computed(() => visibleArticles.value.slice(1));
 </script>
 
 <template>
@@ -54,26 +56,35 @@ const visibleArticles = computed(() => expanded.value ? props.articles : props.a
                 </div>
             </div>
         </div>
-        <div v-else class="featured-scroll">
+        <div v-else class="featured-mix-layout">
             <RouterLink
-                v-for="article in visibleArticles"
-                :key="article.id"
-                :to="article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`"
-                class="featured-card"
+                v-if="primaryArticle"
+                :to="primaryArticle.slug ? `/articles/${primaryArticle.id}-${primaryArticle.slug}` : `/articles/${primaryArticle.id}`"
+                class="featured-hero"
             >
-                <div class="featured-card-cover">
-                    <img :src="article.cover || article.coverUrl" :alt="`${article.title} 封面`" loading="lazy" decoding="async">
+                <img :src="primaryArticle.cover || primaryArticle.coverUrl" :alt="`${primaryArticle.title} 封面`" loading="lazy" decoding="async">
+                <div class="featured-hero-mask">
+                    <span class="featured-card-category">{{ primaryArticle.category }}</span>
+                    <h3>{{ primaryArticle.title }}</h3>
+                    <p>{{ primaryArticle.summary || '优先阅读：编辑精选的高质量内容。' }}</p>
                 </div>
-                <div class="featured-card-body">
+            </RouterLink>
+            <div class="featured-list">
+                <RouterLink
+                    v-for="article in secondaryArticles"
+                    :key="article.id"
+                    :to="article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`"
+                    class="featured-list-item"
+                >
                     <span class="featured-card-category">{{ article.category }}</span>
-                    <h3>{{ article.title }}</h3>
+                    <h4>{{ article.title }}</h4>
                     <div class="featured-card-meta">
                         <span>{{ article.author?.name || article.author?.nickname }}</span>
                         <span class="middot">&middot;</span>
                         <span>{{ article.likeCount }} 赞</span>
                     </div>
-                </div>
-            </RouterLink>
+                </RouterLink>
+            </div>
         </div>
         <button
             v-if="articles.length > FEATURED_PREVIEW_COUNT"
@@ -100,13 +111,61 @@ const visibleArticles = computed(() => expanded.value ? props.articles : props.a
     font-size: 17px;
 }
 
-.featured-scroll {
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
+.featured-scroll,
+.featured-mix-layout {
+    display: grid;
     gap: 10px;
+}
+
+.featured-mix-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+.featured-hero {
+    position: relative;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    min-height: 240px;
+}
+
+.featured-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.featured-hero-mask {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 14px;
+    color: #fff;
+    background: linear-gradient(180deg, rgba(9, 11, 16, 0) 0%, rgba(9, 11, 16, 0.88) 76%);
+}
+
+.featured-hero-mask h3 {
+    margin: 6px 0 4px;
+    font-size: 18px;
+}
+
+.featured-hero-mask p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.86;
+}
+
+.featured-list {
+    display: grid;
+    gap: 8px;
+}
+
+.featured-list-item {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    background: var(--surface);
 }
 
 .featured-card {
@@ -114,46 +173,36 @@ const visibleArticles = computed(() => expanded.value ? props.articles : props.a
     flex-direction: column;
     flex: 0 0 240px;
     overflow: hidden;
-    background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    text-decoration: none;
-    scroll-snap-align: start;
-    transition: background 0.12s, border-color 0.12s;
-}
-
-.featured-card:hover,
-.featured-card:focus-visible {
-    background: var(--surface-soft);
-    border-color: var(--line-strong);
-}
-
-.featured-card:focus-visible {
-    outline: 2px solid var(--brand);
-    outline-offset: 2px;
+    background: var(--surface);
 }
 
 .featured-card-cover {
-    display: block;
     width: 100%;
     aspect-ratio: 16 / 8;
-    overflow: hidden;
     background: var(--surface-muted);
-}
-
-.featured-card-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
 }
 
 .featured-card-body {
     display: grid;
     gap: 4px;
-    flex: 1;
     min-height: 98px;
     padding: 10px 12px 12px;
+}
+
+.featured-list-item:hover,
+.featured-list-item:focus-visible,
+.featured-hero:hover,
+.featured-hero:focus-visible {
+    background: var(--surface-soft);
+    border-color: var(--line-strong);
+}
+
+.featured-list-item:focus-visible,
+.featured-hero:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
 }
 
 .featured-card-category {
@@ -164,7 +213,7 @@ const visibleArticles = computed(() => expanded.value ? props.articles : props.a
     letter-spacing: 0.5px;
 }
 
-.featured-card h3 {
+.featured-list-item h4 {
     margin: 0;
     color: var(--text);
     font-size: 13px;
@@ -176,8 +225,10 @@ const visibleArticles = computed(() => expanded.value ? props.articles : props.a
     transition: color 0.18s ease;
 }
 
-.featured-card:hover h3,
-.featured-card:focus-visible h3 {
+.featured-list-item:hover h4,
+.featured-list-item:focus-visible h4,
+.featured-hero:hover h3,
+.featured-hero:focus-visible h3 {
     color: var(--brand-strong);
 }
 
@@ -261,20 +312,20 @@ const visibleArticles = computed(() => expanded.value ? props.articles : props.a
 }
 
 @media (max-width: 1080px) {
-    .featured-card {
-        flex-basis: 220px;
+    .featured-mix-layout {
+        grid-template-columns: 1fr;
     }
 }
 
 @media (max-width: 720px) {
-    .featured-card {
-        flex-basis: 200px;
+    .featured-hero {
+        min-height: 200px;
     }
 }
 
 @media (max-width: 480px) {
-    .featured-card {
-        flex-basis: calc(100vw - 64px);
+    .featured-hero-mask h3 {
+        font-size: 16px;
     }
 }
 </style>
