@@ -1,14 +1,14 @@
 <script setup>
-import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {dismissAdApi, getAdsApi, getDismissedAdIdsApi, recordAdClickApi, recordAdImpressionApi} from '@/api/ads';
 import {resolveMediaUrl} from '@/utils/media';
-import {getToken} from '@/api/http';
+import {useSession} from '@/stores/session';
 
 const props = defineProps({
     slotCode: { type: String, required: true }
 });
 
-const isAuthenticated = () => Boolean(getToken());
+const { state, isLoggedIn, initializeSession } = useSession();
 
 const ads = ref([]);
 const impressionReported = ref(new Set());
@@ -39,7 +39,7 @@ const visibleAds = computed(() => {
 const dismissSession = (id) => {
     dismissedIds.value.add(id);
     activePopoverAdId.value = null;
-    if (isAuthenticated()) {
+    if (isLoggedIn.value) {
         dismissAdApi(id).catch(() => {});
     }
 };
@@ -48,7 +48,7 @@ const dismissToday = (id) => {
     try { localStorage.setItem(getDismissKey(id), '1'); } catch (e) {}
     dismissedIds.value.add(id);
     activePopoverAdId.value = null;
-    if (isAuthenticated()) {
+    if (isLoggedIn.value) {
         dismissAdApi(id).catch(() => {});
     }
 };
@@ -110,7 +110,7 @@ const observeAds = () => {
 };
 
 const fetchDismissedIds = async () => {
-    if (!isAuthenticated()) {
+    if (!isLoggedIn.value) {
         serverDismissedIds.value = new Set();
         return;
     }
@@ -126,8 +126,17 @@ const fetchDismissedIds = async () => {
 
 onMounted(async () => {
     setupObserver();
+    await initializeSession();
     await Promise.all([fetchAds(), fetchDismissedIds()]);
     setTimeout(observeAds, 100);
+});
+
+watch(isLoggedIn, (loggedIn) => {
+    if (loggedIn) {
+        fetchDismissedIds();
+    } else {
+        serverDismissedIds.value = new Set();
+    }
 });
 
 onBeforeUnmount(() => {

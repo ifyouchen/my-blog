@@ -43,6 +43,7 @@ const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
 const TagDetailView = () => import('@/views/TagDetailView.vue');
 const ExploreView = () => import('@/views/ExploreView.vue');
 const MessagesView = () => import('@/views/MessagesView.vue');
+const AccessDeniedView = () => import('@/views/AccessDeniedView.vue');
 
 const routes = [
     {
@@ -83,6 +84,14 @@ const routes = [
         component: ResetPasswordView,
         meta: {
             title: '重置密码'
+        }
+    },
+    {
+        path: '/403',
+        name: 'accessDenied',
+        component: AccessDeniedView,
+        meta: {
+            title: '无权限访问'
         }
     },
     {
@@ -267,7 +276,8 @@ const routes = [
         component: AdminLayout,
         meta: {
             title: '管理后台',
-            requiresAuth: true
+            requiresAuth: true,
+            requiresAdmin: true
         },
         children: [
             {
@@ -445,21 +455,25 @@ router.beforeEach(async (to, from) => {
         return true;
     }
 
-    const { initializeSession, isLoggedIn } = useSession();
+    const { initializeSession, isLoggedIn, state } = useSession();
     await initializeSession();
-    if (isLoggedIn.value) {
-        return true;
+    if (!isLoggedIn.value) {
+        const { showLoginModal } = useLoginModal();
+        showLoginModal(() => {
+            router.push(to.fullPath);
+        }, {
+            title: '登录后继续访问',
+            message: '登录后可以继续访问个人内容、通知、私信和管理功能。',
+            actionText: '登录并继续'
+        });
+        return { path: '/', replace: true };
     }
 
-    const { showLoginModal } = useLoginModal();
-    showLoginModal(() => {
-        router.push(to.fullPath);
-    }, {
-        title: '登录后继续访问',
-        message: '登录后可以继续访问个人内容、通知、私信和管理功能。',
-        actionText: '登录并继续'
-    });
-    return { path: '/', replace: true };
+    if (to.matched.some((record) => record.meta.requiresAdmin) && state.user?.role !== 'ADMIN') {
+        return { path: '/403', query: { from: to.fullPath }, replace: true };
+    }
+
+    return true;
 });
 
 router.afterEach(() => {

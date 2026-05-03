@@ -19,6 +19,16 @@ const clearSession = () => {
     window.dispatchEvent(new CustomEvent('my-blog-auth-expired'));
 };
 
+const eventCooldowns = {};
+const dispatchWithCooldown = (eventName, detail, cooldownMs = 1500) => {
+    const now = Date.now();
+    if (eventCooldowns[eventName] && now - eventCooldowns[eventName] < cooldownMs) {
+        return;
+    }
+    eventCooldowns[eventName] = now;
+    window.dispatchEvent(new CustomEvent(eventName, { detail }));
+};
+
 const logDevTrace = (type, detail = {}) => {
     if (!import.meta.env.DEV) {
         return;
@@ -77,6 +87,12 @@ const saveBlob = (blob, filename) => {
 const createRequestError = (payload, response, traceId, fallbackMessage) => {
     if (payload?.code === 401 || response.status === 401) {
         clearSession();
+        const message = payload?.message || '登录已过期，请重新登录';
+        dispatchWithCooldown('my-blog-auth-required', { message });
+    }
+    if (payload?.code === 403 || response.status === 403) {
+        const message = payload?.message || '无权限访问';
+        dispatchWithCooldown('my-blog-forbidden', { message });
     }
     const message = payload?.code !== 0 && payload?.message
         ? payload.message

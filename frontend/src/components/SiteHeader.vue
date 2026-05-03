@@ -1,4 +1,4 @@
-<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+<script setup>import {computed, inject, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {navItems} from '@/data/home';
 import {useSession} from '@/stores/session';
@@ -22,6 +22,7 @@ const hideWriteButton = computed(() =>
 );
 const mobileMenuOpen = ref(false);
 const mobileSearchOpen = ref(false);
+const mobileSearchInputRef = ref(null);
 const userMenuRef = ref(null);
 const notificationOpen = ref(false);
 const notificationRef = ref(null);
@@ -60,11 +61,38 @@ const openMobileSearch = () => {
     notificationOpen.value = false;
     mobileMenuOpen.value = false;
     mobileSearchOpen.value = true;
+    nextTick(() => mobileSearchInputRef.value?.focus());
 };
 
 const closeMobileSearch = () => {
     mobileSearchOpen.value = false;
 };
+
+const handleSearchKeydown = (event) => {
+    if (event.key === 'Escape') {
+        closeMobileSearch();
+    }
+};
+
+watch(mobileSearchOpen, (open) => {
+    if (open) {
+        document.body.classList.add('mobile-search-open');
+        document.addEventListener('keydown', handleSearchKeydown);
+    } else {
+        document.body.classList.remove('mobile-search-open');
+        document.removeEventListener('keydown', handleSearchKeydown);
+    }
+});
+
+watch(() => route.fullPath, () => {
+    mobileSearchOpen.value = false;
+    mobileMenuOpen.value = false;
+    notificationOpen.value = false;
+    userMenuOpen.value = false;
+    if (route.path === '/search' && route.query.keyword) {
+        keyword.value = route.query.keyword;
+    }
+});
 
 const logoutAndGoHome = () => {
     userMenuOpen.value = false;
@@ -273,6 +301,8 @@ onMounted(() => {
 
 onUnmounted(() => {
     document.removeEventListener('click', handleDocumentClick);
+    document.removeEventListener('keydown', handleSearchKeydown);
+    document.body.classList.remove('mobile-search-open');
     if (notificationPollInterval) {
         clearInterval(notificationPollInterval);
     }
@@ -560,12 +590,12 @@ const handleNotificationsRefresh = () => {
             <form class="mobile-search-form" @submit.prevent="submitSearch">
                 <button type="button" class="mobile-search-cancel" @click="closeMobileSearch">取消</button>
                 <input
+                    ref="mobileSearchInputRef"
                     v-model="keyword"
                     type="search"
                     placeholder="搜文章、作者、专栏、技术问题"
                     class="mobile-search-input"
                     data-testid="mobile-site-search-input"
-                    autofocus
                 >
                 <button type="submit" class="mobile-search-submit" data-testid="mobile-site-search-submit">搜索</button>
             </form>

@@ -84,6 +84,10 @@ body {
     letter-spacing: 0;
 }
 
+body.mobile-search-open {
+    overflow: hidden;
+}
+
 a {
     color: inherit;
     text-decoration: none;
