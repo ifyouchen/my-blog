@@ -86,6 +86,7 @@ const immersiveMode = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
 const tocDrawerOpen = ref(false);
+const mobileTocCloseButtonRef = ref(null);
 let shareHoverTimer = null;
 const SHARE_HOVER_DELAY = 280;
 
@@ -404,6 +405,22 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleImmersiveKeydown);
     document.body.classList.remove('immersive-mode');
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
+    document.body.classList.remove('mobile-toc-open');
+});
+
+watch(() => route.fullPath, () => {
+    tocDrawerOpen.value = false;
+});
+
+watch(tocDrawerOpen, (open) => {
+    if (open) {
+        document.body.classList.add('mobile-toc-open');
+        window.setTimeout(() => {
+            mobileTocCloseButtonRef.value?.focus();
+        }, 0);
+        return;
+    }
+    document.body.classList.remove('mobile-toc-open');
 });
 
 watch(() => route.fullPath, () => {
@@ -728,7 +745,7 @@ watch(() => route.fullPath, () => {
         <section class="mobile-toc-drawer" aria-label="文章目录抽屉">
             <div class="mobile-toc-header">
                 <h3>文章目录</h3>
-                <button type="button" @click="tocDrawerOpen = false">关闭</button>
+                <button ref="mobileTocCloseButtonRef" type="button" @click="tocDrawerOpen = false">关闭</button>
             </div>
             <ArticleToc :content="articleMarkdown" />
         </section>
@@ -831,6 +848,10 @@ watch(() => route.fullPath, () => {
     display: grid;
     align-items: end;
     background: rgba(15, 23, 42, 0.38);
+}
+
+:global(body.mobile-toc-open) {
+    overflow: hidden;
 }
 
 .mobile-toc-drawer {

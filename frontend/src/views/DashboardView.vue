@@ -843,7 +843,9 @@ onUnmounted(() => {
                     title="收藏加载失败"
                     :description="errorMessage"
                 >
-                    <button type="button" class="empty-inline-action" @click="fetchFavorites()">重试加载</button>
+                    <button type="button" class="empty-inline-action" :disabled="isLoading" @click="fetchFavorites()">
+                        {{ isLoading ? '重试中...' : '重试加载' }}
+                    </button>
                 </EmptyState>
                 <div v-else-if="favorites.length" class="favorite-grid">
                     <article v-for="article in favorites" :key="article.id" class="favorite-card">
@@ -894,7 +896,9 @@ onUnmounted(() => {
                     title="文章列表加载失败"
                     :description="errorMessage"
                 >
-                    <button type="button" class="empty-inline-action" @click="fetchArticles()">重试加载</button>
+                    <button type="button" class="empty-inline-action" :disabled="isLoading" @click="fetchArticles()">
+                        {{ isLoading ? '重试中...' : '重试加载' }}
+                    </button>
                 </EmptyState>
                 <table v-else-if="articles.length">
                     <thead>
@@ -2051,6 +2055,13 @@ onUnmounted(() => {
 
 .empty-inline-action {
     cursor: pointer;
+}
+
+.empty-inline-action:disabled {
+    cursor: not-allowed;
+    color: var(--muted);
+    border-color: var(--line);
+    background: var(--surface-soft);
 }
 
 .empty-inline-link:hover,

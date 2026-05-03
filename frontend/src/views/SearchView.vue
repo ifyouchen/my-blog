@@ -200,6 +200,16 @@ const clearAllFilters = () => {
     syncRoute({ page: 1 });
 };
 
+const switchSearchTab = (tab) => {
+    const targetTab = tab === 'users' || tab === 'columns' ? tab : 'articles';
+    if (activeTab.value === targetTab) {
+        return;
+    }
+    activeTab.value = targetTab;
+    currentPage.value = 1;
+    syncRoute({ tab: targetTab, page: 1 });
+};
+
 const MAX_VISIBLE_TAGS = 10; // 大约两行的数量
 
 const categoryOptions = computed(() => ['全部', ...(bootstrap.value?.categories || []).map((item) => item.name)]);
@@ -945,7 +955,7 @@ onMounted(fetchBootstrap);
                 title="暂无匹配作者"
                 description="试试缩短关键词，或者切换到文章/专栏继续探索。"
             >
-                <button type="button" class="empty-action" @click="activeTab = 'articles'">查看相关文章</button>
+                <button type="button" class="empty-action" @click="switchSearchTab('articles')">查看相关文章</button>
             </EmptyState>
             <div v-else class="user-list">
                 <div
@@ -1006,7 +1016,7 @@ onMounted(fetchBootstrap);
                 title="暂无匹配专栏"
                 description="可改用文章搜索，或先浏览热门创作者。"
             >
-                <button type="button" class="empty-action" @click="activeTab = 'users'">查看作者结果</button>
+                <button type="button" class="empty-action" @click="switchSearchTab('users')">查看作者结果</button>
             </EmptyState>
             <div v-else class="column-list">
                 <div
