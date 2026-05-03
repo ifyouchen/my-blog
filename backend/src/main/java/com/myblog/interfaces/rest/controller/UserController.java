@@ -244,12 +244,13 @@ public class UserController {
     @GetMapping("/me/feed")
     public Result<PageResult<ArticleResponse>> getMyFollowingFeed(@RequestParam(defaultValue = "1") int page,
                                                                   @RequestParam(defaultValue = "10") int pageSize,
-                                                                  @RequestParam(defaultValue = "latest") String sort) {
+                                                                  @RequestParam(defaultValue = "latest") String sort,
+                                                                  @RequestParam(required = false) String category) {
         Long userId = AuthContext.getRequiredUserId();
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        return Result.success(toArticlePage(followAppService.pageFollowingFeed(userId, page, pageSize, sort)));
+        return Result.success(toArticlePage(followAppService.pageFollowingFeed(userId, page, pageSize, sort, category)));
     }
 
     /**
