@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 const SKELETON_CARD_COUNT = 5;
@@ -17,6 +17,9 @@ const props = defineProps({
 
 const showSkeleton = computed(() => props.loading && props.articles.length === 0);
 const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.length > 0);
+const FEATURED_PREVIEW_COUNT = 4;
+const expanded = ref(false);
+const visibleArticles = computed(() => expanded.value ? props.articles : props.articles.slice(0, FEATURED_PREVIEW_COUNT));
 </script>
 
 <template>
@@ -53,7 +56,7 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
         </div>
         <div v-else class="featured-scroll">
             <RouterLink
-                v-for="article in articles"
+                v-for="article in visibleArticles"
                 :key="article.id"
                 :to="article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`"
                 class="featured-card"
@@ -72,6 +75,12 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
                 </div>
             </RouterLink>
         </div>
+        <button
+            v-if="articles.length > FEATURED_PREVIEW_COUNT"
+            class="featured-toggle"
+            type="button"
+            @click="expanded = !expanded"
+        >{{ expanded ? '收起精选' : '查看更多精选' }}</button>
     </section>
 </template>
 
@@ -239,6 +248,16 @@ const shouldRenderStrip = computed(() => showSkeleton.value || props.articles.le
 
 .featured-skeleton-meta .featured-skeleton-block.short {
     width: 42px;
+}
+
+.featured-toggle {
+    justify-self: start;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
 }
 
 @media (max-width: 1080px) {

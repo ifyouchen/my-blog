@@ -108,6 +108,10 @@ const router = useRouter();
 const VALID_FEED_TABS = ['recommend', 'following'];
 const resolveDefaultFeedTab = () => 'recommend';
 const feedTab = ref(VALID_FEED_TABS.includes(route.query.feedTab) ? route.query.feedTab : resolveDefaultFeedTab());
+const tabStates = ref({
+    recommend: { category: '', sort: undefined, page: undefined },
+    following: { category: '', sort: undefined, page: undefined }
+});
 
 const switchFeedTab = async (tab) => {
     if (tab === feedTab.value) return;
@@ -122,11 +126,14 @@ const switchFeedTab = async (tab) => {
     }
     track('home_feed_tab_clicked', {from_tab: feedTab.value, to_tab: tab, is_login: isLoggedIn.value});
     feedTab.value = tab;
+    const targetState = tabStates.value[tab] || {};
     await router.replace({
         query: {
             ...route.query,
+            category: targetState.category || undefined,
+            sort: targetState.sort,
+            page: targetState.page,
             feedTab: tab === resolveDefaultFeedTab() ? undefined : tab,
-            page: undefined
         }
     });
 };
@@ -189,11 +196,14 @@ const loadHomeBootstrap = async () => {
     }
 };
 
+const normalizeCategory = (category) => (category && category !== '全部' ? category : '');
+
 const loadArticles = async (page, sort, category, shouldScroll = false) => {
     const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
+    const normalizedCategory = normalizeCategory(category);
     const apiCall = isFollowing
-        ? () => getFollowingFeedApi({page, pageSize, sort})
-        : () => listArticlesApi({page, pageSize, sort, category});
+        ? () => getFollowingFeedApi({page, pageSize, sort, category: normalizedCategory})
+        : () => listArticlesApi({page, pageSize, sort, category: normalizedCategory});
     const response = await runStableRequest(apiCall, {
         silent: hasLoadedOnce.value,
         initialErrorMessage: '文章列表加载失败，请稍后重试',
@@ -204,13 +214,14 @@ const loadArticles = async (page, sort, category, shouldScroll = false) => {
     }
 
     const pageResult = response.result || {};
+    const nextItems = pageResult.items || [];
     const nextTotal = Number(pageResult.total || 0);
     const lastPage = Math.max(1, Math.ceil(nextTotal / pageSize));
     if (nextTotal > 0 && page > lastPage) {
         await router.replace({
             query: {
                 ...route.query,
-                category: category || undefined,
+                category: normalizedCategory || undefined,
                 sort: isDefaultArticleSort(sort) ? undefined : sort,
                 page: lastPage === 1 ? undefined : String(lastPage)
             }
@@ -220,9 +231,14 @@ const loadArticles = async (page, sort, category, shouldScroll = false) => {
 
     currentPage.value = page;
     activeSort.value = sort;
-    activeCategory.value = category || '';
+    activeCategory.value = normalizedCategory;
     total.value = nextTotal;
-    articles.value = pageResult.items || [];
+    articles.value = nextItems;
+    tabStates.value[feedTab.value] = {
+        category: normalizedCategory,
+        sort: isDefaultArticleSort(sort) ? undefined : sort,
+        page: page === 1 ? undefined : String(page)
+    };
     track('home_feed_list_loaded', {tab: feedTab.value, item_count: nextTotal, is_login: isLoggedIn.value});
     if (shouldScroll) {
         await scrollToFeed();
@@ -354,6 +370,7 @@ watch(isMobile, (mobile) => {
                     @click="switchFeedTab('following')"
                 >关注</button>
                 </div>
+                <p class="feed-result-hint">{{ feedTab === 'following' ? '关注' : '推荐' }} · {{ activeCategory || '全部' }}（{{ total }}）</p>
                 <TopicStrip :topics="visibleTopicItems" :loading="!bootstrapLoaded" />
             </div>
             <button
@@ -398,6 +415,12 @@ watch(isMobile, (mobile) => {
     display: flex;
     gap: 4px;
     margin-bottom: 4px;
+}
+
+.feed-result-hint {
+    margin: 0 0 6px;
+    font-size: 12px;
+    color: var(--muted);
 }
 
 .feed-tabs button {
