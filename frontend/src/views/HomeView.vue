@@ -2,6 +2,7 @@
 import {computed, nextTick, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
+import {getFollowingFeedApi} from '@/api/following';
 import {getHomeBootstrapApi} from '@/api/home';
 import {getActiveAnnouncementsApi} from '@/api/notifications';
 import ArticleFeed from '@/components/ArticleFeed.vue';
@@ -13,6 +14,8 @@ import HomeIntro from '@/components/HomeIntro.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import TopicStrip from '@/components/TopicStrip.vue';
+import {useSession} from '@/stores/session';
+import {track} from '@/utils/track';
 
 const homeStats = ref({
     totalArticles: 0,
@@ -67,9 +70,11 @@ const desktopTopicsExpanded = ref(false);
 const TOPIC_COLLAPSE_THRESHOLD = 8;
 
 const {width: windowWidth} = useWindowSize();
+const {isLoggedIn} = useSession();
 const SIDEBAR_BREAKPOINT = 980;
 const showSidebar = computed(() => windowWidth.value >= SIDEBAR_BREAKPOINT);
 const isMobile = computed(() => windowWidth.value < SIDEBAR_BREAKPOINT);
+
 const shouldCollapseTopics = computed(() => topicItems.value.length > TOPIC_COLLAPSE_THRESHOLD);
 const visibleTopicItems = computed(() => {
     if (!shouldCollapseTopics.value || desktopTopicsExpanded.value || isMobile.value) {
@@ -98,6 +103,34 @@ const loadBanners = async () => {
 
 const route = useRoute();
 const router = useRouter();
+
+// 双通道 feedTab
+const VALID_FEED_TABS = ['recommend', 'following'];
+const resolveDefaultFeedTab = () => isLoggedIn.value ? 'following' : 'recommend';
+const feedTab = ref(VALID_FEED_TABS.includes(route.query.feedTab) ? route.query.feedTab : resolveDefaultFeedTab());
+
+const switchFeedTab = async (tab) => {
+    if (tab === feedTab.value) return;
+    if (tab === 'following' && !isLoggedIn.value) {
+        const {showLoginModal} = await import('@/composables/useLoginModal');
+        showLoginModal(() => switchFeedTab('following'), {
+            title: '登录后查看关注',
+            message: '登录后可以查看你关注的创作者的最新文章。',
+            actionText: '登录并查看'
+        });
+        return;
+    }
+    track('home_feed_tab_clicked', {from_tab: feedTab.value, to_tab: tab, is_login: isLoggedIn.value});
+    feedTab.value = tab;
+    await router.replace({
+        query: {
+            ...route.query,
+            feedTab: tab === resolveDefaultFeedTab() ? undefined : tab,
+            page: undefined
+        }
+    });
+};
+
 let firstLoad = true;
 let previousRouteState = {
     page: undefined,
@@ -157,14 +190,15 @@ const loadHomeBootstrap = async () => {
 };
 
 const loadArticles = async (page, sort, category, shouldScroll = false) => {
-    const response = await runStableRequest(
-        () => listArticlesApi({ page, pageSize, sort, category }),
-        {
-            silent: hasLoadedOnce.value,
-            initialErrorMessage: '文章列表加载失败，请稍后重试',
-            refreshErrorMessage: '文章列表刷新失败，请稍后重试'
-        }
-    );
+    const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
+    const apiCall = isFollowing
+        ? () => getFollowingFeedApi({page, pageSize, sort})
+        : () => listArticlesApi({page, pageSize, sort, category});
+    const response = await runStableRequest(apiCall, {
+        silent: hasLoadedOnce.value,
+        initialErrorMessage: '文章列表加载失败，请稍后重试',
+        refreshErrorMessage: '文章列表刷新失败，请稍后重试'
+    });
     if (response?.ignored || response?.error) {
         return;
     }
@@ -189,6 +223,7 @@ const loadArticles = async (page, sort, category, shouldScroll = false) => {
     activeCategory.value = category || '';
     total.value = nextTotal;
     articles.value = pageResult.items || [];
+    track('home_feed_list_loaded', {tab: feedTab.value, item_count: nextTotal, is_login: isLoggedIn.value});
     if (shouldScroll) {
         await scrollToFeed();
     }
@@ -225,13 +260,19 @@ const changeSort = async (sort) => {
 };
 
 watch(
-    () => [route.query.page, route.query.sort, route.query.category],
-    ([page, sort, category]) => {
+    () => [route.query.page, route.query.sort, route.query.category, route.query.feedTab],
+    ([page, sort, category, queryFeedTab]) => {
         const nextPage = page === undefined ? undefined : String(page);
         const nextSort = sort === undefined ? undefined : String(sort);
         const nextCategory = category === undefined ? undefined : String(category);
         const pageChanged = previousRouteState.page !== nextPage;
         const shouldScroll = !firstLoad && pageChanged;
+
+        // sync feedTab from query
+        const nextFeedTab = VALID_FEED_TABS.includes(queryFeedTab) ? queryFeedTab : resolveDefaultFeedTab();
+        if (nextFeedTab !== feedTab.value) {
+            feedTab.value = nextFeedTab;
+        }
 
         previousRouteState = {
             page: nextPage,
@@ -252,6 +293,7 @@ watch(
 onMounted(() => {
     loadHomeBootstrap();
     loadBanners();
+    track('home_feed_tab_exposed', {tab: feedTab.value, is_login: isLoggedIn.value});
 });
 
 watch(isMobile, (mobile) => {
@@ -295,6 +337,22 @@ watch(isMobile, (mobile) => {
             />
         </section>
         <section class="home-filter-bar" aria-label="内容筛选">
+            <div class="feed-tabs" role="tablist" aria-label="文章通道">
+                <button
+                    type="button"
+                    role="tab"
+                    :aria-selected="feedTab === 'recommend'"
+                    :class="{ active: feedTab === 'recommend' }"
+                    @click="switchFeedTab('recommend')"
+                >推荐</button>
+                <button
+                    type="button"
+                    role="tab"
+                    :aria-selected="feedTab === 'following'"
+                    :class="{ active: feedTab === 'following' }"
+                    @click="switchFeedTab('following')"
+                >关注</button>
+            </div>
             <TopicStrip :topics="visibleTopicItems" :loading="!bootstrapLoaded" />
             <button
                 v-if="!isMobile && shouldCollapseTopics"
@@ -319,6 +377,7 @@ watch(isMobile, (mobile) => {
                 :inline-error-message="inlineError"
                 :sort="activeSort"
                 :sort-items="ARTICLE_SORT_ITEMS"
+                :empty-text="feedTab === 'following' ? '关注的创作者暂无新文章，去推荐看看吧' : undefined"
                 @page-change="changePage"
                 @sort-change="changeSort"
             />
@@ -331,6 +390,35 @@ watch(isMobile, (mobile) => {
 .home-top-layout {
     display: grid;
     gap: 14px;
+}
+
+.feed-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.feed-tabs button {
+    position: relative;
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background 0.12s;
+}
+
+.feed-tabs button.active {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+}
+
+.feed-tabs button:hover:not(.active) {
+    color: var(--text);
+    background: var(--surface-soft);
 }
 
 .home-featured-primary {

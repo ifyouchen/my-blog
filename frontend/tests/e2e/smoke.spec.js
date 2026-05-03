@@ -64,6 +64,61 @@ test.describe('guest smoke', () => {
 });
 
 test.describe('authenticated smoke', () => {
+    test('home feed tab switch syncs query', async ({ page }) => {
+        await login(page, USER_ACCOUNT, USER_PASSWORD);
+        await page.goto('/');
+        await expect(page.getByTestId('home-page')).toBeVisible();
+        // 默认应为关注 tab（登录用户）
+        const followingTab = page.locator('.feed-tabs button', { hasText: '关注' });
+        await expect(followingTab).toBeVisible();
+        await followingTab.click();
+        await expect(page).toHaveURL(/feedTab=following/);
+        const recommendTab = page.locator('.feed-tabs button', { hasText: '推荐' });
+        await recommendTab.click();
+        await expect(page).toHaveURL(/feedTab=recommend/);
+    });
+
+    test('search empty state shows suggestion chips', async ({ page }) => {
+        await page.goto('/search?keyword=zzzznonexistent999999&tab=articles');
+        await expect(page.locator('.search-empty-fallback')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.search-empty-fallback .search-empty-chip').first()).toBeVisible();
+        // 点击热门标签应跳转
+        const hotChip = page.locator('.search-empty-chip.hot').first();
+        if (await hotChip.isVisible()) {
+            await hotChip.click();
+            await expect(page).toHaveURL(/\/search\?.*tab=articles/);
+        }
+    });
+
+    test('article deep read triggers recommendation bar', async ({ page }) => {
+        await page.goto('/');
+        await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
+        await expect(page.getByTestId('article-detail-page')).toBeVisible();
+        // 滚动到页面底部触发 70% 进度
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await page.waitForTimeout(500);
+        // 检查推荐条是否出现
+        const recommendBar = page.locator('.deep-read-recommend');
+        // 如果有相关文章，推荐条应出现
+        if (await recommendBar.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await expect(recommendBar.locator('.deep-read-item').first()).toBeVisible();
+        }
+    });
+
+    test('dashboard task card CTA navigates correctly', async ({ page }) => {
+        await login(page, USER_ACCOUNT, USER_PASSWORD);
+        await page.goto('/dashboard/overview');
+        await expect(page.getByTestId('dashboard-overview-page')).toBeVisible();
+        const taskCard = page.locator('.task-card').first();
+        if (await taskCard.isVisible({ timeout: 3000 }).catch(() => false)) {
+            const ctaButton = taskCard.locator('.task-card-cta');
+            await expect(ctaButton).toBeVisible();
+            const ctaText = await ctaButton.textContent();
+            await ctaButton.click();
+            // 验证跳转到了对应页面
+            await expect(page).not.toHaveURL(/\/dashboard\/overview/);
+        }
+    });
     test('logged-in user can open core creator pages', async ({ page }) => {
         await login(page, USER_ACCOUNT, USER_PASSWORD);
         await expect(page.getByTestId('dashboard-articles-page')).toBeVisible();

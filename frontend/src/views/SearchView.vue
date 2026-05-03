@@ -5,6 +5,7 @@ import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {listArticlesApi} from '@/api/articles';
 import {clearRecentKeywordsApi, getSearchBootstrapApi, saveRecentKeywordApi, searchColumnsApi, searchUsersApi} from '@/api/search';
+import {track} from '@/utils/track';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -205,6 +206,9 @@ const switchSearchTab = (tab) => {
     if (activeTab.value === targetTab) {
         return;
     }
+    if (isSearchEmpty.value) {
+        track('search_empty_switch_tab_clicked', {from_tab: activeTab.value, to_tab: targetTab});
+    }
     activeTab.value = targetTab;
     currentPage.value = 1;
     syncRoute({ tab: targetTab, page: 1 });
@@ -258,6 +262,32 @@ const hasSearchIntent = computed(() => Boolean(
 ));
 const showSearchDefaultState = computed(() =>
     activeTab.value === 'articles' && !hasSearchIntent.value
+);
+
+// 搜索无结果智能兜底
+const isSearchEmpty = computed(() =>
+    hasSearchIntent.value
+    && hasLoadedOnce.value
+    && !loading.value
+    && articles.value.length === 0
+    && users.value.length === 0
+    && columns.value.length === 0
+);
+
+const suggestKeywords = computed(() => {
+    const kw = keyword.value.trim().toLowerCase();
+    if (!kw) return [];
+    const pool = [...hotKeywords.value, ...suggestedCategories.value, ...suggestedTags.value];
+    const matches = pool.filter(item => {
+        const lower = item.toLowerCase();
+        return lower.includes(kw) || kw.includes(lower);
+    });
+    // 去重并排除完全相同的词
+    return [...new Set(matches)].filter(item => item.toLowerCase() !== kw).slice(0, 3);
+});
+
+const hotTagsForEmpty = computed(() =>
+    (bootstrap.value?.tags || []).map(t => t.name).filter(Boolean).slice(0, 6)
 );
 
 const syncRoute = (overrides = {}) => {
@@ -471,6 +501,12 @@ const clickKeyword = (kw) => {
     runSearch();
 };
 
+const applySuggestion = (kw) => {
+    track('search_empty_suggestion_clicked', {suggested_keyword: kw, origin_keyword: keyword.value.trim()});
+    keyword.value = kw;
+    runSearch();
+};
+
 const clickCategorySuggestion = (category) => {
     activeTab.value = 'articles';
     activeCategory.value = category;
@@ -560,6 +596,12 @@ watch(
     },
     { immediate: true }
 );
+
+watch(isSearchEmpty, (empty) => {
+    if (empty) {
+        track('search_empty_exposed', {tab: activeTab.value, keyword: keyword.value.trim()});
+    }
+});
 
 onMounted(fetchBootstrap);
 </script>
@@ -921,7 +963,7 @@ onMounted(fetchBootstrap);
         </Teleport>
 
         <ArticleFeed
-            v-if="activeTab === 'articles' && !showSearchDefaultState"
+            v-if="activeTab === 'articles' && !showSearchDefaultState && !isSearchEmpty"
             hide-sort
             :articles="articles"
             :page="currentPage"
@@ -941,6 +983,60 @@ onMounted(fetchBootstrap);
             @page-change="changePage"
             @sort-change="changeSort"
         />
+
+        <!-- 搜索无结果智能兜底 -->
+        <section v-if="isSearchEmpty" class="search-empty-fallback">
+            <div class="search-empty-icon">🔍</div>
+            <h2 class="search-empty-title">未找到「{{ keyword.trim() }}」相关结果</h2>
+            <p class="search-empty-desc">试试以下操作，发现更多内容</p>
+            <div v-if="suggestKeywords.length" class="search-empty-section">
+                <span class="search-empty-label">相近关键词</span>
+                <div class="search-empty-row">
+                    <button
+                        v-for="kw in suggestKeywords"
+                        :key="kw"
+                        type="button"
+                        class="search-empty-chip"
+                        @click="applySuggestion(kw)"
+                    >{{ kw }}</button>
+                </div>
+            </div>
+            <div v-if="hotTagsForEmpty.length" class="search-empty-section">
+                <span class="search-empty-label">热门标签</span>
+                <div class="search-empty-row">
+                    <button
+                        v-for="tag in hotTagsForEmpty"
+                        :key="tag"
+                        type="button"
+                        class="search-empty-chip hot"
+                        @click="clickTagSuggestion(tag)"
+                    >{{ tag }}</button>
+                </div>
+            </div>
+            <div class="search-empty-tabs">
+                <span class="search-empty-label">换个方式探索</span>
+                <div class="search-empty-row">
+                    <button
+                        v-if="activeTab !== 'articles'"
+                        type="button"
+                        class="search-empty-chip"
+                        @click="switchSearchTab('articles')"
+                    >查看文章</button>
+                    <button
+                        v-if="activeTab !== 'users'"
+                        type="button"
+                        class="search-empty-chip"
+                        @click="switchSearchTab('users')"
+                    >查看作者</button>
+                    <button
+                        v-if="activeTab !== 'columns'"
+                        type="button"
+                        class="search-empty-chip"
+                        @click="switchSearchTab('columns')"
+                    >查看专栏</button>
+                </div>
+            </div>
+        </section>
 
         <!-- User Results -->
         <div v-else-if="activeTab === 'users'" class="user-results">
@@ -1080,6 +1176,82 @@ onMounted(fetchBootstrap);
     display: grid;
     gap: 16px;
     background: transparent;
+}
+
+.search-empty-fallback {
+    display: grid;
+    gap: 14px;
+    padding: 28px 20px;
+    text-align: center;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.search-empty-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.search-empty-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.search-empty-desc {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.search-empty-section,
+.search-empty-tabs {
+    display: grid;
+    gap: 8px;
+    text-align: left;
+}
+
+.search-empty-label {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.search-empty-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.search-empty-chip {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.search-empty-chip:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.search-empty-chip.hot {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #fcd34d;
+}
+
+.search-empty-chip.hot:hover {
+    color: #92400e;
+    border-color: #f59e0b;
 }
 
 .search-panel .eyebrow {

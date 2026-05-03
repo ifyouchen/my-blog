@@ -3,6 +3,7 @@ import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {getArticleApi, getArticleNeighborsApi, getRelatedArticlesApi} from '@/api/articles';
+import {track} from '@/utils/track';
 import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
 import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -82,6 +83,7 @@ const readingProgress = ref(0);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
 const reportDialogVisible = ref(false);
+const deepReadTriggered = ref(false);
 const immersiveMode = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
@@ -384,6 +386,10 @@ const handleScroll = () => {
     showBackToTop.value = scrollY > 500;
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     readingProgress.value = docHeight > 0 ? Math.min(100, Math.round((scrollY / docHeight) * 100)) : 0;
+    if (readingProgress.value >= 70 && !deepReadTriggered.value) {
+        deepReadTriggered.value = true;
+        track('article_deep_read_triggered', {article_id: articleId.value, progress: readingProgress.value});
+    }
 };
 
 watch(article, syncArticleState, { immediate: true });
@@ -565,6 +571,29 @@ watch(() => route.fullPath, () => {
                 <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
                 <section v-else class="article-content-empty">
                     <p>正文暂时为空，稍后再来看一眼。</p>
+                </section>
+
+                <!-- 阅读完成触发推荐 -->
+                <section v-if="deepReadTriggered && relatedArticles.length" class="deep-read-recommend">
+                    <p class="deep-read-eyebrow">读到这里，继续探索</p>
+                    <div class="deep-read-list">
+                        <RouterLink
+                            v-for="rel in relatedArticles.slice(0, 3)"
+                            :key="rel.id"
+                            class="deep-read-item"
+                            :to="`/articles/${rel.id}`"
+                            @click="track('article_recommend_click', {article_id: articleId, target_article_id: rel.id, source: rel.category === article?.category ? 'same_category' : 'related'})"
+                        >
+                            <div
+                                class="deep-read-cover"
+                                :style="rel.cover ? { backgroundImage: `url(${rel.cover})` } : undefined"
+                            />
+                            <div class="deep-read-meta">
+                                <span v-if="rel.category" class="deep-read-category">{{ rel.category }}</span>
+                                <p class="deep-read-title">{{ rel.title }}</p>
+                            </div>
+                        </RouterLink>
+                    </div>
                 </section>
 
                 <!-- 上下篇导航 -->
@@ -1228,6 +1257,75 @@ watch(() => route.fullPath, () => {
     margin-top: 40px;
     padding-top: 24px;
     border-top: 1px solid var(--line);
+}
+
+.deep-read-recommend {
+    margin-top: 32px;
+    padding: 18px;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
+.deep-read-eyebrow {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--brand-strong);
+}
+
+.deep-read-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.deep-read-item {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.deep-read-item:hover {
+    border-color: var(--brand);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.deep-read-cover {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--surface-soft) center / cover no-repeat;
+}
+
+.deep-read-meta {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+}
+
+.deep-read-category {
+    font-size: 11px;
+    color: var(--brand);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.deep-read-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .article-related-title {

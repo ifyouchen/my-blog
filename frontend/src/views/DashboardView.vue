@@ -13,6 +13,7 @@ import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 import {getNotificationDetail, getNotificationText} from '@/utils/notifications';
+import {track} from '@/utils/track';
 
 const route = useRoute();
 const router = useRouter();
@@ -428,6 +429,59 @@ const metricCards = computed(() => ([
     { label: '粉丝数', value: overview.value.followerCount, hint: '关注你的读者' }
 ]));
 
+// 任务中心
+const taskCards = computed(() => {
+    const tasks = [];
+    const o = overview.value;
+    // 无文章 → 去写第一篇
+    if (o.totalCount === 0) {
+        tasks.push({
+            taskId: 'create_first',
+            type: 'create_first',
+            title: '写下你的第一篇文章',
+            desc: '分享你的技术经验或项目笔记，让读者认识你。',
+            ctaText: '去写第一篇',
+            ctaRoute: '/editor/new',
+            priority: 1
+        });
+    }
+    // 草稿超3天未更新 → 继续写作
+    if (o.draftCount > 0 && o.latestUpdatedAt) {
+        const lastUpdate = new Date(o.latestUpdatedAt);
+        const daysSince = Math.floor((Date.now() - lastUpdate.getTime()) / 86400000);
+        if (daysSince >= 3 && o.latestArticleStatus === 'DRAFT') {
+            tasks.push({
+                taskId: 'resume_draft',
+                type: 'resume_draft',
+                title: '草稿待续',
+                desc: `《${o.latestArticleTitle || '草稿'}》已 ${daysSince} 天未更新，继续完成它吧。`,
+                ctaText: '继续写作',
+                ctaRoute: o.latestArticleId ? `/editor/${o.latestArticleId}` : '/editor/new',
+                priority: 2
+            });
+        }
+    }
+    // 7天未发布 → 建议发布
+    if (o.publishedCount === 0 && o.draftCount > 0) {
+        tasks.push({
+            taskId: 'publish_streak',
+            type: 'publish_streak',
+            title: '是时候发布了',
+            desc: '你有草稿但还没有发布过文章，发布后读者才能看到你的内容。',
+            ctaText: '去发布',
+            ctaRoute: '/dashboard/articles?status=DRAFT',
+            priority: 3
+        });
+    }
+    // 最多显示2条
+    return tasks.sort((a, b) => a.priority - b.priority).slice(0, 2);
+});
+
+const handleTaskCtaClick = (task) => {
+    track('dashboard_task_clicked', {task_id: task.taskId, type: task.type});
+    router.push(task.ctaRoute);
+};
+
 const performanceSortOptions = [
     { label: '阅读', value: 'view' },
     { label: '点赞', value: 'like' },
@@ -595,6 +649,12 @@ watch(isLoggedIn, () => {
     fetchCurrentTab();
 });
 
+watch(taskCards, (tasks) => {
+    if (isOverview.value && tasks.length) {
+        track('dashboard_task_exposed', {task_ids: tasks.map(t => t.taskId), count: tasks.length});
+    }
+}, {immediate: true});
+
 watch(hasScheduledArticles, (enabled) => {
     clearScheduledArticleRefreshTimer();
     if (enabled) {
@@ -680,6 +740,24 @@ onUnmounted(() => {
                             {{ columnCount ? '管理专栏' : '创建专栏' }}
                         </RouterLink>
                     </div>
+                </div>
+            </section>
+
+            <!-- 任务中心 -->
+            <section v-if="isOverview && taskCards.length" class="task-center">
+                <p class="eyebrow">今日建议</p>
+                <div class="task-cards">
+                    <article v-for="task in taskCards" :key="task.taskId" class="task-card">
+                        <div class="task-card-body">
+                            <strong class="task-card-title">{{ task.title }}</strong>
+                            <p class="task-card-desc">{{ task.desc }}</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="task-card-cta"
+                            @click="handleTaskCtaClick(task)"
+                        >{{ task.ctaText }}</button>
+                    </article>
                 </div>
             </section>
 
@@ -1213,6 +1291,71 @@ onUnmounted(() => {
     display: grid;
     gap: 16px;
     margin-bottom: 26px;
+}
+
+.task-center {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.task-center .eyebrow {
+    margin: 0;
+}
+
+.task-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.task-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--brand);
+}
+
+.task-card-body {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+}
+
+.task-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.task-card-desc {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.task-card-cta {
+    flex-shrink: 0;
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.12s;
+}
+
+.task-card-cta:hover {
+    opacity: 0.9;
 }
 
 .creator-overview-grid {
