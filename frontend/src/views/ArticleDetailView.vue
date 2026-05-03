@@ -422,6 +422,10 @@ watch(tocDrawerOpen, (open) => {
     }
     document.body.classList.remove('mobile-toc-open');
 });
+
+watch(() => route.fullPath, () => {
+    tocDrawerOpen.value = false;
+});
 </script>
 
 <template>
