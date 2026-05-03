@@ -14,8 +14,9 @@ export const getMyFollowingApi = async () => {
     return (data || []).map(normalizeUser);
 };
 
-export const getFollowingFeedApi = async ({ page = 1, pageSize = 10, sort = 'latest' } = {}) => {
-    const data = await request(`/users/me/feed?page=${page}&pageSize=${pageSize}&sort=${sort}`);
+export const getFollowingFeedApi = async ({ page = 1, pageSize = 10, sort = 'latest', category = '' } = {}) => {
+    const categoryParam = category ? `&category=${encodeURIComponent(category)}` : '';
+    const data = await request(`/users/me/feed?page=${page}&pageSize=${pageSize}&sort=${sort}${categoryParam}`);
     return {
         ...data,
         items: (data.items || []).map(normalizeArticle)

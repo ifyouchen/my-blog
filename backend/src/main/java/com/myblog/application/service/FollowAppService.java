@@ -188,14 +188,18 @@ public class FollowAppService {
         return result;
     }
 
-    public PageResult<ArticleDTO> pageFollowingFeed(Long currentUserId, int page, int pageSize, String sort) {
+    public PageResult<ArticleDTO> pageFollowingFeed(Long currentUserId, int page, int pageSize, String sort, String category) {
         List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(currentUserId));
         if (followingUserIds.isEmpty()) {
             return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), page, pageSize, 0);
         }
 
-        List<Article> publishedArticles = articleRepository.findPublishedByAuthorIds(followingUserIds, sort, page, pageSize);
-        long total = articleRepository.countPublishedByAuthorIds(followingUserIds);
+        List<Article> publishedArticles = articleRepository.findPublishedEnhancedByAuthorIds(
+            followingUserIds, null, category, null, sort, null, null, null, page, pageSize
+        );
+        long total = articleRepository.countPublishedEnhancedByAuthorIds(
+            followingUserIds, null, category, null, null, null, null
+        );
         List<Long> authorIds = publishedArticles.stream()
             .map(article -> article.getAuthorId().getValue())
             .distinct()
