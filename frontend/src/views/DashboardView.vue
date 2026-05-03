@@ -835,7 +835,18 @@ onUnmounted(() => {
                 <p v-if="refreshing && favorites.length" class="loading-text subtle">正在更新收藏...</p>
                 <p v-if="inlineError" class="error-text">{{ inlineError }}</p>
                 <p v-if="showListLoading" class="loading-text">加载中...</p>
-                <p v-else-if="errorMessage && !favorites.length" class="error-text">{{ errorMessage }}</p>
+                <EmptyState
+                    v-else-if="errorMessage && !favorites.length"
+                    tone="error"
+                    compact
+                    eyebrow="收藏夹"
+                    title="收藏加载失败"
+                    :description="errorMessage"
+                >
+                    <button type="button" class="empty-inline-action" :disabled="isLoading" @click="fetchFavorites()">
+                        {{ isLoading ? '重试中...' : '重试加载' }}
+                    </button>
+                </EmptyState>
                 <div v-else-if="favorites.length" class="favorite-grid">
                     <article v-for="article in favorites" :key="article.id" class="favorite-card">
                         <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
@@ -867,14 +878,28 @@ onUnmounted(() => {
                     title="暂无收藏"
                     description="去首页、搜索或排行榜逛逛，把感兴趣的文章先收藏起来。"
                     compact
-                />
+                >
+                    <RouterLink class="empty-inline-link" to="/">去首页看看</RouterLink>
+                    <RouterLink class="empty-inline-link" to="/search">去搜索发现</RouterLink>
+                </EmptyState>
             </section>
 
             <section v-else-if="isArticles" class="dashboard-content-panel table-panel" data-testid="dashboard-articles-panel">
                 <p v-if="refreshing && articles.length" class="loading-text subtle">正在更新文章...</p>
                 <p v-if="inlineError" class="error-text">{{ inlineError }}</p>
                 <p v-if="showListLoading" class="loading-text">正在加载文章...</p>
-                <p v-else-if="errorMessage && !articles.length" class="error-text">{{ errorMessage }}</p>
+                <EmptyState
+                    v-else-if="errorMessage && !articles.length"
+                    tone="error"
+                    compact
+                    eyebrow="我的文章"
+                    title="文章列表加载失败"
+                    :description="errorMessage"
+                >
+                    <button type="button" class="empty-inline-action" :disabled="isLoading" @click="fetchArticles()">
+                        {{ isLoading ? '重试中...' : '重试加载' }}
+                    </button>
+                </EmptyState>
                 <table v-else-if="articles.length">
                     <thead>
                         <tr>
@@ -1042,7 +1067,9 @@ onUnmounted(() => {
                     title="还没有文章"
                     description="先去写下第一篇内容，把你的项目经验或技术笔记发布出来。"
                     compact
-                />
+                >
+                    <RouterLink class="empty-inline-link" to="/editor/new">去写第一篇</RouterLink>
+                </EmptyState>
             </section>
 
             <nav v-if="!isOverview && totalPages > 1" class="dashboard-pagination" aria-label="后台分页">
@@ -2010,6 +2037,39 @@ onUnmounted(() => {
 }
 
 /* ── 文章统计抽屉 ── */
+
+.empty-inline-link,
+.empty-inline-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 12px;
+    margin: 2px 4px 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--brand);
+    font-size: 13px;
+}
+
+.empty-inline-action {
+    cursor: pointer;
+}
+
+.empty-inline-action:disabled {
+    cursor: not-allowed;
+    color: var(--muted);
+    border-color: var(--line);
+    background: var(--surface-soft);
+}
+
+.empty-inline-link:hover,
+.empty-inline-action:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
 .stats-drawer-overlay {
     position: fixed;
     inset: 0;

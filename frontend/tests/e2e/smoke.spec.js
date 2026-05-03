@@ -54,6 +54,13 @@ test.describe('guest smoke', () => {
         await page.getByTestId('header-write-article').click();
         await expect(page.getByTestId('login-modal')).toBeVisible();
     });
+
+    test('search empty-state action switches tab via route query', async ({ page }) => {
+        await page.goto('/search?tab=users&keyword=unlikely_keyword_zzzzzz');
+        await expect(page.getByText('暂无匹配作者')).toBeVisible();
+        await page.getByRole('button', { name: '查看相关文章' }).click();
+        await expect(page).toHaveURL(/\/search\?.*tab=articles/);
+    });
 });
 
 test.describe('authenticated smoke', () => {

@@ -1,4 +1,5 @@
-<script setup>import {computed, onMounted, ref, Teleport, watch} from 'vue';
+<script setup>
+import {computed, onMounted, ref, Teleport, watch} from 'vue';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
@@ -6,6 +7,7 @@ import {listArticlesApi} from '@/api/articles';
 import {clearRecentKeywordsApi, getSearchBootstrapApi, saveRecentKeywordApi, searchColumnsApi, searchUsersApi} from '@/api/search';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import {useSession} from '@/stores/session';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
@@ -196,6 +198,16 @@ const clearAllFilters = () => {
     followingOnly.value = false;
     currentPage.value = 1;
     syncRoute({ page: 1 });
+};
+
+const switchSearchTab = (tab) => {
+    const targetTab = tab === 'users' || tab === 'columns' ? tab : 'articles';
+    if (activeTab.value === targetTab) {
+        return;
+    }
+    activeTab.value = targetTab;
+    currentPage.value = 1;
+    syncRoute({ tab: targetTab, page: 1 });
 };
 
 const MAX_VISIBLE_TAGS = 10; // 大约两行的数量
@@ -936,7 +948,15 @@ onMounted(fetchBootstrap);
             <div v-if="inlineError" class="error-state search-state-panel">{{ inlineError }}</div>
             <div v-if="initialLoading && !users.length" class="loading-state">加载中...</div>
             <div v-else-if="errorMessage && !users.length" class="error-state">{{ errorMessage }}</div>
-            <div v-else-if="!refreshing && hasLoadedOnce && users.length === 0" class="empty-state">暂无匹配作者</div>
+            <EmptyState
+                v-else-if="!refreshing && hasLoadedOnce && users.length === 0"
+                compact
+                eyebrow="搜索结果"
+                title="暂无匹配作者"
+                description="试试缩短关键词，或者切换到文章/专栏继续探索。"
+            >
+                <button type="button" class="empty-action" @click="switchSearchTab('articles')">查看相关文章</button>
+            </EmptyState>
             <div v-else class="user-list">
                 <div
                     v-for="user in users"
@@ -989,7 +1009,15 @@ onMounted(fetchBootstrap);
             <div v-if="inlineError" class="error-state search-state-panel">{{ inlineError }}</div>
             <div v-if="initialLoading && !columns.length" class="loading-state">加载中...</div>
             <div v-else-if="errorMessage && !columns.length" class="error-state">{{ errorMessage }}</div>
-            <div v-else-if="!refreshing && hasLoadedOnce && columns.length === 0" class="empty-state">暂无匹配专栏</div>
+            <EmptyState
+                v-else-if="!refreshing && hasLoadedOnce && columns.length === 0"
+                compact
+                eyebrow="搜索结果"
+                title="暂无匹配专栏"
+                description="可改用文章搜索，或先浏览热门创作者。"
+            >
+                <button type="button" class="empty-action" @click="switchSearchTab('users')">查看作者结果</button>
+            </EmptyState>
             <div v-else class="column-list">
                 <div
                     v-for="column in columns"
@@ -1693,6 +1721,21 @@ onMounted(fetchBootstrap);
 }
 
 /* Mobile bottom sheet */
+.empty-action {
+    margin-top: 4px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--brand);
+    cursor: pointer;
+}
+
+.empty-action:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
 .mobile-sheet-overlay {
     position: fixed;
     inset: 0;
