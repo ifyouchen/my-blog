@@ -20,9 +20,12 @@ const activeTopic = computed(() => String(route.query.category || '全部'));
 const visibleTopics = computed(() => props.topics.length ? props.topics : ['全部']);
 const showSkeleton = computed(() => props.loading && props.topics.length <= 1);
 
-const buildTopicRoute = (topic) => topic === '全部'
-    ? { path: '/', query: { sort: route.query.sort, page: undefined } }
-    : { path: '/', query: { category: topic, sort: route.query.sort, page: undefined } };
+const buildTopicRoute = (topic) => {
+    const nextFeedTab = route.query.feedTab === 'following' ? 'following' : undefined;
+    return topic === '全部'
+        ? { path: '/', query: { sort: route.query.sort, feedTab: nextFeedTab, page: undefined } }
+        : { path: '/', query: { category: topic, sort: route.query.sort, feedTab: nextFeedTab, page: undefined } };
+};
 </script>
 
 <template>

@@ -106,7 +106,7 @@ const router = useRouter();
 
 // 双通道 feedTab
 const VALID_FEED_TABS = ['recommend', 'following'];
-const resolveDefaultFeedTab = () => isLoggedIn.value ? 'following' : 'recommend';
+const resolveDefaultFeedTab = () => 'recommend';
 const feedTab = ref(VALID_FEED_TABS.includes(route.query.feedTab) ? route.query.feedTab : resolveDefaultFeedTab());
 
 const switchFeedTab = async (tab) => {
@@ -337,7 +337,8 @@ watch(isMobile, (mobile) => {
             />
         </section>
         <section class="home-filter-bar" aria-label="内容筛选">
-            <div class="feed-tabs" role="tablist" aria-label="文章通道">
+            <div class="home-filter-main">
+                <div class="feed-tabs" role="tablist" aria-label="文章通道">
                 <button
                     type="button"
                     role="tab"
@@ -352,8 +353,9 @@ watch(isMobile, (mobile) => {
                     :class="{ active: feedTab === 'following' }"
                     @click="switchFeedTab('following')"
                 >关注</button>
+                </div>
+                <TopicStrip :topics="visibleTopicItems" :loading="!bootstrapLoaded" />
             </div>
-            <TopicStrip :topics="visibleTopicItems" :loading="!bootstrapLoaded" />
             <button
                 v-if="!isMobile && shouldCollapseTopics"
                 class="topic-toggle"
@@ -430,6 +432,10 @@ watch(isMobile, (mobile) => {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
     align-items: start;
+}
+
+.home-filter-main {
+    min-width: 0;
 }
 
 .topic-toggle {
