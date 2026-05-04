@@ -8,7 +8,7 @@ import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
-import {getUserProfileApi} from '@/api/auth';
+import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
 import {createConversationApi} from '@/api/messages';
 import {getUserFollowersApi, getUserFollowingListApi, getFollowStatusApi} from '@/api/following';
 import {useStableListRequest} from '@/composables/useStableListRequest';
@@ -29,6 +29,7 @@ const followDialogList = ref([]);
 const followDialogLoading = ref(false);
 const followStatus = ref({ followed: false, followedBack: false, mutual: false });
 const page = ref(1);
+const articleTab = ref('latest');
 
 useHead({
     title: computed(() => {
@@ -64,6 +65,7 @@ const summarySubtitle = computed(() => (
     profile.value?.user?.username ? `@${profile.value.user.username}` : ''
 ));
 const isMutualFollow = computed(() => !!(followStatus.value && followStatus.value.mutual));
+const articleFeedTitle = computed(() => (articleTab.value === 'hot' ? '热门文章' : '最新发布'));
 
 const loadProfile = async ({ reset = false } = {}) => {
     if (reset) {
@@ -77,7 +79,9 @@ const loadProfile = async ({ reset = false } = {}) => {
     const { result } = await runStableRequest(
         () => Promise.all([
             getUserProfileApi(userId.value),
-            getUserArticlesApi(userId.value, { page: page.value, pageSize })
+            articleTab.value === 'hot'
+                ? getUserHotArticlesApi(userId.value, pageSize)
+                : getUserArticlesApi(userId.value, { page: page.value, pageSize })
         ]),
         {
             silent: hasLoadedOnce.value,
@@ -92,8 +96,13 @@ const loadProfile = async ({ reset = false } = {}) => {
 
     const [profileData, articlePage] = result;
     profile.value = profileData;
-    articles.value = articlePage.items || [];
-    total.value = articlePage.total || 0;
+    if (articleTab.value === 'hot') {
+        articles.value = Array.isArray(articlePage) ? articlePage : [];
+        total.value = articles.value.length;
+    } else {
+        articles.value = articlePage.items || [];
+        total.value = articlePage.total || 0;
+    }
 
     if (!isOwnProfile.value && state.user) {
         getFollowStatusApi(userId.value).then(function(s) { followStatus.value = s; }).catch(function() {});
@@ -101,7 +110,21 @@ const loadProfile = async ({ reset = false } = {}) => {
 };
 
 const changePage = async (nextPage) => {
+    if (articleTab.value === 'hot') {
+        return;
+    }
     page.value = nextPage;
+    await loadProfile();
+};
+
+const switchArticleTab = async (nextTab) => {
+    if (articleTab.value === nextTab || loading.value) {
+        return;
+    }
+    articleTab.value = nextTab;
+    page.value = 1;
+    articles.value = [];
+    total.value = 0;
     await loadProfile();
 };
 
@@ -169,6 +192,7 @@ const goToUserProfile = (uid) => { closeFollowDialog(); router.push('/users/' + 
 
 watch(() => route.params.id, () => {
     page.value = 1;
+    articleTab.value = 'latest';
     loadProfile({ reset: true });
 }, { immediate: true });
 </script>
@@ -270,6 +294,31 @@ watch(() => route.params.id, () => {
             tone="error"
         />
 
+        <section v-if="profile" class="profile-article-toolbar" aria-label="作者文章筛选">
+            <div class="profile-article-tabs" role="tablist" aria-label="作者文章排序">
+                <button
+                    type="button"
+                    role="tab"
+                    :aria-selected="articleTab === 'latest'"
+                    :class="{ active: articleTab === 'latest' }"
+                    :disabled="loading"
+                    @click="switchArticleTab('latest')"
+                >
+                    最新
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    :aria-selected="articleTab === 'hot'"
+                    :class="{ active: articleTab === 'hot' }"
+                    :disabled="loading"
+                    @click="switchArticleTab('hot')"
+                >
+                    热门
+                </button>
+            </div>
+        </section>
+
         <ArticleFeed
             :articles="articles"
             :page="page"
@@ -283,7 +332,8 @@ watch(() => route.params.id, () => {
             :inline-error-message="inlineError"
             :sort-items="[]"
             eyebrow="作者文章"
-            title="最新发布"
+            :title="articleFeedTitle"
+            :hide-sort="true"
             empty-text="这位作者还没有公开发布文章"
             @page-change="changePage"
         />
@@ -402,6 +452,45 @@ watch(() => route.params.id, () => {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
+}
+
+.profile-article-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.profile-article-tabs {
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.profile-article-tabs button {
+    min-height: 32px;
+    padding: 0 14px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+}
+
+.profile-article-tabs button.active {
+    color: var(--brand);
+    background: var(--surface);
+}
+
+.profile-article-tabs button:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
 }
 
 .profile-loading-avatar,

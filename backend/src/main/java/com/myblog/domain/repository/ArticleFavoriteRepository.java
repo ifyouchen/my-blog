@@ -31,6 +31,8 @@ public interface ArticleFavoriteRepository {
 
     List<ArticleFavorite> findPublishedByUserId(UserId userId, int page, int pageSize);
 
+    List<ArticleFavorite> findPublishedByUserIdAndKeyword(UserId userId, String keyword, int page, int pageSize);
+
     /**
      * 统计用户收藏数量。
      *
@@ -40,6 +42,8 @@ public interface ArticleFavoriteRepository {
     int countByUserId(UserId userId);
 
     int countPublishedByUserId(UserId userId);
+
+    int countPublishedByUserIdAndKeyword(UserId userId, String keyword);
 
     /**
      * 批量查询当前用户对多篇文章的收藏状态。

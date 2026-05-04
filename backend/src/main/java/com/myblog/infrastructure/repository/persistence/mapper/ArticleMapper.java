@@ -345,6 +345,22 @@ public interface ArticleMapper {
                                   @Param("excludeId") Long excludeId,
                                   @Param("limit") int limit);
 
+    List<ArticleDO> selectPublishedInSameColumns(@Param("articleId") Long articleId,
+                                                 @Param("excludeId") Long excludeId,
+                                                 @Param("limit") int limit);
+
+    List<ArticleDO> selectPublishedByAuthorIdExcluding(@Param("authorId") Long authorId,
+                                                       @Param("excludeId") Long excludeId,
+                                                       @Param("limit") int limit);
+
+    List<ArticleDO> selectPublishedBySignals(@Param("tags") List<String> tags,
+                                             @Param("category") String category,
+                                             @Param("excludeId") Long excludeId,
+                                             @Param("limit") int limit);
+
+    List<ArticleDO> selectPopularPublishedExcluding(@Param("excludeIds") List<Long> excludeIds,
+                                                    @Param("limit") int limit);
+
     List<ArticleDO> selectDueScheduled(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
     /** 统计待审核文章数量（warn_flag=1 且未删除）。 */
@@ -402,6 +418,8 @@ public interface ArticleMapper {
     List<DashboardTrendPointDO> selectArticleTrendPoints(@Param("articleId") Long articleId,
                                                          @Param("startDate") LocalDate startDate,
                                                          @Param("endDate") LocalDate endDate);
+
+    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> selectAuthorArticleStatsByAuthorIds(@Param("authorIds") List<Long> authorIds);
 }
 
 

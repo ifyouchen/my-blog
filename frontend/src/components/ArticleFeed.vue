@@ -1,13 +1,12 @@
 <script setup>
 import {computed, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
-import {articles as defaultArticles} from '@/data/home';
 import {ARTICLE_SORT_LATEST} from '@/constants/articleSort';
 
 const props = defineProps({
     articles: {
         type: Array,
-        default: () => defaultArticles
+        default: () => []
     },
     eyebrow: {
         type: String,

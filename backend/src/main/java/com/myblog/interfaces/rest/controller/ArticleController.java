@@ -1,13 +1,18 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticleRecommendationSectionDTO;
+import com.myblog.application.dto.ArticleRecommendationsDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
 import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.service.ArticleAppService;
+import com.myblog.application.service.RecommendationAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.CreateArticleRequest;
 import com.myblog.interfaces.rest.dto.request.UpdateArticleStatusRequest;
+import com.myblog.interfaces.rest.dto.response.ArticleRecommendationSectionResponse;
+import com.myblog.interfaces.rest.dto.response.ArticleRecommendationsResponse;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
 import com.myblog.interfaces.rest.mapper.RestDtoMapper;
 import com.myblog.shared.result.PageResult;
@@ -43,6 +48,7 @@ import javax.servlet.http.HttpServletResponse;
 public class ArticleController {
 
     private final ArticleAppService articleAppService;
+    private final RecommendationAppService recommendationAppService;
     private final RestDtoMapper restDtoMapper;
 
     /**
@@ -51,8 +57,11 @@ public class ArticleController {
      * @param articleAppService 文章应用服务
      * @param restDtoMapper REST DTO 转换器
      */
-    public ArticleController(ArticleAppService articleAppService, RestDtoMapper restDtoMapper) {
+    public ArticleController(ArticleAppService articleAppService,
+                             RecommendationAppService recommendationAppService,
+                             RestDtoMapper restDtoMapper) {
         this.articleAppService = articleAppService;
+        this.recommendationAppService = recommendationAppService;
         this.restDtoMapper = restDtoMapper;
     }
 
@@ -130,6 +139,22 @@ public class ArticleController {
             items.add(restDtoMapper.toResponse(dto));
         }
         return Result.success(items);
+    }
+
+    /**
+     * 获取文章推荐分组。
+     *
+     * @param id 文章 ID
+     * @param limit 推荐总数上限
+     * @return 推荐分组
+     */
+    @GetMapping("/{id}/recommendations")
+    public Result<ArticleRecommendationsResponse> getArticleRecommendations(@PathVariable Long id,
+                                                                            @RequestParam(defaultValue = "12")
+                                                                            int limit) {
+        return Result.success(toRecommendationsResponse(
+            recommendationAppService.getArticleRecommendations(id, limit)
+        ));
     }
 
     /**
@@ -294,5 +319,24 @@ public class ArticleController {
         resp.put("prev", neighbors.get("prev") == null ? null : restDtoMapper.toResponse(neighbors.get("prev")));
         resp.put("next", neighbors.get("next") == null ? null : restDtoMapper.toResponse(neighbors.get("next")));
         return Result.success(resp);
+    }
+
+    private ArticleRecommendationsResponse toRecommendationsResponse(ArticleRecommendationsDTO dto) {
+        ArticleRecommendationsResponse response = new ArticleRecommendationsResponse();
+        List<ArticleRecommendationSectionResponse> sections =
+            new ArrayList<ArticleRecommendationSectionResponse>();
+        for (ArticleRecommendationSectionDTO section : dto.getSections()) {
+            ArticleRecommendationSectionResponse sectionResponse = new ArticleRecommendationSectionResponse();
+            sectionResponse.setKey(section.getKey());
+            sectionResponse.setTitle(section.getTitle());
+            List<ArticleResponse> items = new ArrayList<ArticleResponse>();
+            for (ArticleDTO item : section.getItems()) {
+                items.add(restDtoMapper.toResponse(item));
+            }
+            sectionResponse.setItems(items);
+            sections.add(sectionResponse);
+        }
+        response.setSections(sections);
+        return response;
     }
 }

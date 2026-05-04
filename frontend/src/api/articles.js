@@ -24,6 +24,17 @@ export const getRelatedArticlesApi = async (id, limit = 5) => {
     return (Array.isArray(data) ? data : []).map(normalizeArticle);
 };
 
+export const getArticleRecommendationsApi = async (id, limit = 12) => {
+    const data = await request(`/articles/${id}/recommendations?limit=${limit}`);
+    return {
+        sections: (data?.sections || []).map((section) => ({
+            key: section.key,
+            title: section.title,
+            items: (section.items || []).map(normalizeArticle)
+        }))
+    };
+};
+
 export const getArticleNeighborsApi = async (id) => {
     const data = await request(`/articles/${id}/neighbors`);
     return {
@@ -68,10 +79,13 @@ export const deleteArticleApi = async (articleId) => {
     });
 };
 
-export const getMyArticlesApi = async ({ page = 1, pageSize = 10, status = '' } = {}) => {
+export const getMyArticlesApi = async ({ page = 1, pageSize = 10, status = '', keyword = '' } = {}) => {
     const query = new URLSearchParams({ page, pageSize });
     if (status) {
         query.set('status', status);
+    }
+    if (keyword) {
+        query.set('keyword', keyword);
     }
     const data = await request(`/users/me/articles?${query.toString()}`);
     return {

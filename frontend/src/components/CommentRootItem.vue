@@ -32,7 +32,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['refresh', 'count-change']);
+const emit = defineEmits(['count-change', 'root-delete']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const {
@@ -98,16 +98,20 @@ async function fetchReplies(page = 1) {
         replies.value = result.items || [];
         replyPage.value = result.page || page;
         replyTotal.value = result.total || 0;
+        return true;
     } catch (error) {
         replyFeedback.value = error.message || '加载回复失败';
+        return false;
     } finally {
         repliesLoading.value = false;
     }
 }
 
 async function expandReplies(page = 1) {
-    expandedReplies.value = true;
-    await fetchReplies(page);
+    const loaded = await fetchReplies(page);
+    if (loaded) {
+        expandedReplies.value = true;
+    }
 }
 
 function startReply(target) {
@@ -176,20 +180,24 @@ async function submitReply(options = {}) {
     }
     replySubmitting.value = true;
     try {
-        await createCommentApi(props.articleId, {
+        const createdReply = await createCommentApi(props.articleId, {
             content,
             rootCommentId: localComment.value.id,
             parentId: activeReplyTarget.value.id
         });
         const nextReplyCount = (localComment.value.replyCount || 0) + 1;
         localComment.value.replyCount = nextReplyCount;
+        replyTotal.value = nextReplyCount;
         emit('count-change', 1);
-        emit('refresh');
         replyDraft.value = '';
         activeReplyTarget.value = null;
         replyFeedback.value = '回复已发布';
-        const lastPage = Math.max(1, Math.ceil(nextReplyCount / replyPageSize));
-        await expandReplies(lastPage);
+        if (expandedReplies.value) {
+            const lastPage = Math.max(1, Math.ceil(nextReplyCount / replyPageSize));
+            await expandReplies(lastPage);
+        } else if (localComment.value.replyPreview.length < 3) {
+            localComment.value.replyPreview = [...localComment.value.replyPreview, createdReply];
+        }
     } catch (error) {
         replyFeedback.value = error.message || '回复失败';
     } finally {
@@ -235,12 +243,13 @@ async function togglePin() {
         return;
     }
     try {
+        const nextPinned = !localComment.value.pinned;
         if (localComment.value.pinned) {
             await unpinCommentApi(localComment.value.id);
         } else {
             await pinCommentApi(localComment.value.id);
         }
-        emit('refresh');
+        localComment.value.pinned = nextPinned;
     } catch (error) {
         replyFeedback.value = error.message || '置顶操作失败';
     }
@@ -267,18 +276,24 @@ async function removeComment(target) {
                 await deleteCommentApi(target.id);
                 if (target.id === localComment.value.id) {
                     emit('count-change', -(1 + (localComment.value.replyCount || 0)));
-                    emit('refresh');
+                    emit('root-delete', { id: localComment.value.id });
                     return;
                 }
                 localComment.value.replyCount = Math.max(0, (localComment.value.replyCount || 0) - 1);
+                replyTotal.value = Math.max(0, replyTotal.value - 1);
+                replies.value = replies.value.filter((item) => item.id !== target.id);
+                localComment.value.replyPreview = localComment.value.replyPreview.filter((item) => item.id !== target.id);
                 emit('count-change', -1);
-                emit('refresh');
                 if (expandedReplies.value) {
-                    const nextTotal = Math.max(0, replyTotal.value - 1);
-                    const nextPage = Math.max(1, Math.min(replyPage.value, Math.ceil(Math.max(nextTotal, 1) / replyPageSize)));
-                    await fetchReplies(nextPage);
-                } else {
-                    localComment.value.replyPreview = localComment.value.replyPreview.filter((item) => item.id !== target.id);
+                    const nextPage = Math.max(1, Math.min(
+                        replyPage.value,
+                        Math.ceil(Math.max(replyTotal.value, 1) / replyPageSize)
+                    ));
+                    if (!replies.value.length && replyTotal.value > 0) {
+                        await fetchReplies(nextPage);
+                    } else {
+                        replyPage.value = nextPage;
+                    }
                 }
             } catch (error) {
                 replyFeedback.value = error.message || '删除失败';

@@ -362,6 +362,42 @@ public class AdminController {
     }
 
     /**
+     * 推荐用户。
+     *
+     * @param id 用户 ID
+     * @param request HTTP 请求
+     * @return 推荐结果
+     */
+    @PostMapping("/users/{id}/recommend")
+    public Result<Map<String, Object>> recommendUser(@PathVariable Long id,
+                                                     @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.featureUser(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "RECOMMEND_USER", "USER", id,
+            "推荐用户 " + id, null, result.getData(), request));
+        return result;
+    }
+
+    /**
+     * 取消推荐用户。
+     *
+     * @param id 用户 ID
+     * @param request HTTP 请求
+     * @return 取消推荐结果
+     */
+    @PostMapping("/users/{id}/unrecommend")
+    public Result<Map<String, Object>> unrecommendUser(@PathVariable Long id,
+                                                       @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(adminAppService.unfeatureUser(id));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UNRECOMMEND_USER", "USER", id,
+            "取消推荐用户 " + id, null, result.getData(), request));
+        return result;
+    }
+
+    /**
      * 更新文章状态。
      *
      * @param id 文章 ID

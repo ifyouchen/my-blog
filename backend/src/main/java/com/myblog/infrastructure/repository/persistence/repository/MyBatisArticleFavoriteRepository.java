@@ -99,8 +99,24 @@ public class MyBatisArticleFavoriteRepository implements ArticleFavoriteReposito
     }
 
     @Override
+    public List<ArticleFavorite> findPublishedByUserIdAndKeyword(UserId userId, String keyword, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        List<ArticleFavoriteDO> favoriteDOList = articleFavoriteMapper.selectPublishedByUserIdAndKeyword(
+            userId.getValue(), keyword, offset, currentPageSize
+        );
+        return toDomainList(favoriteDOList);
+    }
+
+    @Override
     public int countPublishedByUserId(UserId userId) {
         return articleFavoriteMapper.countPublishedByUserId(userId.getValue());
+    }
+
+    @Override
+    public int countPublishedByUserIdAndKeyword(UserId userId, String keyword) {
+        return articleFavoriteMapper.countPublishedByUserIdAndKeyword(userId.getValue(), keyword);
     }
 
     private List<ArticleFavorite> toDomainList(List<ArticleFavoriteDO> favoriteDOList) {

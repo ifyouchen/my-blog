@@ -33,6 +33,8 @@ public class UserDO {
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
     private Integer version;
+    private Integer recommended;
+    private Integer recommendWeight;
 
     /**
      * 获取用户 ID。
@@ -356,5 +358,21 @@ public class UserDO {
      */
     public void setVersion(Integer version) {
         this.version = version;
+    }
+
+    public Integer getRecommended() {
+        return recommended;
+    }
+
+    public void setRecommended(Integer recommended) {
+        this.recommended = recommended;
+    }
+
+    public Integer getRecommendWeight() {
+        return recommendWeight;
+    }
+
+    public void setRecommendWeight(Integer recommendWeight) {
+        this.recommendWeight = recommendWeight;
     }
 }

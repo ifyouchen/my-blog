@@ -1,5 +1,5 @@
 import { request } from './http';
-import { normalizeArticle, normalizeAuthorRanking, normalizeColumn } from './transformers';
+import { normalizeArticle, normalizeAuthorRanking, normalizeColumn, normalizeTopic } from './transformers';
 
 export const getHomeStatsApi = async () => {
     return await request('/home/stats');
@@ -12,6 +12,7 @@ export const getHomeBootstrapApi = async () => {
         categories: data?.categories || [],
         recommendedColumns: (data?.recommendedColumns || []).map(normalizeColumn),
         authorRankings: (data?.authorRankings || []).map(normalizeAuthorRanking),
-        featuredArticles: (data?.featuredArticles || []).map(normalizeArticle)
+        featuredArticles: (data?.featuredArticles || []).map(normalizeArticle),
+        hotTopics: (data?.hotTopics || []).map(normalizeTopic)
     };
 };

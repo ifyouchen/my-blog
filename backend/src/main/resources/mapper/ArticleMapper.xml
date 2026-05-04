@@ -904,6 +904,22 @@
         LIMIT #{limit}
     </select>
 
+    <select id="selectAuthorArticleStatsByAuthorIds" resultMap="AuthorArticleStatsResultMap">
+        SELECT
+            author_id,
+            COUNT(*) as article_count,
+            SUM(view_count) as total_views,
+            SUM(like_count) as total_likes
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        AND author_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        GROUP BY author_id
+    </select>
+
     <resultMap id="AuthorArticleStatsResultMap" type="com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO">
         <id column="author_id" property="authorId"/>
         <result column="article_count" property="articleCount"/>
@@ -1023,6 +1039,101 @@
             AND category = #{category}
         </if>
         ORDER BY (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPublishedInSameColumns" resultMap="BaseResultMap">
+        SELECT <include refid="List_Alias_Column_List"/>
+        FROM blog_article a
+        WHERE a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        AND a.id != #{excludeId}
+        AND EXISTS (
+            SELECT 1
+            FROM blog_column_article peer
+            INNER JOIN blog_column_article seed ON seed.column_id = peer.column_id
+            INNER JOIN blog_column c ON c.id = peer.column_id
+            WHERE peer.article_id = a.id
+            AND seed.article_id = #{articleId}
+            AND peer.deleted_at IS NULL
+            AND seed.deleted_at IS NULL
+            AND c.status = 'PUBLISHED'
+            AND c.deleted_at IS NULL
+        )
+        ORDER BY a.published_at DESC, a.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPublishedByAuthorIdExcluding" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE author_id = #{authorId}
+        AND status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        AND id != #{excludeId}
+        ORDER BY published_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPublishedBySignals" resultMap="BaseResultMap">
+        SELECT <include refid="List_Alias_Column_List"/>
+        FROM blog_article a
+        WHERE a.status = 'PUBLISHED'
+        AND a.deleted_at IS NULL
+        AND a.id != #{excludeId}
+        <if test="(category != null and category != '') or (tags != null and tags.size() > 0)">
+            <trim prefix="AND (" suffix=")" prefixOverrides="OR">
+                <if test="category != null and category != ''">
+                    OR a.category = #{category}
+                </if>
+                <if test="tags != null and tags.size() > 0">
+                    OR EXISTS (
+                        SELECT 1
+                        FROM blog_article_tag t
+                        WHERE t.article_id = a.id
+                        AND t.deleted_at IS NULL
+                        AND t.tag_name IN
+                        <foreach collection="tags" item="tag" open="(" separator="," close=")">
+                            #{tag}
+                        </foreach>
+                    )
+                </if>
+            </trim>
+        </if>
+        ORDER BY
+        (
+            CASE WHEN a.category = #{category} THEN 3 ELSE 0 END
+            <if test="tags != null and tags.size() > 0">
+                + (
+                    SELECT COUNT(1) * 5
+                    FROM blog_article_tag score_tag
+                    WHERE score_tag.article_id = a.id
+                    AND score_tag.deleted_at IS NULL
+                    AND score_tag.tag_name IN
+                    <foreach collection="tags" item="tag" open="(" separator="," close=")">
+                        #{tag}
+                    </foreach>
+                )
+            </if>
+        ) DESC,
+        (a.view_count * 1 + a.like_count * 3 + a.comment_count * 5) DESC,
+        a.published_at DESC,
+        a.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPopularPublishedExcluding" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        <if test="excludeIds != null and excludeIds.size() > 0">
+            AND id NOT IN
+            <foreach collection="excludeIds" item="excludeId" open="(" separator="," close=")">
+                #{excludeId}
+            </foreach>
+        </if>
+        ORDER BY (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC, id DESC
         LIMIT #{limit}
     </select>
     <!-- 每日新增文章趋势（管理后台用） -->

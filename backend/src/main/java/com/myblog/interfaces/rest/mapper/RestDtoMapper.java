@@ -130,6 +130,8 @@ public class RestDtoMapper {
         response.setStatus(dto.getStatus());
         response.setFollowed(dto.getFollowed());
         response.setFollowerCount(dto.getFollowerCount());
+        response.setArticleCount(dto.getArticleCount());
+        response.setTotalLikeCount(dto.getTotalLikeCount());
         return response;
     }
 

@@ -78,12 +78,13 @@ public class ArticleFavoriteController {
     @GetMapping("/users/me/favorites")
     public Result<PageResult<ArticleResponse>> getMyFavorites(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize) {
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String keyword) {
         Long userId = AuthContext.getRequiredUserId();
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        PageResult<ArticleDTO> favorites = articleFavoriteAppService.getUserFavorites(userId, page, pageSize);
+        PageResult<ArticleDTO> favorites = articleFavoriteAppService.getUserFavorites(userId, page, pageSize, keyword);
         java.util.List<ArticleResponse> items = new java.util.ArrayList<ArticleResponse>();
         for (ArticleDTO favorite : favorites.getItems()) {
             items.add(restDtoMapper.toResponse(favorite));

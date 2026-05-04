@@ -3,7 +3,7 @@ import { reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import { disableAdminUserApi, exportAdminUsersApi, getAdminUsersApi, updateAdminUserStatusApi } from '@/api/admin';
+import { disableAdminUserApi, exportAdminUsersApi, getAdminUsersApi, recommendAdminUserApi, unrecommendAdminUserApi, updateAdminUserStatusApi } from '@/api/admin';
 import {
     createPagedState,
     formatAdminDateTime,
@@ -31,6 +31,7 @@ const state = reactive({
     status: '',
     keyword: '',
     actionLoadingId: null,
+    disableTargetId: null,
     disableReason: {}
 });
 
@@ -133,6 +134,7 @@ const toggleUserStatus = async (user) => {
 };
 
 const openDisableDialog = (user) => {
+    state.disableTargetId = user.id;
     state.disableReason = { ...state.disableReason, [user.id]: '' };
     openConfirmDialog({
         eyebrow: '用户禁用确认',
@@ -164,6 +166,24 @@ const exportUsers = async () => {
         });
     } catch (error) {
         toast.error(error.message || '用户导出失败');
+    }
+};
+
+const toggleRecommended = async (user) => {
+    const newRecommended = !user.recommended;
+    state.actionLoadingId = user.id;
+    try {
+        if (newRecommended) {
+            await recommendAdminUserApi(user.id);
+        } else {
+            await unrecommendAdminUserApi(user.id);
+        }
+        user.recommended = newRecommended;
+        toast.success(newRecommended ? '已推荐' : '已取消推荐');
+    } catch (error) {
+        toast.error(error.message || '推荐操作失败');
+    } finally {
+        state.actionLoadingId = null;
     }
 };
 
@@ -220,6 +240,7 @@ watch(
                                 <th>邮箱</th>
                                 <th>角色</th>
                                 <th>状态</th>
+                                <th>推荐</th>
                                 <th>禁用原因</th>
                                 <th>注册时间</th>
                                 <th>操作</th>
@@ -239,9 +260,16 @@ watch(
                                         {{ user.status === 'NORMAL' ? '正常' : '禁用' }}
                                     </span>
                                 </td>
+                                <td>
+                                    <span v-if="user.recommended" class="status-pill">推荐</span>
+                                    <span v-else class="admin-subtext">--</span>
+                                </td>
                                 <td>{{ user.disableReason || '-' }}</td>
                                 <td>{{ formatAdminDateTime(user.createdAt) }}</td>
                                 <td class="table-actions">
+                                    <button type="button" :disabled="state.actionLoadingId === user.id" @click="toggleRecommended(user)">
+                                        {{ user.recommended ? '取消推荐' : '推荐' }}
+                                    </button>
                                     <button type="button" :disabled="state.actionLoadingId === user.id" @click="toggleUserStatus(user)">
                                         {{ user.status === 'NORMAL' ? '禁用' : '启用' }}
                                     </button>
@@ -270,7 +298,7 @@ watch(
                 <label>
                     <span>禁用原因（可选）</span>
                     <input
-                        v-model="state.disableReason[state.actionLoadingId || 0]"
+                        v-model="state.disableReason[state.disableTargetId]"
                         type="text"
                         placeholder="请输入禁用原因"
                         maxlength="200"

@@ -90,18 +90,20 @@ test.describe('authenticated smoke', () => {
         }
     });
 
-    test('article deep read triggers recommendation bar', async ({ page }) => {
+    test('article detail keeps a single related recommendations section', async ({ page }) => {
         await page.goto('/');
         await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
         await expect(page.getByTestId('article-detail-page')).toBeVisible();
-        // 滚动到页面底部触发 70% 进度
         await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
         await page.waitForTimeout(500);
-        // 检查推荐条是否出现
-        const recommendBar = page.locator('.deep-read-recommend');
-        // 如果有相关文章，推荐条应出现
-        if (await recommendBar.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await expect(recommendBar.locator('.deep-read-item').first()).toBeVisible();
+
+        await expect(page.locator('.deep-read-recommend')).toHaveCount(0);
+
+        const relatedSections = page.getByTestId('article-related-section');
+        expect(await relatedSections.count()).toBeLessThanOrEqual(1);
+        const relatedSection = relatedSections.first();
+        if (await relatedSection.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await expect(relatedSection.locator('.article-related-item').first()).toBeVisible();
         }
     });
 
@@ -159,9 +161,10 @@ test.describe('authenticated smoke', () => {
 
         const createdComment = commentPanel.getByTestId('comment-root-item').filter({ hasText: uniqueComment }).first();
         await expect(createdComment).toBeVisible();
+        await expect(commentPanel.locator('.comment-panel-refresh')).toHaveCount(0);
         await createdComment.getByTestId('comment-like-button').click();
-        page.once('dialog', (dialog) => dialog.accept());
         await createdComment.getByTestId('comment-delete-button').click();
+        await page.getByRole('button', { name: '确认删除' }).click();
         await expect(createdComment).toHaveCount(0);
     });
 

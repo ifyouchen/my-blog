@@ -24,6 +24,8 @@ public class UserDTO {
     private String status;
     private Boolean followed;
     private long followerCount;
+    private int articleCount;
+    private long totalLikeCount;
 
     /**
      * 获取用户 ID。
@@ -241,5 +243,21 @@ public class UserDTO {
      */
     public void setFollowerCount(long followerCount) {
         this.followerCount = followerCount;
+    }
+
+    public int getArticleCount() {
+        return articleCount;
+    }
+
+    public void setArticleCount(int articleCount) {
+        this.articleCount = articleCount;
+    }
+
+    public long getTotalLikeCount() {
+        return totalLikeCount;
+    }
+
+    public void setTotalLikeCount(long totalLikeCount) {
+        this.totalLikeCount = totalLikeCount;
     }
 }

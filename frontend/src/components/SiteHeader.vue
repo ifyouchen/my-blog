@@ -381,6 +381,7 @@ const handleNotificationsRefresh = () => {
                 </button>
                 <template v-if="isLoggedIn">
                     <RouterLink class="text-link" to="/dashboard/articles" data-testid="header-dashboard-link">创作台</RouterLink>
+                    <RouterLink class="text-link" to="/history" data-testid="header-history-link">历史阅读</RouterLink>
                     <RouterLink v-if="state.user?.role === 'ADMIN'" class="text-link" to="/admin" data-testid="header-admin-link">后台</RouterLink>
                     <RouterLink class="message-btn" to="/messages" aria-label="私信" data-testid="header-message-btn">
                         <span class="message-icon" aria-hidden="true">
@@ -572,6 +573,7 @@ const handleNotificationsRefresh = () => {
                         <span v-if="messageUnreadCount > 0" class="mobile-badge">{{ displayMessageUnreadCount }}</span>
                     </RouterLink>
                     <RouterLink class="mobile-menu-link" to="/dashboard/articles" @click="mobileMenuOpen = false">创作台</RouterLink>
+                    <RouterLink class="mobile-menu-link" to="/history" @click="mobileMenuOpen = false">历史阅读</RouterLink>
                     <RouterLink v-if="state.user?.role === 'ADMIN'" class="mobile-menu-link" to="/admin" @click="mobileMenuOpen = false">后台管理</RouterLink>
                     <RouterLink class="mobile-menu-link" to="/settings/profile" @click="mobileMenuOpen = false">个人设置</RouterLink>
                     <button class="mobile-menu-link mobile-menu-link-danger" type="button" @click="logoutAndGoHome">

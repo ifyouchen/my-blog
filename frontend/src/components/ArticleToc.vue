@@ -18,6 +18,10 @@ const props = defineProps({
     refreshOnContentChange: {
         type: Boolean,
         default: false
+    },
+    mobileVisible: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -137,6 +141,7 @@ const scrollToHeading = (item, index) => {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         scrollActiveItemIntoView();
     }
+    emit('navigate', { item, index });
 };
 
 watch(toc, async (nextToc, previousToc) => {
@@ -171,7 +176,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <aside v-if="toc.length > 0" class="article-toc">
+    <aside
+        v-if="toc.length > 0"
+        :class="['article-toc', { 'article-toc--mobile-visible': mobileVisible }]"
+    >
         <div class="toc-header">
             <span>目录</span>
             <div class="toc-header-right">
@@ -369,8 +377,19 @@ onUnmounted(() => {
 }
 
 @media (max-width: 980px) {
-    .article-toc {
+    .article-toc:not(.article-toc--mobile-visible) {
         display: none;
+    }
+
+    .article-toc--mobile-visible {
+        display: block;
+        margin: 0;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .article-toc--mobile-visible .toc-nav {
+        max-height: calc(72vh - 88px);
     }
 }
 </style>

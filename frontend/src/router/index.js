@@ -41,6 +41,7 @@ const AdminSensitiveWordsView = () => import('@/views/admin/AdminSensitiveWordsV
 const CategoryDetailView = () => import('@/views/CategoryDetailView.vue');
 const TagDetailView = () => import('@/views/TagDetailView.vue');
 const ExploreView = () => import('@/views/ExploreView.vue');
+const HistoryView = () => import('@/views/HistoryView.vue');
 const MessagesView = () => import('@/views/MessagesView.vue');
 const AccessDeniedView = () => import('@/views/AccessDeniedView.vue');
 
@@ -156,7 +157,7 @@ const routes = [
         name: 'explore',
         component: ExploreView,
         meta: {
-            title: '探索'
+            title: '发现'
         }
     },
     {
@@ -207,6 +208,14 @@ const routes = [
         meta: {
             title: '通知中心',
             requiresAuth: true
+        }
+    },
+    {
+        path: '/history',
+        name: 'history',
+        component: HistoryView,
+        meta: {
+            title: '历史阅读'
         }
     },
     {

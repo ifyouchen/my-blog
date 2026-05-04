@@ -138,17 +138,26 @@ public class ArticleFavoriteAppService {
     }
 
     public PageResult<ArticleDTO> getUserFavorites(Long userId, int page, int pageSize) {
+        return getUserFavorites(userId, page, pageSize, null);
+    }
+
+    public PageResult<ArticleDTO> getUserFavorites(Long userId, int page, int pageSize, String keyword) {
         UserId currentUserId = new UserId(userId);
         int safePage = Math.max(page, 1);
         int safePageSize = Math.max(pageSize, 1);
-        int total = articleFavoriteRepository.countPublishedByUserId(currentUserId);
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        String trimmedKeyword = hasKeyword ? keyword.trim() : null;
+
+        int total = hasKeyword
+            ? articleFavoriteRepository.countPublishedByUserIdAndKeyword(currentUserId, trimmedKeyword)
+            : articleFavoriteRepository.countPublishedByUserId(currentUserId);
         if (total <= 0) {
             return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), safePage, safePageSize, 0);
         }
 
-        List<ArticleFavorite> favorites = articleFavoriteRepository.findPublishedByUserId(
-            currentUserId, safePage, safePageSize
-        );
+        List<ArticleFavorite> favorites = hasKeyword
+            ? articleFavoriteRepository.findPublishedByUserIdAndKeyword(currentUserId, trimmedKeyword, safePage, safePageSize)
+            : articleFavoriteRepository.findPublishedByUserId(currentUserId, safePage, safePageSize);
         if (favorites.isEmpty()) {
             return new PageResult<ArticleDTO>(new ArrayList<ArticleDTO>(), safePage, safePageSize, total);
         }

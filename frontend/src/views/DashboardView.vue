@@ -30,6 +30,8 @@ const isFavorites = computed(() => route.name === 'favorites');
 const isOverview = computed(() => route.name === 'dashboardOverview');
 const isArticles = computed(() => route.name === 'dashboardArticles');
 const articleStatus = ref(String(route.query.status || ''));
+const articleKeyword = ref(String(route.query.keyword || ''));
+const favoriteKeyword = ref('');
 const currentPage = ref(Number.parseInt(route.query.page || '1', 10) || 1);
 const pageSize = 10;
 const articles = ref([]);
@@ -182,12 +184,14 @@ const resolveArticleActionError = (nextStatus, message) => {
 const syncRoute = (overrides = {}) => {
     const nextPage = String(overrides.page ?? currentPage.value);
     const nextStatus = overrides.status ?? articleStatus.value;
+    const nextKeyword = overrides.keyword ?? articleKeyword.value;
     const path = isFavorites.value
         ? '/dashboard/favorites'
         : (isOverview.value ? '/dashboard/overview' : '/dashboard/articles');
     const query = {
         page: isOverview.value || nextPage === '1' ? undefined : nextPage,
         status: isArticles.value ? (nextStatus || undefined) : undefined,
+        keyword: isArticles.value ? (nextKeyword || undefined) : undefined,
         range: isOverview.value && trendRange.value !== '7d' ? trendRange.value : undefined,
         sort: isOverview.value && performanceSort.value !== 'view' ? performanceSort.value : undefined
     };
@@ -207,7 +211,8 @@ const fetchArticles = async (options = {}) => {
         () => getMyArticlesApi({
             page: currentPage.value,
             pageSize,
-            status: articleStatus.value
+            status: articleStatus.value,
+            keyword: articleKeyword.value
         }),
         {
             silent: options.silent ?? hasLoadedOnce.value,
@@ -238,7 +243,7 @@ const fetchOverview = async () => {
 
 const fetchFavorites = async (options = {}) => {
     const { result } = await runStableRequest(
-        () => getMyFavoritesApi(currentPage.value, pageSize),
+        () => getMyFavoritesApi(currentPage.value, pageSize, favoriteKeyword.value),
         {
             silent: options.silent ?? hasLoadedOnce.value,
             initialErrorMessage: '加载收藏失败',
@@ -360,6 +365,54 @@ const changeStatus = (status) => {
     currentPage.value = 1;
     syncRoute({ page: 1, status });
     fetchArticles();
+};
+
+let keywordDebounceTimer = null;
+const onKeywordInput = (e) => {
+    articleKeyword.value = e.target.value;
+};
+
+const doArticleSearch = () => {
+    if (keywordDebounceTimer) clearTimeout(keywordDebounceTimer);
+    currentPage.value = 1;
+    syncRoute({ page: 1, keyword: articleKeyword.value });
+    fetchArticles();
+};
+
+const resetArticleSearch = () => {
+    if (keywordDebounceTimer) clearTimeout(keywordDebounceTimer);
+    articleKeyword.value = '';
+    currentPage.value = 1;
+    syncRoute({ page: 1, keyword: '' });
+    fetchArticles();
+};
+
+const clearKeyword = () => {
+    if (!articleKeyword.value) return;
+    resetArticleSearch();
+};
+
+let favKeywordDebounceTimer = null;
+const onFavoriteKeywordInput = (e) => {
+    favoriteKeyword.value = e.target.value;
+};
+
+const doFavoriteSearch = () => {
+    if (favKeywordDebounceTimer) clearTimeout(favKeywordDebounceTimer);
+    currentPage.value = 1;
+    fetchFavorites();
+};
+
+const resetFavoriteSearch = () => {
+    if (favKeywordDebounceTimer) clearTimeout(favKeywordDebounceTimer);
+    favoriteKeyword.value = '';
+    currentPage.value = 1;
+    fetchFavorites();
+};
+
+const clearFavoriteKeyword = () => {
+    if (!favoriteKeyword.value) return;
+    resetFavoriteSearch();
 };
 
 const editArticle = (articleId) => {
@@ -627,7 +680,7 @@ const refreshScheduledArticles = () => {
 };
 
 watch(
-    () => [route.name, route.query.page, route.query.status, route.query.range, route.query.sort],
+    () => [route.name, route.query.page, route.query.status, route.query.keyword, route.query.range, route.query.sort],
     (next, prev) => {
         if (prev && next[0] !== prev[0]) {
             resetStableRequest();
@@ -637,6 +690,7 @@ watch(
         }
         currentPage.value = Number.parseInt(route.query.page || '1', 10) || 1;
         articleStatus.value = String(route.query.status || '');
+        articleKeyword.value = String(route.query.keyword || '');
         trendRange.value = String(route.query.range || '7d') === '30d' ? '30d' : '7d';
         performanceSort.value = String(route.query.sort || 'view');
         jumpPage.value = String(currentPage.value);
@@ -891,6 +945,27 @@ onUnmounted(() => {
             </section>
 
             <div v-if="isArticles" class="dashboard-toolbar">
+                <div class="article-search-bar">
+                    <div class="search-input-wrap">
+                        <input
+                            type="text"
+                            :value="articleKeyword"
+                            placeholder="搜索文章标题..."
+                            @input="onKeywordInput"
+                            @keydown.enter.prevent="doArticleSearch"
+                        >
+                        <button
+                            v-if="articleKeyword"
+                            type="button"
+                            class="search-clear-btn"
+                            @click="clearKeyword"
+                        >✕</button>
+                    </div>
+                    <div class="admin-filter-actions">
+                        <button type="button" @click="doArticleSearch">查询</button>
+                        <button type="button" @click="resetArticleSearch">重置</button>
+                    </div>
+                </div>
                 <div class="status-tabs">
                     <button
                         v-for="option in statusOptions"
@@ -909,6 +984,27 @@ onUnmounted(() => {
             </div>
 
             <section v-if="isFavorites" class="dashboard-content-panel" data-testid="dashboard-favorites-panel">
+                <div class="favorite-search-bar">
+                    <div class="search-input-wrap">
+                        <input
+                            type="text"
+                            :value="favoriteKeyword"
+                            placeholder="搜索收藏文章标题..."
+                            @input="onFavoriteKeywordInput"
+                            @keydown.enter.prevent="doFavoriteSearch"
+                        >
+                        <button
+                            v-if="favoriteKeyword"
+                            type="button"
+                            class="search-clear-btn"
+                            @click="clearFavoriteKeyword"
+                        >✕</button>
+                    </div>
+                    <div class="admin-filter-actions">
+                        <button type="button" @click="doFavoriteSearch">查询</button>
+                        <button type="button" @click="resetFavoriteSearch">重置</button>
+                    </div>
+                </div>
                 <p v-if="feedback" :class="['form-message', feedbackType]">{{ feedback }}</p>
                 <p v-if="refreshing && favorites.length" class="loading-text subtle">正在更新收藏...</p>
                 <p v-if="inlineError" class="error-text">{{ inlineError }}</p>
@@ -925,18 +1021,19 @@ onUnmounted(() => {
                         {{ isLoading ? '重试中...' : '重试加载' }}
                     </button>
                 </EmptyState>
-                <div v-else-if="favorites.length" class="favorite-grid">
-                    <article v-for="article in favorites" :key="article.id" class="favorite-card">
+                <div v-else-if="favorites.length" class="favorite-list">
+                    <article v-for="article in favorites" :key="article.id" class="favorite-list-item">
                         <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
-                        <div>
-                            <span>{{ article.category }}</span>
-                            <h2>{{ article.title }}</h2>
-                            <p>{{ article.summary }}</p>
-                            <p class="favorite-meta">
-                                <span>作者：{{ article.author.name }}</span>
-                                <span>{{ article.favoritedAt || '刚刚收藏' }}</span>
-                            </p>
-                            <div class="favorite-actions">
+                        <div class="favorite-list-body">
+                            <div class="favorite-list-info">
+                                <h3>{{ article.title }}</h3>
+                                <span class="favorite-list-meta">
+                                    <span v-if="article.category">{{ article.category }}</span>
+                                    <span>作者：{{ article.author.name }}</span>
+                                    <span>{{ article.favoritedAt || '刚刚收藏' }}</span>
+                                </span>
+                            </div>
+                            <div class="favorite-list-actions">
                                 <RouterLink :to="`/articles/${article.id}`">继续阅读</RouterLink>
                                 <button
                                     type="button"
@@ -1044,27 +1141,25 @@ onUnmounted(() => {
                             </td>
                             <td class="article-action-cell">
                                 <div class="article-inline-actions">
-                                    <div class="article-inline-main">
-                                        <RouterLink class="action-link action-link-secondary" :to="`/articles/${article.id}`">
-                                            查看
-                                        </RouterLink>
-                                        <button
-                                            v-if="article.status !== 'DELETED'"
-                                            type="button"
-                                            class="action-link action-link-secondary"
-                                            @click="editArticle(article.id)"
-                                        >
-                                            {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="action-link action-link-secondary"
-                                            title="查看统计趋势"
-                                            @click="openStatsDrawer(article)"
-                                        >
-                                            统计
-                                        </button>
-                                    </div>
+                                    <RouterLink class="action-link action-link-secondary" :to="`/articles/${article.id}`">
+                                        查看
+                                    </RouterLink>
+                                    <button
+                                        v-if="article.status !== 'DELETED'"
+                                        type="button"
+                                        class="action-link action-link-secondary"
+                                        @click="editArticle(article.id)"
+                                    >
+                                        {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="action-link action-link-secondary"
+                                        title="查看统计趋势"
+                                        @click="openStatsDrawer(article)"
+                                    >
+                                        统计
+                                    </button>
                                     <button
                                         v-if="article.status !== 'DELETED'"
                                         type="button"
@@ -1499,6 +1594,67 @@ onUnmounted(() => {
     margin-bottom: 20px;
 }
 
+.article-search-bar,
+.favorite-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 180px;
+    max-width: 320px;
+}
+
+.search-input-wrap input {
+    width: 100%;
+    min-height: 32px;
+    padding: 0 28px 0 12px;
+    color: var(--text);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    outline: 0;
+    transition: border-color 0.15s;
+}
+
+.search-input-wrap input:focus {
+    border-color: var(--brand);
+}
+
+.search-input-wrap input::placeholder {
+    color: var(--muted);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    color: var(--muted);
+    font-size: 11px;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+}
+
+.search-clear-btn:hover {
+    color: var(--text);
+    background: var(--surface-soft);
+}
+
 .status-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -1930,20 +2086,128 @@ onUnmounted(() => {
     cursor: not-allowed;
 }
 
-.favorite-meta {
+.favorite-search-bar {
     display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin: 0 0 8px;
-    color: var(--muted);
-    font-size: 13px;
+    align-items: center;
+    gap: 8px;
+    max-width: 420px;
+    margin-bottom: 14px;
 }
 
-.favorite-actions {
+.favorite-search-bar input {
+    flex: 1;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 32px 0 12px;
+    color: var(--text);
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: 0;
+    transition: border-color 0.15s;
+}
+
+.favorite-search-bar input:focus {
+    border-color: var(--brand);
+}
+
+.favorite-search-bar input::placeholder {
+    color: var(--muted);
+}
+
+.favorite-list {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0;
+}
+
+.favorite-list-item {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 14px;
     align-items: center;
+    padding: 12px 14px;
+    margin: 0 -14px;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: background 0.12s, box-shadow 0.12s;
+}
+
+.favorite-list-item:hover {
+    background: var(--surface-soft);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.favorite-list-item:last-child {
+    border-bottom: none;
+}
+
+.favorite-list-item img {
+    width: 80px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+}
+
+.favorite-list-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
+
+.favorite-list-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.favorite-list-info h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.45;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.favorite-list-meta {
+    display: flex;
+    gap: 10px;
     flex-wrap: wrap;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.favorite-list-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.favorite-list-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 13px;
+    text-decoration: none;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.favorite-list-actions a:hover {
+    color: var(--brand);
+    border-color: var(--brand);
 }
 
 .dashboard-pagination {

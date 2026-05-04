@@ -40,6 +40,8 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+    private boolean recommended;
+    private int recommendWeight;
 
     private User() {
     }
@@ -106,7 +108,8 @@ public class User {
                                String location, String disableReason, String passwordResetToken,
                                LocalDateTime passwordResetExpire, LocalDateTime lastLoginAt, String lastLoginIp,
                                LocalDateTime lastUsernameChangedAt, UserRole role, UserStatus status,
-                               LocalDateTime createdAt, LocalDateTime updatedAt) {
+                               LocalDateTime createdAt, LocalDateTime updatedAt,
+                               boolean recommended, int recommendWeight) {
         User user = new User();
         user.id = new UserId(id);
         user.username = username;
@@ -129,6 +132,8 @@ public class User {
         user.status = status;
         user.createdAt = createdAt;
         user.updatedAt = updatedAt;
+        user.recommended = recommended;
+        user.recommendWeight = recommendWeight;
         return user;
     }
 
@@ -448,6 +453,19 @@ public class User {
      */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public boolean isRecommended() {
+        return recommended;
+    }
+
+    public void setRecommended(boolean recommended) {
+        this.recommended = recommended;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public int getRecommendWeight() {
+        return recommendWeight;
     }
 
     /**

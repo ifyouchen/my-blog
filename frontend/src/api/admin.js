@@ -278,6 +278,20 @@ export const unfeatureAdminArticleApi = async (articleId) => {
     });
 };
 
+// ===== 推荐用户 =====
+
+export const recommendAdminUserApi = async (userId) => {
+    return await request(`/admin/users/${userId}/recommend`, {
+        method: 'POST'
+    });
+};
+
+export const unrecommendAdminUserApi = async (userId) => {
+    return await request(`/admin/users/${userId}/unrecommend`, {
+        method: 'POST'
+    });
+};
+
 // ===== 公告管理 =====
 
 export const getAdminAnnouncementsApi = async (page = 1, pageSize = 10) => {

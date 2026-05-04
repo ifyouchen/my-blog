@@ -335,6 +335,8 @@ public interface ArticleRepository {
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(int limit);
 
+    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds);
+
     /** 原子递增文章点赞数。 */
     void incrementLikeCount(Long articleId);
 
@@ -379,6 +381,46 @@ public interface ArticleRepository {
      * @return 相关文章列表
      */
     List<Article> findRelated(String category, Long excludeId, int limit);
+
+    /**
+     * 查询与指定文章同专栏的已发布文章。
+     *
+     * @param articleId 当前文章 ID
+     * @param excludeId 排除的文章 ID
+     * @param limit 返回数量
+     * @return 文章列表
+     */
+    List<Article> findPublishedInSameColumns(Long articleId, Long excludeId, int limit);
+
+    /**
+     * 查询同作者已发布文章。
+     *
+     * @param authorId 作者 ID
+     * @param excludeId 排除的文章 ID
+     * @param limit 返回数量
+     * @return 文章列表
+     */
+    List<Article> findPublishedByAuthorIdExcluding(Long authorId, Long excludeId, int limit);
+
+    /**
+     * 按标签或分类查询相关已发布文章。
+     *
+     * @param tags 标签列表
+     * @param category 分类
+     * @param excludeId 排除的文章 ID
+     * @param limit 返回数量
+     * @return 文章列表
+     */
+    List<Article> findPublishedBySignals(List<String> tags, String category, Long excludeId, int limit);
+
+    /**
+     * 查询热门已发布文章并排除指定文章。
+     *
+     * @param excludeIds 排除文章 ID 列表
+     * @param limit 返回数量
+     * @return 文章列表
+     */
+    List<Article> findPopularPublishedExcluding(List<Long> excludeIds, int limit);
 
     /**
      * 查询已到计划发布时间的定时文章。

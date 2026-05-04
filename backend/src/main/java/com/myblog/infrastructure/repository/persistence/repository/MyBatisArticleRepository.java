@@ -369,6 +369,14 @@ public class MyBatisArticleRepository implements ArticleRepository {
         return articleMapper.selectAuthorArticleStats(limit);
     }
 
+    @Override
+    public List<AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds) {
+        if (authorIds == null || authorIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return articleMapper.selectAuthorArticleStatsByAuthorIds(authorIds);
+    }
+
     private void saveTags(Article article) {
         articleMapper.logicDeleteTagsByArticleId(article.getId().getValue());
         for (String tag : article.getTags()) {
@@ -435,6 +443,26 @@ public class MyBatisArticleRepository implements ArticleRepository {
     public List<Article> findRelated(String category, Long excludeId, int limit) {
         int safeLimit = Math.max(1, limit);
         return toDomainList(articleMapper.selectRelated(category, excludeId, safeLimit));
+    }
+
+    @Override
+    public List<Article> findPublishedInSameColumns(Long articleId, Long excludeId, int limit) {
+        return toDomainList(articleMapper.selectPublishedInSameColumns(articleId, excludeId, Math.max(1, limit)));
+    }
+
+    @Override
+    public List<Article> findPublishedByAuthorIdExcluding(Long authorId, Long excludeId, int limit) {
+        return toDomainList(articleMapper.selectPublishedByAuthorIdExcluding(authorId, excludeId, Math.max(1, limit)));
+    }
+
+    @Override
+    public List<Article> findPublishedBySignals(List<String> tags, String category, Long excludeId, int limit) {
+        return toDomainList(articleMapper.selectPublishedBySignals(tags, category, excludeId, Math.max(1, limit)));
+    }
+
+    @Override
+    public List<Article> findPopularPublishedExcluding(List<Long> excludeIds, int limit) {
+        return toDomainList(articleMapper.selectPopularPublishedExcluding(excludeIds, Math.max(1, limit)));
     }
 
     @Override

@@ -27,12 +27,15 @@
         <result column="updated_at" property="updatedAt"/>
         <result column="deleted_at" property="deletedAt"/>
         <result column="version" property="version"/>
+        <result column="recommended" property="recommended"/>
+        <result column="recommend_weight" property="recommendWeight"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id, username, email, password_hash, nickname, avatar_url, bio, website, github, twitter, location,
         disable_reason, password_reset_token, password_reset_expire, last_login_at, last_login_ip,
-        last_username_changed_at, role, status, created_at, updated_at, deleted_at, version
+        last_username_changed_at, role, status, created_at, updated_at, deleted_at, version,
+        recommended, recommend_weight
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -298,12 +301,12 @@
         INSERT INTO blog_user
         (id, username, email, password_hash, nickname, avatar_url, bio, website, github, twitter, location,
          disable_reason, password_reset_token, password_reset_expire, last_login_at, last_login_ip,
-         last_username_changed_at, role, status, created_at, updated_at)
+         last_username_changed_at, role, status, created_at, updated_at, recommended, recommend_weight)
         VALUES
         (#{id}, #{username}, #{email}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{bio},
          #{website}, #{github}, #{twitter}, #{location}, #{disableReason}, #{passwordResetToken},
          #{passwordResetExpire}, #{lastLoginAt}, #{lastLoginIp}, #{lastUsernameChangedAt}, #{role},
-         #{status}, #{createdAt}, #{updatedAt})
+         #{status}, #{createdAt}, #{updatedAt}, #{recommended}, #{recommendWeight})
         ON DUPLICATE KEY UPDATE
             username = #{username},
             email = #{email},
@@ -324,12 +327,15 @@
             role = #{role},
             status = #{status},
             updated_at = #{updatedAt},
+            recommended = #{recommended},
+            recommend_weight = #{recommendWeight},
             version = version + 1
     </insert>
 
     <select id="selectRecommended" resultMap="BaseResultMap">
         SELECT id, username, email, nickname, avatar_url, bio, website, github, twitter, location,
-               disable_reason, role, status, created_at, updated_at, deleted_at, version
+               disable_reason, role, status, created_at, updated_at, deleted_at, version,
+               recommended, recommend_weight
         FROM blog_user
         WHERE recommended = 1
         AND status = 'NORMAL'

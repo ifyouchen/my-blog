@@ -25,9 +25,16 @@ public interface ArticleFavoriteMapper {
                                                     @Param("offset") int offset,
                                                     @Param("limit") int limit);
 
+    List<ArticleFavoriteDO> selectPublishedByUserIdAndKeyword(@Param("userId") Long userId,
+                                                               @Param("keyword") String keyword,
+                                                               @Param("offset") int offset,
+                                                               @Param("limit") int limit);
+
     int countByUserId(@Param("userId") Long userId);
 
     int countPublishedByUserId(@Param("userId") Long userId);
+
+    int countPublishedByUserIdAndKeyword(@Param("userId") Long userId, @Param("keyword") String keyword);
 
     int countById(@Param("id") Long id);
 

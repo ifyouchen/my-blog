@@ -2,8 +2,7 @@
 import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
-import {getArticleApi, getArticleNeighborsApi, getRelatedArticlesApi} from '@/api/articles';
-import {track} from '@/utils/track';
+import {getArticleApi, getArticleNeighborsApi, getArticleRecommendationsApi} from '@/api/articles';
 import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
 import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -13,7 +12,6 @@ import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import AdBanner from '@/components/AdBanner.vue';
-import {articles} from '@/data/home';
 import {useSession} from '@/stores/session';
 
 const route = useRoute();
@@ -24,20 +22,13 @@ const { state } = useSession();
 const remoteArticle = ref(null);
 const isLoading = ref(false);
 const loadError = ref('');
-const useLocalFallback = ref(false);
-const relatedArticles = ref([]);
+const recommendationSections = ref([]);
 const relatedLoading = ref(false);
 const neighborPrev = ref(null);
 const neighborNext = ref(null);
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const articleUrl = computed(() => `${window.location.origin}/articles/${articleId.value}`);
-const localArticle = computed(() => articles.find((item) => String(item.id) === articleId.value) || null);
-const article = computed(() => {
-    if (remoteArticle.value) {
-        return remoteArticle.value;
-    }
-    return useLocalFallback.value ? localArticle.value : null;
-});
+const article = computed(() => remoteArticle.value);
 const articleMarkdown = computed(() => {
     if (!article.value) {
         return '';
@@ -83,7 +74,6 @@ const readingProgress = ref(0);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
 const reportDialogVisible = ref(false);
-const deepReadTriggered = ref(false);
 const immersiveMode = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
@@ -91,6 +81,35 @@ const tocDrawerOpen = ref(false);
 const mobileTocCloseButtonRef = ref(null);
 let shareHoverTimer = null;
 const SHARE_HOVER_DELAY = 280;
+const RECENT_READING_KEY = 'my-blog:recent-reading';
+const RECENT_READING_LIMIT = 20;
+
+const saveRecentArticle = (source) => {
+    if (!source?.id) {
+        return;
+    }
+    try {
+        const current = JSON.parse(localStorage.getItem(RECENT_READING_KEY) || '[]');
+        const safeCurrent = Array.isArray(current) ? current : [];
+        const item = {
+            id: source.id,
+            title: source.title,
+            summary: source.summary,
+            cover: source.cover,
+            category: source.category,
+            publishedText: source.publishedText,
+            authorName: source.author?.name || '',
+            readAt: Date.now()
+        };
+        const next = [
+            item,
+            ...safeCurrent.filter((entry) => String(entry.id) !== String(source.id))
+        ].slice(0, RECENT_READING_LIMIT);
+        localStorage.setItem(RECENT_READING_KEY, JSON.stringify(next));
+    } catch {
+        localStorage.removeItem(RECENT_READING_KEY);
+    }
+};
 
 const openShareMenu = () => {
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
@@ -194,10 +213,9 @@ const fetchArticle = async () => {
     const routeId = String(route.params.id);
     const numericId = routeId.replace(/-.+$/, '');
     remoteArticle.value = null;
-    useLocalFallback.value = false;
     loadError.value = '';
     isLoading.value = true;
-    relatedArticles.value = [];
+    recommendationSections.value = [];
     try {
         const detail = await getArticleApi(numericId);
         if (String(route.params.id) === routeId) {
@@ -205,10 +223,6 @@ const fetchArticle = async () => {
         }
     } catch (error) {
         if (String(route.params.id) === routeId) {
-            if (localArticle.value) {
-                useLocalFallback.value = true;
-                return;
-            }
             loadError.value = error.message || '文章不存在';
         }
     } finally {
@@ -218,12 +232,13 @@ const fetchArticle = async () => {
     }
 };
 
-const fetchRelated = async (id) => {
+const fetchRecommendations = async (id) => {
     relatedLoading.value = true;
     try {
-        relatedArticles.value = await getRelatedArticlesApi(id, 5);
+        const result = await getArticleRecommendationsApi(id, 12);
+        recommendationSections.value = result.sections || [];
     } catch {
-        relatedArticles.value = [];
+        recommendationSections.value = [];
     } finally {
         relatedLoading.value = false;
     }
@@ -386,17 +401,14 @@ const handleScroll = () => {
     showBackToTop.value = scrollY > 500;
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     readingProgress.value = docHeight > 0 ? Math.min(100, Math.round((scrollY / docHeight) * 100)) : 0;
-    if (readingProgress.value >= 70 && !deepReadTriggered.value) {
-        deepReadTriggered.value = true;
-        track('article_deep_read_triggered', {article_id: articleId.value, progress: readingProgress.value});
-    }
 };
 
 watch(article, syncArticleState, { immediate: true });
 watch(() => route.params.id, fetchArticle, { immediate: true });
 watch(remoteArticle, (val) => {
     if (val?.id) {
-        fetchRelated(val.id);
+        saveRecentArticle(val);
+        fetchRecommendations(val.id);
         fetchNeighbors(val.id);
     }
 });
@@ -429,9 +441,6 @@ watch(tocDrawerOpen, (open) => {
     document.body.classList.remove('mobile-toc-open');
 });
 
-watch(() => route.fullPath, () => {
-    tocDrawerOpen.value = false;
-});
 </script>
 
 <template>
@@ -573,29 +582,6 @@ watch(() => route.fullPath, () => {
                     <p>正文暂时为空，稍后再来看一眼。</p>
                 </section>
 
-                <!-- 阅读完成触发推荐 -->
-                <section v-if="deepReadTriggered && relatedArticles.length" class="deep-read-recommend">
-                    <p class="deep-read-eyebrow">读到这里，继续探索</p>
-                    <div class="deep-read-list">
-                        <RouterLink
-                            v-for="rel in relatedArticles.slice(0, 3)"
-                            :key="rel.id"
-                            class="deep-read-item"
-                            :to="`/articles/${rel.id}`"
-                            @click="track('article_recommend_click', {article_id: articleId, target_article_id: rel.id, source: rel.category === article?.category ? 'same_category' : 'related'})"
-                        >
-                            <div
-                                class="deep-read-cover"
-                                :style="rel.cover ? { backgroundImage: `url(${rel.cover})` } : undefined"
-                            />
-                            <div class="deep-read-meta">
-                                <span v-if="rel.category" class="deep-read-category">{{ rel.category }}</span>
-                                <p class="deep-read-title">{{ rel.title }}</p>
-                            </div>
-                        </RouterLink>
-                    </div>
-                </section>
-
                 <!-- 上下篇导航 -->
                 <section v-if="neighborPrev || neighborNext" class="article-neighbors">
                     <RouterLink
@@ -629,79 +615,57 @@ watch(() => route.fullPath, () => {
                         <p>登录后可查看和发表评论</p>
                     </div>
                 </section>
-
-                <section
-                    v-if="relatedArticles.length > 0 || relatedLoading"
-                    class="article-related"
-                    data-testid="article-related-section"
-                >
-                    <h2 class="article-related-title">相关推荐</h2>
-                    <div v-if="relatedLoading" class="article-related-loading">加载中...</div>
-                    <div v-else class="article-related-list">
-                        <RouterLink
-                            v-for="rel in relatedArticles"
-                            :key="rel.id"
-                            class="article-related-item"
-                            :to="`/articles/${rel.id}`"
-                        >
-                            <div
-                                class="article-related-cover"
-                                :style="rel.cover
-                                    ? { backgroundImage: `url(${rel.cover})` }
-                                    : undefined"
-                            />
-                            <div class="article-related-meta">
-                                <span v-if="rel.category" class="article-related-category">{{ rel.category }}</span>
-                                <p class="article-related-item-title">{{ rel.title }}</p>
-                                <div class="article-related-stats">
-                                    <span>{{ rel.viewCount }} 阅读</span>
-                                    <span>{{ rel.likeCount }} 赞</span>
-                                </div>
-                            </div>
-                        </RouterLink>
-                    </div>
-                </section>
             </div>
         </article>
 
         <aside class="detail-side">
-            <section
-                v-if="article?.author"
-                class="article-side-card"
-                aria-label="作者信息"
-            >
-                <p class="article-side-eyebrow">作者</p>
-                <RouterLink class="side-author-link" :to="`/users/${article.author.id}`">
-                    <img
-                        v-if="article.author.avatar"
-                        class="side-author-avatar"
-                        :src="article.author.avatar"
-                        :alt="article.author.name"
-                        loading="lazy"
-                        decoding="async"
-                    >
-                    <span class="side-author-avatar-fallback" v-else>{{ article.author.name?.[0] }}</span>
-                    <div>
-                        <strong>{{ article.author.name }}</strong>
-                        <p>{{ article.author.followerCount || 0 }} 粉丝</p>
-                    </div>
-                </RouterLink>
-            </section>
             <ArticleToc
                 v-if="remoteArticle"
                 :content="articleMarkdown"
                 class="detail-toc"
             />
-            <section v-if="neighborPrev || neighborNext" class="article-side-card" aria-label="继续阅读">
-                <p class="article-side-eyebrow">继续阅读</p>
-                <RouterLink v-if="neighborPrev" class="side-neighbor-link" :to="`/articles/${neighborPrev.id}`">
-                    ← {{ neighborPrev.title }}
-                </RouterLink>
-                <RouterLink v-if="neighborNext" class="side-neighbor-link" :to="`/articles/${neighborNext.id}`">
-                    → {{ neighborNext.title }}
-                </RouterLink>
-            </section>
             <AdBanner :slot-code="'article_sidebar'" />
+            <section
+                v-if="recommendationSections.length > 0 || relatedLoading"
+                class="side-related"
+                data-testid="article-related-section"
+            >
+                <h2 class="side-related-title">相关推荐</h2>
+                <div v-if="relatedLoading" class="side-related-loading">加载中...</div>
+                <div v-else class="side-related-sections">
+                    <section
+                        v-for="section in recommendationSections"
+                        :key="section.key"
+                        class="side-related-group"
+                    >
+                        <h3>{{ section.title }}</h3>
+                        <div class="side-related-list">
+                            <RouterLink
+                                v-for="rel in section.items.slice(0, 5)"
+                                :key="rel.id"
+                                class="side-related-item"
+                                :to="`/articles/${rel.id}`"
+                            >
+                                <img
+                                    v-if="rel.cover"
+                                    class="side-related-thumb"
+                                    :src="rel.cover"
+                                    :alt="rel.title"
+                                    loading="lazy"
+                                    decoding="async"
+                                >
+                                <div class="side-related-info">
+                                    <p class="side-related-item-title">{{ rel.title }}</p>
+                                    <div class="side-related-stats">
+                                        <span v-if="rel.category">{{ rel.category }}</span>
+                                        <span>{{ rel.viewCount }} 阅读</span>
+                                    </div>
+                                </div>
+                            </RouterLink>
+                        </div>
+                    </section>
+                </div>
+            </section>
         </aside>
     </main>
     <!-- 加载骨架屏 -->
@@ -776,7 +740,11 @@ watch(() => route.fullPath, () => {
                 <h3>文章目录</h3>
                 <button ref="mobileTocCloseButtonRef" type="button" @click="tocDrawerOpen = false">关闭</button>
             </div>
-            <ArticleToc :content="articleMarkdown" />
+            <ArticleToc
+                :content="articleMarkdown"
+                mobile-visible
+                @navigate="tocDrawerOpen = false"
+            />
         </section>
     </div>
     <ReportDialog
@@ -802,58 +770,6 @@ watch(() => route.fullPath, () => {
     border-radius: 0 2px 2px 0;
     transition: width 0.1s linear;
     pointer-events: none;
-}
-
-.article-side-card {
-    display: grid;
-    gap: 10px;
-    padding: 14px;
-    margin-bottom: 12px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
-.article-side-eyebrow {
-    margin: 0;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.side-author-link {
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-}
-
-.side-author-avatar,
-.side-author-avatar-fallback {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-}
-
-.side-author-avatar-fallback {
-    display: grid;
-    place-items: center;
-    background: var(--brand-soft);
-    color: var(--brand);
-    font-weight: 700;
-}
-
-.side-author-link p {
-    margin: 2px 0 0;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.side-neighbor-link {
-    display: block;
-    padding: 8px 10px;
-    border-radius: var(--radius-sm);
-    background: var(--surface-soft);
-    font-size: 13px;
 }
 
 .mobile-toc-trigger {
@@ -1253,156 +1169,97 @@ watch(() => route.fullPath, () => {
     border-radius: var(--radius-sm);
 }
 
-.article-related {
-    margin-top: 40px;
-    padding-top: 24px;
-    border-top: 1px solid var(--line);
-}
-
-.deep-read-recommend {
-    margin-top: 32px;
-    padding: 18px;
-    background: var(--brand-soft);
-    border: 1px solid var(--brand);
-    border-radius: var(--radius-sm);
-}
-
-.deep-read-eyebrow {
-    margin: 0 0 14px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--brand-strong);
-}
-
-.deep-read-list {
+.side-related {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 12px;
-}
-
-.deep-read-item {
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
+    padding: 16px;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    overflow: hidden;
-    transition: border-color 0.12s, box-shadow 0.12s;
 }
 
-.deep-read-item:hover {
-    border-color: var(--brand);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.deep-read-cover {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: var(--surface-soft) center / cover no-repeat;
-}
-
-.deep-read-meta {
-    display: grid;
-    gap: 4px;
-    padding: 10px 12px;
-}
-
-.deep-read-category {
-    font-size: 11px;
-    color: var(--brand);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.deep-read-title {
+.side-related-title {
     margin: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-strong);
-    line-height: 1.45;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.article-related-title {
-    margin: 0 0 16px;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--text-strong);
 }
 
-.article-related-loading {
+.side-related-loading {
     color: var(--muted);
     font-size: 13px;
-    padding: 12px 0;
+    padding: 8px 0;
 }
 
-.article-related-list {
+.side-related-sections {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
+    gap: 18px;
 }
 
-.article-related-item {
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    transition: border-color 0.12s, box-shadow 0.12s;
+.side-related-group {
+    display: grid;
+    gap: 8px;
 }
 
-.article-related-item:hover {
-    border-color: var(--brand);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.article-related-cover {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: var(--surface-soft) center / cover no-repeat;
-}
-
-.article-related-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 10px 12px;
-    flex: 1;
-}
-
-.article-related-category {
-    font-size: 11px;
-    color: var(--brand);
+.side-related-group h3 {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
 }
 
-.article-related-item-title {
+.side-related-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.side-related-item {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    text-decoration: none;
+    padding: 8px 6px;
+    margin: 0 -6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+}
+
+.side-related-item:hover {
+    background: var(--surface-soft);
+}
+
+.side-related-thumb {
+    width: 56px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.side-related-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.side-related-item-title {
     margin: 0;
     font-size: 13px;
     font-weight: 600;
     color: var(--text-strong);
-    line-height: 1.45;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    line-height: 1.4;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.article-related-stats {
+.side-related-stats {
     display: flex;
-    gap: 10px;
-    margin-top: auto;
-    padding-top: 6px;
-    font-size: 12px;
+    gap: 8px;
+    font-size: 11px;
     color: var(--muted);
 }
 
@@ -1420,7 +1277,7 @@ watch(() => route.fullPath, () => {
     }
 
     .article-related-list {
-        grid-template-columns: 1fr 1fr;
+        gap: 0;
     }
 }
 

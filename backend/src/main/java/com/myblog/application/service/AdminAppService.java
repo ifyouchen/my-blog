@@ -212,6 +212,7 @@ public class AdminAppService {
             map.put("disableReason", user.getDisableReason());
             map.put("createdAt", user.getCreatedAt());
             map.put("updatedAt", user.getUpdatedAt());
+            map.put("recommended", user.isRecommended());
             items.add(map);
         }
         return new PageResult<Map<String, Object>>(items, page, pageSize, total);
@@ -277,6 +278,62 @@ public class AdminAppService {
             BizLogHelper.trace(),
             BizLogHelper.params("userId", userId, "reason", reason),
             BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), UserStatus.DISABLED.name())),
+            BizLogHelper.elapsed(_start));
+        return result;
+    }
+
+    /**
+     * 推荐用户。
+     *
+     * @param userId 用户 ID
+     * @return 变更结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> featureUser(Long userId) {
+        long _start = System.currentTimeMillis();
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+
+        user.setRecommended(true);
+        userRepository.save(user);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", user.getId().getValue());
+        result.put("username", user.getUsername());
+        result.put("recommended", true);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 推荐用户",
+            BizLogHelper.trace(),
+            BizLogHelper.params("userId", userId),
+            BizLogHelper.result("推荐成功"),
+            BizLogHelper.elapsed(_start));
+        return result;
+    }
+
+    /**
+     * 取消推荐用户。
+     *
+     * @param userId 用户 ID
+     * @return 变更结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> unfeatureUser(Long userId) {
+        long _start = System.currentTimeMillis();
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+
+        user.setRecommended(false);
+        userRepository.save(user);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", user.getId().getValue());
+        result.put("username", user.getUsername());
+        result.put("recommended", false);
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 取消推荐用户",
+            BizLogHelper.trace(),
+            BizLogHelper.params("userId", userId),
+            BizLogHelper.result("取消推荐成功"),
             BizLogHelper.elapsed(_start));
         return result;
     }

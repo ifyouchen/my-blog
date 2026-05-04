@@ -47,7 +47,9 @@ public final class UserPersistenceConverter {
             UserRole.valueOf(userDO.getRole()),
             UserStatus.valueOf(userDO.getStatus()),
             userDO.getCreatedAt(),
-            userDO.getUpdatedAt()
+            userDO.getUpdatedAt(),
+            userDO.getRecommended() != null && userDO.getRecommended() == 1,
+            userDO.getRecommendWeight() != null ? userDO.getRecommendWeight() : 0
         );
     }
 
@@ -80,6 +82,8 @@ public final class UserPersistenceConverter {
         userDO.setStatus(user.getStatus().name());
         userDO.setCreatedAt(user.getCreatedAt());
         userDO.setUpdatedAt(user.getUpdatedAt());
+        userDO.setRecommended(user.isRecommended() ? 1 : 0);
+        userDO.setRecommendWeight(user.getRecommendWeight());
         return userDO;
     }
 }

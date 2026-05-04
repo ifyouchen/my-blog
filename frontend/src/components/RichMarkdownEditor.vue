@@ -586,9 +586,11 @@ const editor = useEditor({
             return;
         }
         const json = currentEditor.getJSON();
-        console.log('Editor JSON:', JSON.stringify(json, null, 2));
         const markdown = editorJsonToMarkdown(json);
-        console.log('Converted Markdown:', markdown);
+        if (import.meta.env.DEV) {
+            console.log('Editor JSON:', JSON.stringify(json, null, 2));
+            console.log('Converted Markdown:', markdown);
+        }
         emit('update:modelValue', markdown);
     },
     onSelectionUpdate({ editor: currentEditor }) {

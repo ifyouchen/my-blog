@@ -7,6 +7,8 @@ export const normalizeUser = (user) => ({
     nickname: user.nickname || user.username,
     avatar: user.avatar || user.avatarUrl || '',
     followerCount: user.followerCount || 0,
+    articleCount: user.articleCount || 0,
+    totalLikeCount: user.totalLikeCount || 0,
     email: user.email,
     role: user.role,
     status: user.status,

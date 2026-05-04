@@ -147,7 +147,7 @@ async function submitComment(options = {}) {
     }
     composerSubmitting.value = true;
     try {
-        await createCommentApi(props.articleId, {
+        const createdComment = await createCommentApi(props.articleId, {
             content,
             parentId: 0,
             rootCommentId: 0
@@ -155,11 +155,37 @@ async function submitComment(options = {}) {
         composerDraft.value = '';
         composerFeedback.value = '评论已发布';
         handleCountChange(1);
-        await fetchComments(1);
+        insertCreatedRootComment(createdComment);
     } catch (error) {
         composerFeedback.value = error.message || '发表评论失败';
     } finally {
         composerSubmitting.value = false;
+    }
+}
+
+function insertCreatedRootComment(comment) {
+    if (!comment?.id) {
+        return;
+    }
+    rootTotal.value += 1;
+    const nextComments = [
+        comment,
+        ...comments.value.filter((item) => String(item.id) !== String(comment.id))
+    ];
+    comments.value = nextComments.slice(0, pageSize);
+}
+
+async function handleRootDelete(payload) {
+    const id = payload?.id;
+    if (!id) {
+        return;
+    }
+    comments.value = comments.value.filter((item) => String(item.id) !== String(id));
+    rootTotal.value = Math.max(0, rootTotal.value - 1);
+    const nextTotalPages = Math.max(1, Math.ceil(rootTotal.value / pageSize));
+    currentPage.value = Math.min(currentPage.value, nextTotalPages);
+    if (!comments.value.length && rootTotal.value > 0) {
+        await fetchComments(currentPage.value);
     }
 }
 
@@ -244,8 +270,8 @@ watch(() => props.articleId, () => {
                 :article-id="articleId"
                 :comment="comment"
                 :current-user="currentUser"
-                @refresh="fetchComments(currentPage)"
                 @count-change="handleCountChange"
+                @root-delete="handleRootDelete"
             />
         </div>
 
