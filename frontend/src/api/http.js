@@ -54,6 +54,7 @@ const logDevTrace = (type, detail = {}) => {
 };
 
 const resolveUrl = (path) => path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+const shouldSuppressAuthPrompt = (path) => String(path || '').startsWith('/auth/');
 
 const parseDownloadFilename = (disposition, fallbackFilename) => {
     if (!disposition) {
@@ -84,8 +85,9 @@ const saveBlob = (blob, filename) => {
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 };
 
-const createRequestError = (payload, response, traceId, fallbackMessage) => {
-    if (payload?.code === 401 || response.status === 401) {
+const createRequestError = (payload, response, traceId, fallbackMessage, options = {}) => {
+    const authFailed = payload?.code === 401 || response.status === 401;
+    if (authFailed && !options.suppressAuthPrompt) {
         clearSession();
         const message = payload?.message || '登录已过期，请重新登录';
         dispatchWithCooldown('my-blog-auth-required', { message });
@@ -147,7 +149,9 @@ export const request = async (path, options = {}) => {
     }
 
     if (!response.ok) {
-        const requestError = createRequestError(payload, response, traceId);
+        const requestError = createRequestError(payload, response, traceId, undefined, {
+            suppressAuthPrompt: shouldSuppressAuthPrompt(path)
+        });
         logDevTrace('http-error', {
             traceId,
             path,
@@ -158,7 +162,9 @@ export const request = async (path, options = {}) => {
     }
 
     if (payload.code !== 0) {
-        const businessError = createRequestError(payload, response, traceId, '请求失败');
+        const businessError = createRequestError(payload, response, traceId, '请求失败', {
+            suppressAuthPrompt: shouldSuppressAuthPrompt(path)
+        });
         logDevTrace('business-error', {
             traceId,
             path,

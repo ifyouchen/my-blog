@@ -20,7 +20,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <aside class="sidebar" aria-label="侧边栏" data-testid="home-sidebar">
+    <aside class="sidebar home-sidebar" aria-label="侧边栏" data-testid="home-sidebar">
         <SidebarBlock v-if="props.specials.length" eyebrow="专栏" title="推荐专栏" compact data-testid="home-specials">
             <div class="special-list">
                 <RouterLink
@@ -86,6 +86,27 @@ const props = defineProps({
 </template>
 
 <style scoped>
+.home-sidebar {
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+}
+
+.home-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.home-sidebar::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+}
+
+.home-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
 .special-item:hover,
 .special-item:focus-visible {
     background: var(--surface-soft);
@@ -111,4 +132,11 @@ const props = defineProps({
     display: inline-flex;
 }
 
+@media (max-width: 980px) {
+    .home-sidebar {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+    }
+}
 </style>

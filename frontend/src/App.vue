@@ -22,6 +22,11 @@ provide('loginModal', loginModal);
 provide('toast', toast);
 
 const handleAuthRequired = (event) => {
+    const currentPath = router.currentRoute.value.path;
+    if (currentPath === '/login' || currentPath === '/register' || currentPath.startsWith('/auth/')) {
+        return;
+    }
+
     const { message } = event.detail || {};
     loginModal.showLoginModal(() => {
         router.replace(router.currentRoute.value.fullPath);

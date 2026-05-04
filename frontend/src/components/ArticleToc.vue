@@ -302,6 +302,21 @@ onUnmounted(() => {
     max-height: calc(100vh - 260px);
     padding: 2px 10px 2px 0;
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+}
+
+.toc-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.toc-nav::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+}
+
+.toc-nav::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .toc-nav::before {

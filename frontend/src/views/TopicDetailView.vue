@@ -72,6 +72,13 @@ watch(() => route.params.id, async () => {
     <SiteHeader />
     <main class="page-shell topic-detail-page">
         <section v-if="topic" class="topic-detail-hero">
+            <div class="topic-detail-cover-panel">
+                <img :src="topic.coverUrl" :alt="`${topic.title} 封面`" loading="lazy" decoding="async">
+                <div class="topic-detail-cover-note">
+                    <span>精选专题</span>
+                    <strong>{{ topic.title }}</strong>
+                </div>
+            </div>
             <div class="topic-detail-content">
                 <div class="topic-detail-copy">
                     <p class="eyebrow">专题</p>
@@ -80,13 +87,6 @@ watch(() => route.params.id, async () => {
                 </div>
                 <div class="topic-detail-stats">
                     <span>{{ topic.articleCount }} 篇文章</span>
-                </div>
-            </div>
-            <div class="topic-detail-cover-panel">
-                <img :src="topic.coverUrl" :alt="`${topic.title} 封面`" loading="lazy" decoding="async">
-                <div class="topic-detail-cover-note">
-                    <span>精选专题</span>
-                    <strong>{{ topic.title }}</strong>
                 </div>
             </div>
         </section>
@@ -131,9 +131,8 @@ watch(() => route.params.id, async () => {
 <style scoped>
 .topic-detail-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
-    gap: 26px;
-    padding: 28px;
+    gap: 22px;
+    padding: 24px;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
@@ -152,10 +151,9 @@ watch(() => route.params.id, async () => {
 .topic-detail-cover-panel {
     position: relative;
     overflow: hidden;
-    align-self: start;
-    aspect-ratio: 4 / 3;
-    min-height: 280px;
-    max-height: 360px;
+    aspect-ratio: 21 / 8;
+    min-height: 220px;
+    max-height: 330px;
     border-radius: var(--radius-md);
     border: 1px solid var(--line);
     background: var(--surface-soft);
@@ -165,6 +163,7 @@ watch(() => route.params.id, async () => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     display: block;
 }
 
@@ -173,17 +172,18 @@ watch(() => route.params.id, async () => {
 }
 
 .topic-detail-loading-media {
-    min-height: 280px;
+    min-height: 220px;
+    aspect-ratio: 21 / 8;
     background: linear-gradient(90deg, #f2f5f8 25%, #e8eef4 37%, #f2f5f8 63%);
     background-size: 400% 100%;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     animation: topic-skeleton 1.2s ease-in-out infinite;
 }
 
 .topic-detail-content {
     display: grid;
-    align-content: start;
-    gap: 18px;
+    gap: 14px;
+    max-width: 820px;
 }
 
 @keyframes topic-skeleton {
@@ -225,6 +225,7 @@ watch(() => route.params.id, async () => {
     bottom: 16px;
     display: grid;
     gap: 4px;
+    max-width: calc(100% - 32px);
     padding: 12px 14px;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -237,14 +238,23 @@ watch(() => route.params.id, async () => {
     font-size: 12px;
 }
 
+.topic-detail-cover-note strong {
+    overflow: hidden;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (max-width: 960px) {
-    .topic-detail-hero {
-        grid-template-columns: 1fr;
+    .topic-detail-cover-panel {
+        aspect-ratio: 16 / 9;
+        min-height: 180px;
+        max-height: none;
     }
 
-    .topic-detail-cover-panel {
-        min-height: 220px;
-        max-height: none;
+    .topic-detail-loading-media {
+        aspect-ratio: 16 / 9;
+        min-height: 180px;
     }
 }
 </style>

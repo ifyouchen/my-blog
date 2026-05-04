@@ -9,7 +9,7 @@ const router = useRouter();
 const topics = ref([]);
 const currentPage = ref(1);
 const total = ref(0);
-const pageSize = 12;
+const pageSize = 9;
 const {
     initialLoading,
     refreshing,
@@ -87,6 +87,10 @@ onMounted(fetchTopics);
                         </div>
                         <h2>{{ topic.title }}</h2>
                         <p>{{ topic.summary }}</p>
+                        <div class="topic-card-footer">
+                            <span class="topic-label">专题阅读</span>
+                            <span class="topic-open">查看专题</span>
+                        </div>
                     </div>
                 </article>
             </div>
@@ -131,7 +135,7 @@ onMounted(fetchTopics);
 
 .topics-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
 }
 
@@ -143,6 +147,7 @@ onMounted(fetchTopics);
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
+    box-shadow: none;
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s;
 }
@@ -178,10 +183,10 @@ onMounted(fetchTopics);
 
 .topic-card-body {
     display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    gap: 10px;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 12px;
     flex: 1;
-    padding: 16px 18px 18px;
+    padding: 18px;
 }
 
 .topic-card-meta {
@@ -217,8 +222,30 @@ onMounted(fetchTopics);
     -webkit-line-clamp: 2;
 }
 
+.topic-card-footer {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.topic-label {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.topic-open {
+    color: var(--brand);
+    font-weight: 700;
+}
+
 .topic-card:hover h2,
-.topic-card:focus-visible h2 {
+.topic-card:focus-visible h2,
+.topic-card:hover .topic-label,
+.topic-card:focus-visible .topic-label {
     color: var(--brand-strong);
 }
 
@@ -241,19 +268,13 @@ onMounted(fetchTopics);
     color: var(--error);
 }
 
-@media (max-width: 1200px) {
-    .topics-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
     .topics-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 720px) {
     .topics-grid {
         grid-template-columns: 1fr;
     }

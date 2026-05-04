@@ -456,7 +456,6 @@ watch(tocDrawerOpen, (open) => {
     ></div>
     <main v-if="article" :class="['page-shell', 'detail-layout', { 'detail-immersive': immersiveMode }]" data-testid="article-detail-page">
         <article class="article-main" data-testid="article-detail-main">
-            <img v-if="article.cover" class="article-hero" :src="article.cover" :alt="article.coverAlt" loading="eager" decoding="async">
             <div class="article-body">
                 <section class="article-heading-panel">
                     <div class="article-heading-top">
@@ -577,6 +576,17 @@ watch(tocDrawerOpen, (open) => {
                     </div>
                 </section>
 
+                <figure v-if="article.cover" class="article-cover">
+                    <img
+                        class="article-hero"
+                        :src="article.cover"
+                        :alt="article.coverAlt || `${article.title} 封面图`"
+                        loading="eager"
+                        fetchpriority="high"
+                        decoding="async"
+                    >
+                </figure>
+
                 <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
                 <section v-else class="article-content-empty">
                     <p>正文暂时为空，稍后再来看一眼。</p>
@@ -672,7 +682,6 @@ watch(tocDrawerOpen, (open) => {
     <main v-else-if="isLoading" class="page-shell detail-layout" aria-busy="true" aria-label="文章加载中">
         <div class="article-main">
             <div class="article-skeleton">
-                <div class="skeleton-hero"></div>
                 <div class="article-body">
                     <div class="skeleton-panel">
                         <div class="skeleton-meta-row">
@@ -692,6 +701,7 @@ watch(tocDrawerOpen, (open) => {
                             </div>
                         </div>
                     </div>
+                    <div class="skeleton-hero"></div>
                     <div class="skeleton-content-block">
                         <div v-for="i in 6" :key="i" class="skeleton-paragraph" :style="{ width: `${70 + (i % 3) * 10}%` }"></div>
                         <div class="skeleton-paragraph skeleton-short"></div>
@@ -855,8 +865,11 @@ watch(tocDrawerOpen, (open) => {
 
 .skeleton-hero {
     width: 100%;
-    aspect-ratio: 21 / 8;
-    border-radius: 0;
+    max-width: var(--layout-reading-width);
+    aspect-ratio: 16 / 9;
+    max-height: 360px;
+    margin: 0 0 16px;
+    border-radius: var(--radius-sm);
 }
 
 .skeleton-panel {

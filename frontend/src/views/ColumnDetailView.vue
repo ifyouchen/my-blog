@@ -158,8 +158,9 @@ watch(() => route.params.id, async () => {
 <style scoped>
 .column-detail-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
-    gap: 26px;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+    gap: 22px;
+    align-items: start;
     padding: 28px;
     background: var(--surface);
     border: 1px solid var(--line);
@@ -181,8 +182,8 @@ watch(() => route.params.id, async () => {
     overflow: hidden;
     align-self: start;
     aspect-ratio: 4 / 3;
-    min-height: 280px;
-    max-height: 360px;
+    min-height: 210px;
+    max-height: 280px;
     border-radius: var(--radius-md);
     border: 1px solid var(--line);
     background: var(--surface-soft);
@@ -192,6 +193,7 @@ watch(() => route.params.id, async () => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     display: block;
 }
 
@@ -211,6 +213,7 @@ watch(() => route.params.id, async () => {
     display: grid;
     align-content: start;
     gap: 18px;
+    max-width: 760px;
 }
 
 @keyframes column-skeleton {
@@ -303,11 +306,12 @@ watch(() => route.params.id, async () => {
 
 .column-detail-cover-note {
     position: absolute;
-    right: 16px;
-    bottom: 16px;
+    right: 12px;
+    bottom: 12px;
     display: grid;
     gap: 4px;
-    padding: 12px 14px;
+    max-width: calc(100% - 24px);
+    padding: 10px 12px;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: var(--radius-sm);
@@ -317,6 +321,12 @@ watch(() => route.params.id, async () => {
 .column-detail-cover-note span {
     color: var(--muted);
     font-size: 12px;
+}
+
+.column-detail-cover-note strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .column-detail-author:hover,
@@ -330,6 +340,7 @@ watch(() => route.params.id, async () => {
     }
 
     .column-detail-cover-panel {
+        aspect-ratio: 16 / 9;
         min-height: 220px;
         max-height: none;
     }

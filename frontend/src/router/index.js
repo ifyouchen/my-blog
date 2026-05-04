@@ -215,7 +215,7 @@ const routes = [
         name: 'history',
         component: HistoryView,
         meta: {
-            title: '历史阅读'
+            title: '阅读记录'
         }
     },
     {
@@ -437,7 +437,15 @@ const router = createRouter({
         if (savedPosition) {
             return savedPosition;
         }
-        const samePathNoScroll = ['/', '/dashboard/overview', '/dashboard/articles', '/dashboard/columns', '/dashboard/favorites', '/search'];
+        const samePathNoScroll = [
+            '/',
+            '/dashboard/overview',
+            '/dashboard/articles',
+            '/dashboard/columns',
+            '/dashboard/favorites',
+            '/search',
+            '/history'
+        ];
         if (to.path === from.path && samePathNoScroll.includes(to.path)) {
             return false;
         }
