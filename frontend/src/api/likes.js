@@ -13,5 +13,7 @@ export const unlikeArticleApi = async (articleId) => {
 };
 
 export const getLikeStatusApi = async (articleId) => {
-    return await request(`/articles/${articleId}/like/status`);
+    return await request(`/articles/${articleId}/like/status`, {
+        suppressAuthPrompt: true
+    });
 };

@@ -102,7 +102,7 @@ public class TagController {
         PageResult<ArticleDTO> pageResult = articleAppService.pagePublishedArticles(query);
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO item : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(new PageResult<ArticleResponse>(
             items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()

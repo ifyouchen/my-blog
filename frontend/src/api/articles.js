@@ -25,7 +25,9 @@ export const getRelatedArticlesApi = async (id, limit = 5) => {
 };
 
 export const getArticleRecommendationsApi = async (id, limit = 12) => {
-    const data = await request(`/articles/${id}/recommendations?limit=${limit}`);
+    const data = await request(`/articles/${id}/recommendations?limit=${limit}`, {
+        suppressAuthPrompt: true
+    });
     return {
         sections: (data?.sections || []).map((section) => ({
             key: section.key,
@@ -36,7 +38,9 @@ export const getArticleRecommendationsApi = async (id, limit = 12) => {
 };
 
 export const getArticleNeighborsApi = async (id) => {
-    const data = await request(`/articles/${id}/neighbors`);
+    const data = await request(`/articles/${id}/neighbors`, {
+        suppressAuthPrompt: true
+    });
     return {
         prev: data?.prev ? normalizeArticle(data.prev) : null,
         next: data?.next ? normalizeArticle(data.next) : null

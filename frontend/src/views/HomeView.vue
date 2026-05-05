@@ -364,17 +364,17 @@ onMounted(() => {
                     :aria-selected="feedTab === 'recommend'"
                     :class="{ active: feedTab === 'recommend' }"
                     @click="switchFeedTab('recommend')"
-                >推荐</button>
+                >推荐阅读</button>
                 <button
                     type="button"
                     role="tab"
                     :aria-selected="feedTab === 'following'"
                     :class="{ active: feedTab === 'following' }"
                     @click="switchFeedTab('following')"
-                >关注</button>
+                >关注动态</button>
                 </div>
                 <p class="feed-result-hint">
-                    {{ feedTab === 'following' ? '关注' : '推荐' }} · {{ activeCategory || '全部' }}（{{ total }}）
+                    {{ feedTab === 'following' ? '关注动态' : '推荐阅读' }} · {{ activeCategory || '全部' }}（{{ total }}）
                 </p>
                 <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
             </div>

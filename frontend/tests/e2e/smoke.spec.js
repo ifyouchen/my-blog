@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const USER_ACCOUNT = process.env.E2E_USER_ACCOUNT || 'demo';
+const USER_ACCOUNT = process.env.E2E_USER_ACCOUNT || 'u92mpnsm4';
 const USER_PASSWORD = process.env.E2E_USER_PASSWORD || '123456';
 const ADMIN_ACCOUNT = process.env.E2E_ADMIN_ACCOUNT || '';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || '';
@@ -18,6 +18,7 @@ test.describe('guest smoke', () => {
     test('home page renders with live content containers', async ({ page }) => {
         await page.goto('/');
         await expect(page.getByTestId('home-page')).toBeVisible();
+        await expect(page.getByTestId('login-modal')).toHaveCount(0);
         await expect(page.locator('[data-feed-root]')).toBeVisible();
         await expect(page.getByTestId('home-specials')).toBeVisible();
         await expect(page.getByTestId('home-authors')).toBeVisible();
@@ -35,7 +36,7 @@ test.describe('guest smoke', () => {
         await expect(page.getByTestId('columns-grid')).toBeVisible();
         const firstColumn = page.getByTestId('column-card').first();
         await expect(firstColumn).toBeVisible();
-        await firstColumn.getByRole('link').first().click();
+        await firstColumn.click({ position: { x: 12, y: 12 } });
         await expect(page).toHaveURL(/\/columns\/\d+/);
     });
 
@@ -46,19 +47,43 @@ test.describe('guest smoke', () => {
         await expect(page.getByTestId('ranking-authors')).toBeVisible();
     });
 
-    test('article detail renders comments and guest write action redirects to login', async ({ page }) => {
-        await page.goto('/');
-        await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
+    test('explore page loads passive recommendations without login modal', async ({ page }) => {
+        await page.goto('/explore');
+        await expect(page.getByTestId('explore-page')).toBeVisible();
+        await expect(page.getByTestId('login-modal')).toHaveCount(0);
+    });
+
+    test('article detail is readable for guests without auth modal', async ({ page }) => {
+        await page.goto('/articles/206-go-206');
         await expect(page.getByTestId('article-detail-page')).toBeVisible();
+        await expect(page.getByTestId('article-detail-main')).toBeVisible();
         await expect(page.getByTestId('comment-panel')).toBeVisible();
+        await expect(page.getByTestId('login-modal')).toHaveCount(0);
+    });
+
+    test('article guest interactions open login modal only after click', async ({ page }) => {
+        await page.goto('/articles/206-go-206');
+        await expect(page.getByTestId('article-detail-page')).toBeVisible();
+        await expect(page.getByTestId('login-modal')).toHaveCount(0);
+
+        await page.getByRole('button', { name: '点赞' }).first().click();
+        await expect(page.getByTestId('login-modal')).toBeVisible();
+        await page.getByRole('button', { name: '关闭登录弹窗' }).click();
+
+        await page.getByTestId('comment-composer-input').first().click();
+        await expect(page.getByTestId('login-modal')).toBeVisible();
+    });
+
+    test('guest write action still opens login modal', async ({ page }) => {
+        await page.goto('/');
         await page.getByTestId('header-write-article').click();
         await expect(page.getByTestId('login-modal')).toBeVisible();
     });
 
     test('search empty-state action switches tab via route query', async ({ page }) => {
         await page.goto('/search?tab=users&keyword=unlikely_keyword_zzzzzz');
-        await expect(page.getByText('暂无匹配作者')).toBeVisible();
-        await page.getByRole('button', { name: '查看相关文章' }).click();
+        await expect(page.getByText('未找到「unlikely_keyword_zzzzzz」相关结果')).toBeVisible();
+        await page.getByRole('button', { name: '查看文章' }).click();
         await expect(page).toHaveURL(/\/search\?.*tab=articles/);
     });
 });
@@ -69,13 +94,14 @@ test.describe('authenticated smoke', () => {
         await page.goto('/');
         await expect(page.getByTestId('home-page')).toBeVisible();
         // 默认应为关注 tab（登录用户）
-        const followingTab = page.locator('.feed-tabs button', { hasText: '关注' });
+        const followingTab = page.locator('.feed-tabs button', { hasText: '关注动态' });
         await expect(followingTab).toBeVisible();
         await followingTab.click();
         await expect(page).toHaveURL(/feedTab=following/);
-        const recommendTab = page.locator('.feed-tabs button', { hasText: '推荐' });
+        const recommendTab = page.locator('.feed-tabs button', { hasText: '推荐阅读' });
         await recommendTab.click();
-        await expect(page).toHaveURL(/feedTab=recommend/);
+        await expect(page).toHaveURL(/\/$/);
+        await expect(recommendTab).toHaveClass(/active/);
     });
 
     test('search empty state shows suggestion chips', async ({ page }) => {
@@ -91,8 +117,7 @@ test.describe('authenticated smoke', () => {
     });
 
     test('article detail keeps a single related recommendations section', async ({ page }) => {
-        await page.goto('/');
-        await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
+        await page.goto('/articles/206-go-206');
         await expect(page.getByTestId('article-detail-page')).toBeVisible();
         await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
         await page.waitForTimeout(500);
@@ -150,8 +175,7 @@ test.describe('authenticated smoke', () => {
         await subscribeButton.click();
         await expect(subscribeButton).not.toHaveText(subscribeLabel || '');
 
-        await page.goto('/');
-        await page.locator('[data-feed-root] .post-item h3 a[href^="/articles/"]').first().click();
+        await page.goto('/articles/206-go-206');
         await expect(page.getByTestId('comment-panel')).toBeVisible();
 
         const uniqueComment = `smoke-comment-${Date.now()}`;
@@ -169,7 +193,10 @@ test.describe('authenticated smoke', () => {
     });
 
     test('admin workspace smoke', async ({ page }) => {
-        test.skip(!ADMIN_ACCOUNT || !ADMIN_PASSWORD, 'Set E2E_ADMIN_ACCOUNT and E2E_ADMIN_PASSWORD to run admin smoke.');
+        test.skip(
+            !ADMIN_ACCOUNT || !ADMIN_PASSWORD,
+            'Set E2E_ADMIN_ACCOUNT and E2E_ADMIN_PASSWORD to run admin smoke.'
+        );
         await login(page, ADMIN_ACCOUNT, ADMIN_PASSWORD);
         await page.goto('/admin/overview');
         await expect(page.getByTestId('admin-layout')).toBeVisible();

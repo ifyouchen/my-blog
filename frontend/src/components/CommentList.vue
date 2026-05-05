@@ -22,7 +22,7 @@ const props = defineProps({
 
 const emit = defineEmits(['count-change']);
 
-const { state } = useSession();
+const { state, isLoggedIn } = useSession();
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const {
     confirmDialog,
@@ -34,6 +34,7 @@ const {
 const composerDraft = ref('');
 const composerFeedback = ref('');
 const composerSubmitting = ref(false);
+let lastLoginPromptAt = 0;
 
 const comments = ref([]);
 const {
@@ -59,6 +60,19 @@ watch(() => props.initialCount, (value) => {
 const currentUser = computed(() => state.user || null);
 const totalPages = computed(() => Math.max(1, Math.ceil(rootTotal.value / pageSize)));
 const avatarUrl = computed(() => currentUser.value?.avatar || currentUser.value?.avatarUrl);
+
+function promptCommentLogin(onSuccess = () => {}) {
+    const now = Date.now();
+    if (now - lastLoginPromptAt < 500) {
+        return false;
+    }
+    lastLoginPromptAt = now;
+    return loginModal.requireLogin(onSuccess, {
+        title: '登录后发表评论',
+        message: '登录后可以参与讨论，和其他读者一起交流文章里的技术细节。',
+        actionText: '登录并评论'
+    });
+}
 
 async function fetchComments(page = currentPage.value, { reset = false } = {}) {
     if (reset) {
@@ -121,11 +135,7 @@ async function confirmSensitiveComment(content, actionText, onConfirm) {
 }
 
 async function submitComment(options = {}) {
-    const canContinue = loginModal.requireLogin(() => submitComment(), {
-        title: '登录后发表评论',
-        message: '登录后可以参与讨论，和其他读者一起把评论区聊热起来。',
-        actionText: '登录并评论'
-    });
+    const canContinue = promptCommentLogin(() => submitComment());
     if (!canContinue) {
         composerFeedback.value = '登录后可以发表评论';
         return;
@@ -246,8 +256,10 @@ watch(() => props.articleId, () => {
             :avatar-url="avatarUrl"
             :feedback="composerFeedback"
             :submitting="composerSubmitting"
-            placeholder="发一条友善的评论，和更多读者一起聊聊这篇文章。"
+            :readonly="!isLoggedIn"
+            :placeholder="isLoggedIn ? '发一条友善的评论，和更多读者一起聊聊这篇文章。' : '登录后参与讨论，评论列表可直接浏览。'"
             submit-text="发表评论"
+            @activate="promptCommentLogin(() => submitComment())"
             @submit="submitComment"
         />
 

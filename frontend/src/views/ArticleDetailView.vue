@@ -634,7 +634,6 @@ watch(tocDrawerOpen, (open) => {
                 :content="articleMarkdown"
                 class="detail-toc"
             />
-            <AdBanner :slot-code="'article_sidebar'" />
             <section
                 v-if="recommendationSections.length > 0 || relatedLoading"
                 class="side-related"
@@ -653,7 +652,7 @@ watch(tocDrawerOpen, (open) => {
                             <RouterLink
                                 v-for="rel in section.items.slice(0, 5)"
                                 :key="rel.id"
-                                class="side-related-item"
+                                class="side-related-item article-related-item"
                                 :to="`/articles/${rel.id}`"
                             >
                                 <img
@@ -676,6 +675,7 @@ watch(tocDrawerOpen, (open) => {
                     </section>
                 </div>
             </section>
+            <AdBanner class="article-sidebar-ad" :slot-code="'article_sidebar'" />
         </aside>
     </main>
     <!-- 加载骨架屏 -->
@@ -838,6 +838,10 @@ watch(tocDrawerOpen, (open) => {
 @media (max-width: 980px) {
     .mobile-toc-trigger {
         display: inline-flex;
+    }
+
+    .article-sidebar-ad {
+        display: none;
     }
 }
 

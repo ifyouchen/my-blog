@@ -14,7 +14,9 @@ export const unfavoriteArticleApi = async (articleId) => {
 };
 
 export const getFavoriteStatusApi = async (articleId) => {
-    return await request(`/articles/${articleId}/favorite/status`);
+    return await request(`/articles/${articleId}/favorite/status`, {
+        suppressAuthPrompt: true
+    });
 };
 
 export const getMyFavoritesApi = async (page = 1, pageSize = 10, keyword = '') => {

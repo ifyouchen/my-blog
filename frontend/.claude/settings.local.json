@@ -10,7 +10,9 @@
       "Bash(lsof -ti:5173)",
       "Bash(xargs kill *)",
       "Bash(grep -v \"//.*\\\\|from '\")",
-      "Bash(mvn compile *)"
+      "Bash(mvn compile *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
     ]
   }
 }

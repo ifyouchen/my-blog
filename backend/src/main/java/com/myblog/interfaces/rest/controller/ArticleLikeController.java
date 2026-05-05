@@ -57,7 +57,7 @@ public class ArticleLikeController {
 
     @GetMapping("/articles/{articleId}/like/status")
     public Result<Map<String, Object>> getLikeStatus(@PathVariable Long articleId) {
-        Long userId = AuthContext.getRequiredUserId();
+        Long userId = AuthContext.getCurrentUserId();
         boolean hasLiked = false;
         if (userId != null) {
             hasLiked = articleLikeAppService.hasLiked(articleId, userId);

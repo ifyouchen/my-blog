@@ -1,7 +1,11 @@
 package com.myblog.interfaces.rest.mapper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myblog.application.dto.CommentDTO;
+import com.myblog.application.dto.UserDTO;
 import com.myblog.interfaces.rest.dto.response.CommentResponse;
+import com.myblog.interfaces.rest.dto.response.UserResponse;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,5 +26,47 @@ class RestDtoMapperTest {
 
         assertThat(response.getStatus()).isEqualTo("PUBLISHED");
         assertThat(response.getCanEdit()).isTrue();
+    }
+
+    @Test
+    void toPublicResponseHidesSensitiveUserFields() throws JsonProcessingException {
+        UserDTO dto = createUserDTO();
+
+        UserResponse response = new RestDtoMapper().toPublicResponse(dto);
+        String json = new ObjectMapper().writeValueAsString(response);
+
+        assertThat(response.getEmail()).isNull();
+        assertThat(response.getLastLoginAt()).isNull();
+        assertThat(response.getLastLoginIp()).isNull();
+        assertThat(response.getUsername()).isEqualTo("demo");
+        assertThat(response.getNickname()).isEqualTo("Demo User");
+        assertThat(response.getFollowed()).isFalse();
+        assertThat(json).doesNotContain("email");
+        assertThat(json).doesNotContain("lastLoginAt");
+        assertThat(json).doesNotContain("lastLoginIp");
+    }
+
+    @Test
+    void toResponseKeepsPrivateUserFields() {
+        UserDTO dto = createUserDTO();
+
+        UserResponse response = new RestDtoMapper().toResponse(dto);
+
+        assertThat(response.getEmail()).isEqualTo("demo@example.com");
+        assertThat(response.getLastLoginAt()).isEqualTo("2026-05-05 10:20:30");
+        assertThat(response.getLastLoginIp()).isEqualTo("127.0.0.1");
+    }
+
+    private UserDTO createUserDTO() {
+        UserDTO dto = new UserDTO();
+        dto.setId(1L);
+        dto.setUsername("demo");
+        dto.setEmail("demo@example.com");
+        dto.setNickname("Demo User");
+        dto.setAvatarUrl("https://example.com/avatar.png");
+        dto.setBio("hello");
+        dto.setLastLoginAt("2026-05-05 10:20:30");
+        dto.setLastLoginIp("127.0.0.1");
+        return dto;
     }
 }

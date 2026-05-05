@@ -107,6 +107,7 @@ const createRequestError = (payload, response, traceId, fallbackMessage, options
 };
 
 export const request = async (path, options = {}) => {
+    const { suppressAuthPrompt = false, ...fetchOptions } = options;
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -126,7 +127,7 @@ export const request = async (path, options = {}) => {
 
     const url = resolveUrl(path);
     const response = await fetch(url, {
-        ...options,
+        ...fetchOptions,
         body,
         headers
     });
@@ -150,7 +151,7 @@ export const request = async (path, options = {}) => {
 
     if (!response.ok) {
         const requestError = createRequestError(payload, response, traceId, undefined, {
-            suppressAuthPrompt: shouldSuppressAuthPrompt(path)
+            suppressAuthPrompt: suppressAuthPrompt || shouldSuppressAuthPrompt(path)
         });
         logDevTrace('http-error', {
             traceId,
@@ -163,7 +164,7 @@ export const request = async (path, options = {}) => {
 
     if (payload.code !== 0) {
         const businessError = createRequestError(payload, response, traceId, '请求失败', {
-            suppressAuthPrompt: shouldSuppressAuthPrompt(path)
+            suppressAuthPrompt: suppressAuthPrompt || shouldSuppressAuthPrompt(path)
         });
         logDevTrace('business-error', {
             traceId,

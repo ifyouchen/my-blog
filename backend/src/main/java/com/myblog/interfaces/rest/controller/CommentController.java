@@ -117,7 +117,7 @@ public class CommentController {
             restDtoMapper.toCommand(request, articleId, userId),
             AuthContext.getRole()
         );
-        return Result.success(restDtoMapper.toResponse(comment));
+        return Result.success(restDtoMapper.toPublicResponse(comment));
     }
 
     /**
@@ -136,7 +136,7 @@ public class CommentController {
         }
         String content = (String) request.get("content");
         CommentDTO comment = commentAppService.editComment(id, content, userId);
-        return Result.success(restDtoMapper.toResponse(comment));
+        return Result.success(restDtoMapper.toPublicResponse(comment));
     }
 
     /**
@@ -230,7 +230,7 @@ public class CommentController {
     private PageResult<CommentResponse> toPageResponse(PageResult<CommentDTO> result) {
         List<CommentResponse> items = new ArrayList<CommentResponse>(result.getItems().size());
         for (CommentDTO item : result.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return new PageResult<CommentResponse>(items, result.getPage(), result.getPageSize(), result.getTotal());
     }

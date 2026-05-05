@@ -46,23 +46,30 @@ public class ColumnController {
         PageResult<ColumnDTO> pageResult = columnAppService.pageColumns(page, pageSize, AuthContext.getCurrentUserId());
         List<ColumnResponse> items = new ArrayList<ColumnResponse>(pageResult.getItems().size());
         for (ColumnDTO item : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
-        return Result.success(new PageResult<ColumnResponse>(items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()));
+        return Result.success(new PageResult<ColumnResponse>(
+            items,
+            pageResult.getPage(),
+            pageResult.getPageSize(),
+            pageResult.getTotal()
+        ));
     }
 
     @GetMapping("/recommended")
     public Result<List<ColumnResponse>> listRecommendedColumns(@RequestParam(defaultValue = "3") int limit) {
         List<ColumnResponse> items = new ArrayList<ColumnResponse>();
         for (ColumnDTO item : columnAppService.listRecommendedColumns(limit, AuthContext.getCurrentUserId())) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(items);
     }
 
     @GetMapping("/{id}")
     public Result<ColumnResponse> getColumnDetail(@PathVariable Long id) {
-        return Result.success(restDtoMapper.toResponse(columnAppService.getColumnDetail(id, AuthContext.getCurrentUserId())));
+        return Result.success(restDtoMapper.toPublicResponse(
+            columnAppService.getColumnDetail(id, AuthContext.getCurrentUserId())
+        ));
     }
 
     @GetMapping("/{id}/articles")
@@ -72,9 +79,14 @@ public class ColumnController {
         PageResult<ArticleDTO> pageResult = columnAppService.pageColumnArticles(id, page, pageSize);
         List<ArticleResponse> items = new ArrayList<ArticleResponse>(pageResult.getItems().size());
         for (ArticleDTO item : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
-        return Result.success(new PageResult<ArticleResponse>(items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()));
+        return Result.success(new PageResult<ArticleResponse>(
+            items,
+            pageResult.getPage(),
+            pageResult.getPageSize(),
+            pageResult.getTotal()
+        ));
     }
 
     @PostMapping("/{id}/subscribe")

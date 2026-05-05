@@ -107,16 +107,38 @@ public class RestDtoMapper {
     }
 
     /**
+     * 将用户 DTO 转换为公开响应，隐藏邮箱和登录痕迹。
+     *
+     * @param dto 用户 DTO
+     * @return 公开用户响应
+     */
+    public UserResponse toPublicResponse(UserDTO dto) {
+        UserResponse response = toBaseUserResponse(dto);
+        response.setEmail(null);
+        response.setLastLoginAt(null);
+        response.setLastLoginIp(null);
+        response.setFollowed(Boolean.TRUE.equals(dto.getFollowed()));
+        return response;
+    }
+
+    /**
      * 将用户 DTO 转换为响应。
      *
      * @param dto 用户 DTO
      * @return 用户响应
      */
     public UserResponse toResponse(UserDTO dto) {
+        UserResponse response = toBaseUserResponse(dto);
+        response.setEmail(dto.getEmail());
+        response.setLastLoginAt(dto.getLastLoginAt());
+        response.setLastLoginIp(dto.getLastLoginIp());
+        return response;
+    }
+
+    private UserResponse toBaseUserResponse(UserDTO dto) {
         UserResponse response = new UserResponse();
         response.setId(dto.getId());
         response.setUsername(dto.getUsername());
-        response.setEmail(dto.getEmail());
         response.setNickname(dto.getNickname());
         response.setAvatarUrl(dto.getAvatarUrl());
         response.setBio(dto.getBio());
@@ -124,8 +146,6 @@ public class RestDtoMapper {
         response.setGithub(dto.getGithub());
         response.setTwitter(dto.getTwitter());
         response.setLocation(dto.getLocation());
-        response.setLastLoginAt(dto.getLastLoginAt());
-        response.setLastLoginIp(dto.getLastLoginIp());
         response.setRole(dto.getRole());
         response.setStatus(dto.getStatus());
         response.setFollowed(dto.getFollowed());
@@ -142,8 +162,22 @@ public class RestDtoMapper {
      * @return 用户主页响应
      */
     public UserProfileResponse toResponse(UserProfileDTO dto) {
+        return toUserProfileResponse(dto, false);
+    }
+
+    /**
+     * 将用户主页 DTO 转换为公开响应。
+     *
+     * @param dto 用户主页 DTO
+     * @return 公开用户主页响应
+     */
+    public UserProfileResponse toPublicResponse(UserProfileDTO dto) {
+        return toUserProfileResponse(dto, true);
+    }
+
+    private UserProfileResponse toUserProfileResponse(UserProfileDTO dto, boolean publicUser) {
         UserProfileResponse response = new UserProfileResponse();
-        response.setUser(toResponse(dto.getUser()));
+        response.setUser(publicUser ? toPublicResponse(dto.getUser()) : toResponse(dto.getUser()));
         response.setArticleCount(dto.getArticleCount());
         response.setTotalViewCount(dto.getTotalViewCount());
         response.setTotalLikeCount(dto.getTotalLikeCount());
@@ -160,6 +194,20 @@ public class RestDtoMapper {
      * @return 专栏响应
      */
     public ColumnResponse toResponse(ColumnDTO dto) {
+        return toColumnResponse(dto, false);
+    }
+
+    /**
+     * 将专栏 DTO 转换为公开响应。
+     *
+     * @param dto 专栏 DTO
+     * @return 公开专栏响应
+     */
+    public ColumnResponse toPublicResponse(ColumnDTO dto) {
+        return toColumnResponse(dto, true);
+    }
+
+    private ColumnResponse toColumnResponse(ColumnDTO dto, boolean publicUser) {
         ColumnResponse response = new ColumnResponse();
         response.setId(dto.getId());
         response.setTitle(dto.getTitle());
@@ -168,7 +216,9 @@ public class RestDtoMapper {
         response.setSubscriberCount(dto.getSubscriberCount());
         response.setArticleCount(dto.getArticleCount());
         response.setSubscribed(dto.isSubscribed());
-        response.setAuthor(toResponse(dto.getAuthor()));
+        if (dto.getAuthor() != null) {
+            response.setAuthor(publicUser ? toPublicResponse(dto.getAuthor()) : toResponse(dto.getAuthor()));
+        }
         return response;
     }
 
@@ -179,9 +229,23 @@ public class RestDtoMapper {
      * @return 作者排行榜响应
      */
     public AuthorRankingResponse toResponse(AuthorRankingDTO dto) {
+        return toAuthorRankingResponse(dto, false);
+    }
+
+    /**
+     * 将作者排行榜 DTO 转换为公开响应。
+     *
+     * @param dto 作者排行榜 DTO
+     * @return 公开作者排行榜响应
+     */
+    public AuthorRankingResponse toPublicResponse(AuthorRankingDTO dto) {
+        return toAuthorRankingResponse(dto, true);
+    }
+
+    private AuthorRankingResponse toAuthorRankingResponse(AuthorRankingDTO dto, boolean publicUser) {
         AuthorRankingResponse response = new AuthorRankingResponse();
         response.setRank(dto.getRank());
-        response.setUser(toResponse(dto.getUser()));
+        response.setUser(publicUser ? toPublicResponse(dto.getUser()) : toResponse(dto.getUser()));
         response.setArticleCount(dto.getArticleCount());
         response.setTotalViewCount(dto.getTotalViewCount());
         response.setTotalLikeCount(dto.getTotalLikeCount());
@@ -197,6 +261,20 @@ public class RestDtoMapper {
      * @return 文章响应
      */
     public ArticleResponse toResponse(ArticleDTO dto) {
+        return toArticleResponse(dto, false);
+    }
+
+    /**
+     * 将文章 DTO 转换为公开响应。
+     *
+     * @param dto 文章 DTO
+     * @return 公开文章响应
+     */
+    public ArticleResponse toPublicResponse(ArticleDTO dto) {
+        return toArticleResponse(dto, true);
+    }
+
+    private ArticleResponse toArticleResponse(ArticleDTO dto, boolean publicUser) {
         ArticleResponse response = new ArticleResponse();
         response.setId(dto.getId());
         response.setTitle(dto.getTitle());
@@ -222,7 +300,9 @@ public class RestDtoMapper {
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setOfflineReason(dto.getOfflineReason());
         response.setWarnFlag(dto.isWarnFlag());
-        response.setAuthor(toResponse(dto.getAuthor()));
+        if (dto.getAuthor() != null) {
+            response.setAuthor(publicUser ? toPublicResponse(dto.getAuthor()) : toResponse(dto.getAuthor()));
+        }
         return response;
     }
 
@@ -233,6 +313,20 @@ public class RestDtoMapper {
      * @return 评论响应
      */
     public CommentResponse toResponse(CommentDTO dto) {
+        return toCommentResponse(dto, false);
+    }
+
+    /**
+     * 将评论 DTO 转换为公开响应。
+     *
+     * @param dto 评论 DTO
+     * @return 公开评论响应
+     */
+    public CommentResponse toPublicResponse(CommentDTO dto) {
+        return toCommentResponse(dto, true);
+    }
+
+    private CommentResponse toCommentResponse(CommentDTO dto, boolean publicUser) {
         CommentResponse response = new CommentResponse();
         response.setId(dto.getId());
         response.setArticleId(dto.getArticleId());
@@ -253,14 +347,16 @@ public class RestDtoMapper {
         response.setEditCount(dto.getEditCount());
         response.setCanEdit(dto.getCanEdit());
         if (dto.getUser() != null) {
-            response.setUser(toResponse(dto.getUser()));
+            response.setUser(publicUser ? toPublicResponse(dto.getUser()) : toResponse(dto.getUser()));
         }
         if (dto.getReplyToUser() != null) {
-            response.setReplyToUser(toResponse(dto.getReplyToUser()));
+            response.setReplyToUser(publicUser
+                ? toPublicResponse(dto.getReplyToUser())
+                : toResponse(dto.getReplyToUser()));
         }
         if (dto.getReplyPreview() != null && !dto.getReplyPreview().isEmpty()) {
             response.setReplyPreview(dto.getReplyPreview().stream()
-                .map(this::toResponse)
+                .map(reply -> publicUser ? toPublicResponse(reply) : toResponse(reply))
                 .collect(java.util.stream.Collectors.toList()));
         }
         return response;

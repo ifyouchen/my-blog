@@ -42,7 +42,7 @@ public class RecommendationController {
         List<UserDTO> items = recommendationAppService.listRecommendedAuthors(limit, AuthContext.getCurrentUserId());
         List<UserResponse> responses = new ArrayList<>(items.size());
         for (UserDTO item : items) {
-            responses.add(restDtoMapper.toResponse(item));
+            responses.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(responses);
     }
@@ -52,7 +52,7 @@ public class RecommendationController {
         List<ColumnDTO> items = recommendationAppService.listRecommendedColumns(limit, AuthContext.getCurrentUserId());
         List<ColumnResponse> responses = new ArrayList<>(items.size());
         for (ColumnDTO item : items) {
-            responses.add(restDtoMapper.toResponse(item));
+            responses.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(responses);
     }
@@ -63,7 +63,7 @@ public class RecommendationController {
         List<ArticleDTO> items = recommendationAppService.listFeaturedArticles(page, pageSize);
         List<ArticleResponse> responses = new ArrayList<>(items.size());
         for (ArticleDTO item : items) {
-            responses.add(restDtoMapper.toResponse(item));
+            responses.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(responses);
     }

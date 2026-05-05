@@ -38,7 +38,7 @@ public class RankingController {
     public Result<List<ArticleResponse>> listArticleRankings(@RequestParam(defaultValue = "10") int limit) {
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO item : rankingAppService.listArticleRankings(limit)) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(items);
     }
@@ -47,7 +47,7 @@ public class RankingController {
     public Result<List<AuthorRankingResponse>> listAuthorRankings(@RequestParam(defaultValue = "10") int limit) {
         List<AuthorRankingResponse> items = new ArrayList<AuthorRankingResponse>();
         for (AuthorRankingDTO item : rankingAppService.listAuthorRankings(limit, AuthContext.getCurrentUserId())) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(items);
     }

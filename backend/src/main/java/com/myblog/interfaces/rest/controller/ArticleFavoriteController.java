@@ -65,7 +65,7 @@ public class ArticleFavoriteController {
 
     @GetMapping("/articles/{articleId}/favorite/status")
     public Result<Map<String, Object>> getFavoriteStatus(@PathVariable Long articleId) {
-        Long userId = AuthContext.getRequiredUserId();
+        Long userId = AuthContext.getCurrentUserId();
         boolean hasFavorited = false;
         if (userId != null) {
             hasFavorited = articleFavoriteAppService.hasFavorited(articleId, userId);

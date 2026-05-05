@@ -107,6 +107,9 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || "/api/home/bootstrap".equals(path)
             || "/api/rankings/articles".equals(path)
             || "/api/rankings/authors".equals(path)
+            || "/api/recommendations/articles".equals(path)
+            || "/api/recommendations/authors".equals(path)
+            || "/api/recommendations/columns".equals(path)
             || "/api/columns".equals(path)
             || "/api/columns/recommended".equals(path)
             || "/api/topics".equals(path)
@@ -116,6 +119,7 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || "/api/search/hot-keywords".equals(path)
             || path.matches("^/api/articles/\\d+$")
             || path.matches("^/api/articles/\\d+/related$")
+            || path.matches("^/api/articles/\\d+/recommendations$")
             || path.matches("^/api/articles/\\d+/neighbors$")
             || path.matches("^/api/articles/\\d+/comments$")
             || path.matches("^/api/comments/\\d+/replies$")
@@ -151,7 +155,10 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
      * @param ex 异常信息
      */
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+    public void afterCompletion(HttpServletRequest request,
+                                HttpServletResponse response,
+                                Object handler,
+                                Exception ex) {
         AuthContext.clear();
     }
 }

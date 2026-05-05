@@ -3,14 +3,11 @@ import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {navItems} from '@/data/home';
 import {useSession} from '@/stores/session';
 import {
-  getNotificationUnreadCountApi,
-  getRecentNotificationsApi,
-  markAllNotificationsReadApi,
-  markNotificationReadApi,
-  subscribeNotificationStream
+    markAllNotificationsReadApi,
+    markNotificationReadApi
 } from '@/api/notifications';
+import {useHeaderNotifications} from '@/composables/useHeaderNotifications';
 import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
-import {getMessageUnreadCountApi, subscribeMessageStream} from '@/api/messages';
 
 const route = useRoute();
 const router = useRouter();
@@ -35,16 +32,18 @@ const avatarUrl = computed(() => (
     || state.user?.avatarUrl
     || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'
 ));
-
-const unreadCount = ref(0);
-const recentNotifications = ref([]);
-const notificationsLoading = ref(false);
-const notificationError = ref('');
-const markingAllRead = ref(false);
-let notificationPollInterval = null;
-let unsubscribeNotificationStream = null;
-const messageUnreadCount = ref(0);
-let unsubscribeMessageStream = null;
+const {
+    displayMessageUnreadCount,
+    displayUnreadCount,
+    fetchRecentNotifications,
+    markingAllRead,
+    messageUnreadCount,
+    notificationError,
+    notificationsLoading,
+    recentNotifications,
+    refreshUnreadCounts,
+    unreadCount
+} = useHeaderNotifications(isLoggedIn);
 
 const submitSearch = () => {
     const q = keyword.value.trim();
@@ -136,37 +135,6 @@ const handleDocumentClick = (event) => {
     }
 };
 
-const fetchUnreadCount = async () => {
-    if (!isLoggedIn.value) {
-        unreadCount.value = 0;
-        return;
-    }
-    try {
-        const result = await getNotificationUnreadCountApi();
-        unreadCount.value = result.count || 0;
-    } catch (e) {
-        console.error('Failed to fetch unread count:', e);
-    }
-};
-
-const fetchRecentNotifications = async () => {
-    if (!isLoggedIn.value) {
-        recentNotifications.value = [];
-        notificationError.value = '';
-        return;
-    }
-    notificationsLoading.value = true;
-    notificationError.value = '';
-    try {
-        const result = await getRecentNotificationsApi(5);
-        recentNotifications.value = result || [];
-    } catch (e) {
-        notificationError.value = e.message || '通知加载失败，请稍后重试';
-    } finally {
-        notificationsLoading.value = false;
-    }
-};
-
 const toggleNotifications = () => {
     notificationOpen.value = !notificationOpen.value;
     if (notificationOpen.value) {
@@ -213,113 +181,29 @@ const handleMarkAllRead = async () => {
     }
 };
 
-const displayUnreadCount = computed(() => {
-    if (unreadCount.value <= 0) return '';
-    if (unreadCount.value > 99) return '99+';
-    return unreadCount.value;
-});
-
-const displayMessageUnreadCount = computed(() => {
-    if (messageUnreadCount.value <= 0) return '';
-    if (messageUnreadCount.value > 99) return '99+';
-    return messageUnreadCount.value;
-});
-
-const fetchMessageUnreadCount = async () => {
-    if (!isLoggedIn.value) {
-        messageUnreadCount.value = 0;
-        return;
-    }
-    try {
-        const result = await getMessageUnreadCountApi();
-        messageUnreadCount.value = result.count || 0;
-    } catch (e) {
-        console.error('Failed to fetch message unread count:', e);
-    }
-};
-
-const startNotificationSync = () => {
-    fetchUnreadCount();
-    fetchMessageUnreadCount();
-    // 通知 SSE
-    if (unsubscribeNotificationStream) {
-        unsubscribeNotificationStream();
-        unsubscribeNotificationStream = null;
-    }
-    unsubscribeNotificationStream = subscribeNotificationStream((count) => {
-        unreadCount.value = count;
-    });
-    // 私信 SSE
-    if (unsubscribeMessageStream) {
-        unsubscribeMessageStream();
-        unsubscribeMessageStream = null;
-    }
-    unsubscribeMessageStream = subscribeMessageStream(
-        () => { fetchMessageUnreadCount(); },
-        (count) => { messageUnreadCount.value = count; }
-    );
-    // 兜底轮询（SSE 不可用时）
-    if (notificationPollInterval) {
-        clearInterval(notificationPollInterval);
-    }
-    notificationPollInterval = setInterval(() => {
-        fetchUnreadCount();
-        fetchMessageUnreadCount();
-    }, 60000);
-};
-
-const stopNotificationSync = () => {
-    unreadCount.value = 0;
-    messageUnreadCount.value = 0;
-    recentNotifications.value = [];
-    if (unsubscribeNotificationStream) {
-        unsubscribeNotificationStream();
-        unsubscribeNotificationStream = null;
-    }
-    if (unsubscribeMessageStream) {
-        unsubscribeMessageStream();
-        unsubscribeMessageStream = null;
-    }
-    if (notificationPollInterval) {
-        clearInterval(notificationPollInterval);
-        notificationPollInterval = null;
-    }
-};
-
-watch(isLoggedIn, (loggedIn) => {
-    if (loggedIn) {
-        startNotificationSync();
-    } else {
-        stopNotificationSync();
-    }
-}, { immediate: true });
-
 onMounted(() => {
     document.addEventListener('click', handleDocumentClick);
     window.addEventListener('notifications:refresh', handleNotificationsRefresh);
+    window.addEventListener('messages:refresh', handleMessagesRefresh);
 });
 
 onUnmounted(() => {
     document.removeEventListener('click', handleDocumentClick);
     document.removeEventListener('keydown', handleSearchKeydown);
     document.body.classList.remove('mobile-search-open');
-    if (notificationPollInterval) {
-        clearInterval(notificationPollInterval);
-    }
-    if (unsubscribeNotificationStream) {
-        unsubscribeNotificationStream();
-    }
-    if (unsubscribeMessageStream) {
-        unsubscribeMessageStream();
-    }
     window.removeEventListener('notifications:refresh', handleNotificationsRefresh);
+    window.removeEventListener('messages:refresh', handleMessagesRefresh);
 });
 
 const handleNotificationsRefresh = () => {
-    fetchUnreadCount();
+    refreshUnreadCounts();
     if (notificationOpen.value) {
         fetchRecentNotifications();
     }
+};
+
+const handleMessagesRefresh = () => {
+    refreshUnreadCounts();
 };
 </script>
 
@@ -390,7 +274,10 @@ const handleNotificationsRefresh = () => {
                                 <path d="M5.5 7.5h9M5.5 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                             </svg>
                         </span>
-                        <span v-if="displayMessageUnreadCount" class="unread-badge">{{ displayMessageUnreadCount }}</span>
+                        <span
+                            class="unread-badge"
+                            :class="{ visible: Boolean(displayMessageUnreadCount) }"
+                        >{{ displayMessageUnreadCount || '0' }}</span>
                     </RouterLink>
                     <div
                         ref="notificationRef"
@@ -409,7 +296,10 @@ const handleNotificationsRefresh = () => {
                                     <path d="M8.25 15a1.75 1.75 0 0 0 3.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                                 </svg>
                             </span>
-                            <span v-if="displayUnreadCount" class="unread-badge">{{ displayUnreadCount }}</span>
+                            <span
+                                class="unread-badge"
+                                :class="{ visible: Boolean(displayUnreadCount) }"
+                            >{{ displayUnreadCount || '0' }}</span>
                         </button>
                         <div v-if="notificationOpen" class="notification-dropdown" data-testid="header-notification-dropdown">
                             <div class="notification-header">

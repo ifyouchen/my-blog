@@ -3,11 +3,12 @@ package com.myblog.interfaces.rest.controller;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
 import com.myblog.application.dto.UserSearchDTO;
-import com.myblog.application.service.ArticleAppService;
 import com.myblog.application.service.ColumnAppService;
 import com.myblog.application.service.SearchHistoryAppService;
 import com.myblog.application.service.UserAppService;
 import com.myblog.infrastructure.security.AuthContext;
+import com.myblog.interfaces.rest.dto.response.ColumnResponse;
+import com.myblog.interfaces.rest.mapper.RestDtoMapper;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -34,13 +36,16 @@ public class SearchController {
     private final UserAppService userAppService;
     private final ColumnAppService columnAppService;
     private final SearchHistoryAppService searchHistoryAppService;
+    private final RestDtoMapper restDtoMapper;
 
     public SearchController(UserAppService userAppService,
                             ColumnAppService columnAppService,
-                            SearchHistoryAppService searchHistoryAppService) {
+                            SearchHistoryAppService searchHistoryAppService,
+                            RestDtoMapper restDtoMapper) {
         this.userAppService = userAppService;
         this.columnAppService = columnAppService;
         this.searchHistoryAppService = searchHistoryAppService;
+        this.restDtoMapper = restDtoMapper;
     }
 
     /**
@@ -70,13 +75,22 @@ public class SearchController {
      * @return 专栏分页结果
      */
     @GetMapping("/columns")
-    public Result<PageResult<ColumnDTO>> searchColumns(
+    public Result<PageResult<ColumnResponse>> searchColumns(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {
         Long currentUserId = AuthContext.getCurrentUserId();
         PageResult<ColumnDTO> result = columnAppService.searchColumns(keyword, page, pageSize, currentUserId);
-        return Result.success(result);
+        List<ColumnResponse> items = new ArrayList<ColumnResponse>(result.getItems().size());
+        for (ColumnDTO item : result.getItems()) {
+            items.add(restDtoMapper.toPublicResponse(item));
+        }
+        return Result.success(new PageResult<ColumnResponse>(
+            items,
+            result.getPage(),
+            result.getPageSize(),
+            result.getTotal()
+        ));
     }
 
     /**

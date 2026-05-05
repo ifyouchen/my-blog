@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {useSession} from '@/stores/session';
 import {useToast} from '@/composables/useToast';
@@ -13,9 +13,11 @@ import {
     getMessagesApi,
     sendMessageApi,
     markMessagesReadApi,
-    getMessageUnreadCountApi,
     subscribeMessageStream
 } from '@/api/messages';
+import EmojiPicker from '@/components/EmojiPicker.vue';
+import UserHoverCard from '@/components/UserHoverCard.vue';
+import { formatRelativeTime, formatMessageTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
@@ -46,7 +48,41 @@ const state = reactive({
 });
 
 const messageContainer = ref(null);
+const messageInputRef = ref(null);
 const messageInput = ref('');
+const emojiPickerOpen = ref(false);
+const emojiPickerRef = ref(null);
+
+const messagesCache = new Map();
+
+const isMine = (msg) => String(msg.senderId) === String(sessionState.user?.id);
+
+const buildUser = (msg) => ({
+  id: msg.senderId,
+  avatarUrl: msg.senderAvatar || otherParticipant.value?.avatarUrl,
+  nickname: msg.senderName || otherParticipant.value?.nickname || otherParticipant.value?.username,
+});
+
+const groupedMessages = computed(() => {
+  const list = [];
+  let prevSenderId = null;
+  const TIME_GAP = 5 * 60 * 1000;
+  let prevTime = 0;
+
+  for (let i = 0; i < state.messages.length; i++) {
+    const msg = state.messages[i];
+    const msgTime = msg.createdAt ? new Date(msg.createdAt).getTime() : 0;
+    const showTimeDivider = i === 0 || (msgTime - prevTime > TIME_GAP);
+    const showAvatar = i === 0
+      || msg.senderId !== prevSenderId
+      || (msgTime - prevTime > TIME_GAP);
+
+    list.push({ ...msg, showAvatar, showTimeDivider });
+    prevSenderId = msg.senderId;
+    prevTime = msgTime;
+  }
+  return list;
+});
 
 const otherParticipant = computed(() => {
     if (!state.activeConversationId) return null;
@@ -59,6 +95,9 @@ const loadConversations = async () => {
     try {
         const result = await getConversationsApi();
         state.conversations = result.items || [];
+        if (state.activeConversationId) {
+            clearConversationUnread(state.activeConversationId);
+        }
     } catch (e) {
         state.conversationsError = e.message || '加载会话列表失败';
     } finally {
@@ -66,10 +105,44 @@ const loadConversations = async () => {
     }
 };
 
+const clearConversationUnread = (conversationId) => {
+    const conv = state.conversations.find(c => c.id === conversationId);
+    if (conv) {
+        conv.unreadCount = 0;
+    }
+};
+
+const refreshHeaderMessageUnread = () => {
+    window.dispatchEvent(new CustomEvent('messages:refresh'));
+};
+
+const markActiveConversationRead = async (conversationId) => {
+    clearConversationUnread(conversationId);
+    try {
+        await markMessagesReadApi(conversationId);
+        clearConversationUnread(conversationId);
+        refreshHeaderMessageUnread();
+    } catch {
+        // 已读状态是即时体验优化，失败时不打断当前聊天。
+    }
+};
+
 const loadMessages = async (conversationId, append = false) => {
     if (!append) {
+        const cached = messagesCache.get(conversationId);
+        if (cached) {
+            state.messages = cached.messages;
+            state.totalMessages = cached.total;
+            state.hasMore = cached.hasMore;
+            state.page = cached.page;
+            state.messagesLoading = false;
+            state.messagesError = '';
+            nextTick(() => scrollToBottom());
+            return;
+        }
         state.messagesLoading = true;
         state.messagesError = '';
+        state.messages = [];
         state.page = 1;
         state.hasMore = true;
     }
@@ -87,13 +160,23 @@ const loadMessages = async (conversationId, append = false) => {
             state.messages = items.reverse();
         }
         state.hasMore = state.messages.length < state.totalMessages;
-        // 标记已读
-        await markMessagesReadApi(conversationId).catch(() => {});
+        if (!append) {
+            messagesCache.set(conversationId, {
+                messages: state.messages,
+                total: state.totalMessages,
+                hasMore: state.hasMore,
+                page: state.page,
+            });
+        }
+        await markActiveConversationRead(conversationId);
     } catch (e) {
         state.messagesError = e.message || '加载消息失败';
     } finally {
         state.messagesLoading = false;
         state.loadingMore = false;
+        if (!append) {
+            nextTick(() => scrollToBottom());
+        }
     }
 };
 
@@ -101,7 +184,7 @@ const selectConversation = async (conv) => {
     state.activeConversationId = conv.id;
     await loadMessages(conv.id);
     // 更新未读计数
-    conv.unreadCount = 0;
+    clearConversationUnread(conv.id);
     // 更新 URL
     await router.replace({ query: { ...route.query }, params: { conversationId: String(conv.id) } });
 };
@@ -117,12 +200,16 @@ const sendMessage = async () => {
         });
         state.messages.push(msg);
         messageInput.value = '';
+        messagesCache.delete(state.activeConversationId);
         // 滚动到底部
         scrollToBottom();
     } catch (e) {
         toast.error(e.message || '发送失败');
     } finally {
         state.sending = false;
+        // 等 sending 变为 false（textarea 解除禁用）后再聚焦
+        await nextTick();
+        messageInputRef.value?.focus();
     }
 };
 
@@ -156,6 +243,24 @@ const handleKeydown = (e) => {
     }
 };
 
+const insertEmoji = (emojiChar) => {
+  const textarea = messageInputRef.value;
+  if (!textarea) {
+    messageInput.value += emojiChar;
+    emojiPickerOpen.value = false;
+    return;
+  }
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = messageInput.value;
+  messageInput.value = text.substring(0, start) + emojiChar + text.substring(end);
+  emojiPickerOpen.value = false;
+  nextTick(() => {
+    textarea.selectionStart = textarea.selectionEnd = start + emojiChar.length;
+    textarea.focus();
+  });
+};
+
 const loadMore = async () => {
     if (!state.activeConversationId || state.loadingMore || !state.hasMore) return;
     const el = messageContainer.value;
@@ -173,6 +278,40 @@ const scrollToBottom = () => {
     }, 50);
 };
 
+const startResize = (e) => {
+  const handle = e.currentTarget;
+  const inputArea = handle.nextElementSibling;
+  const startY = e.clientY;
+  const startHeight = inputArea.offsetHeight;
+
+  const onMove = (ev) => {
+    const diff = startY - ev.clientY;
+    const newHeight = Math.max(60, Math.min(400, startHeight + diff));
+    inputArea.style.height = newHeight + 'px';
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+};
+
+const handleEmojiPickerClickOutside = (event) => {
+  if (emojiPickerOpen.value
+      && emojiPickerRef.value
+      && !emojiPickerRef.value.contains(event.target)
+      && !event.target.closest('.emoji-trigger-btn')) {
+    emojiPickerOpen.value = false;
+  }
+};
+
 // SSE
 let unsubscribeMessageStream = null;
 
@@ -182,23 +321,28 @@ const setupSSE = () => {
     }
     unsubscribeMessageStream = subscribeMessageStream(
         // onMessage
-        (data) => {
+        async (data) => {
             // 如果当前在对应的会话中，追加消息
             if (state.activeConversationId && data.conversationId === state.activeConversationId) {
                 state.messages.push({
-                    id: Date.now(),
+                    id: data.id || Date.now(),
                     conversationId: data.conversationId,
                     senderId: data.senderId,
                     senderName: data.senderName,
                     senderAvatar: data.senderAvatar,
                     content: data.content,
                     createdAt: data.createdAt,
-                    read: false
+                    read: true
                 });
+                await markActiveConversationRead(data.conversationId);
+                messagesCache.delete(data.conversationId);
                 scrollToBottom();
+                await loadConversations();
+                clearConversationUnread(data.conversationId);
+                return;
             }
             // 刷新会话列表
-            loadConversations();
+            await loadConversations();
         },
         // onUnread
         () => {}
@@ -208,6 +352,7 @@ const setupSSE = () => {
 onMounted(async () => {
     await loadConversations();
     setupSSE();
+    document.addEventListener('click', handleEmojiPickerClickOutside);
 
     // 如果路由中有 conversationId，自动选中
     const convId = route.params.conversationId;
@@ -232,6 +377,7 @@ watch(() => route.params.conversationId, (newId) => {
 });
 
 onUnmounted(() => {
+    document.removeEventListener('click', handleEmojiPickerClickOutside);
     if (unsubscribeMessageStream) {
         unsubscribeMessageStream();
     }
@@ -242,6 +388,13 @@ watch(() => state.messages.length, () => {
         scrollToBottom();
     }
 });
+
+watch(() => state.sending, (sending) => {
+  if (sending) {
+    emojiPickerOpen.value = false;
+  }
+});
+
 </script>
 
 <template>
@@ -278,7 +431,7 @@ watch(() => state.messages.length, () => {
                             <path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4v7.5a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
-                    <div class="conv-time" v-if="conv.lastMessageAt">{{ conv.lastMessageAt.slice(5, 16) }}</div>
+                    <div class="conv-time" v-if="conv.lastMessageAt">{{ formatRelativeTime(conv.lastMessageAt) }}</div>
                 </div>
             </div>
         </aside>
@@ -287,17 +440,22 @@ watch(() => state.messages.length, () => {
         <main class="conversation-detail-panel" :class="{ 'detail-active': !!state.activeConversationId }">
             <template v-if="state.activeConversationId">
                 <div class="message-header">
-                    <button class="back-btn" @click="router.push('/messages')">&larr;</button>
-                    <img
-                        v-if="otherParticipant?.avatarUrl"
-                        class="message-header-avatar"
-                        :src="otherParticipant.avatarUrl"
-                        alt=""
-                    >
-                    <span v-else class="message-header-placeholder">{{ (otherParticipant?.nickname || otherParticipant?.username || '?')[0] }}</span>
-                    <span class="message-header-name">
-                        {{ otherParticipant?.nickname || otherParticipant?.username || '消息' }}
-                    </span>
+                    <button class="back-btn" @click="router.push('/messages')">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </button>
+                    <div class="message-header-info">
+                        <UserHoverCard
+                            v-if="otherParticipant"
+                            :user="otherParticipant"
+                            variant="name"
+                            name-class="message-header-name"
+                            trigger="click"
+                        />
+                        <span v-else class="message-header-name">消息</span>
+                        <span class="message-header-subtitle">在线</span>
+                    </div>
                 </div>
 
                 <div ref="messageContainer" class="message-list" @scroll="loadMore">
@@ -306,44 +464,77 @@ watch(() => state.messages.length, () => {
                     <template v-else>
                         <div v-if="state.loadingMore" class="panel-state-text loading">加载更多...</div>
                         <div v-if="!state.messages.length" class="panel-state-text">暂无消息，发送第一条消息吧</div>
-                        <div
-                            v-for="msg in state.messages"
-                            :key="msg.id"
-                            class="message-item"
-                            :class="{ 'message-self': String(msg.senderId) === String(sessionState.user?.id) }"
-                        >
-                            <img
-                                v-if="String(msg.senderId) !== String(sessionState.user?.id)"
-                                class="message-avatar"
-                                :src="msg.senderAvatar || otherParticipant?.avatarUrl"
-                                alt=""
+                        <template v-for="msg in groupedMessages" :key="msg.id">
+                            <div v-if="msg.showTimeDivider" class="message-time-divider">
+                                {{ formatMessageTime(msg.createdAt) }}
+                            </div>
+                            <div
+                                class="message-item"
+                                :class="{ 'message-self': isMine(msg) }"
                             >
-                            <div class="message-body">
-                                <div class="message-bubble">
-                                    <div class="message-content">{{ msg.content }}</div>
-                                    <div class="message-meta">
-                                        <span class="message-time">{{ msg.createdAt ? msg.createdAt.slice(5, 16) : '' }}</span>
+                                <img
+                                    v-if="!isMine(msg) && msg.showAvatar"
+                                    class="message-avatar"
+                                    :src="msg.senderAvatar || otherParticipant?.avatarUrl"
+                                    alt=""
+                                >
+                                <div v-else-if="!isMine(msg)" class="message-avatar-spacer"></div>
+                                <div class="message-body">
+                                    <div class="message-bubble">
+                                        <div class="message-content">{{ msg.content }}</div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </template>
                     </template>
                 </div>
 
+                <div class="input-resize-handle" @mousedown="startResize">
+                    <div class="input-resize-handle-grip"></div>
+                </div>
                 <div class="message-input-area">
-                    <textarea
-                        v-model="messageInput"
-                        class="message-input"
-                        placeholder="输入消息..."
-                        rows="2"
-                        :disabled="state.sending"
-                        @keydown="handleKeydown"
-                    ></textarea>
-                    <button
-                        class="send-btn"
-                        :disabled="state.sending || !messageInput.trim()"
-                        @click="sendMessage"
-                    >{{ state.sending ? '发送中...' : '发送' }}</button>
+                    <div class="input-toolbar">
+                        <div class="input-toolbar-actions">
+                            <button
+                                class="emoji-trigger-btn"
+                                type="button"
+                                :disabled="state.sending"
+                                title="选择表情"
+                                @click.stop="emojiPickerOpen = !emojiPickerOpen"
+                            >
+                                <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                                    <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.4"/>
+                                    <circle cx="7" cy="8" r="1" fill="currentColor"/>
+                                    <circle cx="13" cy="8" r="1" fill="currentColor"/>
+                                    <path d="M6 13c1.2 1.2 2.8 2 4.5 2s3.3-.8 4.5-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div
+                            v-if="emojiPickerOpen"
+                            ref="emojiPickerRef"
+                            class="emoji-picker-panel"
+                            @click.stop
+                        >
+                            <EmojiPicker @select="insertEmoji" />
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea
+                            ref="messageInputRef"
+                            v-model="messageInput"
+                            class="message-input"
+                            placeholder="输入消息..."
+                            rows="3"
+                            :disabled="state.sending"
+                            @keydown="handleKeydown"
+                        ></textarea>
+                        <button
+                            class="send-btn"
+                            :disabled="state.sending || !messageInput.trim()"
+                            @click="sendMessage"
+                        >{{ state.sending ? '发送中...' : '发送' }}</button>
+                    </div>
                 </div>
             </template>
 
@@ -359,7 +550,7 @@ watch(() => state.messages.length, () => {
 .messages-page {
     display: flex;
     height: calc(100vh - 64px);
-    max-width: 1000px;
+    max-width: 960px;
     margin: 0 auto;
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
@@ -368,7 +559,7 @@ watch(() => state.messages.length, () => {
 }
 
 .conversation-list-panel {
-    width: 320px;
+    width: 260px;
     flex-shrink: 0;
     border-right: 1px solid var(--line);
     display: flex;
@@ -399,6 +590,7 @@ watch(() => state.messages.length, () => {
     cursor: pointer;
     transition: background 0.12s;
     align-items: center;
+    position: relative;
 }
 
 .conversation-item:hover {
@@ -409,28 +601,39 @@ watch(() => state.messages.length, () => {
     background: var(--brand-soft);
 }
 
+.conversation-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    background: var(--brand);
+    border-radius: 0 2px 2px 0;
+}
+
 .conv-avatar {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
 }
 
 .conv-avatar img {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     object-fit: cover;
 }
 
 .avatar-placeholder {
     display: flex;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--brand);
     color: #fff;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     align-items: center;
     justify-content: center;
@@ -459,8 +662,8 @@ watch(() => state.messages.length, () => {
 }
 
 .conv-name {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 500;
     color: var(--text-strong);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -473,13 +676,14 @@ watch(() => state.messages.length, () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
 .conv-time {
     font-size: 11px;
     color: var(--muted);
     flex-shrink: 0;
+    align-self: flex-start;
 }
 
 .conv-delete-btn {
@@ -518,56 +722,71 @@ watch(() => state.messages.length, () => {
 .message-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: 10px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--line);
-    font-weight: 600;
 }
 
 .back-btn {
     display: none;
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    color: var(--text);
-    padding: 4px 8px;
-}
-
-.message-header-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.message-header-placeholder {
-    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--brand);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: background 0.1s;
+}
+
+.back-btn:hover {
+    background: var(--surface-soft);
+}
+
+.message-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.message-header-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-header-subtitle {
+    font-size: 11px;
+    color: var(--muted);
 }
 
 .message-list {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding: 16px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 2px;
+}
+
+.message-time-divider {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin: 10px 0 6px;
 }
 
 .message-item {
     display: flex;
     gap: 10px;
     max-width: 70%;
+    margin-top: 2px;
 }
 
 .message-self {
@@ -576,23 +795,28 @@ watch(() => state.messages.length, () => {
 }
 
 .message-avatar {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
     align-self: flex-end;
 }
 
+.message-avatar-spacer {
+    width: 44px;
+    height: 0;
+    flex-shrink: 0;
+}
+
 .message-body {
     display: flex;
     flex-direction: column;
-    gap: 4px;
 }
 
 .message-bubble {
-    padding: 10px 14px;
-    border-radius: 12px;
+    padding: 9px 14px;
+    border-radius: 14px;
     background: var(--surface-soft);
     font-size: 14px;
     line-height: 1.5;
@@ -602,29 +826,79 @@ watch(() => state.messages.length, () => {
 .message-self .message-bubble {
     background: var(--brand);
     color: #fff;
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 6px;
 }
 
 .message-item:not(.message-self) .message-bubble {
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 6px;
 }
 
-.message-meta {
-    font-size: 11px;
-    margin-top: 4px;
-    opacity: 0.7;
+.input-resize-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 6px;
+    cursor: ns-resize;
+    background: transparent;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.input-resize-handle:hover {
+    background: var(--surface-soft);
+}
+
+.input-resize-handle:active {
+    background: var(--surface-soft);
+}
+
+.input-resize-handle-grip {
+    width: 32px;
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.input-resize-handle:hover .input-resize-handle-grip {
+    opacity: 1;
 }
 
 .message-input-area {
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+}
+
+.input-toolbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 16px 0;
+    min-height: 28px;
+    flex-shrink: 0;
+}
+
+.input-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.input-wrapper {
     display: flex;
     gap: 8px;
-    padding: 12px 16px;
-    border-top: 1px solid var(--line);
+    padding: 8px 16px 12px;
     align-items: flex-end;
+    flex: 1;
+    min-height: 0;
 }
 
 .message-input {
     flex: 1;
+    align-self: stretch;
     padding: 8px 12px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
@@ -632,16 +906,51 @@ watch(() => state.messages.length, () => {
     color: var(--text);
     font: inherit;
     font-size: 14px;
+    line-height: 1.4;
     resize: none;
     outline: 0;
+    min-height: 36px;
 }
 
 .message-input:focus {
     border-color: var(--brand);
 }
 
+.emoji-trigger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.emoji-trigger-btn:hover:not(:disabled) {
+  color: var(--brand);
+  background: var(--surface-soft);
+}
+
+.emoji-trigger-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.emoji-picker-panel {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 16px;
+  z-index: 200;
+}
+
 .send-btn {
     padding: 8px 20px;
+    min-height: 36px;
     background: var(--brand);
     color: #fff;
     border: none;

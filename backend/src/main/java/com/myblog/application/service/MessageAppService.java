@@ -216,7 +216,17 @@ public class MessageAppService {
         if (currentUserId == null) {
             return 0L;
         }
-        return messageRepository.countTotalUnread(currentUserId);
+        return countUnreadForUser(currentUserId);
+    }
+
+    /**
+     * 获取指定用户的未读消息总数。
+     */
+    public long countUnreadForUser(Long userId) {
+        if (userId == null) {
+            return 0L;
+        }
+        return messageRepository.countTotalUnread(userId);
     }
 
     private ConversationDTO toConversationDTO(Conversation conversation, Long currentUserId) {

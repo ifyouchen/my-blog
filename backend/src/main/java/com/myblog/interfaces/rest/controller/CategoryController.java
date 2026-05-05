@@ -84,14 +84,15 @@ public class CategoryController {
     public Result<PageResult<ArticleResponse>> getCategoryArticles(@PathVariable Long id,
                                                                    @RequestParam(defaultValue = "1") int page,
                                                                    @RequestParam(defaultValue = "10") int pageSize,
-                                                                   @RequestParam(defaultValue = "latest") String sort) {
+                                                                   @RequestParam(defaultValue = "latest")
+                                                                   String sort) {
         CategoryDTO category = categoryAppService.getCategory(id);
         ArticlePageQuery query = new ArticlePageQuery(page, pageSize, null, category.getName(), null, sort);
         query.setCurrentUserId(AuthContext.getCurrentUserId());
         PageResult<ArticleDTO> pageResult = articleAppService.pagePublishedArticles(query);
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO item : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(new PageResult<ArticleResponse>(
             items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()

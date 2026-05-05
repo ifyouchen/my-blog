@@ -218,7 +218,7 @@ public class MessageController {
             messageData.put("createdAt", dto.getCreatedAt());
             pushNewMessage(receiverId, messageData);
 
-            long unread = messageAppService.countUnread();
+            long unread = messageAppService.countUnreadForUser(receiverId);
             pushUnreadCount(receiverId, unread);
         }
 

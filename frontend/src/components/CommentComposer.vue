@@ -30,13 +30,17 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    readonly: {
+        type: Boolean,
+        default: false
+    },
     showCancel: {
         type: Boolean,
         default: false
     }
 });
 
-const emit = defineEmits(['update:modelValue', 'submit', 'cancel']);
+const emit = defineEmits(['update:modelValue', 'submit', 'cancel', 'activate']);
 
 const avatarSrc = computed(() => {
     return props.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80';
@@ -52,8 +56,12 @@ const avatarSrc = computed(() => {
                 class="comment-composer-input"
                 :rows="compact ? 3 : 4"
                 :placeholder="placeholder"
+                :readonly="readonly"
+                :aria-readonly="readonly"
                 data-testid="comment-composer-input"
-                @input="emit('update:modelValue', $event.target.value)"
+                @focus="readonly && emit('activate')"
+                @click="readonly && emit('activate')"
+                @input="!readonly && emit('update:modelValue', $event.target.value)"
             />
             <div class="comment-composer-footer">
                 <span v-if="feedback" class="comment-composer-feedback">{{ feedback }}</span>

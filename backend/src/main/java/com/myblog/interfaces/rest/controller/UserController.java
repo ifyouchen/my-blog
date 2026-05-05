@@ -17,17 +17,16 @@ import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.DeleteMapping;
 
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
@@ -73,7 +72,9 @@ public class UserController {
      */
     @GetMapping("/{id}")
     public Result<UserProfileResponse> getUserProfile(@PathVariable Long id) {
-        return Result.success(restDtoMapper.toResponse(userAppService.getUserProfile(id, AuthContext.getCurrentUserId())));
+        return Result.success(restDtoMapper.toPublicResponse(
+            userAppService.getUserProfile(id, AuthContext.getCurrentUserId())
+        ));
     }
 
     /**
@@ -88,7 +89,7 @@ public class UserController {
     public Result<PageResult<ArticleResponse>> getUserArticles(@PathVariable Long id,
                                                                @RequestParam(defaultValue = "1") int page,
                                                                @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(toArticlePage(userAppService.pagePublishedArticles(id, page, pageSize)));
+        return Result.success(toArticlePage(userAppService.pagePublishedArticles(id, page, pageSize), true));
     }
 
     /**
@@ -103,7 +104,7 @@ public class UserController {
                                                             @RequestParam(defaultValue = "3") int limit) {
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO articleDTO : userAppService.listHotPublishedArticles(id, limit)) {
-            items.add(restDtoMapper.toResponse(articleDTO));
+            items.add(restDtoMapper.toPublicResponse(articleDTO));
         }
         return Result.success(items);
     }
@@ -118,7 +119,7 @@ public class UserController {
     public Result<List<UserResponse>> getUserFollowers(@PathVariable Long id) {
         List<UserResponse> items = new ArrayList<UserResponse>();
         for (com.myblog.application.dto.UserDTO userDTO : followAppService.listFollowers(id)) {
-            items.add(restDtoMapper.toResponse(userDTO));
+            items.add(restDtoMapper.toPublicResponse(userDTO));
         }
         return Result.success(items);
     }
@@ -133,7 +134,7 @@ public class UserController {
     public Result<List<UserResponse>> getUserFollowing(@PathVariable Long id) {
         List<UserResponse> items = new ArrayList<UserResponse>();
         for (com.myblog.application.dto.UserDTO userDTO : followAppService.listUserFollowing(id)) {
-            items.add(restDtoMapper.toResponse(userDTO));
+            items.add(restDtoMapper.toPublicResponse(userDTO));
         }
         return Result.success(items);
     }
@@ -167,7 +168,10 @@ public class UserController {
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        return Result.success(toArticlePage(userAppService.pageMyArticles(userId, page, pageSize, status, keyword)));
+        return Result.success(toArticlePage(
+            userAppService.pageMyArticles(userId, page, pageSize, status, keyword),
+            false
+        ));
     }
 
     /**
@@ -251,7 +255,10 @@ public class UserController {
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        return Result.success(toArticlePage(followAppService.pageFollowingFeed(userId, page, pageSize, sort, category)));
+        return Result.success(toArticlePage(
+            followAppService.pageFollowingFeed(userId, page, pageSize, sort, category),
+            true
+        ));
     }
 
     /**
@@ -333,12 +340,19 @@ public class UserController {
         ));
     }
 
-    private PageResult<ArticleResponse> toArticlePage(PageResult<ArticleDTO> pageResult) {
+    private PageResult<ArticleResponse> toArticlePage(PageResult<ArticleDTO> pageResult, boolean publicUser) {
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO articleDTO : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(articleDTO));
+            items.add(publicUser
+                ? restDtoMapper.toPublicResponse(articleDTO)
+                : restDtoMapper.toResponse(articleDTO));
         }
-        return new PageResult<ArticleResponse>(items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal());
+        return new PageResult<ArticleResponse>(
+            items,
+            pageResult.getPage(),
+            pageResult.getPageSize(),
+            pageResult.getTotal()
+        );
     }
 
     @GetMapping("/me/export/articles")
@@ -346,7 +360,9 @@ public class UserController {
                                  @RequestParam(required = false) String keyword,
                                  HttpServletResponse response) throws IOException {
         Long userId = AuthContext.getRequiredUserId();
-        String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+        String filename = "my-articles-"
+            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+            + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=" + filename);
         byte[] data = userAppService.exportMyArticlesCsv(userId, status, keyword);

@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onBeforeUnmount, ref} from 'vue';
+import {computed, onBeforeUnmount, onMounted, onUnmounted, ref} from 'vue';
 import {getUserProfileApi} from '@/api/auth';
 
 const profileCache = new Map();
@@ -30,8 +30,14 @@ const props = defineProps({
     namePrefix: {
         type: String,
         default: ''
+    },
+    trigger: {
+        type: String,
+        default: 'hover' // 'hover' | 'click'
     }
 });
+
+const isClickTrigger = computed(() => props.trigger === 'click');
 
 const showCard = ref(false);
 const loading = ref(false);
@@ -105,6 +111,29 @@ function openOnFocus() {
     loadProfile();
 }
 
+function toggleOnClick() {
+    showCard.value = !showCard.value;
+    if (showCard.value) {
+        loadProfile();
+    }
+}
+
+function handleDocumentClick(e) {
+    if (showCard.value && !e.target.closest('.user-hover-card')) {
+        showCard.value = false;
+    }
+}
+
+onMounted(() => {
+    if (isClickTrigger.value) {
+        document.addEventListener('click', handleDocumentClick);
+    }
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleDocumentClick);
+});
+
 onBeforeUnmount(() => {
     window.clearTimeout(hoverTimer);
 });
@@ -113,21 +142,28 @@ onBeforeUnmount(() => {
 <template>
     <span
         class="user-hover-card"
-        @mouseenter="openWithDelay"
-        @mouseleave="closeCard"
-        @focusin="openOnFocus"
-        @focusout="closeCard"
+        @mouseenter="!isClickTrigger ? openWithDelay() : null"
+        @mouseleave="!isClickTrigger ? closeCard() : null"
+        @focusin="!isClickTrigger ? openOnFocus() : null"
+        @focusout="!isClickTrigger ? closeCard() : null"
+        @click.stop="isClickTrigger ? toggleOnClick() : null"
     >
         <RouterLink
-            v-if="variant === 'avatar'"
+            v-if="variant === 'avatar' && !isClickTrigger"
             class="user-hover-card-trigger avatar-trigger"
             :to="profilePath"
             :aria-label="`进入 ${displayName} 的个人主页`"
         >
             <img :class="avatarClass" :src="displayAvatar" :alt="displayName" decoding="async">
         </RouterLink>
+        <span
+            v-else-if="variant === 'avatar' && isClickTrigger"
+            class="user-hover-card-trigger avatar-trigger"
+        >
+            <img :class="avatarClass" :src="displayAvatar" :alt="displayName" decoding="async">
+        </span>
         <RouterLink
-            v-else
+            v-else-if="!isClickTrigger"
             class="user-hover-card-trigger name-trigger"
             :class="[triggerClass, nameClass]"
             :to="profilePath"
@@ -135,12 +171,20 @@ onBeforeUnmount(() => {
             <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
             {{ displayName }}
         </RouterLink>
+        <span
+            v-else
+            class="user-hover-card-trigger name-trigger"
+            :class="[triggerClass, nameClass]"
+        >
+            <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
+            {{ displayName }}
+        </span>
 
         <span v-if="showCard" class="user-hover-panel" role="tooltip">
             <span class="user-hover-panel-head">
                 <img class="user-hover-panel-avatar" :src="displayAvatar" :alt="displayName" decoding="async">
                 <span class="user-hover-panel-main">
-                    <strong>{{ displayName }}</strong>
+                    <RouterLink class="user-hover-panel-name" :to="profilePath">{{ displayName }}</RouterLink>
                     <small v-if="displayUser.username">@{{ displayUser.username }}</small>
                     <small v-else>内容创作者</small>
                 </span>
@@ -154,6 +198,7 @@ onBeforeUnmount(() => {
                     <small>{{ stat.label }}</small>
                 </span>
             </span>
+            <RouterLink class="user-hover-panel-profile-btn" :to="profilePath">查看主页</RouterLink>
         </span>
     </span>
 </template>
@@ -171,6 +216,7 @@ onBeforeUnmount(() => {
     align-items: center;
     color: inherit;
     text-decoration: none;
+    cursor: pointer;
 }
 
 .name-trigger {
@@ -239,11 +285,19 @@ onBeforeUnmount(() => {
     min-width: 0;
 }
 
-.user-hover-panel-main strong {
+.user-hover-panel-main strong,
+.user-hover-panel-name {
     overflow: hidden;
     font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    color: inherit;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.user-hover-panel-name:hover {
+    color: var(--brand-strong);
 }
 
 .user-hover-panel-main small,
@@ -285,6 +339,22 @@ onBeforeUnmount(() => {
 
 .user-hover-panel-stats small {
     font-size: 12px;
+}
+
+.user-hover-panel-profile-btn {
+    display: block;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--brand);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background 0.1s;
+}
+
+.user-hover-panel-profile-btn:hover {
+    background: var(--brand-soft);
 }
 
 @media (max-width: 640px) {

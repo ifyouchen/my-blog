@@ -508,15 +508,14 @@ const handleArticleClick = (article, slot) => {
     }
 
     .featured-list {
-        display: flex;
-        overflow-x: auto;
-        padding-bottom: 2px;
-        scroll-snap-type: x proximity;
+        display: grid;
+        grid-template-columns: 1fr;
+        overflow-x: visible;
+        padding-bottom: 0;
     }
 
     .featured-list-item {
-        flex: 0 0 220px;
-        scroll-snap-align: start;
+        min-height: auto;
     }
 }
 

@@ -9273,6 +9273,43 @@ class TextClassifier(nn.Module):
 ```
 ','https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800','AI工程化',NULL,0,NULL,'ai工程化-295',NULL,NULL,0,'PUBLISHED',1488,15,3,7,'2026-03-01 04:53:35','2025-12-22 09:43:51','2025-12-22 09:43:51',NULL,0);
 
+-- 首屏和热门文章摘要优化：减少模板化文案，提升游客首次阅读的真实感。
+UPDATE `blog_article`
+SET `summary` = CASE `id`
+    WHEN 38 THEN '围绕 Java 21 与 JMH 基准测试，记录从测试夹具、预热到结果解读的完整流程，适合作为性能评估前的检查清单。'
+    WHEN 45 THEN '从 Controller 参数校验、错误提示到分组校验落地，整理 Spring Boot 接口校验在微服务中的常见写法和边界处理。'
+    WHEN 59 THEN '以服务间调用失败为起点，拆解 Spring Cloud 重试策略、退避参数和幂等保护，帮助团队把重试用得更稳。'
+    WHEN 74 THEN '梳理服务网格在流量治理、可观测性和灰度发布中的位置，并给出从传统 Spring Cloud 架构迁移时的取舍建议。'
+    WHEN 89 THEN '用几个线上常见的订单和库存场景解释 MySQL 隔离级别差异，重点放在幻读、锁等待和事务边界。'
+    WHEN 99 THEN '从源码和典型命令入手复盘 Redis 五类数据结构的内部编码，说明何时会触发空间与性能上的变化。'
+    WHEN 100 THEN '围绕 Redis 事务的 WATCH、MULTI、EXEC 组合，整理库存扣减、配置刷新等场景下的使用边界。'
+    WHEN 113 THEN '以 Vue 3 组件测试为主线，串起单元测试、异步渲染和端到端验证，帮助前端项目补上稳定回归。'
+    WHEN 120 THEN '从路由级懒加载到复杂组件拆分，说明 Vue 3 异步组件如何降低首屏压力并保持加载状态可控。'
+    WHEN 135 THEN '结合 React 18 并发特性与 Hooks 组合，展示自定义 Hook 在状态复用、请求封装和性能优化中的实战用法。'
+    WHEN 143 THEN '聚焦 TypeScript Omit 在表单模型、接口 DTO 和组件 Props 中的真实用法，顺带梳理几个容易踩坑的推导场景。'
+    WHEN 148 THEN '记录 TypeScript 项目接入 SWC 的配置步骤、构建速度收益和调试坑点，适合准备替换 Babel 的团队参考。'
+    WHEN 149 THEN '解释 namespace 在现代 TypeScript 项目中的适用边界，并对比 ES Module 场景下更推荐的组织方式。'
+    WHEN 150 THEN '通过权限映射、配置字典和响应转换示例，说明 TypeScript 映射类型如何减少重复类型声明。'
+    WHEN 151 THEN '围绕 Record 的键类型、默认值和索引访问，整理几个业务代码里容易被忽略的类型安全细节。'
+    WHEN 155 THEN '用请求解析和表单校验示例解释类型守卫的写法，帮助运行时判断和编译期收窄保持一致。'
+    WHEN 173 THEN '从入口拆分、缓存、Tree Shaking 到产物分析，复盘 Webpack 项目从能跑到好用的优化路径。'
+    WHEN 190 THEN '从测试夹具、mock 边界和覆盖率解读切入，整理 Python 测试体系中真正影响维护成本的细节。'
+    WHEN 194 THEN '拆解 Go 调度器在 goroutine、M 和 P 之间的协作方式，并结合排查案例说明如何观察运行时行为。'
+    WHEN 204 THEN '围绕 Go 并发标准库的常用组合，整理 context、sync、atomic 在服务端代码里的使用边界和排错经验。'
+    WHEN 206 THEN '从 GC 触发条件、堆增长和停顿观察入手，记录一套面向 Go 服务的排查与参数调整流程。'
+    WHEN 239 THEN '把 Kubernetes 设计模式拆成 Sidecar、Adapter、Operator 等可落地片段，说明它们适合解决哪些运维问题。'
+    WHEN 262 THEN '从登录态共享、票据刷新和多端退出出发，梳理高并发单点登录系统的核心链路设计。'
+    WHEN 266 THEN '结合授权码、客户端凭据和资源服务器职责，说明 OAuth2 在分布式系统里如何划清安全边界。'
+    WHEN 267 THEN '对比 Session、JWT、OAuth2 和 SSO 的适用场景，帮助项目在安全性、可维护性和体验之间做选择。'
+    WHEN 283 THEN '围绕提示词结构、示例选择和评测反馈，整理一套更容易复用的 Prompt 调优流程。'
+    WHEN 293 THEN '以知识库问答为例，拆解 RAG 从切分、召回到答案校验的关键步骤，重点关注可上线的工程细节。'
+    ELSE `summary`
+END
+WHERE `id` IN (
+    38, 45, 59, 74, 89, 99, 100, 113, 120, 135, 143, 148, 149, 150, 151, 155,
+    173, 190, 194, 204, 206, 239, 262, 266, 267, 283, 293
+);
+
 -- ----------------------------
 -- blog_article_tag
 -- ----------------------------
@@ -11943,6 +11980,15 @@ INSERT INTO `blog_comment` (`id`,`article_id`,`user_id`,`root_comment_id`,`paren
 (1587,295,119,NULL,NULL,'之前在线程池配置上踩过类似的坑，早点看到这篇文章就好了。','PUBLISHED',0,NULL,0,0,NULL,'2026-04-03 12:27:36','2026-04-03 12:27:36',NULL,0),
 (1588,295,152,NULL,NULL,'实测了一下泛型擦除的示例代码，确实可行。不过在Java 8环境下需要做点小调整。','PUBLISHED',0,NULL,0,0,NULL,'2026-04-14 12:45:09','2026-04-14 12:45:09',NULL,0),
 (1589,295,167,NULL,NULL,'关于虚拟线程的讲解很到位，请问在实际生产环境中如果遇到多线程安全的情况，应该怎么处理更合适？','PUBLISHED',0,NULL,0,0,NULL,'2025-12-11 18:23:13','2025-12-11 18:23:13',NULL,0);
+
+-- 清理明显测试评论，避免游客在文章页优先看到 demo 痕迹。
+UPDATE `blog_comment`
+SET `content` = CASE `content`
+    WHEN '2' THEN '这段关于 Go GC 触发时机的说明很实用，期待补充更多线上排查案例。'
+    WHEN '3' THEN '代码示例清楚，尤其是 goroutine 和 channel 的部分，读完更容易落地。'
+    ELSE `content`
+END
+WHERE `content` IN ('2', '3');
 
 -- ----------------------------
 -- blog_article_like

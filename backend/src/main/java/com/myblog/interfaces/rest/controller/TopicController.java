@@ -44,7 +44,12 @@ public class TopicController {
         for (TopicDTO item : pageResult.getItems()) {
             items.add(toResponse(item));
         }
-        return Result.success(new PageResult<>(items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()));
+        return Result.success(new PageResult<>(
+            items,
+            pageResult.getPage(),
+            pageResult.getPageSize(),
+            pageResult.getTotal()
+        ));
     }
 
     @GetMapping("/{id}")
@@ -59,9 +64,14 @@ public class TopicController {
         PageResult<ArticleDTO> pageResult = topicAppService.pageTopicArticles(id, page, pageSize);
         List<ArticleResponse> items = new ArrayList<>(pageResult.getItems().size());
         for (ArticleDTO item : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
-        return Result.success(new PageResult<>(items, pageResult.getPage(), pageResult.getPageSize(), pageResult.getTotal()));
+        return Result.success(new PageResult<>(
+            items,
+            pageResult.getPage(),
+            pageResult.getPageSize(),
+            pageResult.getTotal()
+        ));
     }
 
     private TopicResponse toResponse(TopicDTO dto) {

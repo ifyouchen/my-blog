@@ -90,7 +90,8 @@ public class ArticleController {
                                                             @RequestParam(required = false) String authorKeyword,
                                                             @RequestParam(required = false) String dateFrom,
                                                             @RequestParam(required = false) String dateTo,
-                                                            @RequestParam(defaultValue = "false") boolean followingOnly) {
+                                                            @RequestParam(defaultValue = "false")
+                                                            boolean followingOnly) {
         ArticlePageQuery query = new ArticlePageQuery(page, pageSize, keyword, category, tag, sort);
         query.setAuthorKeyword(authorKeyword);
         query.setDateFrom(dateFrom);
@@ -100,7 +101,7 @@ public class ArticleController {
         PageResult<ArticleDTO> pageResult = articleAppService.pagePublishedArticles(query);
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO item : pageResult.getItems()) {
-            items.add(restDtoMapper.toResponse(item));
+            items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(new PageResult<ArticleResponse>(
             items,
@@ -118,7 +119,7 @@ public class ArticleController {
      */
     @GetMapping("/{id}")
     public Result<ArticleResponse> getArticle(@PathVariable Long id) {
-        return Result.success(restDtoMapper.toResponse(
+        return Result.success(restDtoMapper.toPublicResponse(
             articleAppService.getArticleDetail(id, AuthContext.getCurrentUserId(), AuthContext.getRole())
         ));
     }
@@ -136,7 +137,7 @@ public class ArticleController {
         List<ArticleDTO> dtos = articleAppService.getRelatedArticles(id, limit);
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO dto : dtos) {
-            items.add(restDtoMapper.toResponse(dto));
+            items.add(restDtoMapper.toPublicResponse(dto));
         }
         return Result.success(items);
     }
@@ -297,7 +298,9 @@ public class ArticleController {
     @GetMapping("/me/export")
     public void exportMyArticles(HttpServletResponse response) throws IOException {
         Long userId = AuthContext.getRequiredUserId();
-        String filename = "my-articles-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".zip";
+        String filename = "my-articles-"
+            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+            + ".zip";
         response.setContentType("application/zip");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
         byte[] data = articleAppService.exportMyArticlesZip(userId);
@@ -316,8 +319,12 @@ public class ArticleController {
         java.util.Map<String, com.myblog.application.dto.ArticleDTO> neighbors =
             articleAppService.getArticleNeighbors(id);
         java.util.Map<String, ArticleResponse> resp = new java.util.LinkedHashMap<>();
-        resp.put("prev", neighbors.get("prev") == null ? null : restDtoMapper.toResponse(neighbors.get("prev")));
-        resp.put("next", neighbors.get("next") == null ? null : restDtoMapper.toResponse(neighbors.get("next")));
+        resp.put("prev", neighbors.get("prev") == null
+            ? null
+            : restDtoMapper.toPublicResponse(neighbors.get("prev")));
+        resp.put("next", neighbors.get("next") == null
+            ? null
+            : restDtoMapper.toPublicResponse(neighbors.get("next")));
         return Result.success(resp);
     }
 
@@ -331,7 +338,7 @@ public class ArticleController {
             sectionResponse.setTitle(section.getTitle());
             List<ArticleResponse> items = new ArrayList<ArticleResponse>();
             for (ArticleDTO item : section.getItems()) {
-                items.add(restDtoMapper.toResponse(item));
+                items.add(restDtoMapper.toPublicResponse(item));
             }
             sectionResponse.setItems(items);
             sections.add(sectionResponse);
