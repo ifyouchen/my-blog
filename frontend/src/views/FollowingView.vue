@@ -289,6 +289,13 @@ watch(() => route.query, async (query) => {
     text-decoration: none;
 }
 
+.following-author-item > div,
+.rank-author-info > div {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
 .following-author-item img,
 .rank-author-info img {
     width: 48px;
@@ -300,6 +307,7 @@ watch(() => route.query, async (query) => {
 .following-author-item strong,
 .rank-author-info a {
     color: var(--text);
+    line-height: 1.35;
     text-decoration: none;
 }
 

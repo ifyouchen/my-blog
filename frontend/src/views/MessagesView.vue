@@ -15,6 +15,7 @@ import {
     markMessagesReadApi,
     subscribeMessageStream
 } from '@/api/messages';
+import {uploadImageApi} from '@/api/uploads';
 import EmojiPicker from '@/components/EmojiPicker.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import { formatRelativeTime, formatMessageTime } from '@/utils/time';
@@ -48,14 +49,46 @@ const state = reactive({
 });
 
 const messageContainer = ref(null);
+const messageInputAreaRef = ref(null);
 const messageInputRef = ref(null);
 const messageInput = ref('');
+const pendingImageFile = ref(null);
+const pendingImageUrl = ref('');
+const previewImageSrc = ref('');
+const previewScale = ref(1);
 const emojiPickerOpen = ref(false);
 const emojiPickerRef = ref(null);
+const inputAreaHeight = ref(null);
+
+const MIN_INPUT_AREA_HEIGHT = 96;
+const MAX_INPUT_AREA_HEIGHT = 400;
+const MIN_MESSAGE_LIST_HEIGHT = 160;
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const PREVIEW_MIN_SCALE = 0.5;
+const PREVIEW_MAX_SCALE = 4;
+const PREVIEW_SCALE_STEP = 0.25;
 
 const messagesCache = new Map();
 
 const isMine = (msg) => String(msg.senderId) === String(sessionState.user?.id);
+const isUploadedImageUrl = (content) => (
+    /^\/api\/uploads\/files\/.+\.(png|jpe?g|gif|webp)$/i.test(String(content || '').trim())
+);
+const isImageMessage = (msg) => (
+    String(msg.type || 'TEXT').toUpperCase() === 'IMAGE' || isUploadedImageUrl(msg.content)
+);
+const inputBusy = computed(() => state.sending);
+const canSendMessage = computed(() => Boolean(messageInput.value.trim() || pendingImageFile.value));
+
+const messagePreview = (msg) => isImageMessage(msg) ? '[图片]' : (msg.content || '');
+const formatConversationPreview = (content) => isUploadedImageUrl(content) ? '[图片]' : (content || '');
+
+const updateConversationPreview = (conversationId, preview, lastMessageAt) => {
+    const conv = state.conversations.find(c => c.id === conversationId);
+    if (!conv) return;
+    conv.lastMessage = preview;
+    conv.lastMessageAt = lastMessageAt || conv.lastMessageAt;
+};
 
 const buildUser = (msg) => ({
   id: msg.senderId,
@@ -87,6 +120,32 @@ const groupedMessages = computed(() => {
 const otherParticipant = computed(() => {
     if (!state.activeConversationId) return null;
     return state.conversations.find(c => c.id === state.activeConversationId)?.participant || null;
+});
+
+const messageInputAreaStyle = computed(() => (
+    inputAreaHeight.value ? {height: `${inputAreaHeight.value}px`} : null
+));
+const previewImageStyle = computed(() => ({
+    transform: `scale(${previewScale.value})`
+}));
+const previewScalePercent = computed(() => `${Math.round(previewScale.value * 100)}%`);
+const previewImages = computed(() => {
+    const images = state.messages
+        .filter(isImageMessage)
+        .map(getMessageImageSrc)
+        .filter(Boolean);
+    if (pendingImageUrl.value) {
+        images.push(pendingImageUrl.value);
+    }
+    return images;
+});
+const previewImageIndex = computed(() => previewImages.value.findIndex(src => src === previewImageSrc.value));
+const canSwitchPreviewImage = computed(() => previewImages.value.length > 1);
+const previewImagePosition = computed(() => {
+    if (!previewImageSrc.value || previewImageIndex.value < 0) {
+        return '';
+    }
+    return `${previewImageIndex.value + 1} / ${previewImages.value.length}`;
 });
 
 const loadConversations = async () => {
@@ -191,18 +250,48 @@ const selectConversation = async (conv) => {
 
 const sendMessage = async () => {
     const content = messageInput.value.trim();
-    if (!content || !state.activeConversationId) return;
+    const imageFile = pendingImageFile.value;
+    if ((!content && !imageFile) || !state.activeConversationId || inputBusy.value) return;
+    const conversationId = state.activeConversationId;
     state.sending = true;
+    emojiPickerOpen.value = false;
     try {
-        const msg = await sendMessageApi({
-            conversationId: state.activeConversationId,
-            content
-        });
-        state.messages.push(msg);
+        let imageUrl = '';
+        if (imageFile) {
+            const uploaded = await uploadImageApi(imageFile, 'message');
+            if (!uploaded?.url) {
+                throw new Error('图片上传失败');
+            }
+            imageUrl = uploaded.url;
+        }
+
+        const sentMessages = [];
+        if (content) {
+            sentMessages.push(await sendMessageApi({
+                conversationId,
+                content,
+                type: 'TEXT'
+            }));
+        }
+        if (imageUrl) {
+            sentMessages.push(await sendMessageApi({
+                conversationId,
+                content: imageUrl,
+                type: 'IMAGE'
+            }));
+        }
+
+        if (state.activeConversationId === conversationId) {
+            state.messages.push(...sentMessages);
+            scrollToBottom();
+        }
+        const lastMessage = sentMessages[sentMessages.length - 1];
+        if (lastMessage) {
+            updateConversationPreview(conversationId, messagePreview(lastMessage), lastMessage.createdAt);
+        }
         messageInput.value = '';
-        messagesCache.delete(state.activeConversationId);
-        // 滚动到底部
-        scrollToBottom();
+        clearPendingImage();
+        messagesCache.delete(conversationId);
     } catch (e) {
         toast.error(e.message || '发送失败');
     } finally {
@@ -211,6 +300,166 @@ const sendMessage = async () => {
         await nextTick();
         messageInputRef.value?.focus();
     }
+};
+
+const setPendingImage = (file) => {
+    clearPendingImage();
+    pendingImageFile.value = file;
+    pendingImageUrl.value = URL.createObjectURL(file);
+};
+
+const clearPendingImage = () => {
+    if (previewImageSrc.value && previewImageSrc.value === pendingImageUrl.value) {
+        closeImagePreview();
+    }
+    if (pendingImageUrl.value) {
+        URL.revokeObjectURL(pendingImageUrl.value);
+    }
+    pendingImageFile.value = null;
+    pendingImageUrl.value = '';
+};
+
+const validatePendingImage = (file) => {
+    if (!file.type || !file.type.startsWith('image/')) {
+        toast.error('请选择图片文件');
+        return false;
+    }
+    if (file.size > IMAGE_MAX_BYTES) {
+        toast.error('私信图片不能超过 10MB');
+        return false;
+    }
+    return true;
+};
+
+const getPastedImageFile = (clipboardData) => {
+    const items = Array.from(clipboardData?.items || []);
+    for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+            return item.getAsFile();
+        }
+    }
+    const files = Array.from(clipboardData?.files || []);
+    return files.find(file => file.type?.startsWith('image/')) || null;
+};
+
+const handlePaste = (event) => {
+    if (inputBusy.value) return;
+    const file = getPastedImageFile(event.clipboardData);
+    if (!file) return;
+    event.preventDefault();
+    if (validatePendingImage(file)) {
+        setPendingImage(file);
+        emojiPickerOpen.value = false;
+        nextTick(() => messageInputRef.value?.focus());
+    }
+};
+
+const handleDropImage = (event) => {
+    if (inputBusy.value) return;
+    const file = Array.from(event.dataTransfer?.files || [])
+        .find(item => item.type?.startsWith('image/'));
+    if (!file) return;
+    event.preventDefault();
+    if (validatePendingImage(file)) {
+        setPendingImage(file);
+        nextTick(() => messageInputRef.value?.focus());
+    }
+};
+
+const handleDragOverImage = (event) => {
+    const hasImage = Array.from(event.dataTransfer?.items || [])
+        .some(item => item.kind === 'file' && item.type.startsWith('image/'));
+    if (hasImage) {
+        event.preventDefault();
+    }
+};
+
+const handleBackspacePendingImage = (event) => {
+    if (event.key === 'Backspace' && !messageInput.value && pendingImageFile.value) {
+        event.preventDefault();
+        clearPendingImage();
+        return;
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+};
+
+const getMessageImageSrc = (msg) => {
+    const content = String(msg.content || '').trim();
+    if (content) {
+        return content;
+    }
+    return '';
+};
+
+const openImagePreview = (src) => {
+    if (!src) return;
+    previewImageSrc.value = src;
+    resetPreviewZoom();
+};
+
+const closeImagePreview = () => {
+    previewImageSrc.value = '';
+    resetPreviewZoom();
+};
+
+const switchPreviewImage = (direction) => {
+    const images = previewImages.value;
+    if (!previewImageSrc.value || images.length < 2) return;
+    const currentIndex = previewImageIndex.value >= 0 ? previewImageIndex.value : 0;
+    const nextIndex = (currentIndex + direction + images.length) % images.length;
+    previewImageSrc.value = images[nextIndex];
+    resetPreviewZoom();
+};
+
+const showPreviousPreviewImage = () => {
+    switchPreviewImage(-1);
+};
+
+const showNextPreviewImage = () => {
+    switchPreviewImage(1);
+};
+
+const handlePreviewKeydown = (event) => {
+    if (event.key === 'Escape' && previewImageSrc.value) {
+        closeImagePreview();
+    } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowUp') && previewImageSrc.value) {
+        event.preventDefault();
+        showPreviousPreviewImage();
+    } else if ((event.key === 'ArrowRight' || event.key === 'ArrowDown') && previewImageSrc.value) {
+        event.preventDefault();
+        showNextPreviewImage();
+    } else if ((event.key === '+' || event.key === '=') && previewImageSrc.value) {
+        event.preventDefault();
+        zoomPreview(PREVIEW_SCALE_STEP);
+    } else if ((event.key === '-' || event.key === '_') && previewImageSrc.value) {
+        event.preventDefault();
+        zoomPreview(-PREVIEW_SCALE_STEP);
+    } else if (event.key === '0' && previewImageSrc.value) {
+        event.preventDefault();
+        resetPreviewZoom();
+    }
+};
+
+const clampPreviewScale = (value) => Math.min(PREVIEW_MAX_SCALE, Math.max(PREVIEW_MIN_SCALE, value));
+
+const zoomPreview = (delta) => {
+    previewScale.value = clampPreviewScale(Number((previewScale.value + delta).toFixed(2)));
+};
+
+const resetPreviewZoom = () => {
+    previewScale.value = 1;
+};
+
+const handlePreviewWheel = (event) => {
+    zoomPreview(event.deltaY > 0 ? -PREVIEW_SCALE_STEP : PREVIEW_SCALE_STEP);
+};
+
+const handleImageLoad = () => {
+    scrollToBottom();
 };
 
 const deleteConversation = (conv) => {
@@ -236,12 +485,7 @@ const deleteConversation = (conv) => {
     });
 };
 
-const handleKeydown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-};
+const handleKeydown = handleBackspacePendingImage;
 
 const insertEmoji = (emojiChar) => {
   const textarea = messageInputRef.value;
@@ -272,35 +516,70 @@ const loadMore = async () => {
 
 const scrollToBottom = () => {
     setTimeout(() => {
-        if (messageContainer.value) {
-            messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
-        }
+        scrollToBottomNow();
     }, 50);
 };
 
+const scrollToBottomNow = () => {
+    if (messageContainer.value) {
+        messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
+    }
+};
+
+const isMessageListNearBottom = () => {
+    const el = messageContainer.value;
+    if (!el) return false;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+};
+
+const getMaxInputAreaHeight = () => {
+    const panel = messageInputAreaRef.value?.closest('.conversation-detail-panel');
+    const header = panel?.querySelector('.message-header');
+    const handle = panel?.querySelector('.input-resize-handle');
+    if (!panel || !header || !handle) {
+        return MAX_INPUT_AREA_HEIGHT;
+    }
+
+    const availableHeight = panel.clientHeight
+        - header.offsetHeight
+        - handle.offsetHeight
+        - MIN_MESSAGE_LIST_HEIGHT;
+    return Math.max(MIN_INPUT_AREA_HEIGHT, Math.min(MAX_INPUT_AREA_HEIGHT, availableHeight));
+};
+
 const startResize = (e) => {
-  const handle = e.currentTarget;
-  const inputArea = handle.nextElementSibling;
-  const startY = e.clientY;
-  const startHeight = inputArea.offsetHeight;
+    e.preventDefault();
+    const inputArea = messageInputAreaRef.value;
+    if (!inputArea) return;
 
-  const onMove = (ev) => {
-    const diff = startY - ev.clientY;
-    const newHeight = Math.max(60, Math.min(400, startHeight + diff));
-    inputArea.style.height = newHeight + 'px';
-  };
+    const startY = e.clientY;
+    const startHeight = inputArea.offsetHeight;
+    const keepPinnedToBottom = isMessageListNearBottom();
 
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-  };
+    const onMove = (ev) => {
+        const diff = startY - ev.clientY;
+        const maxHeight = getMaxInputAreaHeight();
+        inputAreaHeight.value = Math.max(
+            MIN_INPUT_AREA_HEIGHT,
+            Math.min(maxHeight, startHeight + diff)
+        );
 
-  document.body.style.cursor = 'ns-resize';
-  document.body.style.userSelect = 'none';
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+        if (keepPinnedToBottom) {
+            nextTick(() => scrollToBottomNow());
+        }
+    };
+
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
 };
 
 const handleEmojiPickerClickOutside = (event) => {
@@ -331,6 +610,7 @@ const setupSSE = () => {
                     senderName: data.senderName,
                     senderAvatar: data.senderAvatar,
                     content: data.content,
+                    type: data.type || 'TEXT',
                     createdAt: data.createdAt,
                     read: true
                 });
@@ -353,6 +633,7 @@ onMounted(async () => {
     await loadConversations();
     setupSSE();
     document.addEventListener('click', handleEmojiPickerClickOutside);
+    document.addEventListener('keydown', handlePreviewKeydown);
 
     // 如果路由中有 conversationId，自动选中
     const convId = route.params.conversationId;
@@ -378,6 +659,8 @@ watch(() => route.params.conversationId, (newId) => {
 
 onUnmounted(() => {
     document.removeEventListener('click', handleEmojiPickerClickOutside);
+    document.removeEventListener('keydown', handlePreviewKeydown);
+    clearPendingImage();
     if (unsubscribeMessageStream) {
         unsubscribeMessageStream();
     }
@@ -423,7 +706,7 @@ watch(() => state.sending, (sending) => {
                     </div>
                     <div class="conv-info">
                         <div class="conv-name">{{ conv.participant?.nickname || conv.participant?.username || '未知用户' }}</div>
-                        <div class="conv-preview">{{ conv.lastMessage || '' }}</div>
+                        <div class="conv-preview">{{ formatConversationPreview(conv.lastMessage) }}</div>
                     </div>
                     <!-- 删除按钮 -->
                     <button class="conv-delete-btn" title="删除会话" @click.stop="deleteConversation(conv)">
@@ -480,8 +763,23 @@ watch(() => state.sending, (sending) => {
                                 >
                                 <div v-else-if="!isMine(msg)" class="message-avatar-spacer"></div>
                                 <div class="message-body">
-                                    <div class="message-bubble">
-                                        <div class="message-content">{{ msg.content }}</div>
+                                    <div class="message-bubble" :class="{ 'message-image-bubble': isImageMessage(msg) }">
+                                        <button
+                                            v-if="isImageMessage(msg)"
+                                            class="message-image-button"
+                                            type="button"
+                                            title="查看大图"
+                                            @click="openImagePreview(getMessageImageSrc(msg))"
+                                        >
+                                            <img
+                                                class="message-image"
+                                                :src="getMessageImageSrc(msg)"
+                                                alt="图片消息"
+                                                loading="lazy"
+                                                @load="handleImageLoad"
+                                            >
+                                        </button>
+                                        <div v-else class="message-content">{{ msg.content }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -492,13 +790,20 @@ watch(() => state.sending, (sending) => {
                 <div class="input-resize-handle" @mousedown="startResize">
                     <div class="input-resize-handle-grip"></div>
                 </div>
-                <div class="message-input-area">
+                <div
+                    ref="messageInputAreaRef"
+                    class="message-input-area"
+                    :class="{ 'has-pending-image': pendingImageUrl }"
+                    :style="messageInputAreaStyle"
+                    @dragover="handleDragOverImage"
+                    @drop="handleDropImage"
+                >
                     <div class="input-toolbar">
                         <div class="input-toolbar-actions">
                             <button
                                 class="emoji-trigger-btn"
                                 type="button"
-                                :disabled="state.sending"
+                                :disabled="inputBusy"
                                 title="选择表情"
                                 @click.stop="emojiPickerOpen = !emojiPickerOpen"
                             >
@@ -520,20 +825,45 @@ watch(() => state.sending, (sending) => {
                         </div>
                     </div>
                     <div class="input-wrapper">
-                        <textarea
-                            ref="messageInputRef"
-                            v-model="messageInput"
-                            class="message-input"
-                            placeholder="输入消息..."
-                            rows="3"
-                            :disabled="state.sending"
-                            @keydown="handleKeydown"
-                        ></textarea>
+                        <div class="message-input-shell">
+                            <div v-if="pendingImageUrl" class="pending-image-preview">
+                                <button
+                                    class="pending-image-preview-button"
+                                    type="button"
+                                    title="查看大图"
+                                    @click="openImagePreview(pendingImageUrl)"
+                                >
+                                    <img :src="pendingImageUrl" alt="待发送图片">
+                                </button>
+                                <button
+                                    class="pending-image-remove"
+                                    type="button"
+                                    title="移除图片"
+                                    :disabled="inputBusy"
+                                    @click="clearPendingImage"
+                                >
+                                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <textarea
+                                ref="messageInputRef"
+                                v-model="messageInput"
+                                class="message-input"
+                                placeholder="输入消息..."
+                                rows="3"
+                                :disabled="inputBusy"
+                                @paste="handlePaste"
+                                @keydown="handleKeydown"
+                            ></textarea>
+                        </div>
                         <button
                             class="send-btn"
-                            :disabled="state.sending || !messageInput.trim()"
+                            :class="{ sending: state.sending }"
+                            :disabled="inputBusy || !canSendMessage"
                             @click="sendMessage"
-                        >{{ state.sending ? '发送中...' : '发送' }}</button>
+                        >{{ state.sending ? '发送中' : '发送' }}</button>
                     </div>
                 </div>
             </template>
@@ -544,13 +874,91 @@ watch(() => state.sending, (sending) => {
         </main>
     </div>
     <ConfirmDialog v-bind="confirmDialog" @close="closeConfirmDialog" @confirm="executeConfirmDialog" />
+    <div
+        v-if="previewImageSrc"
+        class="image-preview-overlay"
+        @click.self="closeImagePreview"
+        @wheel.prevent="handlePreviewWheel"
+    >
+        <div class="image-preview-toolbar">
+            <span v-if="previewImagePosition" class="image-preview-count">{{ previewImagePosition }}</span>
+            <button
+                class="image-preview-tool"
+                type="button"
+                title="缩小"
+                :disabled="previewScale <= PREVIEW_MIN_SCALE"
+                @click="zoomPreview(-PREVIEW_SCALE_STEP)"
+            >
+                <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                    <path d="M5 10h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button
+                class="image-preview-scale"
+                type="button"
+                title="恢复原始大小"
+                @click="resetPreviewZoom"
+            >{{ previewScalePercent }}</button>
+            <button
+                class="image-preview-tool"
+                type="button"
+                title="放大"
+                :disabled="previewScale >= PREVIEW_MAX_SCALE"
+                @click="zoomPreview(PREVIEW_SCALE_STEP)"
+            >
+                <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                    <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+        <button
+            v-if="canSwitchPreviewImage"
+            class="image-preview-nav image-preview-prev"
+            type="button"
+            title="上一张"
+            @click="showPreviousPreviewImage"
+        >
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button
+            v-if="canSwitchPreviewImage"
+            class="image-preview-nav image-preview-next"
+            type="button"
+            title="下一张"
+            @click="showNextPreviewImage"
+        >
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button
+            class="image-preview-close"
+            type="button"
+            title="关闭预览"
+            @click="closeImagePreview"
+        >
+            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <div class="image-preview-stage">
+            <img
+                class="image-preview-full"
+                :src="previewImageSrc"
+                :style="previewImageStyle"
+                alt="图片预览"
+            >
+        </div>
+    </div>
 </template>
 
 <style scoped>
 .messages-page {
     display: flex;
     height: calc(100vh - 64px);
-    max-width: 960px;
+    max-width: 1080px;
     margin: 0 auto;
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
@@ -717,6 +1125,7 @@ watch(() => state.sending, (sending) => {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    overflow: hidden;
 }
 
 .message-header {
@@ -766,9 +1175,10 @@ watch(() => state.sending, (sending) => {
 }
 
 .message-list {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    scrollbar-gutter: stable;
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
@@ -824,13 +1234,49 @@ watch(() => state.sending, (sending) => {
 }
 
 .message-self .message-bubble {
-    background: var(--brand);
-    color: #fff;
+    background: #eaf3ff;
+    color: var(--text-strong);
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
     border-bottom-right-radius: 6px;
 }
 
 .message-item:not(.message-self) .message-bubble {
     border-bottom-left-radius: 6px;
+}
+
+.message-image-bubble {
+    padding: 4px;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: none;
+}
+
+.message-self .message-image-bubble {
+    background: transparent;
+    box-shadow: none;
+}
+
+.message-image-button {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+}
+
+.message-image-button:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+    border-radius: 12px;
+}
+
+.message-image {
+    display: block;
+    max-width: min(280px, 58vw);
+    max-height: 320px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: var(--surface-soft);
 }
 
 .input-resize-handle {
@@ -866,9 +1312,19 @@ watch(() => state.sending, (sending) => {
 }
 
 .message-input-area {
+    position: relative;
+    z-index: 2;
     border-top: 1px solid var(--line);
     display: flex;
     flex-direction: column;
+    flex: 0 0 auto;
+    min-height: 96px;
+    max-height: min(400px, calc(100% - 220px));
+    overflow: visible;
+}
+
+.message-input-area.has-pending-image {
+    min-height: 168px;
 }
 
 .input-toolbar {
@@ -896,13 +1352,79 @@ watch(() => state.sending, (sending) => {
     min-height: 0;
 }
 
-.message-input {
+.message-input-shell {
     flex: 1;
     align-self: stretch;
-    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 36px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface-soft);
+    overflow: hidden;
+}
+
+.message-input-shell:focus-within {
+    border-color: var(--brand);
+}
+
+.pending-image-preview {
+    position: relative;
+    width: 96px;
+    height: 72px;
+    margin: 8px 8px 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+    flex-shrink: 0;
+}
+
+.pending-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pending-image-preview-button {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+}
+
+.pending-image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: #fff;
+    background: rgba(15, 23, 42, 0.72);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.pending-image-remove:hover:not(:disabled) {
+    background: rgba(15, 23, 42, 0.88);
+}
+
+.message-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: var(--text);
     font: inherit;
     font-size: 14px;
@@ -910,10 +1432,6 @@ watch(() => state.sending, (sending) => {
     resize: none;
     outline: 0;
     min-height: 36px;
-}
-
-.message-input:focus {
-    border-color: var(--brand);
 }
 
 .emoji-trigger-btn {
@@ -949,6 +1467,7 @@ watch(() => state.sending, (sending) => {
 }
 
 .send-btn {
+    width: 76px;
     padding: 8px 20px;
     min-height: 36px;
     background: var(--brand);
@@ -957,8 +1476,9 @@ watch(() => state.sending, (sending) => {
     border-radius: var(--radius-sm);
     font-size: 14px;
     font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
-    transition: opacity 0.12s;
+    transition: background 0.12s;
 }
 
 .send-btn:disabled {
@@ -966,8 +1486,151 @@ watch(() => state.sending, (sending) => {
     cursor: not-allowed;
 }
 
+.send-btn.sending {
+    opacity: 1;
+    cursor: wait;
+}
+
 .send-btn:hover:not(:disabled) {
-    opacity: 0.9;
+    background: var(--brand-strong);
+}
+
+.image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    padding: 48px;
+    background: rgba(15, 23, 42, 0.78);
+}
+
+.image-preview-stage {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.image-preview-full {
+    max-width: min(92vw, 1120px);
+    max-height: 88vh;
+    object-fit: contain;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.36);
+    transition: transform 0.12s ease-out;
+    transform-origin: center center;
+}
+
+.image-preview-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    color: #fff;
+    background: rgba(15, 23, 42, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.image-preview-close:hover {
+    background: rgba(15, 23, 42, 0.86);
+}
+
+.image-preview-toolbar {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    z-index: 1001;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    background: rgba(15, 23, 42, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+    transform: translateX(-50%);
+}
+
+.image-preview-count {
+    min-width: 48px;
+    padding: 0 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.image-preview-tool,
+.image-preview-scale {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    color: #fff;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.image-preview-tool {
+    width: 32px;
+    padding: 0;
+}
+
+.image-preview-scale {
+    min-width: 58px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.image-preview-tool:hover:not(:disabled),
+.image-preview-scale:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.image-preview-tool:disabled {
+    opacity: 0.36;
+    cursor: not-allowed;
+}
+
+.image-preview-nav {
+    position: fixed;
+    top: 50%;
+    z-index: 1001;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 64px;
+    padding: 0;
+    color: #fff;
+    background: rgba(15, 23, 42, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.image-preview-nav:hover {
+    background: rgba(15, 23, 42, 0.82);
+}
+
+.image-preview-prev {
+    left: 24px;
+}
+
+.image-preview-next {
+    right: 24px;
 }
 
 .no-conversation-selected {
@@ -1015,6 +1678,43 @@ watch(() => state.sending, (sending) => {
 
     .back-btn {
         display: inline-flex;
+    }
+
+    .image-preview-overlay {
+        padding: 18px;
+    }
+
+    .image-preview-full {
+        max-width: 96vw;
+        max-height: 86vh;
+        border-radius: 8px;
+    }
+
+    .image-preview-close {
+        top: 12px;
+        right: 12px;
+    }
+
+    .image-preview-toolbar {
+        top: 12px;
+    }
+
+    .image-preview-count {
+        min-width: 40px;
+        padding: 0 4px;
+    }
+
+    .image-preview-nav {
+        width: 40px;
+        height: 54px;
+    }
+
+    .image-preview-prev {
+        left: 10px;
+    }
+
+    .image-preview-next {
+        right: 10px;
     }
 }
 </style>

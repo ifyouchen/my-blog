@@ -35,6 +35,7 @@ public class UploadController {
     private static final long AVATAR_MAX_BYTES = 2L * 1024L * 1024L;
     private static final long COVER_MAX_BYTES = 5L * 1024L * 1024L;
     private static final long CONTENT_IMAGE_MAX_BYTES = 5L * 1024L * 1024L;
+    private static final long MESSAGE_IMAGE_MAX_BYTES = 10L * 1024L * 1024L;
     private static final long FILE_MAX_BYTES = 20L * 1024L * 1024L;
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM");
 
@@ -148,6 +149,9 @@ public class UploadController {
         } else if ("content".equalsIgnoreCase(scope)) {
             maxBytes = CONTENT_IMAGE_MAX_BYTES;
             message = "正文图片不能超过 5MB";
+        } else if ("message".equalsIgnoreCase(scope)) {
+            maxBytes = MESSAGE_IMAGE_MAX_BYTES;
+            message = "私信图片不能超过 10MB";
         } else {
             maxBytes = COVER_MAX_BYTES;
             message = "封面图片不能超过 5MB";

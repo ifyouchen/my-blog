@@ -34,6 +34,11 @@ import java.util.List;
 @Service
 public class MessageAppService {
 
+    private static final String MESSAGE_TYPE_TEXT = "TEXT";
+    private static final String MESSAGE_TYPE_IMAGE = "IMAGE";
+    private static final String IMAGE_MESSAGE_PREVIEW = "[图片]";
+    private static final String UPLOAD_FILE_URL_PREFIX = "/api/uploads/files/";
+
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private static final Logger log = LoggerFactory.getLogger(MessageAppService.class);
@@ -53,7 +58,7 @@ public class MessageAppService {
     /**
      * 获取或创建会话。
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ConversationDTO getOrCreateConversation(Long participantId) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
@@ -112,7 +117,7 @@ public class MessageAppService {
     /**
      * 删除会话。
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteConversation(Long conversationId) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
@@ -159,12 +164,14 @@ public class MessageAppService {
     /**
      * 发送消息。
      */
-    @Transactional
-    public MessageDTO sendMessage(Long conversationId, String content) {
+    @Transactional(rollbackFor = Exception.class)
+    public MessageDTO sendMessage(Long conversationId, String content, String type) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
 
-        if (content == null || content.trim().isEmpty()) {
+        String messageType = normalizeMessageType(type);
+        String messageContent = normalizeMessageContent(content, messageType);
+        if (messageContent == null || messageContent.isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "消息内容不能为空");
         }
 
@@ -172,28 +179,50 @@ public class MessageAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
 
         Long id = messageRepository.nextId();
-        Message message = Message.create(id, conversationId, currentUserId, content.trim(), "TEXT");
+        Message message = Message.create(id, conversationId, currentUserId, messageContent, messageType);
         message = messageRepository.save(message);
 
         // 更新会话的最后消息
-        conversation.updateLastMessage(content.trim());
-        conversationRepository.updateLastMessage(conversationId, conversation.getLastMessage(), conversation.getLastMessageAt());
+        String conversationPreview = MESSAGE_TYPE_IMAGE.equals(messageType) ? IMAGE_MESSAGE_PREVIEW : messageContent;
+        conversation.updateLastMessage(conversationPreview);
+        conversationRepository.updateLastMessage(
+            conversationId, conversation.getLastMessage(), conversation.getLastMessageAt());
 
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(currentUserId),
             "发送消息",
-            BizLogHelper.params("conversationId", conversationId, "content", BizLogHelper.contentMeta(content)),
+            BizLogHelper.params("conversationId", conversationId, "type", messageType,
+                "content", BizLogHelper.contentMeta(messageContent)),
             BizLogHelper.result("messageId=" + id),
             BizLogHelper.elapsed(_start));
 
         return toMessageDTO(message);
     }
 
+    private String normalizeMessageType(String type) {
+        if (type == null || type.trim().isEmpty()) {
+            return MESSAGE_TYPE_TEXT;
+        }
+        String normalized = type.trim().toUpperCase();
+        if (MESSAGE_TYPE_TEXT.equals(normalized) || MESSAGE_TYPE_IMAGE.equals(normalized)) {
+            return normalized;
+        }
+        throw new ApplicationException(ErrorCode.PARAM_ERROR, "不支持的消息类型");
+    }
+
+    private String normalizeMessageContent(String content, String type) {
+        String normalized = content == null ? "" : content.trim();
+        if (MESSAGE_TYPE_IMAGE.equals(type) && !normalized.startsWith(UPLOAD_FILE_URL_PREFIX)) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "图片消息地址无效");
+        }
+        return normalized;
+    }
+
     /**
      * 标记会话内所有消息为已读。
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int markAllRead(Long conversationId) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();

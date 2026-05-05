@@ -38,10 +38,10 @@ export const getMessagesApi = async ({ conversationId, page = 1, pageSize = 50 }
 /**
  * 发送消息。
  */
-export const sendMessageApi = async ({ conversationId, content }) => {
+export const sendMessageApi = async ({ conversationId, content, type = 'TEXT' }) => {
     return await request(`/messages/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: { content }
+        body: { content, type }
     });
 };
 

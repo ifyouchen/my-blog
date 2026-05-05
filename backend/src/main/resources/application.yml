@@ -36,6 +36,10 @@ spring:
     scheduling:
       pool:
         size: 4
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 22MB
 
   redis:
     host: ${REDIS_HOST:192.168.80.128}

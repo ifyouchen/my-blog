@@ -576,17 +576,6 @@ watch(tocDrawerOpen, (open) => {
                     </div>
                 </section>
 
-                <figure v-if="article.cover" class="article-cover">
-                    <img
-                        class="article-hero"
-                        :src="article.cover"
-                        :alt="article.coverAlt || `${article.title} 封面图`"
-                        loading="eager"
-                        fetchpriority="high"
-                        decoding="async"
-                    >
-                </figure>
-
                 <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
                 <section v-else class="article-content-empty">
                     <p>正文暂时为空，稍后再来看一眼。</p>
@@ -701,7 +690,6 @@ watch(tocDrawerOpen, (open) => {
                             </div>
                         </div>
                     </div>
-                    <div class="skeleton-hero"></div>
                     <div class="skeleton-content-block">
                         <div v-for="i in 6" :key="i" class="skeleton-paragraph" :style="{ width: `${70 + (i % 3) * 10}%` }"></div>
                         <div class="skeleton-paragraph skeleton-short"></div>
@@ -851,7 +839,6 @@ watch(tocDrawerOpen, (open) => {
     100% { background-position: -200% 0; }
 }
 
-.skeleton-hero,
 .skeleton-chip,
 .skeleton-heading,
 .skeleton-summary,
@@ -865,15 +852,6 @@ watch(tocDrawerOpen, (open) => {
     background-size: 200% 100%;
     border-radius: 6px;
     animation: skeleton-shimmer 1.4s ease-in-out infinite;
-}
-
-.skeleton-hero {
-    width: 100%;
-    max-width: var(--layout-reading-width);
-    aspect-ratio: 16 / 9;
-    max-height: 360px;
-    margin: 0 0 16px;
-    border-radius: var(--radius-sm);
 }
 
 .skeleton-panel {

@@ -1614,24 +1614,6 @@ button:disabled {
     max-width: var(--layout-reading-width);
 }
 
-.article-cover {
-    width: 100%;
-    max-width: var(--layout-reading-width);
-    margin: 0 0 24px;
-    overflow: hidden;
-    background: var(--surface-soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
-.article-hero {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 360px;
-    object-fit: cover;
-}
-
 .article-body h1,
 .editor-main h1,
 .dashboard-main h1,
@@ -4038,14 +4020,6 @@ button:disabled {
     .post-cover {
         aspect-ratio: 16 / 9;
         order: -1;
-    }
-
-    .article-cover {
-        margin-bottom: 18px;
-    }
-
-    .article-hero {
-        max-height: 260px;
     }
 
     .sidebar {

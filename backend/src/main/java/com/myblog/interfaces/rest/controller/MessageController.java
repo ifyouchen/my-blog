@@ -203,18 +203,20 @@ public class MessageController {
     @PostMapping("/conversations/{id}/messages")
     public Result<MessageDTO> sendMessage(@PathVariable Long id,
                                           @RequestBody SendMessageRequest request) {
-        MessageDTO dto = messageAppService.sendMessage(id, request.getContent());
+        MessageDTO dto = messageAppService.sendMessage(id, request.getContent(), request.getType());
 
         // SSE 推送
         Long currentUserId = AuthContext.getRequiredUserId();
         Long receiverId = getReceiverId(dto.getConversationId(), currentUserId);
         if (receiverId != null) {
             Map<String, Object> messageData = new HashMap<>();
+            messageData.put("id", dto.getId());
             messageData.put("conversationId", dto.getConversationId());
             messageData.put("senderId", dto.getSenderId());
             messageData.put("senderName", dto.getSenderName());
             messageData.put("senderAvatar", dto.getSenderAvatar());
             messageData.put("content", dto.getContent());
+            messageData.put("type", dto.getType());
             messageData.put("createdAt", dto.getCreatedAt());
             pushNewMessage(receiverId, messageData);
 
