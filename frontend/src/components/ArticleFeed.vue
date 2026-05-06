@@ -1,5 +1,5 @@
 <script setup>
-import {computed, ref, watch} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import {ARTICLE_SORT_LATEST} from '@/constants/articleSort';
 
@@ -71,12 +71,36 @@ const props = defineProps({
     highlightKeyword: {
         type: String,
         default: ""
+    },
+    paginationMode: {
+        type: String,
+        default: 'paged',
+        validator: (value) => ['paged', 'infinite'].includes(value)
+    },
+    hasMore: {
+        type: Boolean,
+        default: false
+    },
+    loadingMore: {
+        type: Boolean,
+        default: false
+    },
+    loadMoreError: {
+        type: String,
+        default: ''
+    },
+    mobileFeaturedLarge: {
+        type: Boolean,
+        default: false
     }
 });
 
-const emit = defineEmits(['page-change', 'sort-change']);
+const emit = defineEmits(['page-change', 'sort-change', 'load-more']);
 const router = useRouter();
 const jumpPage = ref(String(props.page));
+const loadMoreTrigger = ref(null);
+const loadMoreTriggerVisible = ref(false);
+let loadMoreObserver = null;
 
 const isInitialLoading = computed(() =>
     props.initialLoading || (props.loading && !props.hasLoadedOnce && props.articles.length === 0)
@@ -85,6 +109,13 @@ const isRefreshing = computed(() =>
     props.refreshing || (props.loading && (props.hasLoadedOnce || props.articles.length > 0))
 );
 const isBusy = computed(() => isInitialLoading.value || isRefreshing.value);
+const isInfiniteMode = computed(() => props.paginationMode === 'infinite');
+const canRequestLoadMore = computed(() =>
+    isInfiniteMode.value
+    && props.hasMore
+    && !isBusy.value
+    && !props.loadingMore
+);
 const showEmpty = computed(() =>
     !isInitialLoading.value
     && !isRefreshing.value
@@ -99,6 +130,12 @@ const highlightHtml = (text) => {
     const escaped = kw.replace(/[.*+?^()|\[\]\\]/g, '\\$&');
     return text.replace(new RegExp(escaped, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
 };
+const isDefaultArticleCover = (cover) => /\/default\/article-cover\.svg(?:$|\?)/i.test(String(cover || ''));
+const hasUsableCover = (article) => Boolean(
+    article?.cover
+    && !isDefaultArticleCover(article.cover)
+    && !isDefaultArticleCover(article.coverUrl)
+);
 const pageStart = computed(() => {
     if (!props.total) {
         return 0;
@@ -150,6 +187,44 @@ const goToPage = (page) => {
     emit('page-change', page);
 };
 
+const requestLoadMore = () => {
+    if (!canRequestLoadMore.value) {
+        return;
+    }
+    emit('load-more');
+};
+
+const maybeAutoLoadMore = () => {
+    if (!loadMoreTriggerVisible.value || props.loadMoreError) {
+        return;
+    }
+    requestLoadMore();
+};
+
+const teardownLoadMoreObserver = () => {
+    if (loadMoreObserver) {
+        loadMoreObserver.disconnect();
+        loadMoreObserver = null;
+    }
+};
+
+const setupLoadMoreObserver = () => {
+    teardownLoadMoreObserver();
+    loadMoreTriggerVisible.value = false;
+    if (!isInfiniteMode.value || typeof IntersectionObserver === 'undefined' || !loadMoreTrigger.value) {
+        return;
+    }
+
+    loadMoreObserver = new IntersectionObserver((entries) => {
+        loadMoreTriggerVisible.value = entries.some((entry) => entry.isIntersecting);
+        maybeAutoLoadMore();
+    }, {
+        rootMargin: '360px 0px',
+        threshold: 0
+    });
+    loadMoreObserver.observe(loadMoreTrigger.value);
+};
+
 const submitJump = () => {
     const page = Number.parseInt(jumpPage.value, 10);
     if (Number.isNaN(page)) {
@@ -172,6 +247,21 @@ watch(
         jumpPage.value = String(page);
     }
 );
+
+watch(
+    () => [props.paginationMode, loadMoreTrigger.value],
+    setupLoadMoreObserver,
+    { flush: 'post' }
+);
+
+watch(
+    () => [props.articles.length, props.hasMore, props.loadingMore, props.loadMoreError, isBusy.value],
+    maybeAutoLoadMore,
+    { flush: 'post' }
+);
+
+onMounted(setupLoadMoreObserver);
+onBeforeUnmount(teardownLoadMoreObserver);
 </script>
 
 <template>
@@ -215,14 +305,19 @@ watch(
                 v-for="article in articles"
                 :key="article.id"
                 class="post-item"
-                :class="{ 'featured-post': article.featured, 'interactive-post': true }"
+                :class="{
+                    'featured-post': article.featured,
+                    'mobile-featured-large': article.featured && mobileFeaturedLarge,
+                    'interactive-post': true,
+                    'post-item--no-cover': !hasUsableCover(article)
+                }"
                 role="link"
                 tabindex="0"
                 @click="openArticle(article)"
                 @keydown.enter="openArticle(article)"
                 @keydown.space.prevent="openArticle(article)"
             >
-                <div class="post-cover" :aria-label="`查看文章：${article.title}`">
+                <div v-if="hasUsableCover(article)" class="post-cover" :aria-label="`查看文章：${article.title}`">
                     <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
                     <span v-if="article.featured" class="post-featured-badge" title="精选文章">⭐</span>
                 </div>
@@ -266,7 +361,38 @@ watch(
 
         <p v-if="errorMessage && articles.length === 0" class="feed-message">{{ errorMessage }}</p>
 
-        <nav v-if="totalPages > 1" class="pagination-bar" aria-label="文章分页">
+        <div
+            v-if="isInfiniteMode && (articles.length > 0 || loadingMore || loadMoreError)"
+            class="infinite-load-panel"
+            aria-live="polite"
+        >
+            <span ref="loadMoreTrigger" class="infinite-load-trigger" aria-hidden="true"></span>
+            <div v-if="loadingMore" class="infinite-load-status">
+                <span class="infinite-load-spinner" aria-hidden="true"></span>
+                <span>正在加载更多...</span>
+            </div>
+            <button
+                v-else-if="loadMoreError"
+                type="button"
+                class="infinite-load-button error"
+                :disabled="isBusy"
+                @click="requestLoadMore"
+            >
+                {{ loadMoreError }}，点击重试
+            </button>
+            <button
+                v-else-if="hasMore"
+                type="button"
+                class="infinite-load-button"
+                :disabled="isBusy"
+                @click="requestLoadMore"
+            >
+                加载更多
+            </button>
+            <p v-else class="infinite-load-finished">已加载全部文章</p>
+        </div>
+
+        <nav v-if="!isInfiniteMode && totalPages > 1" class="pagination-bar" aria-label="文章分页">
             <p>
                 第 {{ page }} / {{ totalPages }} 页，
                 共 {{ total }} 篇，当前 {{ pageStart }}-{{ pageEnd }} 篇
@@ -373,6 +499,14 @@ watch(
     color: var(--brand);
 }
 
+.post-item--no-cover {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.post-item--no-cover .post-content {
+    grid-column: 1 / -1;
+}
+
 /* Loading skeleton — 去大圆角和渐变 */
 .loading-placeholder {
     display: flex;
@@ -432,6 +566,77 @@ watch(
     width: 40%;
 }
 
+.infinite-load-panel {
+    position: relative;
+    display: grid;
+    min-height: 74px;
+    place-items: center;
+    padding: 16px 0 4px;
+}
+
+.infinite-load-trigger {
+    position: absolute;
+    bottom: 120px;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}
+
+.infinite-load-status,
+.infinite-load-button,
+.infinite-load-finished {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.infinite-load-status {
+    gap: 8px;
+}
+
+.infinite-load-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--line);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: infinite-spinner 0.8s linear infinite;
+}
+
+.infinite-load-button {
+    min-width: 180px;
+    padding: 0 18px;
+    color: var(--brand);
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.infinite-load-button:hover:not(:disabled),
+.infinite-load-button:focus-visible {
+    color: var(--brand-strong);
+    border-color: var(--brand);
+}
+
+.infinite-load-button.error {
+    color: #b91c1c;
+}
+
+.infinite-load-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.infinite-load-finished {
+    color: var(--muted);
+}
+
 :deep(.empty-state) {
     padding: 32px 20px;
     color: var(--muted);
@@ -447,7 +652,85 @@ watch(
     100% { background-position: -200% 0; }
 }
 
+@keyframes infinite-spinner {
+    to { transform: rotate(360deg); }
+}
+
 @media (max-width: 760px) {
+    .post-item:not(.mobile-featured-large) {
+        grid-template-columns: minmax(0, 1fr) 104px;
+        gap: 10px;
+        align-items: start;
+        padding: 12px 8px;
+    }
+
+    .post-item:not(.mobile-featured-large) .post-content {
+        min-width: 0;
+        order: 1;
+    }
+
+    .post-item:not(.mobile-featured-large) .post-cover {
+        width: 104px;
+        min-width: 104px;
+        aspect-ratio: 4 / 3;
+        order: 2;
+        border-radius: var(--radius-sm);
+    }
+
+    .post-item:not(.mobile-featured-large) .post-meta {
+        gap: 6px;
+    }
+
+    .post-item:not(.mobile-featured-large) .post-meta span:nth-child(2),
+    .post-item:not(.mobile-featured-large) .post-footer span:nth-of-type(n + 2) {
+        display: none;
+    }
+
+    .post-item:not(.mobile-featured-large) .post-title {
+        margin: 4px 0;
+        font-size: 15px;
+        line-height: 1.35;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .post-item:not(.mobile-featured-large) .post-content p {
+        margin-bottom: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+        -webkit-line-clamp: 2;
+    }
+
+    .post-item:not(.mobile-featured-large) .post-footer {
+        gap: 6px;
+        margin-top: 0;
+    }
+
+    .post-item:not(.mobile-featured-large) .author {
+        font-size: 12px;
+    }
+
+    .post-item:not(.mobile-featured-large) .author img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .mobile-featured-large {
+        grid-template-columns: 1fr;
+    }
+
+    .mobile-featured-large .post-cover {
+        aspect-ratio: 16 / 9;
+        order: -1;
+    }
+
+    .post-item--no-cover,
+    .post-item--no-cover:not(.mobile-featured-large) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .skeleton-post {
         grid-template-columns: 1fr;
         gap: 12px;
@@ -461,6 +744,15 @@ watch(
     .skeleton-cover {
         aspect-ratio: 16 / 9;
         height: auto;
+    }
+
+    .infinite-load-panel {
+        min-height: 82px;
+        padding-top: 18px;
+    }
+
+    .infinite-load-button {
+        width: 100%;
     }
 }
 

@@ -1,6 +1,6 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
+import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -10,20 +10,31 @@ import {getFollowingFeedApi, getMyFollowingApi} from '@/api/following';
 import {getAuthorRankingsApi} from '@/api/rankings';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, normalizeArticleSort} from '@/constants/articleSort';
 import {useSession} from '@/stores/session';
+import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn, state } = useSession();
 
-const articles = ref([]);
 const followingUsers = ref([]);
 const recommendedAuthors = ref([]);
 const sidebarLoading = ref(false);
-const currentPage = ref(Number.parseInt(route.query.page || '1', 10) || 1);
-const activeSort = ref(normalizeArticleSort(route.query.sort || ARTICLE_SORT_LATEST));
-const total = ref(0);
 const pageSize = 10;
+const {
+    articles,
+    currentPage,
+    total,
+    hasMore,
+    loadingMore,
+    loadMoreError,
+    applyPageResult,
+    resetFeed,
+    saveFeedCache,
+    restoreFeedCache,
+    loadMore
+} = useInfiniteArticleFeed({ pageSize });
+const activeSort = ref(normalizeArticleSort(route.query.sort || ARTICLE_SORT_LATEST));
 const {
     initialLoading,
     refreshing,
@@ -36,13 +47,13 @@ const {
 } = useStableListRequest();
 
 const hasFollowing = computed(() => followingUsers.value.length > 0);
+const buildFeedCacheKey = () => `following:${activeSort.value}`;
 
 const syncRoute = () => {
     router.replace({
         path: '/following',
         query: {
-            sort: activeSort.value === ARTICLE_SORT_LATEST ? undefined : activeSort.value,
-            page: currentPage.value === 1 ? undefined : String(currentPage.value)
+            sort: activeSort.value === ARTICLE_SORT_LATEST ? undefined : activeSort.value
         }
     });
 };
@@ -68,21 +79,28 @@ const fetchMeta = async () => {
     }
 };
 
-const fetchFeed = async () => {
+const fetchFeed = async ({ reset = false } = {}) => {
     if (!isLoggedIn.value) {
         resetStableRequest();
-        articles.value = [];
-        total.value = 0;
+        resetFeed();
         return;
     }
+    let restored = false;
+    if (reset) {
+        resetStableRequest();
+        resetFeed();
+        restored = restoreFeedCache(buildFeedCacheKey());
+    }
     const response = await runStableRequest(
-        () => getFollowingFeedApi({
-            page: currentPage.value,
-            pageSize,
-            sort: activeSort.value
-        }),
+        () => restored
+            ? Promise.resolve({ items: articles.value, page: currentPage.value, total: total.value })
+            : getFollowingFeedApi({
+                page: 1,
+                pageSize,
+                sort: activeSort.value
+            }),
         {
-            silent: hasLoadedOnce.value,
+            silent: restored || hasLoadedOnce.value,
             initialErrorMessage: '关注流加载失败',
             refreshErrorMessage: '关注流刷新失败，请稍后重试'
         }
@@ -91,42 +109,50 @@ const fetchFeed = async () => {
         return;
     }
     const pageResult = response.result || {};
-    articles.value = pageResult.items || [];
-    total.value = pageResult.total || 0;
+    if (!restored) {
+        applyPageResult(pageResult);
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
 const refreshAll = async () => {
-    await Promise.all([fetchMeta(), fetchFeed()]);
+    await Promise.all([fetchMeta(), fetchFeed({ reset: true })]);
 };
 
-const changePage = async (page) => {
-    currentPage.value = page;
-    syncRoute();
+const loadMoreArticles = async () => {
+    const response = await loadMore(
+        (page) => getFollowingFeedApi({ page, pageSize, sort: activeSort.value }),
+        { errorMessage: '关注流加载失败，请稍后重试' }
+    );
+    if (response?.result) {
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
 const changeSort = async (sort) => {
+    saveFeedCache(buildFeedCacheKey());
     activeSort.value = normalizeArticleSort(sort);
-    currentPage.value = 1;
     syncRoute();
 };
 
 const handleFollowChange = async () => {
-    currentPage.value = 1;
     await refreshAll();
 };
 
 onMounted(fetchMeta);
 
 watch(isLoggedIn, async () => {
-    currentPage.value = 1;
     await refreshAll();
 });
 
 watch(() => route.query, async (query) => {
-    currentPage.value = Number.parseInt(query.page || '1', 10) || 1;
     activeSort.value = normalizeArticleSort(query.sort || ARTICLE_SORT_LATEST);
-    await fetchFeed();
+    await fetchFeed({ reset: true });
 }, { immediate: true });
+
+onBeforeRouteLeave(() => {
+    saveFeedCache(buildFeedCacheKey());
+});
 </script>
 
 <template>
@@ -166,10 +192,14 @@ watch(() => route.query, async (query) => {
                         :inline-error-message="inlineError"
                         :sort="activeSort"
                         :sort-items="ARTICLE_SORT_ITEMS"
+                        pagination-mode="infinite"
+                        :has-more="hasMore"
+                        :loading-more="loadingMore"
+                        :load-more-error="loadMoreError"
                         eyebrow="关注动态"
                         title="关注作者的新文章"
                         :empty-text="hasFollowing ? '你关注的作者最近还没有新内容' : '先关注几位作者，关注流就会热闹起来'"
-                        @page-change="changePage"
+                        @load-more="loadMoreArticles"
                         @sort-change="changeSort"
                     />
                 </template>

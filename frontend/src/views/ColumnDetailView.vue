@@ -1,19 +1,30 @@
 <script setup>
-import {onMounted, ref, watch} from 'vue';
-import {useRoute} from 'vue-router';
+import {ref, watch} from 'vue';
+import {onBeforeRouteLeave, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getColumnArticlesApi, getColumnDetailApi} from '@/api/columns';
+import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const route = useRoute();
 const column = ref(null);
-const articles = ref([]);
-const currentPage = ref(1);
-const total = ref(0);
 const pageSize = 10;
+const {
+    articles,
+    currentPage,
+    total,
+    hasMore,
+    loadingMore,
+    loadMoreError,
+    applyPageResult,
+    resetFeed,
+    saveFeedCache,
+    restoreFeedCache,
+    loadMore
+} = useInfiniteArticleFeed({ pageSize });
 const {
     initialLoading,
     refreshing,
@@ -25,22 +36,27 @@ const {
     resetStableRequest
 } = useStableListRequest();
 
+const buildFeedCacheKey = () => `column:${String(route.params.id || '')}`;
+
 const fetchColumn = async ({ reset = false } = {}) => {
+    let restored = false;
     if (reset) {
         resetStableRequest();
+        resetFeed();
         column.value = null;
-        articles.value = [];
-        total.value = 0;
+        restored = restoreFeedCache(buildFeedCacheKey());
     }
 
     const columnId = String(route.params.id || '');
     const { result } = await runStableRequest(
         () => Promise.all([
             getColumnDetailApi(columnId),
-            getColumnArticlesApi(columnId, { page: currentPage.value, pageSize })
+            restored
+                ? Promise.resolve({ items: articles.value, page: currentPage.value, total: total.value })
+                : getColumnArticlesApi(columnId, { page: 1, pageSize })
         ]),
         {
-            silent: hasLoadedOnce.value,
+            silent: restored || hasLoadedOnce.value,
             initialErrorMessage: '专栏加载失败',
             refreshErrorMessage: '专栏文章刷新失败，请稍后重试'
         }
@@ -52,13 +68,21 @@ const fetchColumn = async ({ reset = false } = {}) => {
 
     const [columnDetail, articlePage] = result;
     column.value = columnDetail;
-    articles.value = articlePage.items || [];
-    total.value = articlePage.total || 0;
+    if (!restored) {
+        applyPageResult(articlePage);
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
-const changePage = async (page) => {
-    currentPage.value = page;
-    await fetchColumn();
+const loadMoreArticles = async () => {
+    const columnId = String(route.params.id || '');
+    const response = await loadMore(
+        (page) => getColumnArticlesApi(columnId, { page, pageSize }),
+        { errorMessage: '专栏文章加载失败，请稍后重试' }
+    );
+    if (response?.result) {
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
 const handleSubscribeChange = (subscribed) => {
@@ -69,11 +93,12 @@ const handleSubscribeChange = (subscribed) => {
     column.value.subscriberCount = Math.max(0, (column.value.subscriberCount || 0) + (subscribed ? 1 : -1));
 };
 
-onMounted(() => fetchColumn({ reset: true }));
-
 watch(() => route.params.id, async () => {
-    currentPage.value = 1;
     await fetchColumn({ reset: true });
+}, { immediate: true });
+
+onBeforeRouteLeave(() => {
+    saveFeedCache(buildFeedCacheKey());
 });
 </script>
 
@@ -147,10 +172,14 @@ watch(() => route.params.id, async () => {
             :error-message="errorMessage"
             :inline-error-message="inlineError"
             :sort-items="[]"
+            pagination-mode="infinite"
+            :has-more="hasMore"
+            :loading-more="loadingMore"
+            :load-more-error="loadMoreError"
             eyebrow="专栏文章"
             title="继续阅读"
             empty-text="这个专栏暂时还没有公开文章"
-            @page-change="changePage"
+            @load-more="loadMoreArticles"
         />
     </main>
 </template>
@@ -336,13 +365,15 @@ watch(() => route.params.id, async () => {
 
 @media (max-width: 960px) {
     .column-detail-hero {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
     }
 
     .column-detail-cover-panel {
         aspect-ratio: 16 / 9;
         min-height: 220px;
         max-height: none;
+        max-width: 100%;
     }
 
     .column-detail-actions {

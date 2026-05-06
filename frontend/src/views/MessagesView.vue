@@ -51,6 +51,7 @@ const state = reactive({
 const messageContainer = ref(null);
 const messageInputAreaRef = ref(null);
 const messageInputRef = ref(null);
+const imageFileInputRef = ref(null);
 const messageInput = ref('');
 const pendingImageFile = ref(null);
 const pendingImageUrl = ref('');
@@ -363,6 +364,28 @@ const handleDropImage = (event) => {
     if (validatePendingImage(file)) {
         setPendingImage(file);
         nextTick(() => messageInputRef.value?.focus());
+    }
+};
+
+const triggerImagePicker = () => {
+    if (inputBusy.value) return;
+    emojiPickerOpen.value = false;
+    if (imageFileInputRef.value) {
+        imageFileInputRef.value.value = '';
+        imageFileInputRef.value.click();
+    }
+};
+
+const handleImageFileChange = (event) => {
+    if (inputBusy.value) return;
+    const file = Array.from(event.target?.files || [])
+        .find(item => item.type?.startsWith('image/'));
+    if (file && validatePendingImage(file)) {
+        setPendingImage(file);
+        nextTick(() => messageInputRef.value?.focus());
+    }
+    if (event.target) {
+        event.target.value = '';
     }
 };
 
@@ -814,6 +837,42 @@ watch(() => state.sending, (sending) => {
                                     <path d="M6 13c1.2 1.2 2.8 2 4.5 2s3.3-.8 4.5-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                                 </svg>
                             </button>
+                            <button
+                                class="image-upload-btn"
+                                :class="{ active: pendingImageUrl }"
+                                type="button"
+                                :disabled="inputBusy"
+                                :title="pendingImageUrl ? '更换图片' : '上传图片'"
+                                @click="triggerImagePicker"
+                            >
+                                <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                                    <rect
+                                        x="3"
+                                        y="4"
+                                        width="14"
+                                        height="12"
+                                        rx="2"
+                                        stroke="currentColor"
+                                        stroke-width="1.4"
+                                    />
+                                    <circle cx="7.2" cy="8" r="1.3" fill="currentColor"/>
+                                    <path
+                                        d="M5 14l3.5-3.5 2.4 2.4 2-2L17 14"
+                                        stroke="currentColor"
+                                        stroke-width="1.4"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
+                            </button>
+                            <input
+                                ref="imageFileInputRef"
+                                class="image-file-input"
+                                type="file"
+                                accept="image/*"
+                                :disabled="inputBusy"
+                                @change="handleImageFileChange"
+                            >
                         </div>
                         <div
                             v-if="emojiPickerOpen"
@@ -1434,7 +1493,18 @@ watch(() => state.sending, (sending) => {
     min-height: 36px;
 }
 
-.emoji-trigger-btn {
+.image-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.emoji-trigger-btn,
+.image-upload-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1449,12 +1519,15 @@ watch(() => state.sending, (sending) => {
   transition: color 0.15s, background 0.15s;
 }
 
-.emoji-trigger-btn:hover:not(:disabled) {
+.emoji-trigger-btn:hover:not(:disabled),
+.image-upload-btn:hover:not(:disabled),
+.image-upload-btn.active {
   color: var(--brand);
   background: var(--surface-soft);
 }
 
-.emoji-trigger-btn:disabled {
+.emoji-trigger-btn:disabled,
+.image-upload-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

@@ -1,15 +1,17 @@
 <script setup>
-import {computed, nextTick, onMounted, ref, watch} from 'vue';
-import {RouterLink, useRoute, useRouter} from 'vue-router';
+import {computed, onMounted, ref, watch} from 'vue';
+import {RouterLink, onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
 import {getFollowingFeedApi} from '@/api/following';
 import {getHomeBootstrapApi} from '@/api/home';
 import {getActiveAnnouncementsApi} from '@/api/notifications';
 import ArticleFeed from '@/components/ArticleFeed.vue';
+import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {
     ARTICLE_SORT_ITEMS,
+    ARTICLE_SORT_FEATURED,
     ARTICLE_SORT_LATEST,
     isDefaultArticleSort,
     normalizeArticleSort
@@ -27,10 +29,22 @@ const homeStats = ref({
     totalAuthors: 0,
     totalColumns: 0
 });
-const articles = ref([]);
-const currentPage = ref(1);
 const pageSize = 10;
-const total = ref(0);
+const {
+    articles,
+    currentPage,
+    total,
+    hasMore,
+    loadingMore,
+    loadMoreError,
+    applyPageResult,
+    getFeedState,
+    setFeedState,
+    resetFeed,
+    saveFeedCache,
+    restoreFeedCache,
+    loadMore
+} = useInfiniteArticleFeed({ pageSize });
 const featuredArticles = ref([]);
 const sidebarColumns = ref([]);
 const sidebarAuthors = ref([]);
@@ -89,6 +103,9 @@ const {width: windowWidth} = useWindowSize();
 const {isLoggedIn} = useSession();
 const SIDEBAR_BREAKPOINT = 980;
 const showSidebar = computed(() => windowWidth.value >= SIDEBAR_BREAKPOINT);
+const useMobileFeaturedLarge = computed(() =>
+    feedTab.value === 'recommend' && activeSort.value === ARTICLE_SORT_FEATURED
+);
 
 // 公告横幅
 const activeBanners = ref([]);
@@ -115,9 +132,17 @@ const router = useRouter();
 const VALID_FEED_TABS = ['recommend', 'following'];
 const resolveDefaultFeedTab = () => 'recommend';
 const feedTab = ref(VALID_FEED_TABS.includes(route.query.feedTab) ? route.query.feedTab : resolveDefaultFeedTab());
-const tabStates = ref({
-    recommend: { category: '', sort: undefined, page: undefined },
-    following: { category: '', sort: undefined, page: undefined }
+const createFeedCacheState = () => ({
+    items: [],
+    page: 1,
+    total: 0,
+    category: '',
+    sort: ARTICLE_SORT_LATEST,
+    loaded: false
+});
+const feedCache = ref({
+    recommend: createFeedCacheState(),
+    following: createFeedCacheState()
 });
 
 const switchFeedTab = async (tab) => {
@@ -133,24 +158,18 @@ const switchFeedTab = async (tab) => {
     }
     track('home_feed_tab_clicked', {from_tab: feedTab.value, to_tab: tab, is_login: isLoggedIn.value});
     feedTab.value = tab;
-    const targetState = tabStates.value[tab] || {};
+    const targetState = feedCache.value[tab] || createFeedCacheState();
     await router.replace({
         query: {
             ...route.query,
             category: targetState.category || undefined,
-            sort: targetState.sort,
-            page: targetState.page,
-            feedTab: tab === resolveDefaultFeedTab() ? undefined : tab,
+            sort: isDefaultArticleSort(targetState.sort) ? undefined : targetState.sort,
+            page: undefined,
+            feedTab: tab === resolveDefaultFeedTab() ? undefined : tab
         }
     });
 };
 
-let firstLoad = true;
-let previousRouteState = {
-    page: undefined,
-    sort: undefined,
-    category: undefined
-};
 const {
     initialLoading,
     refreshing,
@@ -158,23 +177,9 @@ const {
     errorMessage,
     inlineError,
     loading,
-    runStableRequest
+    runStableRequest,
+    resetStableRequest
 } = useStableListRequest();
-
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
-
-const normalizePage = (value) => {
-    const page = Number.parseInt(value, 10);
-    return Number.isNaN(page) || page < 1 ? 1 : page;
-};
-
-const scrollToFeed = async () => {
-    await nextTick();
-    document.querySelector('[data-feed-root]')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-    });
-};
 
 const loadHomeBootstrap = async () => {
     try {
@@ -205,12 +210,62 @@ const loadHomeBootstrap = async () => {
 
 const normalizeCategory = (category) => (category && category !== '全部' ? category : '');
 
-const loadArticles = async (page, sort, category, shouldScroll = false) => {
-    const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
+const buildFeedCacheKey = (
+    tab = feedTab.value,
+    sort = activeSort.value,
+    category = activeCategory.value
+) => `home:${tab}:${normalizeArticleSort(sort)}:${normalizeCategory(category) || 'all'}`;
+
+const saveActiveFeedCache = () => {
+    feedCache.value[feedTab.value] = {
+        ...feedCache.value[feedTab.value],
+        ...getFeedState(),
+        category: activeCategory.value,
+        sort: activeSort.value,
+        loaded: true
+    };
+    saveFeedCache(buildFeedCacheKey());
+};
+
+const restoreMemoryFeedState = (state) => {
+    setFeedState(state);
+    activeCategory.value = state.category || '';
+    activeSort.value = normalizeArticleSort(state.sort || ARTICLE_SORT_LATEST);
+};
+
+const loadArticles = async ({ sort, category } = {}) => {
+    const targetSort = normalizeArticleSort(sort || ARTICLE_SORT_LATEST);
     const normalizedCategory = normalizeCategory(category);
+    const cachedState = feedCache.value[feedTab.value] || createFeedCacheState();
+    if (
+        cachedState.loaded
+        && cachedState.category === normalizedCategory
+        && normalizeArticleSort(cachedState.sort) === targetSort
+    ) {
+        resetStableRequest();
+        resetFeed();
+        restoreMemoryFeedState(cachedState);
+        return;
+    }
+    if (restoreFeedCache(buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory))) {
+        activeSort.value = targetSort;
+        activeCategory.value = normalizedCategory;
+        feedCache.value[feedTab.value] = {
+            ...feedCache.value[feedTab.value],
+            ...getFeedState(),
+            category: normalizedCategory,
+            sort: targetSort,
+            loaded: true
+        };
+        return;
+    }
+
+    resetStableRequest();
+    resetFeed();
+    const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
     const apiCall = isFollowing
-        ? () => getFollowingFeedApi({page, pageSize, sort, category: normalizedCategory})
-        : () => listArticlesApi({page, pageSize, sort, category: normalizedCategory});
+        ? () => getFollowingFeedApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory})
+        : () => listArticlesApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory});
     const response = await runStableRequest(apiCall, {
         silent: hasLoadedOnce.value,
         initialErrorMessage: '文章列表加载失败，请稍后重试',
@@ -221,55 +276,29 @@ const loadArticles = async (page, sort, category, shouldScroll = false) => {
     }
 
     const pageResult = response.result || {};
-    const nextItems = pageResult.items || [];
-    const nextTotal = Number(pageResult.total || 0);
-    const lastPage = Math.max(1, Math.ceil(nextTotal / pageSize));
-    if (nextTotal > 0 && page > lastPage) {
-        await router.replace({
-            query: {
-                ...route.query,
-                category: normalizedCategory || undefined,
-                sort: isDefaultArticleSort(sort) ? undefined : sort,
-                page: lastPage === 1 ? undefined : String(lastPage)
-            }
-        });
-        return;
-    }
-
-    currentPage.value = page;
-    activeSort.value = sort;
+    activeSort.value = targetSort;
     activeCategory.value = normalizedCategory;
-    total.value = nextTotal;
-    articles.value = nextItems;
-    tabStates.value[feedTab.value] = {
-        category: normalizedCategory,
-        sort: isDefaultArticleSort(sort) ? undefined : sort,
-        page: page === 1 ? undefined : String(page)
-    };
-    track('home_feed_list_loaded', {tab: feedTab.value, item_count: nextTotal, is_login: isLoggedIn.value});
-    if (shouldScroll) {
-        await scrollToFeed();
-    }
+    applyPageResult(pageResult);
+    saveActiveFeedCache();
+    track('home_feed_list_loaded', {tab: feedTab.value, item_count: total.value, is_login: isLoggedIn.value});
 };
 
-const changePage = async (page) => {
-    const targetPage = Math.min(Math.max(1, page), totalPages.value);
-    if (loading.value || targetPage === currentPage.value) {
-        return;
+const loadMoreArticles = async () => {
+    const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
+    const response = await loadMore(
+        (page) => isFollowing
+            ? getFollowingFeedApi({page, pageSize, sort: activeSort.value, category: activeCategory.value})
+            : listArticlesApi({page, pageSize, sort: activeSort.value, category: activeCategory.value}),
+        { errorMessage: '文章列表加载失败，请稍后重试' }
+    );
+    if (response?.result) {
+        saveActiveFeedCache();
     }
-    await router.push({
-        query: {
-            ...route.query,
-            category: activeCategory.value || undefined,
-            sort: isDefaultArticleSort(activeSort.value) ? undefined : activeSort.value,
-            page: targetPage === 1 ? undefined : String(targetPage)
-        }
-    });
 };
 
 const changeSort = async (sort) => {
     const targetSort = normalizeArticleSort(sort);
-    if (loading.value || targetSort === activeSort.value) {
+    if (loading.value || loadingMore.value || targetSort === activeSort.value) {
         return;
     }
     await router.push({
@@ -283,32 +312,19 @@ const changeSort = async (sort) => {
 };
 
 watch(
-    () => [route.query.page, route.query.sort, route.query.category, route.query.feedTab],
-    ([page, sort, category, queryFeedTab]) => {
-        const nextPage = page === undefined ? undefined : String(page);
-        const nextSort = sort === undefined ? undefined : String(sort);
-        const nextCategory = category === undefined ? undefined : String(category);
-        const pageChanged = previousRouteState.page !== nextPage;
-        const shouldScroll = !firstLoad && pageChanged;
+    () => [route.query.sort, route.query.category, route.query.feedTab],
+    ([sort, category, queryFeedTab]) => {
+        const nextFeedTab = VALID_FEED_TABS.includes(queryFeedTab) ? queryFeedTab : resolveDefaultFeedTab();
 
         // sync feedTab from query
-        const nextFeedTab = VALID_FEED_TABS.includes(queryFeedTab) ? queryFeedTab : resolveDefaultFeedTab();
         if (nextFeedTab !== feedTab.value) {
             feedTab.value = nextFeedTab;
         }
 
-        previousRouteState = {
-            page: nextPage,
-            sort: nextSort,
-            category: nextCategory
-        };
-        firstLoad = false;
-        loadArticles(
-            normalizePage(page),
-            normalizeArticleSort(sort),
-            String(category || ''),
-            shouldScroll
-        );
+        loadArticles({
+            sort: normalizeArticleSort(sort),
+            category: String(category || '')
+        });
     },
     { immediate: true }
 );
@@ -318,6 +334,10 @@ onMounted(() => {
     loadHomeBootstrap();
     loadBanners();
     track('home_feed_tab_exposed', {tab: feedTab.value, is_login: isLoggedIn.value});
+});
+
+onBeforeRouteLeave(() => {
+    saveActiveFeedCache();
 });
 </script>
 
@@ -393,8 +413,13 @@ onMounted(() => {
                 :inline-error-message="inlineError"
                 :sort="activeSort"
                 :sort-items="ARTICLE_SORT_ITEMS"
+                pagination-mode="infinite"
+                :has-more="hasMore"
+                :loading-more="loadingMore"
+                :load-more-error="loadMoreError"
+                :mobile-featured-large="useMobileFeaturedLarge"
                 :empty-text="feedTab === 'following' ? '关注的创作者暂无新文章，去推荐看看吧' : undefined"
-                @page-change="changePage"
+                @load-more="loadMoreArticles"
                 @sort-change="changeSort"
             />
             <HomeSidebar

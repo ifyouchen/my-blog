@@ -1,20 +1,31 @@
 <script setup>
-import {onMounted, ref, watch} from 'vue';
-import {useRoute} from 'vue-router';
+import {ref, watch} from 'vue';
+import {onBeforeRouteLeave, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getCategoryApi, getCategoryArticlesApi} from '@/api/categories';
+import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST} from '@/constants/articleSort';
 
 const route = useRoute();
 const category = ref(null);
-const articles = ref([]);
-const currentPage = ref(1);
-const total = ref(0);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const pageSize = 10;
+const {
+    articles,
+    currentPage,
+    total,
+    hasMore,
+    loadingMore,
+    loadMoreError,
+    applyPageResult,
+    resetFeed,
+    saveFeedCache,
+    restoreFeedCache,
+    loadMore
+} = useInfiniteArticleFeed({ pageSize });
 
 const {
     initialLoading,
@@ -27,26 +38,33 @@ const {
     resetStableRequest
 } = useStableListRequest();
 
+const buildFeedCacheKey = () => `category:${String(route.params.id || '')}:${activeSort.value}`;
+
 const fetchData = async ({ reset = false } = {}) => {
+    let restored = false;
     if (reset) {
         resetStableRequest();
+        resetFeed();
         category.value = null;
-        articles.value = [];
-        total.value = 0;
+    }
+    if (articles.value.length === 0) {
+        restored = restoreFeedCache(buildFeedCacheKey());
     }
 
     const categoryId = String(route.params.id || '');
     const { result } = await runStableRequest(
         () => Promise.all([
             getCategoryApi(categoryId),
-            getCategoryArticlesApi(categoryId, {
-                page: currentPage.value,
-                pageSize,
-                sort: activeSort.value
-            })
+            restored
+                ? Promise.resolve({ items: articles.value, page: currentPage.value, total: total.value })
+                : getCategoryArticlesApi(categoryId, {
+                    page: 1,
+                    pageSize,
+                    sort: activeSort.value
+                })
         ]),
         {
-            silent: hasLoadedOnce.value,
+            silent: restored || hasLoadedOnce.value,
             initialErrorMessage: '分类加载失败',
             refreshErrorMessage: '文章刷新失败，请稍后重试'
         }
@@ -56,27 +74,38 @@ const fetchData = async ({ reset = false } = {}) => {
 
     const [categoryDetail, articlePage] = result;
     category.value = categoryDetail;
-    articles.value = articlePage.items || [];
-    total.value = articlePage.total || 0;
+    if (!restored) {
+        applyPageResult(articlePage);
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
-const changePage = async (page) => {
-    currentPage.value = page;
-    await fetchData();
+const loadMoreArticles = async () => {
+    const categoryId = String(route.params.id || '');
+    const response = await loadMore(
+        (page) => getCategoryArticlesApi(categoryId, { page, pageSize, sort: activeSort.value }),
+        { errorMessage: '分类文章加载失败，请稍后重试' }
+    );
+    if (response?.result) {
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
 const changeSort = async (sort) => {
+    saveFeedCache(buildFeedCacheKey());
     activeSort.value = sort;
-    currentPage.value = 1;
+    resetFeed();
     await fetchData();
 };
 
-onMounted(() => fetchData({ reset: true }));
-
 watch(() => route.params.id, async () => {
-    currentPage.value = 1;
+    saveFeedCache(buildFeedCacheKey());
     activeSort.value = ARTICLE_SORT_LATEST;
     await fetchData({ reset: true });
+}, { immediate: true });
+
+onBeforeRouteLeave(() => {
+    saveFeedCache(buildFeedCacheKey());
 });
 </script>
 
@@ -121,11 +150,15 @@ watch(() => route.params.id, async () => {
             :error-message="errorMessage"
             :inline-error-message="inlineError"
             :sort-items="ARTICLE_SORT_ITEMS"
-            :active-sort="activeSort"
+            :sort="activeSort"
+            pagination-mode="infinite"
+            :has-more="hasMore"
+            :loading-more="loadingMore"
+            :load-more-error="loadMoreError"
             eyebrow="分类文章"
             :title="category ? category.name : ''"
             empty-text="这个分类暂时还没有公开文章"
-            @page-change="changePage"
+            @load-more="loadMoreArticles"
             @sort-change="changeSort"
         />
     </main>

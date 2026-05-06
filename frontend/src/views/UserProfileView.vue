@@ -1,5 +1,5 @@
 <script setup>import {computed, inject, ref, watch} from 'vue';
-import {RouterLink, useRoute, useRouter} from 'vue-router';
+import {RouterLink, onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
@@ -11,6 +11,7 @@ import {getUserArticlesApi} from '@/api/articles';
 import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
 import {createConversationApi} from '@/api/messages';
 import {getUserFollowersApi, getUserFollowingListApi, getFollowStatusApi} from '@/api/following';
+import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import {buildProfileSummaryStats} from '@/utils/profileSummary';
@@ -21,14 +22,12 @@ const { state } = useSession();
 const toast = inject('toast', { error: () => {}, success: () => {} });
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const profile = ref(null);
-const articles = ref([]);
 const reportDialogVisible = ref(false);
 const followDialogVisible = ref(false);
 const followDialogType = ref('followers');
 const followDialogList = ref([]);
 const followDialogLoading = ref(false);
 const followStatus = ref({ followed: false, followedBack: false, mutual: false });
-const page = ref(1);
 const articleTab = ref('latest');
 
 useHead({
@@ -40,7 +39,19 @@ useHead({
     })
 });
 const pageSize = 10;
-const total = ref(0);
+const {
+    articles,
+    currentPage,
+    total,
+    hasMore,
+    loadingMore,
+    loadMoreError,
+    applyPageResult,
+    resetFeed,
+    saveFeedCache,
+    restoreFeedCache,
+    loadMore
+} = useInfiniteArticleFeed({ pageSize });
 const {
     initialLoading,
     refreshing,
@@ -66,14 +77,18 @@ const summarySubtitle = computed(() => (
 ));
 const isMutualFollow = computed(() => !!(followStatus.value && followStatus.value.mutual));
 const articleFeedTitle = computed(() => (articleTab.value === 'hot' ? '热门文章' : '最新发布'));
+const buildFeedCacheKey = () => `user:${userId.value}:latest`;
 
 const loadProfile = async ({ reset = false } = {}) => {
+    let restored = false;
     if (reset) {
         resetStableRequest();
+        resetFeed();
         profile.value = null;
-        articles.value = [];
-        total.value = 0;
         followStatus.value = { followed: false, followedBack: false, mutual: false };
+        if (articleTab.value === 'latest') {
+            restored = restoreFeedCache(buildFeedCacheKey());
+        }
     }
 
     const { result } = await runStableRequest(
@@ -81,10 +96,12 @@ const loadProfile = async ({ reset = false } = {}) => {
             getUserProfileApi(userId.value),
             articleTab.value === 'hot'
                 ? getUserHotArticlesApi(userId.value, pageSize)
-                : getUserArticlesApi(userId.value, { page: page.value, pageSize })
+                : restored
+                    ? Promise.resolve({ items: articles.value, page: currentPage.value, total: total.value })
+                    : getUserArticlesApi(userId.value, { page: 1, pageSize })
         ]),
         {
-            silent: hasLoadedOnce.value,
+            silent: restored || hasLoadedOnce.value,
             initialErrorMessage: '作者主页加载失败',
             refreshErrorMessage: '作者文章刷新失败，请稍后重试'
         }
@@ -99,9 +116,12 @@ const loadProfile = async ({ reset = false } = {}) => {
     if (articleTab.value === 'hot') {
         articles.value = Array.isArray(articlePage) ? articlePage : [];
         total.value = articles.value.length;
+        currentPage.value = 1;
     } else {
-        articles.value = articlePage.items || [];
-        total.value = articlePage.total || 0;
+        if (!restored) {
+            applyPageResult(articlePage);
+            saveFeedCache(buildFeedCacheKey());
+        }
     }
 
     if (!isOwnProfile.value && state.user) {
@@ -109,22 +129,28 @@ const loadProfile = async ({ reset = false } = {}) => {
     }
 };
 
-const changePage = async (nextPage) => {
+const loadMoreArticles = async () => {
     if (articleTab.value === 'hot') {
         return;
     }
-    page.value = nextPage;
-    await loadProfile();
+    const response = await loadMore(
+        (page) => getUserArticlesApi(userId.value, { page, pageSize }),
+        { errorMessage: '作者文章加载失败，请稍后重试' }
+    );
+    if (response?.result) {
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
 const switchArticleTab = async (nextTab) => {
     if (articleTab.value === nextTab || loading.value) {
         return;
     }
+    if (articleTab.value === 'latest') {
+        saveFeedCache(buildFeedCacheKey());
+    }
     articleTab.value = nextTab;
-    page.value = 1;
-    articles.value = [];
-    total.value = 0;
+    resetFeed();
     await loadProfile();
 };
 
@@ -191,10 +217,18 @@ const closeFollowDialog = () => { followDialogVisible.value = false; };
 const goToUserProfile = (uid) => { closeFollowDialog(); router.push('/users/' + uid); };
 
 watch(() => route.params.id, () => {
-    page.value = 1;
+    if (articleTab.value === 'latest') {
+        saveFeedCache(buildFeedCacheKey());
+    }
     articleTab.value = 'latest';
     loadProfile({ reset: true });
 }, { immediate: true });
+
+onBeforeRouteLeave(() => {
+    if (articleTab.value === 'latest') {
+        saveFeedCache(buildFeedCacheKey());
+    }
+});
 </script>
 
 <template>
@@ -321,7 +355,7 @@ watch(() => route.params.id, () => {
 
         <ArticleFeed
             :articles="articles"
-            :page="page"
+            :page="currentPage"
             :page-size="pageSize"
             :total="total"
             :loading="loading"
@@ -334,8 +368,12 @@ watch(() => route.params.id, () => {
             eyebrow="作者文章"
             :title="articleFeedTitle"
             :hide-sort="true"
+            :pagination-mode="articleTab === 'latest' ? 'infinite' : 'paged'"
+            :has-more="articleTab === 'latest' && hasMore"
+            :loading-more="loadingMore"
+            :load-more-error="loadMoreError"
             empty-text="这位作者还没有公开发布文章"
-            @page-change="changePage"
+            @load-more="loadMoreArticles"
         />
     </main>
     <Teleport to="body">

@@ -1,18 +1,29 @@
 <script setup>
-import {onMounted, ref, watch} from 'vue';
-import {useRoute} from 'vue-router';
+import {ref, watch} from 'vue';
+import {onBeforeRouteLeave, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getTopicArticlesApi, getTopicDetailApi} from '@/api/topic';
+import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const route = useRoute();
 const topic = ref(null);
-const articles = ref([]);
-const currentPage = ref(1);
-const total = ref(0);
 const pageSize = 10;
+const {
+    articles,
+    currentPage,
+    total,
+    hasMore,
+    loadingMore,
+    loadMoreError,
+    applyPageResult,
+    resetFeed,
+    saveFeedCache,
+    restoreFeedCache,
+    loadMore
+} = useInfiniteArticleFeed({ pageSize });
 const {
     initialLoading,
     refreshing,
@@ -24,22 +35,27 @@ const {
     resetStableRequest
 } = useStableListRequest();
 
+const buildFeedCacheKey = () => `topic:${String(route.params.id || '')}`;
+
 const fetchTopic = async ({ reset = false } = {}) => {
+    let restored = false;
     if (reset) {
         resetStableRequest();
+        resetFeed();
         topic.value = null;
-        articles.value = [];
-        total.value = 0;
+        restored = restoreFeedCache(buildFeedCacheKey());
     }
 
     const topicId = String(route.params.id || '');
     const { result } = await runStableRequest(
         () => Promise.all([
             getTopicDetailApi(topicId),
-            getTopicArticlesApi(topicId, { page: currentPage.value, pageSize })
+            restored
+                ? Promise.resolve({ items: articles.value, page: currentPage.value, total: total.value })
+                : getTopicArticlesApi(topicId, { page: 1, pageSize })
         ]),
         {
-            silent: hasLoadedOnce.value,
+            silent: restored || hasLoadedOnce.value,
             initialErrorMessage: '专题加载失败',
             refreshErrorMessage: '专题文章刷新失败，请稍后重试'
         }
@@ -51,20 +67,29 @@ const fetchTopic = async ({ reset = false } = {}) => {
 
     const [topicDetail, articlePage] = result;
     topic.value = topicDetail;
-    articles.value = articlePage.items || [];
-    total.value = articlePage.total || 0;
+    if (!restored) {
+        applyPageResult(articlePage);
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
 
-const changePage = async (page) => {
-    currentPage.value = page;
-    await fetchTopic();
+const loadMoreArticles = async () => {
+    const topicId = String(route.params.id || '');
+    const response = await loadMore(
+        (page) => getTopicArticlesApi(topicId, { page, pageSize }),
+        { errorMessage: '专题文章加载失败，请稍后重试' }
+    );
+    if (response?.result) {
+        saveFeedCache(buildFeedCacheKey());
+    }
 };
-
-onMounted(() => fetchTopic({ reset: true }));
 
 watch(() => route.params.id, async () => {
-    currentPage.value = 1;
     await fetchTopic({ reset: true });
+}, { immediate: true });
+
+onBeforeRouteLeave(() => {
+    saveFeedCache(buildFeedCacheKey());
 });
 </script>
 
@@ -120,10 +145,14 @@ watch(() => route.params.id, async () => {
             :error-message="errorMessage"
             :inline-error-message="inlineError"
             :sort-items="[]"
+            pagination-mode="infinite"
+            :has-more="hasMore"
+            :loading-more="loadingMore"
+            :load-more-error="loadMoreError"
             eyebrow="专题文章"
             title="继续阅读"
             empty-text="这个专题暂时还没有公开文章"
-            @page-change="changePage"
+            @load-more="loadMoreArticles"
         />
     </main>
 </template>
