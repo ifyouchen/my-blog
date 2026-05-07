@@ -1,5 +1,6 @@
 package com.myblog.application.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.dto.ArticleDTO;
@@ -46,18 +47,22 @@ class RankingAppServiceTest {
     @Mock
     private UserFollowRepository userFollowRepository;
 
+    private Cache<String, List<ArticleDTO>> articleRankingsCache;
+    private Cache<String, List<AuthorRankingDTO>> authorRankingsCache;
     private RankingAppService service;
 
     @BeforeEach
     void setUp() {
+        articleRankingsCache = Caffeine.newBuilder().build();
+        authorRankingsCache = Caffeine.newBuilder().build();
         service = new RankingAppService(
             articleRepository,
             userRepository,
             userFollowRepository,
             new ArticleAssembler(""),
             Runnable::run,
-            Caffeine.newBuilder().build(),
-            Caffeine.newBuilder().build()
+            articleRankingsCache,
+            authorRankingsCache
         );
     }
 
@@ -134,5 +139,80 @@ class RankingAppServiceTest {
         assertThat(result.get(0).getTopArticle().getId()).isEqualTo(100L);
         assertThat(result.get(0).getTopArticle().getTitle()).isEqualTo("代表作标题");
         assertThat(result.get(0).getTopArticle().getSlug()).isEqualTo("top-article");
+    }
+
+    @Test
+    void refreshRankingCachesRecomputesAndReplacesCachedEntries() {
+        ArticleDTO oldArticle = new ArticleDTO();
+        oldArticle.setTitle("旧文章榜");
+        articleRankingsCache.put("10:all:", Collections.singletonList(oldArticle));
+        authorRankingsCache.put("10:all:", Collections.<AuthorRankingDTO>emptyList());
+
+        Article freshArticle = createArticle(101L, 2L, "新文章榜", "fresh-article");
+        User author = User.create(2L, "writer", "writer@example.com", "encoded-password");
+        AuthorArticleStatsDO stats = new AuthorArticleStatsDO();
+        stats.setAuthorId(2L);
+        stats.setArticleCount(1);
+        stats.setTotalViews(300L);
+        stats.setTotalLikes(20L);
+        Map<Long, Integer> followerCounts = new HashMap<Long, Integer>();
+        followerCounts.put(2L, 9);
+
+        when(articleRepository.findRankingArticles(isNull(), ArgumentMatchers.<LocalDateTime>notNull(), eq(10)))
+            .thenReturn(Collections.<Article>emptyList());
+        when(articleRepository.findRankingArticles(isNull(), isNull(), eq(10)))
+            .thenReturn(Collections.singletonList(freshArticle));
+        when(articleRepository.findAuthorArticleStats(eq(10), isNull(), ArgumentMatchers.<LocalDateTime>notNull()))
+            .thenReturn(Collections.<AuthorArticleStatsDO>emptyList());
+        when(articleRepository.findAuthorArticleStats(eq(10), isNull(), isNull()))
+            .thenReturn(Collections.singletonList(stats));
+        when(userRepository.findByIds(Collections.singletonList(2L))).thenReturn(Collections.singletonList(author));
+        when(userFollowRepository.countFollowersBatch(Collections.singletonList(2L))).thenReturn(followerCounts);
+        when(articleRepository.findTopRankingArticlesByAuthorIds(
+                eq(Collections.singletonList(2L)),
+                isNull(),
+                isNull()))
+            .thenReturn(Collections.singletonList(freshArticle));
+
+        service.refreshRankingCaches();
+
+        List<ArticleDTO> refreshedArticles = articleRankingsCache.getIfPresent("10:all:");
+        List<AuthorRankingDTO> refreshedAuthors = authorRankingsCache.getIfPresent("10:all:");
+        assertThat(refreshedArticles).hasSize(1);
+        assertThat(refreshedArticles.get(0).getTitle()).isEqualTo("新文章榜");
+        assertThat(refreshedAuthors).hasSize(1);
+        assertThat(refreshedAuthors.get(0).getFollowerCount()).isEqualTo(9);
+        assertThat(refreshedAuthors.get(0).isFollowed()).isFalse();
+        assertThat(refreshedAuthors.get(0).getTopArticle().getTitle()).isEqualTo("新文章榜");
+    }
+
+    private Article createArticle(Long articleId, Long authorId, String title, String slug) {
+        return Article.restore(
+            articleId,
+            new UserId(authorId),
+            title,
+            "summary",
+            "content",
+            "",
+            "Go",
+            null,
+            Collections.<String>emptyList(),
+            ArticleStatus.PUBLISHED,
+            100,
+            20,
+            0,
+            4,
+            false,
+            false,
+            null,
+            slug,
+            "",
+            "",
+            null,
+            LocalDateTime.now().minusDays(1),
+            LocalDateTime.now().minusDays(1),
+            LocalDateTime.now().minusDays(1),
+            0
+        );
     }
 }
