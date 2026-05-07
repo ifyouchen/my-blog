@@ -21,9 +21,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -77,7 +77,6 @@ public class RankingAppService {
         int normalizedLimit = normalizeLimit(limit);
         String normalizedPeriod = normalizePeriod(period);
         String normalizedCategory = normalizeCategory(category);
-        LocalDateTime publishedAfter = resolvePublishedAfter(normalizedPeriod);
         String cacheKey = buildCacheKey(normalizedLimit, normalizedPeriod, normalizedCategory);
 
         List<ArticleDTO> cached = articleRankingsCache.getIfPresent(cacheKey);
@@ -149,7 +148,6 @@ public class RankingAppService {
         int normalizedLimit = normalizeLimit(limit);
         String normalizedPeriod = normalizePeriod(period);
         String normalizedCategory = normalizeCategory(category);
-        LocalDateTime publishedAfter = resolvePublishedAfter(normalizedPeriod);
         String cacheKey = buildCacheKey(normalizedLimit, normalizedPeriod, normalizedCategory);
 
         List<AuthorRankingDTO> cachedBase = authorRankingsCache.getIfPresent(cacheKey);
@@ -303,7 +301,11 @@ public class RankingAppService {
     }
 
     private void putRefreshQuery(Map<String, RankingQuery> queryMap, int limit, String period, String category) {
-        RankingQuery query = new RankingQuery(normalizeLimit(limit), normalizePeriod(period), normalizeCategory(category));
+        RankingQuery query = new RankingQuery(
+            normalizeLimit(limit),
+            normalizePeriod(period),
+            normalizeCategory(category)
+        );
         queryMap.put(query.cacheKey, query);
     }
 
