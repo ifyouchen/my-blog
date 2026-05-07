@@ -3,13 +3,13 @@ import {computed, inject, onMounted, onUnmounted, reactive, ref, watch} from 'vu
 import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {
-    createArticleApi,
-    getArticleVersionApi,
-    getEditableArticleApi,
-    listArticleVersionsApi,
-    restoreArticleVersionApi,
-    updateArticleApi,
-    validateArticleForPublishApi
+  createArticleApi,
+  getArticleVersionApi,
+  getEditableArticleApi,
+  listArticleVersionsApi,
+  restoreArticleVersionApi,
+  updateArticleApi,
+  validateArticleForPublishApi
 } from '@/api/articles';
 import {getToken} from '@/api/http';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
@@ -22,7 +22,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import {topics} from '@/data/home';
 import {resolveMediaUrl} from '@/utils/media';
 import {findArticleWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
-import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
@@ -34,8 +34,8 @@ const defaultDraft = {
     content: `# 开始写作
 
 用一篇文章把你最近解决的问题写清楚。`,
-    category: 'Spring Boot',
-    tags: 'Spring Boot, JWT',
+    category: '',
+    tags: '',
     coverUrl: '',
     slug: '',
     seoTitle: '',
@@ -59,7 +59,7 @@ const editorArticleId = computed(() => (isEditMode.value ? String(route.params.i
 const storageKey = computed(() => `${DRAFT_STORAGE_PREFIX}:${editorArticleId.value}`);
 
 useHead({
-    title: computed(() => isEditMode.value ? '编辑文章 - my-blog' : '写文章 - my-blog')
+    title: computed(() => isEditMode.value ? '编辑文章 - DevNotes' : '写文章 - DevNotes')
 });
 
 const draft = reactive({ ...defaultDraft });
@@ -70,6 +70,27 @@ const publishedArticle = ref(null);
 const feedbackType = ref('info');
 const categoryOptions = ref(topics.slice(1));
 const tagOptions = ref([]);
+const customCategoryInput = ref('');
+const showCustomCategory = ref(false);
+const isCustomCategory = computed(() =>
+    draft.category !== '' && !categoryOptions.value.includes(draft.category)
+);
+
+const selectPresetCategory = (topic) => {
+    draft.category = topic;
+    customCategoryInput.value = '';
+    showCustomCategory.value = false;
+};
+
+const selectOther = () => {
+    showCustomCategory.value = true;
+    draft.category = customCategoryInput.value.trim();
+};
+
+const onCustomCategoryInput = (val) => {
+    customCategoryInput.value = val;
+    draft.category = val.trim();
+};
 const pageLoading = ref(false);
 const lastSavedSnapshot = ref('');
 const currentArticleStatus = ref('DRAFT');
@@ -406,7 +427,16 @@ function applyDraft(source = {}) {
     draft.title = source.title || '';
     draft.summary = source.summary || '';
     draft.content = source.content || '';
-    draft.category = source.category || categoryOptions.value[0] || '';
+    const sourceCategory = source.category || '';
+    draft.category = sourceCategory;
+    // 若分类不在预设列表，同步到自定义输入框并展开
+    if (sourceCategory && !categoryOptions.value.includes(sourceCategory)) {
+        customCategoryInput.value = sourceCategory;
+        showCustomCategory.value = true;
+    } else {
+        customCategoryInput.value = '';
+        showCustomCategory.value = false;
+    }
     draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
     draft.coverUrl = source.coverUrl || '';
     debouncedCoverUrl.value = source.coverUrl || '';
@@ -1179,15 +1209,38 @@ onUnmounted(() => {
                 @navigate="handleTocNavigate"
             />
             <section class="editor-category-section">
-                <div class="editor-category-head">
-                    <p class="eyebrow">分类</p>
-                    <span class="editor-category-value">{{ draft.category || '请选择分类' }}</span>
+                <p class="eyebrow">分类</p>
+                <div class="editor-category-pills">
+                    <button
+                        v-for="topic in categoryOptions"
+                        :key="topic"
+                        type="button"
+                        :class="['editor-category-pill', { active: draft.category === topic }]"
+                        @click="selectPresetCategory(topic)"
+                    >
+                        {{ topic }}
+                    </button>
+                    <button
+                        type="button"
+                        :class="['editor-category-pill', 'editor-category-pill--other', { active: showCustomCategory }]"
+                        @click="selectOther"
+                    >
+                        其他
+                    </button>
                 </div>
-                <div class="editor-category-select-wrap">
-                    <select v-model="draft.category" class="editor-category-select">
-                        <option v-for="topic in categoryOptions" :key="topic" :value="topic">{{ topic }}</option>
-                    </select>
+                <div v-if="showCustomCategory" class="editor-category-custom">
+                    <input
+                        :value="customCategoryInput"
+                        type="text"
+                        maxlength="50"
+                        placeholder="输入自定义分类名称"
+                        class="editor-category-custom-input"
+                        autofocus
+                        @input="onCustomCategoryInput($event.target.value)"
+                    >
+                    <p class="editor-category-custom-tip">自定义分类不会出现在首页筛选栏，但仍会显示在文章页头部。如需让文章出现在首页分类筛选中，请选择上方已有分类。</p>
                 </div>
+                <p v-if="!draft.category" class="editor-category-hint">请选择一个分类或输入自定义分类</p>
             </section>
             <section class="editor-side-block">
                 <p class="eyebrow">标签</p>
@@ -1682,6 +1735,84 @@ onUnmounted(() => {
     gap: 10px;
 }
 
+/* 分类选择 pill */
+.editor-category-section {
+    display: grid;
+    gap: 10px;
+}
+
+.editor-category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.editor-category-pill {
+    min-height: 30px;
+    padding: 0 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.editor-category-pill:hover {
+    color: var(--brand);
+    border-color: var(--brand-hover);
+    background: var(--brand-soft);
+}
+
+.editor-category-pill.active {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: var(--brand);
+    font-weight: 700;
+}
+
+.editor-category-hint {
+    margin: 0;
+    color: var(--warning);
+    font-size: 12px;
+}
+
+.editor-category-custom {
+    margin-top: 2px;
+}
+
+.editor-category-custom-input {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.editor-category-custom-input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.editor-category-custom-input::placeholder {
+    color: var(--muted);
+}
+
+.editor-category-custom-tip {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
 .editor-tag-suggestions {
     display: flex;
     flex-wrap: wrap;
@@ -1852,7 +1983,8 @@ onUnmounted(() => {
 }
 
 .cover-upload-button:hover {
-    filter: brightness(1.03);
+    filter: brightness(1.08);
+    color: #ffffff;
 }
 
 .cover-upload-button:disabled {

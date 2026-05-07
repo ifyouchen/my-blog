@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
     <SiteHeader />
     <main class="auth-layout" data-testid="forgot-password-page">
         <section class="auth-visual">
-            <p class="eyebrow">my-blog</p>
+            <p class="eyebrow">DevNotes</p>
             <h1>找回你的账号</h1>
             <p>输入注册邮箱后，我们将发送密码重置链接，帮助你重新获得账号访问权限。</p>
         </section>

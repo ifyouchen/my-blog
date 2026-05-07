@@ -79,7 +79,13 @@ export const normalizeArticle = (article) => {
         category: article.category,
         status: article.status,
         rawContent,
-        readingTime: `${Math.max(5, Math.ceil(rawContent.length / 120))} 分钟阅读`,
+        readingTime: (() => {
+            const chars = article.wordCount > 0
+                ? article.wordCount
+                : rawContent.length;
+            if (!chars) return '';
+            return `${Math.max(1, Math.ceil(chars / 300))} 分钟`;
+        })(),
         publishedText: article.publishedAt || '刚刚更新',
         updatedAt: article.updatedAt || article.publishedAt || '',
         updatedText: article.updatedAt || article.publishedAt || '刚刚更新',

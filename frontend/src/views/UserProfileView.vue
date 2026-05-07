@@ -1,5 +1,5 @@
 <script setup>import {computed, inject, ref, watch} from 'vue';
-import {RouterLink, onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
+import {onBeforeRouteLeave, RouterLink, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
@@ -10,7 +10,7 @@ import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
 import {createConversationApi} from '@/api/messages';
-import {getUserFollowersApi, getUserFollowingListApi, getFollowStatusApi} from '@/api/following';
+import {getFollowStatusApi, getUserFollowersApi, getUserFollowingListApi} from '@/api/following';
 import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
@@ -33,9 +33,9 @@ const articleTab = ref('latest');
 useHead({
     title: computed(() => {
         if (profile.value?.user?.username) {
-            return `${profile.value.user.username} 的个人主页 - my-blog`;
+            return `${profile.value.user.username} 的个人主页 - DevNotes`;
         }
-        return '用户主页 - my-blog';
+        return '用户主页 - DevNotes';
     })
 });
 const pageSize = 10;

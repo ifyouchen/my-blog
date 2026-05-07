@@ -14,6 +14,7 @@ public class ArticleDTO {
     private String title;
     private String summary;
     private String content;
+    private int wordCount;
     private String coverUrl;
     private String category;
     private List<String> tags;
@@ -106,6 +107,24 @@ public class ArticleDTO {
      */
     public void setContent(String content) {
         this.content = content;
+    }
+
+    /**
+     * 获取正文字数。
+     *
+     * @return 正文字数
+     */
+    public int getWordCount() {
+        return wordCount;
+    }
+
+    /**
+     * 设置正文字数。
+     *
+     * @param wordCount 正文字数
+     */
+    public void setWordCount(int wordCount) {
+        this.wordCount = wordCount;
     }
 
     /**

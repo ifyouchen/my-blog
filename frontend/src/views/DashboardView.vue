@@ -8,7 +8,13 @@ import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {getMyColumnsApi} from '@/api/columns';
 import {deleteArticleApi, exportMyArticlesApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
-import {getDashboardArticlePerformanceApi, getDashboardInteractionsApi, getDashboardOverviewApi, getDashboardTrendsApi, getArticleStatsApi} from '@/api/dashboard';
+import {
+  getArticleStatsApi,
+  getDashboardArticlePerformanceApi,
+  getDashboardInteractionsApi,
+  getDashboardOverviewApi,
+  getDashboardTrendsApi
+} from '@/api/dashboard';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
@@ -1022,11 +1028,15 @@ onUnmounted(() => {
                     </button>
                 </EmptyState>
                 <div v-else-if="favorites.length" class="favorite-list">
-                    <article v-for="article in favorites" :key="article.id" class="favorite-list-item">
-                        <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
-                        <div class="favorite-list-body">
-                            <div class="favorite-list-info">
-                                <h3>{{ article.title }}</h3>
+<article v-for="article in favorites" :key="article.id" class="favorite-list-item">
+<RouterLink :to="`/articles/${article.id}`" class="favorite-list-cover">
+    <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
+</RouterLink>
+<div class="favorite-list-body">
+<div class="favorite-list-info">
+<h3>
+    <RouterLink :to="`/articles/${article.id}`" class="favorite-list-title-link">{{ article.title }}</RouterLink>
+</h3>
                                 <span class="favorite-list-meta">
                                     <span v-if="article.category">{{ article.category }}</span>
                                     <span>作者：{{ article.author.name }}</span>
@@ -2143,11 +2153,25 @@ onUnmounted(() => {
     border-bottom: none;
 }
 
-.favorite-list-item img {
+.favorite-list-cover {
+    display: block;
+    flex-shrink: 0;
     width: 80px;
     height: 56px;
-    object-fit: cover;
     border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.favorite-list-cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.favorite-list-cover:hover img {
+    transform: scale(1.05);
 }
 
 .favorite-list-body {
@@ -2167,13 +2191,22 @@ onUnmounted(() => {
 
 .favorite-list-info h3 {
     margin: 0;
-    color: var(--text);
     font-size: 14px;
     font-weight: 700;
     line-height: 1.45;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.favorite-list-title-link {
+    color: var(--text);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+
+.favorite-list-title-link:hover {
+    color: var(--brand);
 }
 
 .favorite-list-meta {

@@ -86,7 +86,7 @@ const displayAvatar = computed(() => (
     avatarPreviewFailed.value ? DEFAULT_AVATAR : resolveMediaUrl(rawAvatar.value, DEFAULT_AVATAR)
 ));
 const displayNickname = computed(() => draft.nickname || state.user?.nickname || state.user?.username || '未设置昵称');
-const displayUsername = computed(() => state.user?.username || 'my-blog 用户');
+const displayUsername = computed(() => state.user?.username || 'DevNotes 用户');
 const displayBio = computed(() => draft.bio || '这里会展示你的个人简介与创作方向。');
 const summaryStats = computed(() => buildProfileSummaryStats(profileStats, {
     includeSocial: true,

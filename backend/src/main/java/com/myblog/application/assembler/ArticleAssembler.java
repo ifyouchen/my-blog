@@ -52,6 +52,8 @@ public class ArticleAssembler {
         dto.setFavoriteCount(article.getFavoriteCount());
         dto.setCommentCount(article.getCommentCount());
         dto.setFeatured(article.isFeatured());
+        String rawContent = article.getContent();
+        dto.setWordCount(rawContent != null ? rawContent.length() : 0);
         dto.setSlug(article.getSlug());
         dto.setSeoTitle(article.getSeoTitle());
         dto.setSeoDescription(article.getSeoDescription());

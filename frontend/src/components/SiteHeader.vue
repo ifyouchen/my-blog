@@ -2,10 +2,7 @@
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {navItems} from '@/data/home';
 import {useSession} from '@/stores/session';
-import {
-    markAllNotificationsReadApi,
-    markNotificationReadApi
-} from '@/api/notifications';
+import {markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
 import {useHeaderNotifications} from '@/composables/useHeaderNotifications';
 import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
@@ -210,9 +207,9 @@ const handleMessagesRefresh = () => {
 <template>
     <header class="site-header" data-testid="site-header">
         <div class="header-inner">
-            <RouterLink class="brand" to="/" aria-label="my-blog 首页" data-testid="site-brand">
+            <RouterLink class="brand" to="/" aria-label="DevNotes 首页" data-testid="site-brand">
                 <span class="brand-mark">M</span>
-                <span class="brand-name">my-blog 社区</span>
+                <span class="brand-name">DevNotes</span>
             </RouterLink>
 
             <nav class="main-nav" aria-label="主导航">

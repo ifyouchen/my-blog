@@ -17,7 +17,7 @@ import {
 } from '@/api/columns';
 import {getMyArticlesApi} from '@/api/articles';
 
-useHead({ title: '我的专栏 - my-blog' });
+useHead({ title: '我的专栏 - DevNotes' });
 
 const {
     confirmDialog,

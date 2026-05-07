@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import {computed, ref} from 'vue';
+import {RouterLink} from 'vue-router';
 
 const SKELETON_CARD_COUNT = 5;
 const FEATURED_PREVIEW_COUNT = 5;
@@ -96,8 +96,8 @@ const handleArticleClick = (article, slot) => {
     >
         <div class="featured-header">
             <div>
-                <p class="eyebrow">编辑精选</p>
-                <h2>先读这几篇</h2>
+                <p class="eyebrow">编辑精选 · 本周</p>
+                <h2>本周必读</h2>
             </div>
             <RouterLink class="featured-more-link" to="/?sort=featured">全部精选</RouterLink>
         </div>

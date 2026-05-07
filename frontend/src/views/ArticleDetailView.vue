@@ -43,12 +43,12 @@ const articleMarkdown = computed(() => {
 });
 const pageTitle = computed(() => {
     if (article.value?.title) {
-        return `${article.value.title} - my-blog`;
+        return `${article.value.title} - DevNotes`;
     }
     if (isLoading.value) {
-        return '加载中 - my-blog';
+        return '加载中 - DevNotes';
     }
-    return '文章详情 - my-blog';
+    return '文章详情 - DevNotes';
 });
 
 useHead({
@@ -460,9 +460,8 @@ watch(tocDrawerOpen, (open) => {
                 <section class="article-heading-panel">
                     <div class="article-heading-top">
                         <div class="post-meta article-meta-row">
-                            <span>{{ article.category }}</span>
-                            <span>{{ article.readingTime }}</span>
-                            <span>{{ article.publishedText }}</span>
+                            <span v-if="article.category">{{ article.category }}</span>
+                            <span v-if="article.readingTime">{{ article.readingTime }}</span>
                         </div>
                         <div class="article-tag-list">
                             <span v-for="tag in article.tags" :key="tag" class="article-tag-chip">
@@ -489,8 +488,9 @@ watch(tocDrawerOpen, (open) => {
                                     <strong class="byline-name">{{ article.author.name }}</strong>
                                     <span class="byline-meta">
                                         {{ article.publishedText }}
-                                        <template v-if="article.category"> · {{ article.category }}</template>
-                                        <template v-if="article.readingTime"> · {{ article.readingTime }}</template>
+                                        <template v-if="article.author.followerCount">
+                                            · {{ article.author.followerCount }} 粉丝
+                                        </template>
                                     </span>
                                 </div>
                             </RouterLink>
@@ -499,7 +499,6 @@ watch(tocDrawerOpen, (open) => {
                                 <span class="article-stat"><strong>{{ likeCount }}</strong> 点赞</span>
                                 <span class="article-stat"><strong>{{ commentCount }}</strong> 评论</span>
                                 <span class="article-stat"><strong>{{ favoriteCount }}</strong> 收藏</span>
-                                <span class="article-stat"><strong>{{ article.author.followerCount }}</strong> 粉丝</span>
                             </div>
                         </div>
 
@@ -611,7 +610,7 @@ watch(tocDrawerOpen, (open) => {
                         @count-change="handleCommentCountChange"
                     />
                     <div v-else class="comment-placeholder">
-                        <p>登录后可查看和发表评论</p>
+                        <p>登录后发表评论</p>
                     </div>
                 </section>
             </div>

@@ -6,11 +6,8 @@ import EmptyState from '@/components/EmptyState.vue';
 import {getCategoriesApi} from '@/api/categories';
 import {getHotTagsApi} from '@/api/tags';
 import {getTopicsApi} from '@/api/topic';
-import {
-    getFeaturedRecommendationArticlesApi,
-    getRecommendedAuthorsApi,
-    getRecommendedColumnsFromHubApi
-} from '@/api/recommendations';
+import {getRecommendedAuthorsApi, getRecommendedColumnsFromHubApi} from '@/api/recommendations';
+import {listArticlesApi} from '@/api/articles';
 
 const router = useRouter();
 const categories = ref([]);
@@ -18,7 +15,7 @@ const hotTags = ref([]);
 const topics = ref([]);
 const columns = ref([]);
 const authors = ref([]);
-const featuredArticles = ref([]);
+const trendingArticles = ref([]);
 const loading = ref(true);
 const errorMessage = ref('');
 const showAllCategories = ref(false);
@@ -35,20 +32,20 @@ const loadData = async () => {
     loading.value = true;
     errorMessage.value = '';
     try {
-        const [cats, tags, topicPage, recColumns, recAuthors, recArticles] = await Promise.all([
+        const [cats, tags, topicPage, recColumns, recAuthors, hotResult] = await Promise.all([
             getCategoriesApi(),
             getHotTagsApi(32),
             getTopicsApi({page: 1, pageSize: 6}),
             getRecommendedColumnsFromHubApi(6),
             getRecommendedAuthorsApi(6),
-            getFeaturedRecommendationArticlesApi({page: 1, pageSize: 6})
+            listArticlesApi({sort: 'hot', pageSize: 5})
         ]);
         categories.value = Array.isArray(cats) ? cats : [];
         hotTags.value = Array.isArray(tags) ? tags : [];
         topics.value = topicPage?.items || [];
         columns.value = recColumns || [];
         authors.value = recAuthors || [];
-        featuredArticles.value = recArticles || [];
+        trendingArticles.value = hotResult?.items || [];
     } catch (err) {
         errorMessage.value = '内容加载失败，请稍后重试';
     } finally {
@@ -56,8 +53,8 @@ const loadData = async () => {
     }
 };
 
-const primaryArticle = computed(() => featuredArticles.value[0] || null);
-const secondaryArticles = computed(() => featuredArticles.value.slice(1, 5));
+const primaryTrending = computed(() => trendingArticles.value[0] || null);
+const restTrending = computed(() => trendingArticles.value.slice(1));
 const visibleCategories = computed(() => (
     showAllCategories.value ? categories.value : categories.value.slice(0, 8)
 ));
@@ -142,81 +139,42 @@ onMounted(loadData);
                 </RouterLink>
             </section>
 
-            <section class="explore-section explore-featured">
+            <section class="explore-section explore-trending" data-testid="explore-trending">
                 <div class="explore-section-header">
                     <div>
-                        <h2>精选文章</h2>
-                        <p>先从这几篇开始读</p>
+                        <h2>今日热读</h2>
+                        <p>按热度排序，持续更新</p>
                     </div>
-                    <RouterLink to="/?sort=featured">更多精选</RouterLink>
+                    <RouterLink to="/ranking">查看热榜</RouterLink>
                 </div>
 
-                <div v-if="loading" class="explore-featured-board">
-                    <div class="explore-primary-card explore-skeleton"></div>
-                    <div class="explore-side-stack">
-                        <div v-for="i in 4" :key="i" class="explore-compact-article explore-skeleton"></div>
-                    </div>
+                <div v-if="loading" class="explore-trending-list">
+                    <div v-for="i in 5" :key="i" class="explore-trending-item explore-skeleton"></div>
                 </div>
 
-                <div v-else-if="primaryArticle" class="explore-featured-board">
-                    <article class="explore-primary-card">
-                        <RouterLink class="explore-primary-cover" :to="`/articles/${primaryArticle.id}`">
-                            <img
-                                v-if="primaryArticle.cover"
-                                :src="primaryArticle.cover"
-                                :alt="primaryArticle.coverAlt"
-                                loading="lazy"
-                                decoding="async"
-                            >
-                            <span v-else>{{ primaryArticle.category || '精选' }}</span>
-                        </RouterLink>
-                        <div class="explore-primary-copy">
+                <div v-else-if="trendingArticles.length" class="explore-trending-list">
+                    <article
+                        v-for="(article, index) in trendingArticles"
+                        :key="article.id"
+                        class="explore-trending-item"
+                        role="link"
+                        tabindex="0"
+                        :aria-label="`阅读文章：${article.title}`"
+                        @click="openArticleCard(article, $event)"
+                        @keydown.enter="openArticle(article)"
+                        @keydown.space.prevent="openArticle(article)"
+                    >
+                        <span class="explore-trending-rank" :class="{ 'is-top3': index < 3 }">
+                            {{ index + 1 }}
+                        </span>
+                        <div class="explore-trending-body">
                             <div class="explore-meta">
-                                <span>{{ primaryArticle.category }}</span>
-                                <span>{{ primaryArticle.readingTime }}</span>
-                                <span>{{ primaryArticle.publishedText }}</span>
-                            </div>
-                            <h3>{{ primaryArticle.title }}</h3>
-                            <p>{{ primaryArticle.summary }}</p>
-                            <div class="explore-article-footer">
-                                <RouterLink
-                                    class="explore-author"
-                                    :to="`/users/${primaryArticle.author.id}`"
-                                >
-                                    <img
-                                        :src="primaryArticle.author.avatar"
-                                        :alt="`${primaryArticle.author.name} 头像`"
-                                        loading="lazy"
-                                        decoding="async"
-                                    >
-                                    <span>{{ primaryArticle.author.name }}</span>
-                                </RouterLink>
-                                <RouterLink class="explore-open-link" :to="`/articles/${primaryArticle.id}`">
-                                    打开文章
-                                </RouterLink>
-                            </div>
-                        </div>
-                    </article>
-
-                    <div class="explore-side-stack">
-                        <article
-                            v-for="article in secondaryArticles"
-                            :key="article.id"
-                            class="explore-compact-article"
-                            role="link"
-                            tabindex="0"
-                            :aria-label="`阅读文章：${article.title}`"
-                            @click="openArticleCard(article, $event)"
-                            @keydown.enter="openArticle(article)"
-                            @keydown.space.prevent="openArticle(article)"
-                        >
-                            <div class="explore-meta">
-                                <span>{{ article.category }}</span>
+                                <span v-if="article.category">{{ article.category }}</span>
                                 <span>{{ article.readingTime }}</span>
                             </div>
                             <h3>
                                 <RouterLink
-                                    class="explore-compact-title"
+                                    class="explore-trending-title"
                                     :to="articlePath(article)"
                                     @click.stop
                                     @keydown.enter.stop
@@ -225,23 +183,31 @@ onMounted(loadData);
                                     {{ article.title }}
                                 </RouterLink>
                             </h3>
-                            <p>{{ article.summary }}</p>
-                            <div class="explore-compact-actions">
-                                <span>{{ article.stats.views }}</span>
-                                <RouterLink
-                                    :to="articlePath(article)"
-                                    @click.stop
-                                    @keydown.enter.stop
-                                    @keydown.space.stop
-                                >
-                                    打开
-                                </RouterLink>
+                            <div class="explore-trending-meta">
+                                <span>{{ article.author?.name || article.author?.nickname }}</span>
+                                <span class="explore-trending-dot"></span>
+                                <span class="explore-trending-heat">{{ article.stats.views }}</span>
                             </div>
-                        </article>
-                    </div>
+                        </div>
+                        <RouterLink
+                            v-if="article.cover"
+                            class="explore-trending-cover"
+                            :to="articlePath(article)"
+                            :aria-label="`打开文章：${article.title}`"
+                            tabindex="-1"
+                            @click.stop
+                        >
+                            <img
+                                :src="article.cover"
+                                :alt="`${article.title} 封面`"
+                                loading="lazy"
+                                decoding="async"
+                            >
+                        </RouterLink>
+                    </article>
                 </div>
 
-                <p v-else class="explore-empty">暂无精选文章</p>
+                <p v-else class="explore-empty">暂无热读文章</p>
             </section>
 
             <section class="explore-two-column">
@@ -549,58 +515,6 @@ onMounted(loadData);
     font-size: 13px;
 }
 
-.explore-featured-board {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-    gap: 12px;
-    align-items: stretch;
-}
-
-.explore-primary-card {
-    display: grid;
-    grid-template-columns: 1fr;
-    overflow: hidden;
-}
-
-.explore-primary-cover {
-    display: block;
-    min-height: 240px;
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    color: var(--brand);
-    font-weight: 700;
-    text-decoration: none;
-    background: var(--brand-soft);
-}
-
-.explore-primary-cover img,
-.explore-primary-cover span {
-    width: 100%;
-    height: 100%;
-}
-
-.explore-primary-cover img {
-    display: block;
-    object-fit: cover;
-}
-
-.explore-primary-cover span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.explore-primary-copy,
-.explore-compact-article {
-    display: grid;
-    min-width: 0;
-}
-
-.explore-primary-copy {
-    gap: 12px;
-    padding: 16px;
-}
-
 .explore-meta {
     display: flex;
     flex-wrap: wrap;
@@ -609,83 +523,113 @@ onMounted(loadData);
     font-size: 12px;
 }
 
-.explore-primary-copy h3,
-.explore-compact-article h3 {
-    margin: 0;
-    color: var(--text-strong);
-    line-height: 1.45;
+/* 今日热读 */
+.explore-trending-list {
+    display: grid;
+    gap: 6px;
 }
 
-.explore-primary-copy h3 {
-    font-size: 22px;
-}
-
-.explore-primary-copy p,
-.explore-compact-article p {
-    display: -webkit-box;
-    margin: 0;
-    overflow: hidden;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.7;
-    -webkit-box-orient: vertical;
-}
-
-.explore-primary-copy p {
-    -webkit-line-clamp: 3;
-}
-
-.explore-compact-article p {
-    -webkit-line-clamp: 2;
-}
-
-.explore-article-footer,
-.explore-compact-actions {
-    display: flex;
-    gap: 10px;
+.explore-trending-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 12px;
     align-items: center;
-    justify-content: space-between;
-}
-
-.explore-author {
-    display: inline-flex;
-    min-width: 0;
-    align-items: center;
-    gap: 8px;
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
+    min-height: 72px;
+    padding: 12px 14px;
+    cursor: pointer;
     text-decoration: none;
 }
 
-.explore-author img {
+.explore-trending-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 28px;
     height: 28px;
-    object-fit: cover;
-    border-radius: 50%;
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+    background: var(--surface-muted);
+    flex-shrink: 0;
 }
 
-.explore-side-stack {
+.explore-trending-rank.is-top3 {
+    color: #fff;
+    background: var(--brand);
+}
+
+.explore-trending-body {
     display: grid;
-    gap: 10px;
+    gap: 5px;
+    min-width: 0;
 }
 
-.explore-compact-article {
-    gap: 8px;
-    padding: 12px;
+.explore-trending-body h3 {
+    margin: 0;
+    color: var(--text-strong);
+    font-size: 15px;
+    line-height: 1.45;
 }
 
-.explore-compact-article h3 {
+.explore-trending-title {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 15px;
+    color: inherit;
+    text-decoration: none;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    transition: color 0.15s;
 }
 
-.explore-compact-actions {
+.explore-trending-item:hover .explore-trending-title,
+.explore-trending-item:focus-visible .explore-trending-title {
+    color: var(--brand-strong);
+}
+
+.explore-trending-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     color: var(--muted);
     font-size: 12px;
+    min-width: 0;
+}
+
+.explore-trending-dot {
+    display: inline-block;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--line-strong);
+    flex-shrink: 0;
+}
+
+.explore-trending-heat {
+    color: var(--brand-strong);
+    font-weight: 600;
+}
+
+.explore-trending-cover {
+    display: block;
+    width: 80px;
+    height: 56px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+}
+
+.explore-trending-cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.explore-trending-item:hover .explore-trending-cover img {
+    transform: scale(1.04);
 }
 
 .explore-two-column {
@@ -880,10 +824,6 @@ onMounted(loadData);
     min-height: 32px;
 }
 
-.explore-primary-card.explore-skeleton {
-    min-height: 380px;
-}
-
 @keyframes explore-skeleton {
     0% {
         background-position: 100% 0;
@@ -895,8 +835,6 @@ onMounted(loadData);
 }
 
 @media (max-width: 1080px) {
-    .explore-featured-board,
-    .explore-primary-card,
     .explore-two-column {
         grid-template-columns: 1fr;
     }
@@ -925,8 +863,12 @@ onMounted(loadData);
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .explore-primary-cover {
-        min-height: 180px;
+    .explore-trending-cover {
+        display: none;
+    }
+
+    .explore-trending-item {
+        grid-template-columns: 36px minmax(0, 1fr);
     }
 
     .explore-author-grid {

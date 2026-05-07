@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
     <SiteHeader />
     <main class="auth-layout" :data-testid="isRegister ? 'register-page' : 'login-page'">
         <section class="auth-visual">
-            <p class="eyebrow">my-blog</p>
+            <p class="eyebrow">DevNotes</p>
             <h1>把工程经验沉淀成作品</h1>
             <p>登录后可以发布文章、保存草稿、评论互动、收藏文章，并进入自己的创作者中心。</p>
             <div class="auth-highlights">
@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
         <section class="auth-panel" :aria-labelledby="isRegister ? 'register-title' : 'login-title'">
             <p class="eyebrow">{{ isRegister ? '创建账号' : '欢迎回来' }}</p>
             <h2 :id="isRegister ? 'register-title' : 'login-title'">
-                {{ isRegister ? '注册 my-blog' : '登录 my-blog' }}
+                {{ isRegister ? '注册 DevNotes' : '登录 DevNotes' }}
             </h2>
             <p class="auth-panel-copy">
                 {{ isRegister ? '创建账号后即可进入创作中心，搭建自己的内容主页。' : '登录后继续写作、管理内容，并查看站内互动。' }}
@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
                             <path d="M20 32l8 8 16-16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                    <h2 id="welcome-title">欢迎加入 my-blog 👋</h2>
+                    <h2 id="welcome-title">欢迎加入 DevNotes 👋</h2>
                     <p class="welcome-greeting">嗨，<strong>{{ welcomeUsername }}</strong>！你已成功创建账号。</p>
                     <ul class="welcome-checklist">
                         <li>

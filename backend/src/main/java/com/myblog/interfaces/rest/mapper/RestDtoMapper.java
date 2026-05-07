@@ -280,6 +280,7 @@ public class RestDtoMapper {
         response.setTitle(dto.getTitle());
         response.setSummary(dto.getSummary());
         response.setContent(dto.getContent());
+        response.setWordCount(dto.getWordCount());
         response.setCoverUrl(dto.getCoverUrl());
         response.setCategory(dto.getCategory());
         response.setTags(dto.getTags());

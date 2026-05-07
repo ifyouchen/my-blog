@@ -375,7 +375,7 @@ watch(filteredItems, () => {
                             <span v-else class="history-fallback">{{ item.category || '文章' }}</span>
                         </RouterLink>
                         <div class="history-item-body">
-                            <strong>{{ item.title }}</strong>
+                            <RouterLink class="history-item-title" :to="`/articles/${item.id}`">{{ item.title }}</RouterLink>
                             <p v-if="item.summary">{{ item.summary }}</p>
                             <div class="history-item-meta">
                                 <span v-if="item.authorName">{{ item.authorName }}</span>
@@ -762,6 +762,11 @@ watch(filteredItems, () => {
 
 .history-thumb-link img {
     object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.history-thumb-link:hover img {
+    transform: scale(1.05);
 }
 
 .history-fallback {
@@ -781,7 +786,8 @@ watch(filteredItems, () => {
     user-select: text;
 }
 
-.history-item-body strong {
+.history-item-title {
+    display: block;
     overflow: hidden;
     color: var(--text);
     font-size: 15px;
@@ -789,6 +795,12 @@ watch(filteredItems, () => {
     line-height: 1.4;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-decoration: none;
+    transition: color 0.12s;
+}
+
+.history-item-title:hover {
+    color: var(--brand);
 }
 
 .history-item-body p {

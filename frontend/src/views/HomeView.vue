@@ -1,6 +1,6 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
-import {RouterLink, onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
+import {onBeforeRouteLeave, RouterLink, useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
 import {getFollowingFeedApi} from '@/api/following';
 import {getHomeBootstrapApi} from '@/api/home';
@@ -9,18 +9,13 @@ import ArticleFeed from '@/components/ArticleFeed.vue';
 import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useWindowSize} from '@/composables/useWindowSize';
-import {
-    ARTICLE_SORT_ITEMS,
-    ARTICLE_SORT_FEATURED,
-    ARTICLE_SORT_LATEST,
-    isDefaultArticleSort,
-    normalizeArticleSort
-} from '@/constants/articleSort';
+import {ARTICLE_SORT_FEATURED, ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
 import FeaturedArticlesStrip from '@/components/FeaturedArticlesStrip.vue';
 import HomeIntro from '@/components/HomeIntro.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import TopicStrip from '@/components/TopicStrip.vue';
+import {useLoginModal} from '@/composables/useLoginModal';
 import {useSession} from '@/stores/session';
 import {track} from '@/utils/track';
 
@@ -46,8 +41,6 @@ const {
     loadMore
 } = useInfiniteArticleFeed({ pageSize });
 const featuredArticles = ref([]);
-const sidebarColumns = ref([]);
-const sidebarAuthors = ref([]);
 const sidebarTopics = ref([]);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const activeCategory = ref('');
@@ -101,6 +94,7 @@ const recentArticles = ref(readRecentArticles());
 
 const {width: windowWidth} = useWindowSize();
 const {isLoggedIn} = useSession();
+const {showLoginModal} = useLoginModal();
 const SIDEBAR_BREAKPOINT = 980;
 const showSidebar = computed(() => windowWidth.value >= SIDEBAR_BREAKPOINT);
 const useMobileFeaturedLarge = computed(() =>
@@ -148,7 +142,6 @@ const feedCache = ref({
 const switchFeedTab = async (tab) => {
     if (tab === feedTab.value) return;
     if (tab === 'following' && !isLoggedIn.value) {
-        const {showLoginModal} = await import('@/composables/useLoginModal');
         showLoginModal(() => switchFeedTab('following'), {
             title: '登录后查看关注',
             message: '登录后可以查看你关注的创作者的最新文章。',
@@ -195,13 +188,10 @@ const loadHomeBootstrap = async () => {
         topicItems.value = nextTopicItems;
         writeCachedTopicItems(nextTopicItems);
         featuredArticles.value = bootstrap?.featuredArticles || [];
-        sidebarColumns.value = bootstrap?.recommendedColumns || [];
-        sidebarAuthors.value = bootstrap?.authorRankings || [];
         sidebarTopics.value = bootstrap?.hotTopics || [];
     } catch (error) {
         topicItems.value = topicItems.value.length ? topicItems.value : DEFAULT_TOPIC_ITEMS;
         sidebarColumns.value = [];
-        sidebarAuthors.value = [];
         sidebarTopics.value = [];
     } finally {
         bootstrapLoaded.value = true;
@@ -374,6 +364,10 @@ onBeforeRouteLeave(() => {
                 :loading="!bootstrapLoaded"
                 @article-click="(payload) => track('home_featured_article_clicked', payload)"
             />
+            <div class="home-explore-hint">
+                <span>想探索更多内容？</span>
+                <RouterLink to="/explore">去发现页 →</RouterLink>
+            </div>
         </section>
         <section class="home-filter-bar" aria-label="内容筛选">
             <div class="home-filter-main">
@@ -424,9 +418,8 @@ onBeforeRouteLeave(() => {
             />
             <HomeSidebar
                 v-if="showSidebar"
-                :specials="sidebarColumns"
-                :authors="sidebarAuthors"
                 :topics="sidebarTopics"
+                :recent-articles="recentArticles"
             />
         </div>
     </main>
@@ -477,92 +470,23 @@ onBeforeRouteLeave(() => {
     margin-bottom: 2px;
 }
 
-.recent-reading-strip {
-    display: grid;
-    gap: 12px;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
-.recent-reading-head {
+.home-explore-hint {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.recent-reading-head .eyebrow {
-    margin: 0;
-}
-
-.recent-reading-head a {
-    color: var(--brand);
+    gap: 8px;
     font-size: 13px;
+    color: var(--muted);
+}
+
+.home-explore-hint a {
+    color: var(--brand);
     font-weight: 600;
     text-decoration: none;
+    transition: color 0.15s;
 }
 
-.recent-reading-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px;
-}
-
-.recent-reading-item {
-    display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    min-height: 48px;
-    padding: 10px 12px;
-    color: var(--text);
-    text-decoration: none;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    transition: border-color 0.15s, background 0.15s;
-}
-
-.recent-reading-item:hover {
-    border-color: var(--brand-hover);
-    background: var(--surface-soft);
-}
-
-.recent-reading-item img,
-.recent-reading-fallback {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-sm);
-}
-
-.recent-reading-item img {
-    object-fit: cover;
-}
-
-.recent-reading-fallback {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 6px;
-    color: var(--brand);
-    font-size: 12px;
-    font-weight: 700;
-    background: var(--brand-soft);
-    box-sizing: border-box;
-}
-
-.recent-reading-title {
-    overflow: hidden;
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+.home-explore-hint a:hover {
+    color: var(--brand-strong);
 }
 
 .home-filter-bar {
@@ -630,33 +554,4 @@ onBeforeRouteLeave(() => {
     background: var(--surface-muted);
 }
 
-@media (max-width: 640px) {
-    .recent-reading-strip {
-        padding: 10px 12px;
-        gap: 8px;
-    }
-
-    .recent-reading-list {
-        grid-template-columns: 1fr;
-        gap: 4px;
-    }
-
-    .recent-reading-item {
-        grid-template-columns: 36px minmax(0, 1fr);
-        gap: 8px;
-        min-height: 40px;
-        padding: 4px;
-    }
-
-    .recent-reading-item img,
-    .recent-reading-fallback {
-        width: 36px;
-        height: 36px;
-    }
-
-    .recent-reading-title {
-        font-size: 12px;
-        -webkit-line-clamp: 1;
-    }
-}
 </style>
