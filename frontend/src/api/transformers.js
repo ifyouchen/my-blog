@@ -1,4 +1,4 @@
-import {resolveMediaUrl} from '@/utils/media';
+import {DEFAULT_ARTICLE_COVER_URL, resolveMediaUrl} from '@/utils/media';
 
 export const normalizeUser = (user) => ({
     id: user.id,
@@ -89,7 +89,7 @@ export const normalizeArticle = (article) => {
         publishedText: article.publishedAt || '刚刚更新',
         updatedAt: article.updatedAt || article.publishedAt || '',
         updatedText: article.updatedAt || article.publishedAt || '刚刚更新',
-        cover: resolveMediaUrl(article.cover || article.coverUrl),
+        cover: resolveMediaUrl(article.cover || article.coverUrl, DEFAULT_ARTICLE_COVER_URL),
         coverUrl: article.coverUrl || article.cover,
         coverAlt: `${article.title} 封面图`,
         author: normalizeUser(article.author || {}),
@@ -149,7 +149,12 @@ export const normalizeAuthorRanking = (item) => ({
     totalViewCount: item.totalViewCount || 0,
     totalLikeCount: item.totalLikeCount || 0,
     followerCount: item.followerCount || 0,
-    followed: Boolean(item.followed)
+    followed: Boolean(item.followed),
+    topArticle: item.topArticle ? {
+        id: item.topArticle.id,
+        title: item.topArticle.title,
+        slug: item.topArticle.slug || ''
+    } : null
 });
 
 export const normalizeComment = (comment) => ({

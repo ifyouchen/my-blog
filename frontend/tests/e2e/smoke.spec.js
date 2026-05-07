@@ -20,14 +20,37 @@ test.describe('guest smoke', () => {
         await expect(page.getByTestId('home-page')).toBeVisible();
         await expect(page.getByTestId('login-modal')).toHaveCount(0);
         await expect(page.locator('[data-feed-root]')).toBeVisible();
-        await expect(page.getByTestId('home-specials')).toBeVisible();
-        await expect(page.getByTestId('home-authors')).toBeVisible();
+        await expect(page.getByLabel('精选推荐')).toBeVisible();
+        await expect(page.getByTestId('home-sidebar')).toHaveCount(1);
+    });
+
+    test('home mobile keeps expanded categories after selection', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/');
+        await expect(page.getByTestId('home-page')).toBeVisible();
+        const expandButton = page.getByRole('button', { name: '展开更多' });
+        if (!await expandButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+            return;
+        }
+        await expandButton.click();
+        const topics = page.locator('.topic-list .topic');
+        const topicCount = await topics.count();
+        if (topicCount <= 8) {
+            return;
+        }
+        const targetTopic = topics.nth(topicCount - 1);
+        const topicName = (await targetTopic.textContent())?.trim() || '';
+        await targetTopic.click();
+        await expect(page.getByRole('button', { name: '收起' })).toBeVisible();
+        await expect(page.locator('.topic-list .topic.active', { hasText: topicName })).toBeVisible();
     });
 
     test('following page shows login guide for guests', async ({ page }) => {
         await page.goto('/following');
         await expect(page.getByTestId('following-page')).toBeVisible();
         await expect(page.getByTestId('following-login-empty')).toBeVisible();
+        await expect(page.getByTestId('following-login-cta')).toBeVisible();
+        await expect(page.getByTestId('following-ranking-cta')).toBeVisible();
     });
 
     test('columns page renders list and detail entry', async ({ page }) => {
@@ -41,10 +64,95 @@ test.describe('guest smoke', () => {
     });
 
     test('ranking page renders article and author boards', async ({ page }) => {
+        const categoriesResponsePromise = page.waitForResponse((response) => (
+            response.url().includes('/api/categories') && response.ok()
+        )).catch(() => null);
         await page.goto('/ranking');
         await expect(page.getByTestId('ranking-page')).toBeVisible();
+        await expect(page.getByTestId('ranking-toolbar')).toBeVisible();
+        await expect(page.getByRole('button', { name: '7天' })).toBeVisible();
+        await expect(page.getByRole('button', { name: '总榜' })).toBeVisible();
+        await expect(page.getByText('结果会短暂缓存以保证响应速度')).toBeVisible();
+        const categoriesResponse = await categoriesResponsePromise;
+        if (categoriesResponse) {
+            const payload = await categoriesResponse.json().catch(() => null);
+            const categories = Array.isArray(payload?.data) ? payload.data : (payload?.data?.items || []);
+            const firstCategory = categories.find((category) => category?.name);
+            if (firstCategory) {
+                await expect(page.getByRole('button', { name: firstCategory.name, exact: true })).toBeVisible();
+            }
+        }
+        await page.goto('/ranking?period=all');
+        await expect(page.getByTestId('ranking-page')).toBeVisible();
+        await page.evaluate(() => {
+            window.scrollTo(0, 320);
+            const periodButton = Array.from(document.querySelectorAll('.ranking-filter-options button'))
+                .find((button) => button.textContent.trim() === '30天');
+            periodButton?.click();
+        });
+        await expect(page).toHaveURL(/period=30d/);
+        expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(250);
+
+        const clickedCategory = await page.evaluate(() => {
+            window.scrollTo(0, 320);
+            const categoryButton = Array.from(document.querySelectorAll(
+                '.ranking-filter-options.category .ranking-category-button'
+            )).find((button) => button.textContent.trim() !== '全部');
+            categoryButton?.click();
+            return Boolean(categoryButton);
+        });
+        if (clickedCategory) {
+            await page.waitForFunction(() => new URL(window.location.href).searchParams.has('category'));
+            expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(250);
+        }
+
+        const categoryLabels = await page.locator('.ranking-filter-options.category button').allTextContents();
+        await page.locator('.main-nav a', { hasText: '专栏' }).click();
+        await expect(page).toHaveURL(/\/columns/);
+        await page.locator('.main-nav a', { hasText: '排行榜' }).click();
+        await expect(page.getByTestId('ranking-page')).toBeVisible();
+        await expect(page.locator('.ranking-filter-placeholder')).toHaveCount(0);
+        await expect(page.locator('.ranking-filter-options.category button')).toHaveText(categoryLabels);
         await expect(page.getByTestId('ranking-articles')).toBeVisible();
         await expect(page.getByTestId('ranking-authors')).toBeVisible();
+    });
+
+    test('ranking mobile switches between article and author boards', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/ranking');
+        await expect(page.getByTestId('ranking-mobile-tabs')).toBeVisible();
+        await expect(page.getByTestId('ranking-articles')).toBeVisible();
+
+        const categoryToggle = page.locator('.ranking-category-toggle');
+        if (await categoryToggle.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await expect(page.locator('.ranking-filter-options.category .ranking-category-button:visible'))
+                .toHaveCount(4);
+            await categoryToggle.click();
+            await expect(categoryToggle).toHaveText('收起');
+            expect(await page.locator('.ranking-filter-options.category .ranking-category-button:visible').count())
+                .toBeGreaterThan(4);
+        }
+
+        await page.getByRole('button', { name: '作者榜' }).click();
+        await expect(page.getByTestId('ranking-authors')).toBeVisible();
+        await expect(page.getByTestId('ranking-articles')).not.toBeVisible();
+
+        const overflowState = await page.evaluate(() => ({
+            viewportWidth: document.documentElement.clientWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+            authorCards: Array.from(document.querySelectorAll('.ranking-author-card')).map((element) => {
+                const rect = element.getBoundingClientRect();
+                return {
+                    left: rect.left,
+                    right: rect.right
+                };
+            })
+        }));
+        expect(overflowState.scrollWidth).toBeLessThanOrEqual(overflowState.viewportWidth + 1);
+        for (const card of overflowState.authorCards) {
+            expect(card.left).toBeGreaterThanOrEqual(-1);
+            expect(card.right).toBeLessThanOrEqual(overflowState.viewportWidth + 1);
+        }
     });
 
     test('explore page loads passive recommendations without login modal', async ({ page }) => {

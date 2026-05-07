@@ -1,8 +1,9 @@
 import {request} from './http';
 import {normalizeArticle} from './transformers';
 
-export const getCategoriesApi = async () => {
-    const data = await request('/categories');
+export const getCategoriesApi = async (enabled = null) => {
+    const params = enabled !== null ? `?enabled=${enabled}` : '';
+    const data = await request(`/categories${params}`);
     return Array.isArray(data) ? data : (data.items || []);
 };
 

@@ -35,18 +35,26 @@ public class RankingController {
     }
 
     @GetMapping("/articles")
-    public Result<List<ArticleResponse>> listArticleRankings(@RequestParam(defaultValue = "10") int limit) {
+    public Result<List<ArticleResponse>> listArticleRankings(@RequestParam(defaultValue = "10") int limit,
+                                                             @RequestParam(defaultValue = "7d") String period,
+                                                             @RequestParam(required = false) String category) {
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
-        for (ArticleDTO item : rankingAppService.listArticleRankings(limit)) {
+        for (ArticleDTO item : rankingAppService.listArticleRankings(limit, period, category)) {
             items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(items);
     }
 
     @GetMapping("/authors")
-    public Result<List<AuthorRankingResponse>> listAuthorRankings(@RequestParam(defaultValue = "10") int limit) {
+    public Result<List<AuthorRankingResponse>> listAuthorRankings(@RequestParam(defaultValue = "10") int limit,
+                                                                  @RequestParam(defaultValue = "7d") String period,
+                                                                  @RequestParam(required = false) String category) {
         List<AuthorRankingResponse> items = new ArrayList<AuthorRankingResponse>();
-        for (AuthorRankingDTO item : rankingAppService.listAuthorRankings(limit, AuthContext.getCurrentUserId())) {
+        for (AuthorRankingDTO item : rankingAppService.listAuthorRankings(
+                limit,
+                period,
+                category,
+                AuthContext.getCurrentUserId())) {
             items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(items);

@@ -2,8 +2,11 @@ package com.myblog.interfaces.rest.mapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.myblog.application.dto.ArticleSummaryDTO;
+import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CommentDTO;
 import com.myblog.application.dto.UserDTO;
+import com.myblog.interfaces.rest.dto.response.AuthorRankingResponse;
 import com.myblog.interfaces.rest.dto.response.CommentResponse;
 import com.myblog.interfaces.rest.dto.response.UserResponse;
 import org.junit.jupiter.api.Test;
@@ -55,6 +58,25 @@ class RestDtoMapperTest {
         assertThat(response.getEmail()).isEqualTo("demo@example.com");
         assertThat(response.getLastLoginAt()).isEqualTo("2026-05-05 10:20:30");
         assertThat(response.getLastLoginIp()).isEqualTo("127.0.0.1");
+    }
+
+    @Test
+    void toAuthorRankingResponseCopiesTopArticle() {
+        AuthorRankingDTO dto = new AuthorRankingDTO();
+        dto.setRank(1);
+        dto.setUser(createUserDTO());
+        ArticleSummaryDTO topArticle = new ArticleSummaryDTO();
+        topArticle.setId(206L);
+        topArticle.setTitle("Go 并发标准库实战");
+        topArticle.setSlug("go-206");
+        dto.setTopArticle(topArticle);
+
+        AuthorRankingResponse response = new RestDtoMapper().toPublicResponse(dto);
+
+        assertThat(response.getTopArticle()).isNotNull();
+        assertThat(response.getTopArticle().getId()).isEqualTo(206L);
+        assertThat(response.getTopArticle().getTitle()).isEqualTo("Go 并发标准库实战");
+        assertThat(response.getTopArticle().getSlug()).isEqualTo("go-206");
     }
 
     private UserDTO createUserDTO() {

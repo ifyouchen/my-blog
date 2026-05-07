@@ -17,6 +17,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -88,6 +89,11 @@ public class MyBatisArticleRepository implements ArticleRepository {
     @Override
     public List<Article> findPublishedWithLimit(String keyword, String category, String tag, String sort, Integer limit, Integer offset) {
         return toDomainList(articleMapper.selectPublished(keyword, category, tag, sort, limit, offset));
+    }
+
+    @Override
+    public List<Article> findRankingArticles(String category, LocalDateTime publishedAfter, int limit) {
+        return toDomainList(articleMapper.selectRankingArticles(category, publishedAfter, limit));
     }
 
     /**
@@ -370,11 +376,26 @@ public class MyBatisArticleRepository implements ArticleRepository {
     }
 
     @Override
+    public List<AuthorArticleStatsDO> findAuthorArticleStats(int limit, String category, LocalDateTime publishedAfter) {
+        return articleMapper.selectAuthorArticleStatsForRanking(limit, category, publishedAfter);
+    }
+
+    @Override
     public List<AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds) {
         if (authorIds == null || authorIds.isEmpty()) {
             return java.util.Collections.emptyList();
         }
         return articleMapper.selectAuthorArticleStatsByAuthorIds(authorIds);
+    }
+
+    @Override
+    public List<Article> findTopRankingArticlesByAuthorIds(List<Long> authorIds,
+                                                           String category,
+                                                           LocalDateTime publishedAfter) {
+        if (authorIds == null || authorIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return toDomainList(articleMapper.selectTopRankingArticlesByAuthorIds(authorIds, category, publishedAfter));
     }
 
     private void saveTags(Article article) {

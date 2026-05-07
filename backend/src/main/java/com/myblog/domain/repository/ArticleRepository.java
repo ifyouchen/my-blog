@@ -51,6 +51,16 @@ public interface ArticleRepository {
     List<Article> findPublishedWithLimit(String keyword, String category, String tag, String sort, Integer limit, Integer offset);
 
     /**
+     * 查询排行榜文章。
+     *
+     * @param category 分类
+     * @param publishedAfter 发布时间下限
+     * @param limit 返回数量限制
+     * @return 排行榜文章列表
+     */
+    List<Article> findRankingArticles(String category, LocalDateTime publishedAfter, int limit);
+
+    /**
      * 统计已发布文章数量。
      *
      * @param keyword 关键字
@@ -335,7 +345,16 @@ public interface ArticleRepository {
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(int limit);
 
+    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(
+            int limit,
+            String category,
+            LocalDateTime publishedAfter);
+
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds);
+
+    List<Article> findTopRankingArticlesByAuthorIds(List<Long> authorIds,
+                                                    String category,
+                                                    LocalDateTime publishedAfter);
 
     /** 原子递增文章点赞数。 */
     void incrementLikeCount(Long articleId);

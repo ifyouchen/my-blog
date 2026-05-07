@@ -22,8 +22,11 @@ const visibleTopics = computed(() => props.topics.length ? props.topics : ['å…¨é
 const showSkeleton = computed(() => props.loading && props.topics.length <= 1);
 const hasMoreTopics = computed(() => visibleTopics.value.length > 8);
 
-watch(() => route.query.category, () => {
-    expanded.value = false;
+watch([activeTopic, visibleTopics], ([topic, topics]) => {
+    const activeIndex = topics.indexOf(topic);
+    if (activeIndex >= 8) {
+        expanded.value = true;
+    }
 });
 
 const buildTopicRoute = (topic) => {

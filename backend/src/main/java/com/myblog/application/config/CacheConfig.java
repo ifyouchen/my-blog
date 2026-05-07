@@ -52,9 +52,9 @@ public class CacheConfig {
     }
 
     @Bean
-    public Cache<Integer, List<ArticleDTO>> articleRankingsCache() {
+    public Cache<String, List<ArticleDTO>> articleRankingsCache() {
         return Caffeine.newBuilder()
-                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .expireAfterWrite(2, TimeUnit.HOURS)
                 .build();
     }
 
@@ -67,9 +67,9 @@ public class CacheConfig {
     }
 
     @Bean
-    public Cache<Integer, List<AuthorRankingDTO>> authorRankingsCache() {
+    public Cache<String, List<AuthorRankingDTO>> authorRankingsCache() {
         return Caffeine.newBuilder()
-                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .expireAfterWrite(2, TimeUnit.HOURS)
                 .build();
     }
 

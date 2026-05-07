@@ -15,6 +15,7 @@ public class AuthorRankingDTO {
     private long totalLikeCount;
     private long followerCount;
     private boolean followed;
+    private ArticleSummaryDTO topArticle;
 
     public int getRank() {
         return rank;
@@ -70,5 +71,13 @@ public class AuthorRankingDTO {
 
     public void setFollowed(boolean followed) {
         this.followed = followed;
+    }
+
+    public ArticleSummaryDTO getTopArticle() {
+        return topArticle;
+    }
+
+    public void setTopArticle(ArticleSummaryDTO topArticle) {
+        this.topArticle = topArticle;
     }
 }

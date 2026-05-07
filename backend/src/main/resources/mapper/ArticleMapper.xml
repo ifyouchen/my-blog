@@ -179,6 +179,21 @@
         </if>
     </select>
 
+    <select id="selectRankingArticles" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="publishedAfter != null">
+            AND published_at &gt;= #{publishedAfter}
+        </if>
+        ORDER BY (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectDueScheduled" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
@@ -904,6 +919,29 @@
         LIMIT #{limit}
     </select>
 
+    <select id="selectAuthorArticleStatsForRanking" resultMap="AuthorArticleStatsResultMap">
+        SELECT
+            author_id,
+            COUNT(*) as article_count,
+            SUM(view_count) as total_views,
+            SUM(like_count) as total_likes
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="publishedAfter != null">
+            AND published_at &gt;= #{publishedAfter}
+        </if>
+        GROUP BY author_id
+        ORDER BY
+            SUM(view_count * 1 + like_count * 3 + comment_count * 5) DESC,
+            total_views DESC,
+            total_likes DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectAuthorArticleStatsByAuthorIds" resultMap="AuthorArticleStatsResultMap">
         SELECT
             author_id,
@@ -1135,6 +1173,24 @@
         </if>
         ORDER BY (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC, id DESC
         LIMIT #{limit}
+    </select>
+
+    <select id="selectTopRankingArticlesByAuthorIds" resultMap="BaseResultMap">
+        SELECT <include refid="List_Column_List"/>
+        FROM blog_article
+        WHERE status = 'PUBLISHED'
+        AND deleted_at IS NULL
+        AND author_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="publishedAfter != null">
+            AND published_at &gt;= #{publishedAfter}
+        </if>
+        ORDER BY author_id ASC, (view_count * 1 + like_count * 3 + comment_count * 5) DESC, published_at DESC, id DESC
     </select>
     <!-- 每日新增文章趋势（管理后台用） -->
     <select id="selectDailyArticleTrend"

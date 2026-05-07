@@ -15,6 +15,7 @@ public class AuthorRankingResponse {
     private long totalLikeCount;
     private long followerCount;
     private boolean followed;
+    private ArticleSummaryResponse topArticle;
 
     public int getRank() {
         return rank;
@@ -70,5 +71,13 @@ public class AuthorRankingResponse {
 
     public void setFollowed(boolean followed) {
         this.followed = followed;
+    }
+
+    public ArticleSummaryResponse getTopArticle() {
+        return topArticle;
+    }
+
+    public void setTopArticle(ArticleSummaryResponse topArticle) {
+        this.topArticle = topArticle;
     }
 }

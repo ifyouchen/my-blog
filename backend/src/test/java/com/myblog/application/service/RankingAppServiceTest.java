@@ -1,0 +1,138 @@
+package com.myblog.application.service;
+
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.myblog.application.assembler.ArticleAssembler;
+import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.AuthorRankingDTO;
+import com.myblog.domain.model.aggregate.Article;
+import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.valueobject.UserId;
+import com.myblog.domain.repository.ArticleRepository;
+import com.myblog.domain.repository.UserFollowRepository;
+import com.myblog.domain.repository.UserRepository;
+import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
+import com.myblog.shared.enums.ArticleStatus;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class RankingAppServiceTest {
+
+    @Mock
+    private ArticleRepository articleRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private UserFollowRepository userFollowRepository;
+
+    private RankingAppService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new RankingAppService(
+            articleRepository,
+            userRepository,
+            userFollowRepository,
+            new ArticleAssembler(""),
+            Runnable::run,
+            Caffeine.newBuilder().build(),
+            Caffeine.newBuilder().build()
+        );
+    }
+
+    @Test
+    void listArticleRankingsNormalizesPeriodCategoryAndLimit() {
+        when(articleRepository.findRankingArticles(eq("Go"), any(LocalDateTime.class), eq(10)))
+            .thenReturn(Collections.<Article>emptyList());
+        when(articleRepository.findRankingArticles(eq("Go"), isNull(), eq(10)))
+            .thenReturn(Collections.<Article>emptyList());
+
+        List<ArticleDTO> result = service.listArticleRankings(0, "invalid", " Go ");
+
+        InOrder inOrder = inOrder(articleRepository);
+        inOrder.verify(articleRepository).findRankingArticles(eq("Go"), ArgumentMatchers.<LocalDateTime>notNull(), eq(10));
+        inOrder.verify(articleRepository).findRankingArticles(eq("Go"), isNull(), eq(10));
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void listAuthorRankingsIncludesFollowStatusAndTopArticle() {
+        AuthorArticleStatsDO stats = new AuthorArticleStatsDO();
+        stats.setAuthorId(2L);
+        stats.setArticleCount(3);
+        stats.setTotalViews(1200L);
+        stats.setTotalLikes(88L);
+        User author = User.create(2L, "writer", "writer@example.com", "encoded-password");
+        Article topArticle = Article.restore(
+            100L,
+            new UserId(2L),
+            "代表作标题",
+            "summary",
+            "content",
+            "",
+            "Go",
+            null,
+            Collections.<String>emptyList(),
+            ArticleStatus.PUBLISHED,
+            100,
+            20,
+            0,
+            4,
+            false,
+            false,
+            null,
+            "top-article",
+            "",
+            "",
+            null,
+            LocalDateTime.now().minusDays(1),
+            LocalDateTime.now().minusDays(1),
+            LocalDateTime.now().minusDays(1),
+            0
+        );
+        Map<Long, Integer> followerCounts = new HashMap<Long, Integer>();
+        followerCounts.put(2L, 7);
+
+        when(articleRepository.findAuthorArticleStats(eq(10), isNull(), isNull()))
+            .thenReturn(Collections.singletonList(stats));
+        when(userRepository.findByIds(Collections.singletonList(2L))).thenReturn(Collections.singletonList(author));
+        when(userFollowRepository.countFollowersBatch(Collections.singletonList(2L))).thenReturn(followerCounts);
+        when(userFollowRepository.findFollowingUserIdsIn(any(UserId.class), eq(Collections.singletonList(2L))))
+            .thenReturn(Collections.singletonList(2L));
+        when(articleRepository.findTopRankingArticlesByAuthorIds(
+                eq(Collections.singletonList(2L)),
+                isNull(),
+                isNull()))
+            .thenReturn(Collections.singletonList(topArticle));
+
+        List<AuthorRankingDTO> result = service.listAuthorRankings(10, "all", "", 1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).isFollowed()).isTrue();
+        assertThat(result.get(0).getFollowerCount()).isEqualTo(7);
+        assertThat(result.get(0).getTopArticle().getId()).isEqualTo(100L);
+        assertThat(result.get(0).getTopArticle().getTitle()).isEqualTo("代表作标题");
+        assertThat(result.get(0).getTopArticle().getSlug()).isEqualTo("top-article");
+    }
+}

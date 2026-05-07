@@ -3,6 +3,7 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleDO;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleTagRowDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
+import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 import org.apache.ibatis.annotations.Param;
 
@@ -84,6 +85,10 @@ public interface ArticleMapper {
                                     @Param("sort") String sort,
                                     @Param("limit") Integer limit,
                                     @Param("offset") Integer offset);
+
+    List<ArticleDO> selectRankingArticles(@Param("category") String category,
+                                          @Param("publishedAfter") LocalDateTime publishedAfter,
+                                          @Param("limit") int limit);
 
     /**
      * 统计已发布文章数量。
@@ -306,7 +311,12 @@ public interface ArticleMapper {
      * @param limit 返回数量限制
      * @return 作者文章统计列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> selectAuthorArticleStats(@Param("limit") int limit);
+    List<AuthorArticleStatsDO> selectAuthorArticleStats(@Param("limit") int limit);
+
+    List<AuthorArticleStatsDO> selectAuthorArticleStatsForRanking(
+            @Param("limit") int limit,
+            @Param("category") String category,
+            @Param("publishedAfter") LocalDateTime publishedAfter);
 
     /** 原子递增点赞数（避免并发 Read-Modify-Write 丢失更新）。 */
     int incrementLikeCount(@Param("articleId") Long articleId);
@@ -360,6 +370,10 @@ public interface ArticleMapper {
 
     List<ArticleDO> selectPopularPublishedExcluding(@Param("excludeIds") List<Long> excludeIds,
                                                     @Param("limit") int limit);
+
+    List<ArticleDO> selectTopRankingArticlesByAuthorIds(@Param("authorIds") List<Long> authorIds,
+                                                        @Param("category") String category,
+                                                        @Param("publishedAfter") LocalDateTime publishedAfter);
 
     List<ArticleDO> selectDueScheduled(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
@@ -419,7 +433,7 @@ public interface ArticleMapper {
                                                          @Param("startDate") LocalDate startDate,
                                                          @Param("endDate") LocalDate endDate);
 
-    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> selectAuthorArticleStatsByAuthorIds(@Param("authorIds") List<Long> authorIds);
+    List<AuthorArticleStatsDO> selectAuthorArticleStatsByAuthorIds(@Param("authorIds") List<Long> authorIds);
 }
 
 

@@ -2,6 +2,7 @@
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import {ARTICLE_SORT_LATEST} from '@/constants/articleSort';
+import {DEFAULT_ARTICLE_COVER_URL} from '@/utils/media';
 
 const props = defineProps({
     articles: {
@@ -130,12 +131,13 @@ const highlightHtml = (text) => {
     const escaped = kw.replace(/[.*+?^()|\[\]\\]/g, '\\$&');
     return text.replace(new RegExp(escaped, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
 };
-const isDefaultArticleCover = (cover) => /\/default\/article-cover\.svg(?:$|\?)/i.test(String(cover || ''));
-const hasUsableCover = (article) => Boolean(
-    article?.cover
-    && !isDefaultArticleCover(article.cover)
-    && !isDefaultArticleCover(article.coverUrl)
-);
+const hasUsableCover = (article) => Boolean(article?.cover);
+const setCoverFallback = (event) => {
+    if (event.target.src.includes(DEFAULT_ARTICLE_COVER_URL)) {
+        return;
+    }
+    event.target.src = DEFAULT_ARTICLE_COVER_URL;
+};
 const pageStart = computed(() => {
     if (!props.total) {
         return 0;
@@ -318,7 +320,13 @@ onBeforeUnmount(teardownLoadMoreObserver);
                 @keydown.space.prevent="openArticle(article)"
             >
                 <div v-if="hasUsableCover(article)" class="post-cover" :aria-label="`查看文章：${article.title}`">
-                    <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
+                    <img
+                        :src="article.cover"
+                        :alt="article.coverAlt"
+                        loading="lazy"
+                        decoding="async"
+                        @error="setCoverFallback"
+                    >
                     <span v-if="article.featured" class="post-featured-badge" title="精选文章">⭐</span>
                 </div>
                 <div class="post-content">

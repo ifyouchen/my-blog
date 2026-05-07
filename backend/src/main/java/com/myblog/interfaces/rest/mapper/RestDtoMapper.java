@@ -5,6 +5,7 @@ import com.myblog.application.command.CreateCommentCommand;
 import com.myblog.application.command.LoginCommand;
 import com.myblog.application.command.RegisterCommand;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticleSummaryDTO;
 import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.AuthDTO;
@@ -16,6 +17,7 @@ import com.myblog.interfaces.rest.dto.request.CreateCommentRequest;
 import com.myblog.interfaces.rest.dto.request.LoginRequest;
 import com.myblog.interfaces.rest.dto.request.RegisterRequest;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
+import com.myblog.interfaces.rest.dto.response.ArticleSummaryResponse;
 import com.myblog.interfaces.rest.dto.response.AuthorRankingResponse;
 import com.myblog.interfaces.rest.dto.response.AuthResponse;
 import com.myblog.interfaces.rest.dto.response.ColumnResponse;
@@ -251,6 +253,18 @@ public class RestDtoMapper {
         response.setTotalLikeCount(dto.getTotalLikeCount());
         response.setFollowerCount(dto.getFollowerCount());
         response.setFollowed(dto.isFollowed());
+        response.setTopArticle(toArticleSummaryResponse(dto.getTopArticle()));
+        return response;
+    }
+
+    private ArticleSummaryResponse toArticleSummaryResponse(ArticleSummaryDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        ArticleSummaryResponse response = new ArticleSummaryResponse();
+        response.setId(dto.getId());
+        response.setTitle(dto.getTitle());
+        response.setSlug(dto.getSlug());
         return response;
     }
 

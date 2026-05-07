@@ -9,6 +9,7 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import {getFollowingFeedApi, getMyFollowingApi} from '@/api/following';
 import {getAuthorRankingsApi} from '@/api/rankings';
 import {ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, normalizeArticleSort} from '@/constants/articleSort';
+import {useLoginModal} from '@/composables/useLoginModal';
 import {useSession} from '@/stores/session';
 import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
@@ -16,6 +17,7 @@ import {useStableListRequest} from '@/composables/useStableListRequest';
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn, state } = useSession();
+const { showLoginModal } = useLoginModal();
 
 const followingUsers = ref([]);
 const recommendedAuthors = ref([]);
@@ -47,7 +49,26 @@ const {
 } = useStableListRequest();
 
 const hasFollowing = computed(() => followingUsers.value.length > 0);
+const latestArticleText = computed(() => {
+    const latest = articles.value[0];
+    if (!latest) {
+        return '暂无更新';
+    }
+    return latest.publishedText || latest.updatedText || '刚刚更新';
+});
+const authorLatestMap = computed(() => {
+    const result = {};
+    for (const article of articles.value) {
+        const authorId = article.author?.id;
+        if (authorId && !result[authorId]) {
+            result[authorId] = article.publishedText || article.updatedText || '刚刚更新';
+        }
+    }
+    return result;
+});
 const buildFeedCacheKey = () => `following:${activeSort.value}`;
+
+const getAuthorLatestText = (authorId) => authorLatestMap.value[authorId] || '最近更新待同步';
 
 const syncRoute = () => {
     router.replace({
@@ -139,6 +160,14 @@ const handleFollowChange = async () => {
     await refreshAll();
 };
 
+const openLoginGuide = () => {
+    showLoginModal(() => refreshAll(), {
+        title: '登录后查看关注流',
+        message: '登录后可以持续追踪你关注作者的新文章。',
+        actionText: '登录查看关注流'
+    });
+};
+
 onMounted(fetchMeta);
 
 watch(isLoggedIn, async () => {
@@ -167,6 +196,11 @@ onBeforeRouteLeave(() => {
             <p v-else>
                 登录后可以关注喜欢的作者，把他们的最新内容聚到一个地方。
             </p>
+            <div v-if="isLoggedIn" class="following-stats-bar" data-testid="following-stats-bar">
+                <span><strong>{{ followingUsers.length }}</strong> 关注作者</span>
+                <span><strong>{{ total }}</strong> 关注流文章</span>
+                <span><strong>{{ latestArticleText }}</strong> 最近更新</span>
+            </div>
         </section>
 
         <div class="content-grid">
@@ -177,8 +211,63 @@ onBeforeRouteLeave(() => {
                     title="先登录，再建立自己的关注流"
                     description="关注作者后，这里会变成你的私人内容更新入口。"
                     data-testid="following-login-empty"
-                />
+                >
+                    <div class="following-empty-actions">
+                        <button
+                            type="button"
+                            class="following-primary-action"
+                            data-testid="following-login-cta"
+                            @click="openLoginGuide"
+                        >
+                            登录查看关注流
+                        </button>
+                        <RouterLink
+                            class="following-secondary-action"
+                            to="/ranking"
+                            data-testid="following-ranking-cta"
+                        >
+                            去排行榜发现作者
+                        </RouterLink>
+                    </div>
+                </EmptyState>
                 <template v-else>
+                    <section
+                        v-if="!hasFollowing && recommendedAuthors.length"
+                        class="following-onboarding"
+                        data-testid="following-main-recommendations"
+                    >
+                        <div class="section-heading compact">
+                            <div>
+                                <p class="eyebrow">推荐关注</p>
+                                <h2>先关注几位活跃作者</h2>
+                            </div>
+                        </div>
+                        <div class="following-recommend-grid">
+                            <article
+                                v-for="item in recommendedAuthors"
+                                :key="item.user.id"
+                                class="following-recommend-card"
+                            >
+                                <RouterLink class="following-recommend-author" :to="`/users/${item.user.id}`">
+                                    <img :src="item.user.avatar" alt="作者头像" loading="lazy" decoding="async">
+                                    <div>
+                                        <strong>{{ item.user.name }}</strong>
+                                        <span>{{ item.user.bio || '持续分享工程实践与技术经验。' }}</span>
+                                    </div>
+                                </RouterLink>
+                                <div class="following-recommend-meta">
+                                    <span>{{ item.totalViewCount }} 阅读</span>
+                                    <span>{{ item.articleCount }} 文章</span>
+                                </div>
+                                <AuthorFollowButton
+                                    :user-id="item.user.id"
+                                    :followed="item.followed"
+                                    compact
+                                    @change="handleFollowChange"
+                                />
+                            </article>
+                        </div>
+                    </section>
                     <ArticleFeed
                         :articles="articles"
                         :page="currentPage"
@@ -233,6 +322,7 @@ onBeforeRouteLeave(() => {
                             <div>
                                 <strong>{{ author.name }}</strong>
                                 <span>{{ author.bio || '持续分享工程实践与技术经验。' }}</span>
+                                <small>最近更新：{{ getAuthorLatestText(author.id) }}</small>
                             </div>
                         </RouterLink>
                     </div>
@@ -289,6 +379,146 @@ onBeforeRouteLeave(() => {
 
 .following-main {
     min-width: 0;
+}
+
+.following-stats-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.following-stats-bar span {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    gap: 5px;
+    padding: 0 10px;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.following-stats-bar strong {
+    color: var(--text-strong);
+    font-weight: 700;
+}
+
+.following-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.following-primary-action,
+.following-secondary-action {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+.following-primary-action {
+    color: #fff;
+    cursor: pointer;
+    background: var(--brand);
+    border: 1px solid var(--brand);
+}
+
+.following-primary-action:hover,
+.following-primary-action:focus-visible {
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+}
+
+.following-secondary-action {
+    color: var(--brand);
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.following-secondary-action:hover,
+.following-secondary-action:focus-visible {
+    color: var(--brand-strong);
+    border-color: var(--brand);
+}
+
+.following-onboarding {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.following-recommend-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.following-recommend-card {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.following-recommend-author {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.following-recommend-author img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+}
+
+.following-recommend-author div {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.following-recommend-author strong {
+    color: var(--text-strong);
+    line-height: 1.35;
+}
+
+.following-recommend-author span {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.following-recommend-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .sidebar-state {
@@ -348,6 +578,12 @@ onBeforeRouteLeave(() => {
     line-height: 1.6;
 }
 
+.following-author-item small {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .rank-author-item {
     align-items: center;
 }
@@ -370,6 +606,18 @@ onBeforeRouteLeave(() => {
 
 @media (max-width: 960px) {
     .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .following-stats-bar span,
+    .following-primary-action,
+    .following-secondary-action {
+        width: 100%;
+    }
+
+    .following-recommend-grid {
         grid-template-columns: 1fr;
     }
 }

@@ -1,15 +1,31 @@
+<script>
+let cachedRankingCategories = [];
+let cachedRankingCategoriesReady = false;
+let rankingCategoriesRequest = null;
+</script>
+
 <script setup>
-import {onMounted, ref} from 'vue';
-import {useRouter} from 'vue-router';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
+import {getCategoriesApi} from '@/api/categories';
 import {getArticleRankingsApi, getAuthorRankingsApi} from '@/api/rankings';
 import {useSession} from '@/stores/session';
 import {useStableListRequest} from '@/composables/useStableListRequest';
+import {DEFAULT_ARTICLE_COVER_URL} from '@/utils/media';
 
+const route = useRoute();
 const router = useRouter();
 const articleRankings = ref([]);
 const authorRankings = ref([]);
+const activePeriod = ref(route.query.period === '30d' || route.query.period === 'all' ? route.query.period : '7d');
+const activeCategory = ref(typeof route.query.category === 'string' ? route.query.category : '');
+const activeMobileBoard = ref('articles');
+const categoryExpanded = ref(false);
+const categoriesReady = ref(cachedRankingCategoriesReady);
+const categoryFallbackEnabled = ref(false);
+const availableCategories = ref([...cachedRankingCategories]);
 const { state } = useSession();
 const {
     initialLoading,
@@ -20,11 +36,94 @@ const {
     runStableRequest
 } = useStableListRequest();
 
+const periodOptions = [
+    { label: '7天', value: '7d' },
+    { label: '30天', value: '30d' },
+    { label: '总榜', value: 'all' }
+];
+const categoryOptions = computed(() => [
+    { label: '全部', value: '' },
+    ...availableCategories.value.map((category) => ({ label: category, value: category }))
+]);
+const hasHiddenCategoryOptions = computed(() => categoryOptions.value.length > 4);
+
+const normalizePeriod = (period) => (
+    period === '30d' || period === 'all' ? period : '7d'
+);
+
+const sortCategoryNames = (categories) => (
+    Array.from(new Set((categories || []).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+);
+
+const mergeCategories = (categoryNames, markReady = false) => {
+    const nextCategories = sortCategoryNames([
+        ...availableCategories.value,
+        ...(categoryNames || [])
+    ]);
+    availableCategories.value = nextCategories;
+    cachedRankingCategories = nextCategories;
+    if (markReady) {
+        cachedRankingCategoriesReady = true;
+        categoriesReady.value = true;
+    }
+};
+
+const syncRoute = () => {
+    router.replace({
+        path: '/ranking',
+        query: {
+            period: activePeriod.value === '7d' ? undefined : activePeriod.value,
+            category: activeCategory.value || undefined
+        }
+    });
+};
+
+const updateCategories = (articles) => {
+    if (!categoriesReady.value && !categoryFallbackEnabled.value) {
+        return;
+    }
+    mergeCategories((articles || []).map((article) => article.category));
+};
+
+const fetchCategories = async () => {
+    if (cachedRankingCategoriesReady) {
+        availableCategories.value = [...cachedRankingCategories];
+        categoriesReady.value = true;
+        return;
+    }
+    try {
+        if (!rankingCategoriesRequest) {
+            rankingCategoriesRequest = getCategoriesApi(true)
+                .then((categories) => (categories || [])
+                    .map((category) => category.name)
+                    .filter(Boolean)
+                )
+                .catch((error) => {
+                    rankingCategoriesRequest = null;
+                    throw error;
+                });
+        }
+        const categoryNames = await rankingCategoriesRequest;
+        mergeCategories(categoryNames, true);
+        updateCategories(articleRankings.value);
+    } catch (error) {
+        categoryFallbackEnabled.value = true;
+        updateCategories(articleRankings.value);
+    }
+};
+
 const fetchRankings = async () => {
     const response = await runStableRequest(
         () => Promise.all([
-            getArticleRankingsApi(10),
-            getAuthorRankingsApi(10)
+            getArticleRankingsApi(10, {
+                period: activePeriod.value,
+                category: activeCategory.value
+            }),
+            getAuthorRankingsApi(10, {
+                period: activePeriod.value,
+                category: activeCategory.value
+            })
         ]),
         {
             silent: hasLoadedOnce.value,
@@ -38,6 +137,7 @@ const fetchRankings = async () => {
     const [articleList, authorList] = response.result || [];
     articleRankings.value = articleList || [];
     authorRankings.value = authorList || [];
+    updateCategories(articleRankings.value);
 };
 
 const handleFollowChange = (target, followed) => {
@@ -49,7 +149,45 @@ const openArticle = (articleId) => {
     router.push(`/articles/${articleId}`);
 };
 
-onMounted(fetchRankings);
+const articlePath = (article) => {
+    if (!article) {
+        return '/';
+    }
+    return article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`;
+};
+
+const changePeriod = (period) => {
+    activePeriod.value = normalizePeriod(period);
+    syncRoute();
+};
+
+const changeCategory = (category) => {
+    activeCategory.value = category || '';
+    syncRoute();
+};
+
+const toggleCategoryExpanded = () => {
+    categoryExpanded.value = !categoryExpanded.value;
+};
+
+const setMobileBoard = (board) => {
+    activeMobileBoard.value = board === 'authors' ? 'authors' : 'articles';
+};
+
+const setCoverFallback = (event) => {
+    if (event.target.src.includes(DEFAULT_ARTICLE_COVER_URL)) {
+        return;
+    }
+    event.target.src = DEFAULT_ARTICLE_COVER_URL;
+};
+
+watch(() => route.query, async (query) => {
+    activePeriod.value = normalizePeriod(query.period);
+    activeCategory.value = typeof query.category === 'string' ? query.category : '';
+    await fetchRankings();
+}, { immediate: true });
+
+onMounted(fetchCategories);
 </script>
 
 <template>
@@ -61,11 +199,84 @@ onMounted(fetchRankings);
             <p>先从最值得点开的内容入手，再顺着作者继续深挖，读得更快也更准。</p>
         </section>
 
+        <section class="ranking-toolbar" data-testid="ranking-toolbar" aria-label="排行榜筛选">
+            <div class="ranking-filter-group">
+                <span>时间范围</span>
+                <div class="ranking-filter-options">
+                    <button
+                        v-for="item in periodOptions"
+                        :key="item.value"
+                        type="button"
+                        :class="{ active: activePeriod === item.value }"
+                        @click="changePeriod(item.value)"
+                    >
+                        {{ item.label }}
+                    </button>
+                </div>
+            </div>
+            <div class="ranking-filter-group">
+                <span>分类</span>
+                <div
+                    class="ranking-filter-options category"
+                    :class="{
+                        expanded: categoryExpanded,
+                        loading: !categoriesReady && !availableCategories.length
+                    }"
+                    :aria-busy="!categoriesReady && !availableCategories.length"
+                >
+                    <template v-if="categoriesReady || availableCategories.length">
+                        <button
+                            v-for="item in categoryOptions"
+                            :key="item.value || 'all'"
+                            type="button"
+                            class="ranking-category-button"
+                            :class="{ active: activeCategory === item.value }"
+                            @click="changeCategory(item.value)"
+                        >
+                            {{ item.label }}
+                        </button>
+                        <button
+                            v-if="hasHiddenCategoryOptions"
+                            type="button"
+                            class="ranking-category-toggle"
+                            @click="toggleCategoryExpanded"
+                        >
+                            {{ categoryExpanded ? '收起' : '展开更多' }}
+                        </button>
+                    </template>
+                    <span v-else class="ranking-filter-placeholder" aria-hidden="true"></span>
+                </div>
+            </div>
+        </section>
+        <p class="ranking-rule-note">按阅读、点赞、评论综合热度排序，结果会短暂缓存以保证响应速度。</p>
+
         <p v-if="inlineError" class="feed-message">{{ inlineError }}</p>
-        <p v-if="errorMessage && !articleRankings.length && !authorRankings.length" class="feed-message">{{ errorMessage }}</p>
+        <p
+            v-if="errorMessage && !articleRankings.length && !authorRankings.length"
+            class="feed-message"
+        >
+            {{ errorMessage }}
+        </p>
         <p v-if="refreshing" class="ranking-refresh-note">正在更新榜单...</p>
 
-        <div class="ranking-layout">
+        <div class="ranking-mobile-tabs" data-testid="ranking-mobile-tabs" aria-label="榜单类型">
+            <button
+                type="button"
+                :class="{ active: activeMobileBoard === 'articles' }"
+                @click="setMobileBoard('articles')"
+            >
+                文章榜
+            </button>
+            <button
+                type="button"
+                :class="{ active: activeMobileBoard === 'authors' }"
+                @click="setMobileBoard('authors')"
+            >
+                作者榜
+            </button>
+        </div>
+
+        <div class="ranking-layout" :class="`mobile-${activeMobileBoard}`">
             <section class="ranking-feed" data-testid="ranking-articles">
                 <div class="ranking-section-head">
                     <span class="ranking-section-icon">🔥</span>
@@ -73,7 +284,7 @@ onMounted(fetchRankings);
                     <span class="eyebrow">文章榜</span>
                 </div>
                 <div v-if="initialLoading && !articleRankings.length" class="ranking-state">加载中...</div>
-                <ol v-else class="ranking-post-list">
+                <ol v-else-if="articleRankings.length" class="ranking-post-list">
                     <li
                         v-for="(article, index) in articleRankings"
                         :key="article.id"
@@ -92,7 +303,13 @@ onMounted(fetchRankings);
                                 <strong>{{ index + 1 }}</strong>
                             </div>
                             <div class="ranking-post-cover" :aria-label="`查看文章：${article.title}`">
-                                <img :src="article.cover" :alt="article.coverAlt" loading="lazy" decoding="async">
+                                <img
+                                    :src="article.cover"
+                                    :alt="article.coverAlt"
+                                    loading="lazy"
+                                    decoding="async"
+                                    @error="setCoverFallback"
+                                >
                             </div>
                             <div class="ranking-post-content">
                                 <div class="ranking-post-meta">
@@ -116,15 +333,16 @@ onMounted(fetchRankings);
                                         <span>{{ article.author.name }}</span>
                                     </RouterLink>
                                     <div class="ranking-post-stats">
-                                        <span>{{ article.stats.views }}</span>
-                                        <span>{{ article.stats.likes }}</span>
-                                        <span>{{ article.stats.comments }}</span>
+                                        <span class="views">{{ article.stats.views }}</span>
+                                        <span class="likes">{{ article.stats.likes }}</span>
+                                        <span class="comments">{{ article.stats.comments }}</span>
                                     </div>
                                 </div>
                             </div>
                         </article>
                     </li>
                 </ol>
+                <div v-else class="ranking-state">当前筛选下暂无文章上榜</div>
             </section>
 
             <aside class="ranking-sidebar" data-testid="ranking-authors">
@@ -135,7 +353,7 @@ onMounted(fetchRankings);
                         <span class="eyebrow">作者榜</span>
                     </div>
                     <div v-if="initialLoading && !authorRankings.length" class="ranking-state">加载中...</div>
-                    <div v-else class="ranking-author-list">
+                    <div v-else-if="authorRankings.length" class="ranking-author-list">
                         <div v-for="author in authorRankings" :key="author.user.id" class="ranking-author-card">
                             <span class="ranking-side-rank" :class="`rank-${author.rank}`">{{ author.rank }}</span>
                             <RouterLink class="ranking-author-avatar" :to="`/users/${author.user.id}`">
@@ -143,7 +361,19 @@ onMounted(fetchRankings);
                             </RouterLink>
                             <div class="ranking-author-copy">
                                 <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
-                                <p>{{ author.articleCount }} 篇 · {{ author.totalLikeCount }} 赞 · {{ author.followerCount }} 粉丝</p>
+                                <p>
+                                    {{ author.articleCount }} 篇 · {{ author.totalLikeCount }} 赞 ·
+                                    {{ author.followerCount }} 粉丝
+                                </p>
+                                <RouterLink
+                                    v-if="author.topArticle"
+                                    class="ranking-author-top-article"
+                                    :to="articlePath(author.topArticle)"
+                                    :title="`代表作：${author.topArticle.title}`"
+                                    :aria-label="`查看代表作：${author.topArticle.title}`"
+                                >
+                                    代表作：{{ author.topArticle.title }}
+                                </RouterLink>
                             </div>
                             <div class="ranking-author-action">
                                 <span v-if="author.user.id === state.user?.id" class="ranking-author-self-tag">我</span>
@@ -157,6 +387,7 @@ onMounted(fetchRankings);
                             </div>
                         </div>
                     </div>
+                    <div v-else class="ranking-state">当前筛选下暂无作者上榜</div>
                 </section>
             </aside>
         </div>
@@ -190,6 +421,94 @@ onMounted(fetchRankings);
     color: var(--muted);
     font-size: 15px;
     line-height: 1.8;
+}
+
+.ranking-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    align-items: center;
+    margin-top: 20px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.ranking-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+}
+
+.ranking-filter-group > span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ranking-filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ranking-filter-options.category {
+    min-height: 30px;
+}
+
+.ranking-filter-placeholder {
+    display: block;
+    width: 92px;
+    height: 30px;
+    background: var(--surface-muted);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.ranking-filter-options button,
+.ranking-mobile-tabs button {
+    min-height: 30px;
+    padding: 0 11px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.ranking-filter-options button.active,
+.ranking-mobile-tabs button.active {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--brand);
+}
+
+.ranking-filter-options button:hover:not(.active),
+.ranking-mobile-tabs button:hover:not(.active) {
+    color: var(--text);
+    border-color: var(--brand-hover);
+}
+
+.ranking-category-toggle {
+    display: none;
+}
+
+.ranking-rule-note {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.ranking-mobile-tabs {
+    display: none;
+    gap: 8px;
+    margin-top: 16px;
 }
 
 /* ============================================================
@@ -469,6 +788,8 @@ onMounted(fetchRankings);
 .ranking-sidebar-card {
     position: sticky;
     top: 72px;
+    width: 100%;
+    max-width: 100%;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
@@ -484,9 +805,12 @@ onMounted(fetchRankings);
 }
 
 .ranking-author-card {
-    display: flex;
+    display: grid;
+    grid-template-columns: 22px 38px minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
+    width: 100%;
+    min-width: 0;
     padding: 12px 16px;
     border-bottom: 1px solid var(--line);
     transition: background 0.12s;
@@ -572,11 +896,27 @@ onMounted(fetchRankings);
     text-overflow: ellipsis;
 }
 
+.ranking-author-top-article {
+    display: block;
+    color: var(--brand);
+    font-size: 12px;
+    line-height: 1.35;
+    overflow: hidden;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ranking-author-top-article:hover {
+    color: var(--brand-strong);
+}
+
 /* 关注按钮区 */
 .ranking-author-action {
-    flex-shrink: 0;
     display: flex;
     align-items: center;
+    justify-self: end;
+    min-width: 0;
 }
 
 .ranking-author-self-tag {
@@ -632,8 +972,55 @@ onMounted(fetchRankings);
 }
 
 @media (max-width: 760px) {
+    .ranking-toolbar {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 10px 0;
+    }
+
+    .ranking-filter-group {
+        align-items: start;
+        flex-direction: column;
+    }
+
+    .ranking-filter-options {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .ranking-filter-options button {
+        flex: 0 0 auto;
+    }
+
+    .ranking-category-toggle {
+        display: inline-flex;
+        align-items: center;
+        color: var(--brand) !important;
+        background: transparent !important;
+        border-color: transparent !important;
+    }
+
+    .ranking-filter-options.category:not(.expanded) .ranking-category-button:nth-of-type(n + 5):not(.active) {
+        display: none;
+    }
+
+    .ranking-mobile-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ranking-mobile-tabs button {
+        width: 100%;
+    }
+
     .ranking-layout {
         margin-top: 16px;
+    }
+
+    .ranking-layout.mobile-articles .ranking-sidebar,
+    .ranking-layout.mobile-authors .ranking-feed {
+        display: none;
     }
 
     .ranking-post-item {
@@ -646,6 +1033,7 @@ onMounted(fetchRankings);
 
     .ranking-post-content {
         padding: 12px 14px;
+        overflow: hidden;
     }
 
     .ranking-post-title {
@@ -653,7 +1041,45 @@ onMounted(fetchRankings);
     }
 
     .ranking-post-summary {
-        -webkit-line-clamp: 1;
+        -webkit-line-clamp: 2;
+    }
+
+    .ranking-post-footer {
+        align-items: start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .ranking-post-stats {
+        width: 100%;
+        margin-left: 0;
+        gap: 8px;
+        overflow: hidden;
+    }
+
+    .ranking-post-stats span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ranking-post-stats .comments {
+        display: none;
+    }
+
+    .ranking-author-card {
+        grid-template-columns: 22px 38px minmax(0, 1fr);
+        align-items: start;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .ranking-author-action {
+        grid-column: 3;
+        justify-self: start;
+        align-self: start;
+        max-width: 100%;
     }
 
     .ranking-section-head {

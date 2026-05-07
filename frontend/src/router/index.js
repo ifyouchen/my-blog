@@ -444,7 +444,8 @@ const router = createRouter({
             '/dashboard/columns',
             '/dashboard/favorites',
             '/search',
-            '/history'
+            '/history',
+            '/ranking'
         ];
         if (to.path === from.path && samePathNoScroll.includes(to.path)) {
             return false;
