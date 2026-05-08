@@ -153,13 +153,10 @@ const applyInteractionState = ({
     if (!syncRemote || !remoteArticle.value) {
         return;
     }
-    remoteArticle.value = {
-        ...remoteArticle.value,
-        liked: liked.value,
-        favorited: favorited.value,
-        likeCount: likeCount.value,
-        favoriteCount: favoriteCount.value
-    };
+    remoteArticle.value.liked = liked.value;
+    remoteArticle.value.favorited = favorited.value;
+    remoteArticle.value.likeCount = likeCount.value;
+    remoteArticle.value.favoriteCount = favoriteCount.value;
 };
 
 const syncArticleState = () => {
@@ -187,10 +184,7 @@ const syncArticleState = () => {
 const handleCommentCountChange = (delta) => {
     commentCount.value = Math.max(0, commentCount.value + delta);
     if (remoteArticle.value) {
-        remoteArticle.value = {
-            ...remoteArticle.value,
-            commentCount: commentCount.value
-        };
+        remoteArticle.value.commentCount = commentCount.value;
     }
 };
 
@@ -198,15 +192,13 @@ const handleAuthorFollowChange = (nextFollowed) => {
     if (!remoteArticle.value?.author) {
         return;
     }
+    const author = remoteArticle.value.author;
+    const wasFollowed = Boolean(author.followed);
     const delta = nextFollowed ? 1 : -1;
-    remoteArticle.value = {
-        ...remoteArticle.value,
-        author: {
-            ...remoteArticle.value.author,
-            followed: nextFollowed,
-            followerCount: Math.max(0, (remoteArticle.value.author.followerCount || 0) + delta)
-        }
-    };
+    author.followed = nextFollowed;
+    if (wasFollowed !== nextFollowed) {
+        author.followerCount = Math.max(0, (author.followerCount || 0) + delta);
+    }
 };
 
 const fetchArticle = async () => {
@@ -405,11 +397,12 @@ const handleScroll = () => {
 
 watch(article, syncArticleState, { immediate: true });
 watch(() => route.params.id, fetchArticle, { immediate: true });
-watch(remoteArticle, (val) => {
-    if (val?.id) {
-        saveRecentArticle(val);
-        fetchRecommendations(val.id);
-        fetchNeighbors(val.id);
+watch(() => remoteArticle.value?.id, (id) => {
+    const currentArticle = remoteArticle.value;
+    if (id && currentArticle) {
+        saveRecentArticle(currentArticle);
+        fetchRecommendations(id);
+        fetchNeighbors(id);
     }
 });
 
@@ -487,10 +480,9 @@ watch(tocDrawerOpen, (open) => {
                                 <div class="byline-info">
                                     <strong class="byline-name">{{ article.author.name }}</strong>
                                     <span class="byline-meta">
-                                        {{ article.publishedText }}
-                                        <template v-if="article.author.followerCount">
-                                            · {{ article.author.followerCount }} 粉丝
-                                        </template>
+                                        <span class="byline-date">{{ article.publishedText }}</span>
+                                        <span class="byline-separator">·</span>
+                                        <span class="byline-followers">{{ article.author.followerCount || 0 }} 粉丝</span>
                                     </span>
                                 </div>
                             </RouterLink>
@@ -628,7 +620,12 @@ watch(tocDrawerOpen, (open) => {
                 data-testid="article-related-section"
             >
                 <h2 class="side-related-title">相关推荐</h2>
-                <div v-if="relatedLoading" class="side-related-loading">加载中...</div>
+                <div
+                    v-if="relatedLoading && recommendationSections.length === 0"
+                    class="side-related-loading"
+                >
+                    加载中...
+                </div>
                 <div v-else class="side-related-sections">
                     <section
                         v-for="section in recommendationSections"
@@ -1000,7 +997,8 @@ watch(tocDrawerOpen, (open) => {
     gap: 10px;
     text-decoration: none;
     color: inherit;
-    flex-shrink: 0;
+    flex: 0 1 260px;
+    min-width: 220px;
 }
 
 .byline-avatar,
@@ -1025,6 +1023,7 @@ watch(tocDrawerOpen, (open) => {
 .byline-info {
     display: grid;
     gap: 1px;
+    min-width: 0;
 }
 
 .byline-name {
@@ -1032,13 +1031,34 @@ watch(tocDrawerOpen, (open) => {
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .byline-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
     font-size: 12px;
     color: var(--muted);
     line-height: 1.4;
     white-space: nowrap;
+}
+
+.byline-date {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.byline-separator {
+    flex: none;
+}
+
+.byline-followers {
+    flex: none;
+    min-width: 52px;
 }
 
 .article-stats-row {
@@ -1074,9 +1094,10 @@ watch(tocDrawerOpen, (open) => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 84px;
+    width: 88px;
+    min-width: 88px;
     min-height: 34px;
-    padding: 0 14px;
+    padding: 0 10px;
     color: var(--text);
     font-size: 14px;
     font-weight: 500;
@@ -1114,6 +1135,7 @@ watch(tocDrawerOpen, (open) => {
 
 .article-follow-button {
     flex: none;
+    width: 88px;
 }
 
 .article-comment {
@@ -1170,6 +1192,7 @@ watch(tocDrawerOpen, (open) => {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
+    contain: layout paint;
 }
 
 .side-related-title {
@@ -1262,6 +1285,11 @@ watch(tocDrawerOpen, (open) => {
         padding: 18px;
     }
 
+    .article-byline {
+        flex-basis: 100%;
+        min-width: 0;
+    }
+
     .article-quick-actions {
         justify-content: flex-start;
     }
@@ -1309,6 +1337,13 @@ watch(tocDrawerOpen, (open) => {
 /* 分享卡片（B 站风格） */
 .article-share-wrap {
     position: relative;
+    flex: none;
+    width: 88px;
+}
+
+.article-share-wrap .article-quick-button {
+    width: 100%;
+    min-width: 100%;
 }
 
 .article-share-card {
