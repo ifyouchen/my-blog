@@ -64,6 +64,16 @@ export const getColumnArticlesApi = async (columnId, { page = 1, pageSize = 10 }
     };
 };
 
+export const getColumnArticleNeighborsApi = async (columnId, articleId) => {
+    const data = await request(`/columns/${columnId}/articles/${articleId}/neighbors`, {
+        suppressAuthPrompt: true
+    });
+    return {
+        prev: data?.prev ? normalizeArticle(data.prev) : null,
+        next: data?.next ? normalizeArticle(data.next) : null
+    };
+};
+
 export const subscribeColumnApi = async (columnId) => request(`/columns/${columnId}/subscribe`, {
     method: 'POST'
 });

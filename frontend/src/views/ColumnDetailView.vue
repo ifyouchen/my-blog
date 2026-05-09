@@ -179,6 +179,7 @@ onBeforeRouteLeave(() => {
             eyebrow="专栏文章"
             title="继续阅读"
             empty-text="这个专栏暂时还没有公开文章"
+            :article-link-query="column ? { from: 'column', columnId: column.id, columnTitle: column.title } : {}"
             @load-more="loadMoreArticles"
         />
     </main>

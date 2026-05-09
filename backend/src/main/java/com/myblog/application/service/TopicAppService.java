@@ -116,6 +116,40 @@ public class TopicAppService {
         return new PageResult<>(items, currentPage, currentPageSize, visibleArticles.size());
     }
 
+    /**
+     * 获取专题内某篇文章的上下篇。
+     *
+     * @param topicId   专题 ID
+     * @param articleId 当前文章 ID
+     * @return Map with keys "prev" and "next", values may be null
+     */
+    public java.util.Map<String, ArticleDTO> getTopicArticleNeighbors(Long topicId, Long articleId) {
+        loadPublishedTopic(topicId);
+        List<Long> articleIds = topicRepository.findArticleIds(new TopicId(topicId));
+        List<Long> visibleIds = new ArrayList<>();
+        for (Long id : articleIds) {
+            Article article = articleRepository.findById(new ArticleId(id)).orElse(null);
+            if (article != null && ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+                visibleIds.add(id);
+            }
+        }
+        int idx = visibleIds.indexOf(articleId);
+        java.util.Map<String, ArticleDTO> result = new java.util.LinkedHashMap<>();
+        result.put("prev", idx > 0 ? toNeighborDTO(visibleIds.get(idx - 1)) : null);
+        result.put("next", idx >= 0 && idx < visibleIds.size() - 1 ? toNeighborDTO(visibleIds.get(idx + 1)) : null);
+        return result;
+    }
+
+    private ArticleDTO toNeighborDTO(Long articleId) {
+        Article article = articleRepository.findById(new ArticleId(articleId)).orElse(null);
+        if (article == null) {
+            return null;
+        }
+        return userRepository.findById(article.getAuthorId())
+            .map(author -> articleAssembler.toDTO(article, author))
+            .orElse(null);
+    }
+
     // ==================== 管理后台接口 ====================
 
     /**

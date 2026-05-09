@@ -152,6 +152,7 @@ onBeforeRouteLeave(() => {
             eyebrow="专题文章"
             title="继续阅读"
             empty-text="这个专题暂时还没有公开文章"
+            :article-link-query="topic ? { from: 'topic', topicId: topic.id, topicTitle: topic.title } : {}"
             @load-more="loadMoreArticles"
         />
     </main>

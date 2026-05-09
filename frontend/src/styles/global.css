@@ -52,12 +52,12 @@
     --radius-sm: 6px;
 
     /* 布局 */
-    --layout-max-width: 1440px;
-    --layout-sidebar-width: 330px;
-    --layout-reading-width: 860px;
+    --layout-max-width: 1600px;
+    --layout-sidebar-width: 360px;
+    --layout-reading-width: 960px;
     --layout-admin-sidebar-width: 248px;
     --layout-editor-sidebar-width: 320px;
-    --layout-gutter: 24px;
+    --layout-gutter: 32px;
 }
 
 /* ============================================================
@@ -1550,8 +1550,8 @@ button:disabled {
    ============================================================ */
 .detail-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
     align-items: start;
 }
 
@@ -1611,7 +1611,7 @@ button:disabled {
 }
 
 .article-body .markdown-preview {
-    max-width: var(--layout-reading-width);
+    max-width: 100%;
 }
 
 .article-body h1,
@@ -1624,6 +1624,8 @@ button:disabled {
     font-size: 26px;
     font-weight: 700;
     line-height: 1.4;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .article-summary,
@@ -1632,6 +1634,9 @@ button:disabled {
     color: var(--muted);
     font-size: 14px;
     line-height: 1.7;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 
 /* 作者信息块 */

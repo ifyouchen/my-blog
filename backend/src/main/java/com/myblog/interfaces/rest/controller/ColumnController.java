@@ -72,6 +72,18 @@ public class ColumnController {
         ));
     }
 
+    @GetMapping("/{id}/articles/{articleId}/neighbors")
+    public Result<java.util.Map<String, ArticleResponse>> getColumnArticleNeighbors(
+            @PathVariable Long id,
+            @PathVariable Long articleId) {
+        java.util.Map<String, com.myblog.application.dto.ArticleDTO> neighbors =
+            columnAppService.getColumnArticleNeighbors(id, articleId);
+        java.util.Map<String, ArticleResponse> resp = new java.util.LinkedHashMap<>();
+        resp.put("prev", neighbors.get("prev") == null ? null : restDtoMapper.toPublicResponse(neighbors.get("prev")));
+        resp.put("next", neighbors.get("next") == null ? null : restDtoMapper.toPublicResponse(neighbors.get("next")));
+        return Result.success(resp);
+    }
+
     @GetMapping("/{id}/articles")
     public Result<PageResult<ArticleResponse>> pageColumnArticles(@PathVariable Long id,
                                                                   @RequestParam(defaultValue = "1") int page,

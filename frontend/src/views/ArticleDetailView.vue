@@ -3,6 +3,8 @@ import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {getArticleApi, getArticleNeighborsApi, getArticleRecommendationsApi} from '@/api/articles';
+import {getColumnArticlesApi, getColumnArticleNeighborsApi} from '@/api/columns';
+import {getTopicArticlesApi, getTopicArticleNeighborsApi} from '@/api/topic';
 import {likeArticleApi, unlikeArticleApi} from '@/api/likes';
 import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -26,6 +28,55 @@ const recommendationSections = ref([]);
 const relatedLoading = ref(false);
 const neighborPrev = ref(null);
 const neighborNext = ref(null);
+
+// ===== 来源上下文（从专栏/专题进入时携带的 query 参数）=====
+const sourceFrom = computed(() => route.query.from || '');
+const sourceColumnId = computed(() => route.query.columnId ? String(route.query.columnId) : '');
+const sourceColumnTitle = computed(() => route.query.columnTitle ? String(route.query.columnTitle) : '');
+const sourceTopicId = computed(() => route.query.topicId ? String(route.query.topicId) : '');
+const sourceTopicTitle = computed(() => route.query.topicTitle ? String(route.query.topicTitle) : '');
+const isFromColumn = computed(() => sourceFrom.value === 'column' && !!sourceColumnId.value);
+const isFromTopic = computed(() => sourceFrom.value === 'topic' && !!sourceTopicId.value);
+const isInContext = computed(() => isFromColumn.value || isFromTopic.value);
+
+// 面包屑信息
+const contextLabel = computed(() => {
+    if (isFromColumn.value) return sourceColumnTitle.value || '专栏';
+    if (isFromTopic.value) return sourceTopicTitle.value || '专题';
+    return '';
+});
+const contextBackTo = computed(() => {
+    if (isFromColumn.value) return `/columns/${sourceColumnId.value}`;
+    if (isFromTopic.value) return `/topics/${sourceTopicId.value}`;
+    return '';
+});
+const contextType = computed(() => {
+    if (isFromColumn.value) return '专栏';
+    if (isFromTopic.value) return '专题';
+    return '';
+});
+
+// 专栏/专题内文章列表（侧边栏用）
+const contextArticles = ref([]);
+const contextArticlesLoading = ref(false);
+const contextArticlesExpanded = ref(false); // 是否已展开全部文章
+
+// 上下篇跳转时携带的 query 参数
+const neighborQuery = computed(() => {
+    if (isFromColumn.value) {
+        return { from: 'column', columnId: sourceColumnId.value, columnTitle: sourceColumnTitle.value };
+    }
+    if (isFromTopic.value) {
+        return { from: 'topic', topicId: sourceTopicId.value, topicTitle: sourceTopicTitle.value };
+    }
+    return null;
+});
+
+const buildNeighborTo = (neighborArticle) => {
+    if (!neighborArticle) return null;
+    const path = `/articles/${neighborArticle.id}`;
+    return neighborQuery.value ? { path, query: neighborQuery.value } : path;
+};
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const articleUrl = computed(() => `${window.location.origin}/articles/${articleId.value}`);
 const article = computed(() => remoteArticle.value);
@@ -74,7 +125,6 @@ const readingProgress = ref(0);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
 const reportDialogVisible = ref(false);
-const immersiveMode = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
 const tocDrawerOpen = ref(false);
@@ -204,9 +254,12 @@ const handleAuthorFollowChange = (nextFollowed) => {
 const fetchArticle = async () => {
     const routeId = String(route.params.id);
     const numericId = routeId.replace(/-.+$/, '');
-    remoteArticle.value = null;
+    // 有旧文章时保留 remoteArticle（避免整个 main 卸载导致左侧栏闪烁）
+    // 首次加载时才 null（走骨架屏分支）
+    if (!remoteArticle.value) {
+        isLoading.value = true;
+    }
     loadError.value = '';
-    isLoading.value = true;
     recommendationSections.value = [];
     try {
         const detail = await getArticleApi(numericId);
@@ -215,6 +268,7 @@ const fetchArticle = async () => {
         }
     } catch (error) {
         if (String(route.params.id) === routeId) {
+            remoteArticle.value = null;
             loadError.value = error.message || '文章不存在';
         }
     } finally {
@@ -225,6 +279,11 @@ const fetchArticle = async () => {
 };
 
 const fetchRecommendations = async (id) => {
+    // 从专栏/专题进入时，不显示相关推荐（侧边栏改为专栏/专题文章列表）
+    if (isInContext.value) {
+        recommendationSections.value = [];
+        return;
+    }
     relatedLoading.value = true;
     try {
         const result = await getArticleRecommendationsApi(id, 12);
@@ -238,13 +297,48 @@ const fetchRecommendations = async (id) => {
 
 const fetchNeighbors = async (id) => {
     try {
-        const nb = await getArticleNeighborsApi(id);
+        let nb;
+        if (isFromColumn.value) {
+            nb = await getColumnArticleNeighborsApi(sourceColumnId.value, id);
+        } else if (isFromTopic.value) {
+            nb = await getTopicArticleNeighborsApi(sourceTopicId.value, id);
+        } else {
+            nb = await getArticleNeighborsApi(id);
+        }
         neighborPrev.value = nb.prev || null;
         neighborNext.value = nb.next || null;
     } catch {
         neighborPrev.value = null;
         neighborNext.value = null;
     }
+};
+
+// 获取专栏/专题内文章列表（侧边栏显示，默认最多50条，展开后加载全量）
+const fetchContextArticles = async (pageSize = 50) => {
+    if (!isInContext.value) {
+        contextArticles.value = [];
+        return;
+    }
+    contextArticlesLoading.value = true;
+    try {
+        let result;
+        if (isFromColumn.value) {
+            result = await getColumnArticlesApi(sourceColumnId.value, { page: 1, pageSize });
+        } else {
+            result = await getTopicArticlesApi(sourceTopicId.value, { page: 1, pageSize });
+        }
+        contextArticles.value = result.items || [];
+    } catch {
+        contextArticles.value = [];
+    } finally {
+        contextArticlesLoading.value = false;
+    }
+};
+
+// 展开全部文章列表
+const expandAllContextArticles = async () => {
+    contextArticlesExpanded.value = true;
+    await fetchContextArticles(500);
 };
 
 const toggleLike = async () => {
@@ -336,20 +430,7 @@ const openReportArticle = () => {
 
 const handleReportSuccess = () => {};
 
-const toggleImmersive = () => {
-    immersiveMode.value = !immersiveMode.value;
-    if (immersiveMode.value) {
-        document.body.classList.add('immersive-mode');
-    } else {
-        document.body.classList.remove('immersive-mode');
-    }
-};
-
 const handleImmersiveKeydown = (e) => {
-    if (e.key === 'Escape' && immersiveMode.value) {
-        toggleImmersive();
-        return;
-    }
     if (e.key === 'Escape' && tocDrawerOpen.value) {
         tocDrawerOpen.value = false;
     }
@@ -414,10 +495,29 @@ onMounted(() => {
 onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('keydown', handleImmersiveKeydown);
-    document.body.classList.remove('immersive-mode');
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
     document.body.classList.remove('mobile-toc-open');
 });
+
+// 监听来源上下文变化，重新加载专栏/专题文章列表
+// 只有专栏/专题 ID 真正变化时才重新 fetch，避免同栏内切换文章时列表闪烁
+let _lastContextKey = '';
+watch(
+    () => [route.query.from, route.query.columnId, route.query.topicId],
+    ([from, columnId, topicId]) => {
+        const newKey = `${from}|${columnId || ''}|${topicId || ''}`;
+        const contextChanged = newKey !== _lastContextKey;
+        _lastContextKey = newKey;
+
+        if (contextChanged) {
+            // 专栏/专题切换：重置展开状态并重新加载列表
+            contextArticlesExpanded.value = false;
+            fetchContextArticles(50);
+        }
+        // 文章 ID 变化时刷新上下篇和推荐（由 route.params.id 的 watch 处理，此处无需重复）
+    },
+    { immediate: true }
+);
 
 watch(() => route.fullPath, () => {
     tocDrawerOpen.value = false;
@@ -438,6 +538,19 @@ watch(tocDrawerOpen, (open) => {
 
 <template>
     <SiteHeader />
+    <!-- 专栏/专题面包屑导航 -->
+    <div v-if="isInContext && contextLabel" class="article-context-bar">
+        <div class="article-context-bar-inner page-shell">
+            <RouterLink :to="contextBackTo" class="context-back-link">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+                <span class="context-type-badge">{{ contextType }}</span>
+                <span class="context-back-title">{{ contextLabel }}</span>
+            </RouterLink>
+        </div>
+    </div>
     <div
         v-if="article && readingProgress > 0"
         class="reading-progress-bar"
@@ -447,8 +560,43 @@ watch(tocDrawerOpen, (open) => {
         aria-valuemax="100"
         :style="{ width: `${readingProgress}%` }"
     ></div>
-    <main v-if="article" :class="['page-shell', 'detail-layout', { 'detail-immersive': immersiveMode }]" data-testid="article-detail-page">
-        <article class="article-main" data-testid="article-detail-main">
+    <main v-if="article" :class="['page-shell', 'detail-layout', { 'detail-layout--context': isInContext }]" data-testid="article-detail-page">
+        <!-- 左侧：专栏/专题文章列表（仅从专栏/专题进入时显示） -->
+        <aside v-if="isInContext" class="detail-context-side" aria-label="专栏文章列表">
+            <div class="context-side-inner">
+                <div class="context-side-header">
+                    <RouterLink :to="contextBackTo" class="context-side-title-link">
+                        <span class="context-side-type">{{ contextType }}</span>
+                        <span class="context-side-name">{{ contextLabel }}</span>
+                    </RouterLink>
+                </div>
+                <div v-if="contextArticlesLoading && contextArticles.length === 0" class="context-side-loading">
+                    加载中...
+                </div>
+                <nav v-else class="context-side-list" :aria-label="`${contextType}文章列表`">
+                    <RouterLink
+                        v-for="(item, index) in contextArticles"
+                        :key="item.id"
+                        :to="{ path: `/articles/${item.id}`, query: neighborQuery }"
+                        :class="['context-side-item', { 'context-side-item--active': String(item.id) === String(articleId) }]"
+                    >
+                        <span class="context-side-index">{{ index + 1 }}</span>
+                        <span class="context-side-item-title" :title="item.title">{{ item.title }}</span>
+                    </RouterLink>
+                </nav>
+                <button
+                    v-if="!contextArticlesExpanded && contextArticles.length === 50"
+                    type="button"
+                    class="context-side-more"
+                    :disabled="contextArticlesLoading"
+                    @click="expandAllContextArticles"
+                >
+                    {{ contextArticlesLoading ? '加载中...' : '查看全部文章 ↓' }}
+                </button>
+            </div>
+        </aside>
+
+        <article :class="['article-main', { 'article-main--loading': isLoading && remoteArticle }]" data-testid="article-detail-main">
             <div class="article-body">
                 <section class="article-heading-panel">
                     <div class="article-heading-top">
@@ -554,15 +702,6 @@ watch(tocDrawerOpen, (open) => {
                                     </div>
                                 </div>
                             </div>
-                            <!-- 沉浸阅读 -->
-                            <button
-                                type="button"
-                                :class="['article-quick-button', { active: immersiveMode }]"
-                                :title="immersiveMode ? '退出沉浸模式 (Esc)' : '沉浸阅读'"
-                                @click="toggleImmersive"
-                            >
-                                <span class="article-quick-label">{{ immersiveMode ? '退出' : '沉浸' }}</span>
-                            </button>
                         </div>
                     </div>
                 </section>
@@ -574,24 +713,29 @@ watch(tocDrawerOpen, (open) => {
 
                 <!-- 上下篇导航 -->
                 <section v-if="neighborPrev || neighborNext" class="article-neighbors">
-                    <RouterLink
-                        v-if="neighborPrev"
-                        :to="`/articles/${neighborPrev.id}`"
-                        class="article-neighbor article-neighbor--prev"
-                    >
-                        <span class="article-neighbor-label">上一篇</span>
-                        <span class="article-neighbor-title">{{ neighborPrev.title }}</span>
-                    </RouterLink>
-                    <span v-else class="article-neighbor article-neighbor--prev article-neighbor--empty" />
-                    <RouterLink
-                        v-if="neighborNext"
-                        :to="`/articles/${neighborNext.id}`"
-                        class="article-neighbor article-neighbor--next"
-                    >
-                        <span class="article-neighbor-label">下一篇</span>
-                        <span class="article-neighbor-title">{{ neighborNext.title }}</span>
-                    </RouterLink>
-                    <span v-else class="article-neighbor article-neighbor--next article-neighbor--empty" />
+                    <div v-if="isInContext" class="article-neighbors-context">
+                        <span class="article-neighbors-context-label">{{ contextType }}「{{ contextLabel }}」</span>
+                    </div>
+                    <div class="article-neighbors-row">
+                        <RouterLink
+                            v-if="neighborPrev"
+                            :to="buildNeighborTo(neighborPrev)"
+                            class="article-neighbor article-neighbor--prev"
+                        >
+                            <span class="article-neighbor-label">上一篇</span>
+                            <span class="article-neighbor-title">{{ neighborPrev.title }}</span>
+                        </RouterLink>
+                        <span v-else class="article-neighbor article-neighbor--prev article-neighbor--empty" />
+                        <RouterLink
+                            v-if="neighborNext"
+                            :to="buildNeighborTo(neighborNext)"
+                            class="article-neighbor article-neighbor--next"
+                        >
+                            <span class="article-neighbor-label">下一篇</span>
+                            <span class="article-neighbor-title">{{ neighborNext.title }}</span>
+                        </RouterLink>
+                        <span v-else class="article-neighbor article-neighbor--next article-neighbor--empty" />
+                    </div>
                 </section>
 
                 <section class="article-comment" data-testid="article-comments-section">
@@ -614,8 +758,10 @@ watch(tocDrawerOpen, (open) => {
                 :content="articleMarkdown"
                 class="detail-toc"
             />
+
+            <!-- 无上下文：显示相关推荐（从专栏/专题进入时不显示） -->
             <section
-                v-if="recommendationSections.length > 0 || relatedLoading"
+                v-if="!isInContext && (recommendationSections.length > 0 || relatedLoading)"
                 class="side-related"
                 data-testid="article-related-section"
             >
@@ -660,7 +806,8 @@ watch(tocDrawerOpen, (open) => {
                     </section>
                 </div>
             </section>
-            <AdBanner class="article-sidebar-ad" :slot-code="'article_sidebar'" />
+
+            <AdBanner v-if="!isInContext" class="article-sidebar-ad" :slot-code="'article_sidebar'" />
         </aside>
     </main>
     <!-- 加载骨架屏 -->
@@ -753,6 +900,186 @@ watch(tocDrawerOpen, (open) => {
 </template>
 
 <style scoped>
+/* ===== 三列布局：从专栏/专题进入时，左=文章列表 / 中=正文 / 右=目录 ===== */
+.detail-layout--context {
+    grid-template-columns: 220px minmax(0, 1fr) 260px;
+}
+
+.detail-toc {
+    margin-top: 0;
+    padding-top: 28px;
+}
+
+/* 左侧文章列表面板 */
+.detail-context-side {
+    position: sticky;
+    top: 72px;
+    min-width: 0;
+    max-height: calc(100vh - 88px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.context-side-inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.context-side-header {
+    flex-shrink: 0;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-soft);
+}
+
+.context-side-title-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: opacity 0.12s;
+}
+
+.context-side-title-link:hover {
+    opacity: 0.78;
+}
+
+.context-side-type {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.context-side-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.context-side-loading {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.context-side-list {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.context-side-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.context-side-list::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+}
+
+.context-side-item {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 6px;
+    align-items: baseline;
+    padding: 8px 12px;
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.1s;
+}
+
+.context-side-item:last-child {
+    border-bottom: 0;
+}
+
+.context-side-item:hover {
+    background: var(--surface-soft);
+}
+
+.context-side-item--active {
+    background: var(--brand-soft);
+}
+
+.context-side-item--active .context-side-index,
+.context-side-item--active .context-side-item-title {
+    color: var(--brand-strong);
+    font-weight: 700;
+}
+
+.context-side-index {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+    flex-shrink: 0;
+}
+
+.context-side-item-title {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.context-side-more {
+    display: block;
+    flex-shrink: 0;
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--brand);
+    background: transparent;
+    text-decoration: none;
+    text-align: center;
+    border: 0;
+    border-top: 1px solid var(--line);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.context-side-more:hover:not(:disabled) {
+    background: var(--brand-soft);
+}
+
+.context-side-more:disabled {
+    color: var(--muted);
+    cursor: default;
+}
+
+/* 文章切换时淡入过渡（避免硬切） */
+.article-main--loading {
+    opacity: 0.45;
+    transition: opacity 0.15s;
+}
+
+.article-main {
+    transition: opacity 0.15s;
+}
+
 /* 阅读进度条 */
 .reading-progress-bar {
     position: fixed;
@@ -764,6 +1091,203 @@ watch(tocDrawerOpen, (open) => {
     border-radius: 0 2px 2px 0;
     transition: width 0.1s linear;
     pointer-events: none;
+}
+
+/* ===== 专栏/专题面包屑导航条 ===== */
+/* 宽屏时左侧面板已承担导航，隐藏顶部面包屑条；窄屏（≤980px 左侧面板隐藏）时显示 */
+.article-context-bar {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 980px) {
+    .article-context-bar {
+        display: block;
+    }
+}
+
+.article-context-bar-inner {
+    display: flex;
+    align-items: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.context-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.12s;
+}
+
+.context-back-link:hover {
+    color: var(--brand);
+}
+
+.context-type-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
+    line-height: 1;
+}
+
+.context-back-title {
+    font-weight: 500;
+    color: var(--text);
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.context-back-link:hover .context-back-title {
+    color: var(--brand);
+}
+
+/* ===== 侧边栏：专栏/专题文章列表 ===== */
+.side-context-articles {
+    display: grid;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    contain: layout paint;
+}
+
+.side-context-header {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-soft);
+}
+
+.side-context-title-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: opacity 0.12s;
+}
+
+.side-context-title-link:hover {
+    opacity: 0.78;
+}
+
+.side-context-type {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.side-context-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.side-context-loading {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.side-context-list {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 320px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.side-context-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.side-context-list::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+}
+
+.side-context-item {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 6px;
+    align-items: baseline;
+    padding: 8px 14px;
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.1s;
+}
+
+.side-context-item:last-child {
+    border-bottom: 0;
+}
+
+.side-context-item:hover {
+    background: var(--surface-soft);
+}
+
+.side-context-item--active {
+    background: var(--brand-soft);
+}
+
+.side-context-item--active .side-context-index,
+.side-context-item--active .side-context-item-title {
+    color: var(--brand-strong);
+    font-weight: 700;
+}
+
+.side-context-index {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+    flex-shrink: 0;
+}
+
+.side-context-item-title {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.side-context-more {
+    display: block;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--brand);
+    text-decoration: none;
+    text-align: center;
+    border-top: 1px solid var(--line);
+    transition: background 0.12s;
+}
+
+.side-context-more:hover {
+    background: var(--brand-soft);
 }
 
 .mobile-toc-trigger {
@@ -825,6 +1349,15 @@ watch(tocDrawerOpen, (open) => {
     }
 
     .article-sidebar-ad {
+        display: none;
+    }
+
+    /* 三列→两列：隐藏左侧文章列表，改用移动端底部抽屉触发 */
+    .detail-layout--context {
+        grid-template-columns: minmax(0, 1fr) 260px;
+    }
+
+    .detail-context-side {
         display: none;
     }
 }
@@ -1281,6 +1814,14 @@ watch(tocDrawerOpen, (open) => {
 }
 
 @media (max-width: 760px) {
+    .detail-layout--context {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-context-side {
+        display: none;
+    }
+
     .article-heading-panel {
         padding: 18px;
     }
@@ -1301,37 +1842,6 @@ watch(tocDrawerOpen, (open) => {
     .article-related-list {
         gap: 0;
     }
-}
-
-/* 沉浸阅读模式 */
-.detail-immersive {
-    max-width: 100%;
-    padding-left: 0;
-    padding-right: 0;
-}
-
-.detail-immersive .detail-side {
-    display: none;
-}
-
-.detail-immersive .article-main {
-    max-width: 800px;
-    margin: 0 auto;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent;
-}
-
-.detail-immersive .article-heading-panel {
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    background: transparent;
-}
-
-.detail-immersive .article-body {
-    padding: 28px 24px;
 }
 
 /* 分享卡片（B 站风格） */
@@ -1414,14 +1924,27 @@ watch(tocDrawerOpen, (open) => {
     }
 }
 
-/* 上下篇导航：上一篇在左，下一篇在右 */
+/* ===== 上下篇导航 ===== */
 .article-neighbors {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
     margin-top: 40px;
     padding-top: 24px;
     border-top: 1px solid var(--line);
+}
+
+.article-neighbors-context {
+    margin-bottom: 10px;
+}
+
+.article-neighbors-context-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.article-neighbors-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 .article-neighbor {
@@ -1461,17 +1984,5 @@ watch(tocDrawerOpen, (open) => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-<style>
-/* 沉浸阅读 — 全局规则（body/site-header 不受 scoped 限制） */
-body.immersive-mode .site-header {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s;
-}
-
-body.immersive-mode {
-    background: #fff;
 }
 </style>

@@ -93,6 +93,10 @@ const props = defineProps({
     mobileFeaturedLarge: {
         type: Boolean,
         default: false
+    },
+    articleLinkQuery: {
+        type: Object,
+        default: () => ({})
     }
 });
 
@@ -239,8 +243,11 @@ const submitJump = () => {
 };
 
 const openArticle = (article) => {
-    const url = article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`;
-    router.push(url);
+    const path = article.slug ? `/articles/${article.id}-${article.slug}` : `/articles/${article.id}`;
+    const query = props.articleLinkQuery && Object.keys(props.articleLinkQuery).length > 0
+        ? props.articleLinkQuery
+        : undefined;
+    router.push(query ? { path, query } : path);
 };
 
 watch(
