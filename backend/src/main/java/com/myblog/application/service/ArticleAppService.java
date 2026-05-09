@@ -1,5 +1,6 @@
 package com.myblog.application.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.command.CreateArticleCommand;
 import com.myblog.application.dto.ArticleDTO;
@@ -8,6 +9,7 @@ import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.application.event.ArticleViewedEvent;
 import com.myblog.application.query.ArticlePageQuery;
+import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.ArticleId;
@@ -25,9 +27,12 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.util.BizLogHelper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.EventListener;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -42,6 +47,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -58,6 +65,7 @@ public class ArticleAppService {
     private static final String LEGACY_DEFAULT_COVER_URL = "/api/uploads/files/default/article-cover.png";
     private static final String DEFAULT_COVER_URL = "/api/uploads/files/default/article-cover.svg";
     private static final int MAX_VERSION_COUNT = 20;
+    private static final int RECOMMEND_CACHE_WARM_PAGE_SIZE = 10;
     private static final DateTimeFormatter VERSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ArticleRepository articleRepository;
@@ -70,6 +78,8 @@ public class ArticleAppService {
     private final ArticleVersionRepository articleVersionRepository;
     private final SensitiveWordAppService sensitiveWordAppService;
     private final String defaultArticleCoverUrl;
+    private final Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache;
+    private final Set<RecommendArticleCacheKey> recommendedArticleCacheKeys = ConcurrentHashMap.newKeySet();
 
     public ArticleAppService(ArticleRepository articleRepository,
                              ArticleLikeRepository articleLikeRepository,
@@ -80,7 +90,9 @@ public class ArticleAppService {
                              ApplicationEventPublisher eventPublisher,
                              ArticleVersionRepository articleVersionRepository,
                              SensitiveWordAppService sensitiveWordAppService,
-                             @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl) {
+                             @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl,
+                             @Qualifier("recommendedArticleFeedCache")
+                             Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache) {
         this.articleRepository = articleRepository;
         this.articleLikeRepository = articleLikeRepository;
         this.articleFavoriteRepository = articleFavoriteRepository;
@@ -92,6 +104,7 @@ public class ArticleAppService {
         this.sensitiveWordAppService = sensitiveWordAppService;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
+        this.recommendedArticleFeedCache = recommendedArticleFeedCache;
     }
 
     /**
@@ -117,6 +130,16 @@ public class ArticleAppService {
 
         List<Article> articles;
         long total;
+
+        if (isRecommendFeedCacheable(query, needsEnhancedSearch)) {
+            PageResult<Article> recommendedPage = loadRecommendedArticlePage(
+                query.getCategory(),
+                page,
+                pageSize
+            );
+            List<ArticleDTO> items = toDTOList(recommendedPage.getItems(), query.getCurrentUserId());
+            return new PageResult<ArticleDTO>(items, page, pageSize, recommendedPage.getTotal());
+        }
 
         if (query.isFollowingOnly() && query.getCurrentUserId() != null) {
             // Get following authors
@@ -198,6 +221,70 @@ public class ArticleAppService {
 
         List<ArticleDTO> items = toDTOList(articles, query.getCurrentUserId());
         return new PageResult<ArticleDTO>(items, page, pageSize, total);
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmRecommendedArticleFeedCacheOnStartup() {
+        RecommendArticleCacheKey defaultKey = RecommendArticleCacheKey.of(null, 1, RECOMMEND_CACHE_WARM_PAGE_SIZE);
+        recommendedArticleCacheKeys.add(defaultKey);
+        refreshRecommendedArticleCache(defaultKey);
+    }
+
+    @Scheduled(cron = "${my-blog.article.recommend-refresh-cron:0 0 * * * *}")
+    public void refreshRecommendedArticleFeedCache() {
+        Set<RecommendArticleCacheKey> keys = new HashSet<RecommendArticleCacheKey>(recommendedArticleCacheKeys);
+        if (keys.isEmpty()) {
+            keys.add(RecommendArticleCacheKey.of(null, 1, RECOMMEND_CACHE_WARM_PAGE_SIZE));
+        }
+        for (RecommendArticleCacheKey key : keys) {
+            refreshRecommendedArticleCache(key);
+        }
+    }
+
+    private boolean isRecommendFeedCacheable(ArticlePageQuery query, boolean needsEnhancedSearch) {
+        return ArticlePageQuery.SORT_RECOMMEND.equals(query.getSort())
+            && !query.isFollowingOnly()
+            && !needsEnhancedSearch
+            && !StringUtils.hasText(query.getKeyword())
+            && !StringUtils.hasText(query.getTag());
+    }
+
+    private PageResult<Article> loadRecommendedArticlePage(String category, int page, int pageSize) {
+        RecommendArticleCacheKey key = RecommendArticleCacheKey.of(category, page, pageSize);
+        recommendedArticleCacheKeys.add(key);
+        PageResult<Article> cached = recommendedArticleFeedCache.getIfPresent(key);
+        if (cached != null) {
+            return cached;
+        }
+        return refreshRecommendedArticleCache(key);
+    }
+
+    private PageResult<Article> refreshRecommendedArticleCache(RecommendArticleCacheKey key) {
+        PageResult<Article> page = queryRecommendedArticlePage(key);
+        recommendedArticleFeedCache.put(key, page);
+        return page;
+    }
+
+    private PageResult<Article> queryRecommendedArticlePage(RecommendArticleCacheKey key) {
+        int currentPage = Math.max(key.getPage(), 1);
+        int currentPageSize = Math.max(key.getPageSize(), 1);
+        int offset = (currentPage - 1) * currentPageSize;
+        String category = StringUtils.hasText(key.getCategory()) ? key.getCategory() : null;
+        List<Article> articles = articleRepository.findPublishedWithLimit(
+            null,
+            category,
+            null,
+            ArticlePageQuery.SORT_RECOMMEND,
+            currentPageSize,
+            offset
+        );
+        long total = articleRepository.countPublished(
+            null,
+            category,
+            null,
+            ArticlePageQuery.SORT_RECOMMEND
+        );
+        return new PageResult<Article>(articles, currentPage, currentPageSize, total);
     }
 
     private List<ArticleDTO> toDTOList(List<Article> articles, Long currentUserId) {

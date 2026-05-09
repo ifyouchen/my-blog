@@ -16,12 +16,27 @@ async function login(page, account, password) {
 
 test.describe('guest smoke', () => {
     test('home page renders with live content containers', async ({ page }) => {
+        const recommendResponsePromise = page.waitForResponse((response) => (
+            response.url().includes('/api/articles')
+            && response.url().includes('sort=recommend')
+            && response.ok()
+        )).catch(() => null);
         await page.goto('/');
         await expect(page.getByTestId('home-page')).toBeVisible();
+        await expect(page.locator('.main-nav a', { hasText: '首页' })).toBeVisible();
         await expect(page.getByTestId('login-modal')).toHaveCount(0);
+        await expect(page.getByTestId('home-channel-bar')).toBeVisible();
+        await expect(page.getByTestId('home-portal-hero')).toBeVisible();
+        await expect(page.getByTestId('home-focus-article')).toBeVisible();
         await expect(page.locator('[data-feed-root]')).toBeVisible();
-        await expect(page.getByLabel('精选推荐')).toBeVisible();
         await expect(page.getByTestId('home-sidebar')).toHaveCount(1);
+
+        const focusHref = await page.getByTestId('home-focus-article').getAttribute('href');
+        if (focusHref && focusHref !== '/') {
+            await page.getByTestId('home-focus-article').click();
+            await expect(page).toHaveURL(/\/articles\/\d+/);
+        }
+        expect(await recommendResponsePromise).not.toBeNull();
     });
 
     test('home mobile keeps expanded categories after selection', async ({ page }) => {
@@ -43,6 +58,11 @@ test.describe('guest smoke', () => {
         await targetTopic.click();
         await expect(page.getByRole('button', { name: '收起' })).toBeVisible();
         await expect(page.locator('.topic-list .topic.active', { hasText: topicName })).toBeVisible();
+        const overflowState = await page.evaluate(() => ({
+            viewportWidth: document.documentElement.clientWidth,
+            scrollWidth: document.documentElement.scrollWidth
+        }));
+        expect(overflowState.scrollWidth).toBeLessThanOrEqual(overflowState.viewportWidth + 1);
     });
 
     test('following page shows login guide for guests', async ({ page }) => {
@@ -197,16 +217,31 @@ test.describe('guest smoke', () => {
 });
 
 test.describe('authenticated smoke', () => {
-    test('home feed tab switch syncs query', async ({ page }) => {
+    test('home feed channel tabs sync sort query', async ({ page }) => {
         await login(page, USER_ACCOUNT, USER_PASSWORD);
         await page.goto('/');
         await expect(page.getByTestId('home-page')).toBeVisible();
-        // 默认应为关注 tab（登录用户）
-        const followingTab = page.locator('.feed-tabs button', { hasText: '关注动态' });
-        await expect(followingTab).toBeVisible();
-        await followingTab.click();
-        await expect(page).toHaveURL(/feedTab=following/);
-        const recommendTab = page.locator('.feed-tabs button', { hasText: '推荐阅读' });
+        await expect(page.locator('.feed-tabs button')).toHaveText(['推荐', '最新', '热门']);
+        const focusTitle = (await page.locator('[data-testid="home-focus-article"] .portal-focus-title')
+            .textContent())?.trim();
+
+        const latestTab = page.locator('.feed-tabs button', { hasText: '最新' });
+        await latestTab.click();
+        await expect(page).toHaveURL(/sort=latest/);
+        await expect(latestTab).toHaveClass(/active/);
+        if (focusTitle) {
+            await expect(page.locator('[data-testid="home-focus-article"] .portal-focus-title')).toHaveText(focusTitle);
+        }
+
+        const hotTab = page.locator('.feed-tabs button', { hasText: '热门' });
+        await hotTab.click();
+        await expect(page).toHaveURL(/sort=hot/);
+        await expect(hotTab).toHaveClass(/active/);
+        if (focusTitle) {
+            await expect(page.locator('[data-testid="home-focus-article"] .portal-focus-title')).toHaveText(focusTitle);
+        }
+
+        const recommendTab = page.locator('.feed-tabs button', { hasText: '推荐' });
         await recommendTab.click();
         await expect(page).toHaveURL(/\/$/);
         await expect(recommendTab).toHaveClass(/active/);
@@ -237,6 +272,9 @@ test.describe('authenticated smoke', () => {
         const relatedSection = relatedSections.first();
         if (await relatedSection.isVisible({ timeout: 2000 }).catch(() => false)) {
             await expect(relatedSection.locator('.article-related-item').first()).toBeVisible();
+            const relatedBox = await relatedSection.boundingBox();
+            const articleBox = await page.getByTestId('article-detail-main').boundingBox();
+            expect(relatedBox?.x).toBeLessThan(articleBox?.x);
         }
     });
 

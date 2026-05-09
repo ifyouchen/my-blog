@@ -1,6 +1,7 @@
 export const ARTICLE_SORT_LATEST = 'latest';
 export const ARTICLE_SORT_HOT = 'hot';
 export const ARTICLE_SORT_FEATURED = 'featured';
+export const ARTICLE_SORT_RECOMMEND = 'recommend';
 
 export const ARTICLE_SORT_ITEMS = [
     { label: '最新', value: ARTICLE_SORT_LATEST },
@@ -9,7 +10,7 @@ export const ARTICLE_SORT_ITEMS = [
 ];
 
 export const normalizeArticleSort = (value) => {
-    if (value === ARTICLE_SORT_HOT || value === ARTICLE_SORT_FEATURED) {
+    if (value === ARTICLE_SORT_HOT || value === ARTICLE_SORT_FEATURED || value === ARTICLE_SORT_RECOMMEND) {
         return value;
     }
     return ARTICLE_SORT_LATEST;

@@ -2,11 +2,15 @@ import { request } from './http';
 import { normalizeArticle, normalizeAuthorRanking, normalizeColumn, normalizeTopic } from './transformers';
 
 export const getHomeStatsApi = async () => {
-    return await request('/home/stats');
+    return await request('/home/stats', {
+        suppressAuthPrompt: true
+    });
 };
 
 export const getHomeBootstrapApi = async () => {
-    const data = await request('/home/bootstrap');
+    const data = await request('/home/bootstrap', {
+        suppressAuthPrompt: true
+    });
     return {
         stats: data?.stats || null,
         categories: data?.categories || [],

@@ -7,9 +7,12 @@ import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
 import com.myblog.application.dto.TagDTO;
+import com.myblog.application.query.RecommendArticleCacheKey;
+import com.myblog.domain.model.aggregate.Article;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
+import com.myblog.shared.result.PageResult;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -63,6 +66,14 @@ public class CacheConfig {
         return Caffeine.newBuilder()
                 .maximumSize(128)
                 .expireAfterWrite(45, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(512)
+                .expireAfterWrite(1, TimeUnit.HOURS)
                 .build();
     }
 

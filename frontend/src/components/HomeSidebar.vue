@@ -8,6 +8,10 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    columns: {
+        type: Array,
+        default: () => []
+    },
     recentArticles: {
         type: Array,
         default: () => []
@@ -77,6 +81,29 @@ const articlePath = (article) => {
                         decoding="async"
                     >
                     <span>{{ topic.title }}</span>
+                </RouterLink>
+            </div>
+        </SidebarBlock>
+
+        <!-- 推荐专栏 -->
+        <SidebarBlock v-if="props.columns.length" eyebrow="专栏" title="推荐专栏" compact data-testid="home-columns">
+            <div class="column-list">
+                <RouterLink
+                    v-for="column in props.columns"
+                    :key="column.id"
+                    class="column-item"
+                    :to="`/columns/${column.id}`"
+                >
+                    <img
+                        :src="column.coverUrl"
+                        :alt="`${column.title} 封面`"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                    <span class="column-item-body">
+                        <span class="column-item-title">{{ column.title }}</span>
+                        <span class="column-item-meta">{{ column.articleCount || 0 }} 篇文章</span>
+                    </span>
                 </RouterLink>
             </div>
         </SidebarBlock>
@@ -192,6 +219,64 @@ const articlePath = (article) => {
 .special-item:hover,
 .special-item:focus-visible {
     background: var(--surface-soft);
+}
+
+.column-list {
+    display: grid;
+    gap: 4px;
+}
+
+.column-item {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    min-height: 50px;
+    padding: 7px 8px;
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+}
+
+.column-item:hover,
+.column-item:focus-visible {
+    background: var(--surface-soft);
+}
+
+.column-item img {
+    display: block;
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+}
+
+.column-item-body {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.column-item-title {
+    overflow: hidden;
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.12s;
+}
+
+.column-item:hover .column-item-title,
+.column-item:focus-visible .column-item-title {
+    color: var(--brand);
+}
+
+.column-item-meta {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 980px) {

@@ -1,6 +1,6 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
-import {onBeforeRouteLeave, RouterLink, useRoute, useRouter} from 'vue-router';
+import {onBeforeRouteLeave, useRoute, useRouter} from 'vue-router';
 import {listArticlesApi} from '@/api/articles';
 import {getFollowingFeedApi} from '@/api/following';
 import {getHomeBootstrapApi} from '@/api/home';
@@ -9,9 +9,16 @@ import ArticleFeed from '@/components/ArticleFeed.vue';
 import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useWindowSize} from '@/composables/useWindowSize';
-import {ARTICLE_SORT_FEATURED, ARTICLE_SORT_ITEMS, ARTICLE_SORT_LATEST, isDefaultArticleSort, normalizeArticleSort} from '@/constants/articleSort';
-import FeaturedArticlesStrip from '@/components/FeaturedArticlesStrip.vue';
-import HomeIntro from '@/components/HomeIntro.vue';
+import {
+    ARTICLE_SORT_FEATURED,
+    ARTICLE_SORT_HOT,
+    ARTICLE_SORT_ITEMS,
+    ARTICLE_SORT_LATEST,
+    ARTICLE_SORT_RECOMMEND,
+    isDefaultArticleSort,
+    normalizeArticleSort
+} from '@/constants/articleSort';
+import HomePortalHero from '@/components/HomePortalHero.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import TopicStrip from '@/components/TopicStrip.vue';
@@ -41,10 +48,18 @@ const {
     loadMore
 } = useInfiniteArticleFeed({ pageSize });
 const featuredArticles = ref([]);
+const portalFallbackArticles = ref([]);
 const sidebarTopics = ref([]);
-const activeSort = ref(ARTICLE_SORT_LATEST);
+const sidebarColumns = ref([]);
+const activeSort = ref(ARTICLE_SORT_RECOMMEND);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
+
+const HOME_FEED_CHANNELS = [
+    { key: 'recommend', label: '推荐', feedTab: 'recommend', sort: ARTICLE_SORT_RECOMMEND },
+    { key: 'latest', label: '最新', feedTab: 'recommend', sort: ARTICLE_SORT_LATEST },
+    { key: 'hot', label: '热门', feedTab: 'recommend', sort: ARTICLE_SORT_HOT }
+];
 
 const HOME_TOPIC_CACHE_KEY = 'home-topic-items-v1';
 const RECENT_READING_KEY = 'my-blog:recent-reading';
@@ -126,18 +141,69 @@ const router = useRouter();
 const VALID_FEED_TABS = ['recommend', 'following'];
 const resolveDefaultFeedTab = () => 'recommend';
 const feedTab = ref(VALID_FEED_TABS.includes(route.query.feedTab) ? route.query.feedTab : resolveDefaultFeedTab());
+const resolveDefaultSort = (tab = feedTab.value) => (
+    tab === 'following' ? ARTICLE_SORT_LATEST : ARTICLE_SORT_RECOMMEND
+);
+const getSortQueryValue = (tab, sort) => {
+    const normalizedSort = normalizeArticleSort(sort || resolveDefaultSort(tab));
+    if (normalizedSort === resolveDefaultSort(tab)) {
+        return undefined;
+    }
+    return isDefaultArticleSort(normalizedSort) ? undefined : normalizedSort;
+};
+const getChannelSortQueryValue = (channel, sort) => {
+    if (channel.key === 'recommend') {
+        return undefined;
+    }
+    if (channel.key === 'latest') {
+        return ARTICLE_SORT_LATEST;
+    }
+    return getSortQueryValue(channel.feedTab, sort);
+};
 const createFeedCacheState = () => ({
     items: [],
     page: 1,
     total: 0,
     category: '',
-    sort: ARTICLE_SORT_LATEST,
+    sort: resolveDefaultSort(),
     loaded: false
 });
 const feedCache = ref({
     recommend: createFeedCacheState(),
-    following: createFeedCacheState()
+    following: {
+        ...createFeedCacheState(),
+        sort: ARTICLE_SORT_LATEST
+    }
 });
+
+const activeFeedChannelKey = computed(() => {
+    if (feedTab.value === 'following') {
+        return 'following';
+    }
+    if (activeSort.value === ARTICLE_SORT_HOT) {
+        return 'hot';
+    }
+    if (route.query.sort === ARTICLE_SORT_LATEST) {
+        return 'latest';
+    }
+    return 'recommend';
+});
+const activeFeedChannel = computed(() =>
+    HOME_FEED_CHANNELS.find((item) => item.key === activeFeedChannelKey.value)
+    || { key: 'following', label: '关注', feedTab: 'following', sort: ARTICLE_SORT_LATEST }
+);
+const feedTitle = computed(() => {
+    if (activeFeedChannelKey.value === 'following') return '关注动态';
+    if (activeFeedChannelKey.value === 'latest') return '最新文章';
+    if (activeFeedChannelKey.value === 'hot') return '热门文章';
+    return '推荐阅读';
+});
+const feedEyebrow = computed(() => activeCategory.value || '全部内容');
+const portalArticles = computed(() => (
+    featuredArticles.value.length ? featuredArticles.value : portalFallbackArticles.value
+));
+const sidebarTopicItems = computed(() => sidebarTopics.value.slice(0, 5));
+const sidebarColumnItems = computed(() => sidebarColumns.value.slice(0, 4));
 
 const switchFeedTab = async (tab) => {
     if (tab === feedTab.value) return;
@@ -156,9 +222,35 @@ const switchFeedTab = async (tab) => {
         query: {
             ...route.query,
             category: targetState.category || undefined,
-            sort: isDefaultArticleSort(targetState.sort) ? undefined : targetState.sort,
+            sort: getSortQueryValue(tab, targetState.sort),
             page: undefined,
             feedTab: tab === resolveDefaultFeedTab() ? undefined : tab
+        }
+    });
+};
+
+const switchFeedChannel = async (channel) => {
+    if (channel.feedTab === 'following') {
+        await switchFeedTab('following');
+        return;
+    }
+    const targetSort = normalizeArticleSort(channel.sort);
+    if (loading.value || loadingMore.value || activeFeedChannelKey.value === channel.key) {
+        return;
+    }
+    track('home_feed_tab_clicked', {
+        from_tab: activeFeedChannelKey.value,
+        to_tab: channel.key,
+        is_login: isLoggedIn.value
+    });
+    feedTab.value = 'recommend';
+    await router.push({
+        query: {
+            ...route.query,
+            category: activeCategory.value || undefined,
+            sort: getChannelSortQueryValue(channel, targetSort),
+            page: undefined,
+            feedTab: undefined
         }
     });
 };
@@ -189,6 +281,7 @@ const loadHomeBootstrap = async () => {
         writeCachedTopicItems(nextTopicItems);
         featuredArticles.value = bootstrap?.featuredArticles || [];
         sidebarTopics.value = bootstrap?.hotTopics || [];
+        sidebarColumns.value = bootstrap?.recommendedColumns || [];
     } catch (error) {
         topicItems.value = topicItems.value.length ? topicItems.value : DEFAULT_TOPIC_ITEMS;
         sidebarColumns.value = [];
@@ -199,6 +292,19 @@ const loadHomeBootstrap = async () => {
 };
 
 const normalizeCategory = (category) => (category && category !== '全部' ? category : '');
+
+const setPortalFallbackArticles = (items = [], { tab, sort, category } = {}) => {
+    if (
+        featuredArticles.value.length
+        || portalFallbackArticles.value.length
+        || tab !== 'recommend'
+        || normalizeArticleSort(sort) !== ARTICLE_SORT_RECOMMEND
+        || normalizeCategory(category)
+    ) {
+        return;
+    }
+    portalFallbackArticles.value = (items || []).filter(Boolean).slice(0, 5);
+};
 
 const buildFeedCacheKey = (
     tab = feedTab.value,
@@ -220,11 +326,11 @@ const saveActiveFeedCache = () => {
 const restoreMemoryFeedState = (state) => {
     setFeedState(state);
     activeCategory.value = state.category || '';
-    activeSort.value = normalizeArticleSort(state.sort || ARTICLE_SORT_LATEST);
+    activeSort.value = normalizeArticleSort(state.sort || resolveDefaultSort());
 };
 
 const loadArticles = async ({ sort, category } = {}) => {
-    const targetSort = normalizeArticleSort(sort || ARTICLE_SORT_LATEST);
+    const targetSort = normalizeArticleSort(sort || resolveDefaultSort(feedTab.value));
     const normalizedCategory = normalizeCategory(category);
     const cachedState = feedCache.value[feedTab.value] || createFeedCacheState();
     if (
@@ -235,6 +341,11 @@ const loadArticles = async ({ sort, category } = {}) => {
         resetStableRequest();
         resetFeed();
         restoreMemoryFeedState(cachedState);
+        setPortalFallbackArticles(cachedState.items, {
+            tab: feedTab.value,
+            sort: targetSort,
+            category: normalizedCategory
+        });
         return;
     }
     if (restoreFeedCache(buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory))) {
@@ -247,6 +358,11 @@ const loadArticles = async ({ sort, category } = {}) => {
             sort: targetSort,
             loaded: true
         };
+        setPortalFallbackArticles(articles.value, {
+            tab: feedTab.value,
+            sort: targetSort,
+            category: normalizedCategory
+        });
         return;
     }
 
@@ -269,6 +385,11 @@ const loadArticles = async ({ sort, category } = {}) => {
     activeSort.value = targetSort;
     activeCategory.value = normalizedCategory;
     applyPageResult(pageResult);
+    setPortalFallbackArticles(pageResult.items || articles.value, {
+        tab: feedTab.value,
+        sort: targetSort,
+        category: normalizedCategory
+    });
     saveActiveFeedCache();
     track('home_feed_list_loaded', {tab: feedTab.value, item_count: total.value, is_login: isLoggedIn.value});
 };
@@ -295,7 +416,7 @@ const changeSort = async (sort) => {
         query: {
             ...route.query,
             category: activeCategory.value || undefined,
-            sort: isDefaultArticleSort(targetSort) ? undefined : targetSort,
+            sort: getSortQueryValue(feedTab.value, targetSort),
             page: undefined
         }
     });
@@ -312,7 +433,7 @@ watch(
         }
 
         loadArticles({
-            sort: normalizeArticleSort(sort),
+            sort: normalizeArticleSort(sort || resolveDefaultSort(nextFeedTab)),
             category: String(category || '')
         });
     },
@@ -352,50 +473,38 @@ onBeforeRouteLeave(() => {
                 >×</button>
             </div>
         </div>
-        <section class="home-top-layout" aria-label="首页推荐内容">
-            <HomeIntro
-                :total-articles="homeStats.totalArticles"
-                :total-authors="homeStats.totalAuthors"
-                :total-columns="homeStats.totalColumns"
-            />
-            <FeaturedArticlesStrip
-                class="home-featured-primary"
-                :articles="featuredArticles"
-                :loading="!bootstrapLoaded"
-                @article-click="(payload) => track('home_featured_article_clicked', payload)"
-            />
-            <div class="home-explore-hint">
-                <span>想探索更多内容？</span>
-                <RouterLink to="/explore">去发现页 →</RouterLink>
-            </div>
+        <HomePortalHero
+            :articles="portalArticles"
+            :topics="sidebarTopicItems"
+            :columns="sidebarColumnItems"
+            :stats="homeStats"
+            :loading="!bootstrapLoaded"
+            @article-click="(payload) => track('home_featured_article_clicked', payload)"
+        />
+        <section class="home-channel-bar" aria-label="频道导航" data-testid="home-channel-bar">
+            <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
         </section>
-        <section class="home-filter-bar" aria-label="内容筛选">
-            <div class="home-filter-main">
-                <div class="feed-tabs" role="tablist" aria-label="文章通道">
+        <section class="home-feed-toolbar" aria-label="内容频道">
+            <div class="feed-tabs" role="tablist" aria-label="文章通道">
                 <button
+                    v-for="channel in HOME_FEED_CHANNELS"
+                    :key="channel.key"
                     type="button"
                     role="tab"
-                    :aria-selected="feedTab === 'recommend'"
-                    :class="{ active: feedTab === 'recommend' }"
-                    @click="switchFeedTab('recommend')"
-                >推荐阅读</button>
-                <button
-                    type="button"
-                    role="tab"
-                    :aria-selected="feedTab === 'following'"
-                    :class="{ active: feedTab === 'following' }"
-                    @click="switchFeedTab('following')"
-                >关注动态</button>
-                </div>
-                <p class="feed-result-hint">
-                    {{ feedTab === 'following' ? '关注动态' : '推荐阅读' }} · {{ activeCategory || '全部' }}（{{ total }}）
-                </p>
-                <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
+                    :aria-selected="activeFeedChannelKey === channel.key"
+                    :class="{ active: activeFeedChannelKey === channel.key }"
+                    @click="switchFeedChannel(channel)"
+                >{{ channel.label }}</button>
             </div>
+            <p class="feed-result-hint">
+                {{ activeFeedChannel.label }} · {{ activeCategory || '全部' }}（{{ total }}）
+            </p>
         </section>
-        <div class="content-grid">
+        <div class="content-grid home-main-grid">
             <ArticleFeed
                 :articles="articles"
+                :eyebrow="feedEyebrow"
+                :title="feedTitle"
                 :page="currentPage"
                 :page-size="pageSize"
                 :total="total"
@@ -407,6 +516,7 @@ onBeforeRouteLeave(() => {
                 :inline-error-message="inlineError"
                 :sort="activeSort"
                 :sort-items="ARTICLE_SORT_ITEMS"
+                hide-sort
                 pagination-mode="infinite"
                 :has-more="hasMore"
                 :loading-more="loadingMore"
@@ -418,7 +528,8 @@ onBeforeRouteLeave(() => {
             />
             <HomeSidebar
                 v-if="showSidebar"
-                :topics="sidebarTopics"
+                :topics="sidebarTopicItems"
+                :columns="sidebarColumnItems"
                 :recent-articles="recentArticles"
             />
         </div>
@@ -426,11 +537,6 @@ onBeforeRouteLeave(() => {
 </template>
 
 <style scoped>
-.home-top-layout {
-    display: grid;
-    gap: 14px;
-}
-
 .feed-tabs {
     display: flex;
     gap: 4px;
@@ -438,7 +544,7 @@ onBeforeRouteLeave(() => {
 }
 
 .feed-result-hint {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 12px;
     color: var(--muted);
 }
@@ -466,41 +572,27 @@ onBeforeRouteLeave(() => {
     background: var(--surface-soft);
 }
 
-.home-featured-primary {
-    margin-bottom: 2px;
+.home-channel-bar {
+    margin-bottom: 8px;
 }
 
-.home-explore-hint {
+.home-feed-toolbar {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--muted);
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
 }
 
-.home-explore-hint a {
-    color: var(--brand);
-    font-weight: 600;
-    text-decoration: none;
-    transition: color 0.15s;
-}
-
-.home-explore-hint a:hover {
-    color: var(--brand-strong);
-}
-
-.home-filter-bar {
-    display: block;
-}
-
-.home-filter-main {
-    min-width: 0;
+.home-main-grid {
+    align-items: start;
 }
 
 .announcement-banners {
     display: grid;
     gap: 8px;
-    max-width: 1320px;
     margin: 0 auto 12px;
 }
 
@@ -554,4 +646,29 @@ onBeforeRouteLeave(() => {
     background: var(--surface-muted);
 }
 
+@media (max-width: 720px) {
+    .home-channel-bar {
+        margin-bottom: 6px;
+    }
+
+    .home-feed-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .feed-tabs {
+        width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .feed-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .feed-tabs button {
+        flex: 0 0 auto;
+    }
+}
 </style>

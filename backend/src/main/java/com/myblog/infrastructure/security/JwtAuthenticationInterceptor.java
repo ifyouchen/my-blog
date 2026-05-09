@@ -51,27 +51,44 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             return true;
         }
         String header = request.getHeader(AUTHORIZATION);
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
-            JwtPayload payload = jwtTokenProvider.parseToken(header.substring(BEARER_PREFIX.length()));
-            ensureUserAvailable(payload.getUserId());
-            AuthContext.set(payload);
-            return true;
-        }
-        // 支持从 query param 读取 token（用于 SSE 等不支持自定义 Header 的请求）
         String queryToken = request.getParameter("token");
-        if (queryToken != null && !queryToken.trim().isEmpty()) {
-            JwtPayload payload = jwtTokenProvider.parseToken(queryToken.trim());
-            ensureUserAvailable(payload.getUserId());
-            AuthContext.set(payload);
+
+        if (isPublicRequest(request)) {
+            authenticateIfPresent(header, queryToken, true);
             return true;
         }
-        if (isPublicRequest(request)) {
+
+        if (authenticateIfPresent(header, queryToken, false)) {
             return true;
         }
         if (header == null || !header.startsWith(BEARER_PREFIX)) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
         return true;
+    }
+
+    private boolean authenticateIfPresent(String header, String queryToken, boolean lenient) {
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            return authenticateToken(header.substring(BEARER_PREFIX.length()), lenient);
+        }
+        if (queryToken != null && !queryToken.trim().isEmpty()) {
+            return authenticateToken(queryToken.trim(), lenient);
+        }
+        return false;
+    }
+
+    private boolean authenticateToken(String token, boolean lenient) {
+        try {
+            JwtPayload payload = jwtTokenProvider.parseToken(token);
+            ensureUserAvailable(payload.getUserId());
+            AuthContext.set(payload);
+            return true;
+        } catch (ApplicationException e) {
+            if (!lenient) {
+                throw e;
+            }
+            return false;
+        }
     }
 
     private void ensureUserAvailable(Long userId) {

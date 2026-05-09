@@ -5,7 +5,9 @@ import {request} from './http';
  * @param {string} slot 广告位编码，如 home_sidebar
  */
 export const getAdsApi = async (slot) => {
-    return await request(`/ads?slot=${encodeURIComponent(slot)}`);
+    return await request(`/ads?slot=${encodeURIComponent(slot)}`, {
+        suppressAuthPrompt: true
+    });
 };
 
 /**

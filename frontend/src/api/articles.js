@@ -9,7 +9,9 @@ export const listArticlesApi = async (params = {}) => {
         }
     });
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    const data = await request(`/articles${suffix}`);
+    const data = await request(`/articles${suffix}`, {
+        suppressAuthPrompt: true
+    });
 
     return {
         ...data,

@@ -67,5 +67,7 @@ export const subscribeNotificationStream = (onUnread) => {
 };
 
 export const getActiveAnnouncementsApi = async () => {
-    return await request('/announcements/active');
+    return await request('/announcements/active', {
+        suppressAuthPrompt: true
+    });
 };

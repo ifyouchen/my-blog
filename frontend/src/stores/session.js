@@ -80,7 +80,7 @@ export const useSession = () => {
         initializePromise = (async () => {
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
-                    const user = await currentUserApi();
+                    const user = await currentUserApi({ suppressAuthPrompt: true });
                     saveSession({
                         token: state.token,
                         user

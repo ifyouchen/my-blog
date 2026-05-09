@@ -206,7 +206,7 @@ const handleMessagesRefresh = () => {
 
 <template>
     <header class="site-header" data-testid="site-header">
-        <div class="header-inner">
+        <div class="header-inner header-inner--article">
             <RouterLink class="brand" to="/" aria-label="DevNotes 首页" data-testid="site-brand">
                 <span class="brand-mark">M</span>
                 <span class="brand-name">DevNotes</span>

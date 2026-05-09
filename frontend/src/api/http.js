@@ -87,10 +87,12 @@ const saveBlob = (blob, filename) => {
 
 const createRequestError = (payload, response, traceId, fallbackMessage, options = {}) => {
     const authFailed = payload?.code === 401 || response.status === 401;
-    if (authFailed && !options.suppressAuthPrompt) {
+    if (authFailed) {
         clearSession();
-        const message = payload?.message || '登录已过期，请重新登录';
-        dispatchWithCooldown('my-blog-auth-required', { message });
+        if (!options.suppressAuthPrompt) {
+            const message = payload?.message || '登录已过期，请重新登录';
+            dispatchWithCooldown('my-blog-auth-required', { message });
+        }
     }
     if (payload?.code === 403 || response.status === 403) {
         const message = payload?.message || '无权限访问';

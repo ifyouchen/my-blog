@@ -53,6 +53,7 @@
 
     /* 布局 */
     --layout-max-width: 1600px;
+    --layout-article-max-width: 1760px;
     --layout-sidebar-width: 360px;
     --layout-reading-width: 960px;
     --layout-admin-sidebar-width: 248px;
@@ -136,6 +137,10 @@ img {
     min-height: 60px;
     padding: 0 var(--layout-gutter);
     margin: 0 auto;
+}
+
+.header-inner--article {
+    max-width: var(--layout-article-max-width);
 }
 
 /* 品牌 logo */

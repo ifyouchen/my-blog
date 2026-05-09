@@ -1,5 +1,5 @@
 export const navItems = [
-    { label: '推荐', path: '/' },
+    { label: '首页', path: '/' },
     { label: '发现', path: '/explore' },
     { label: '关注', path: '/following' },
     { label: '专栏', path: '/columns' },

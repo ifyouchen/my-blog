@@ -11,6 +11,7 @@ public class ArticlePageQuery {
     public static final String SORT_LATEST = "latest";
     public static final String SORT_HOT = "hot";
     public static final String SORT_FEATURED = "featured";
+    public static final String SORT_RECOMMEND = "recommend";
 
     private int page;
     private int pageSize;
@@ -199,6 +200,9 @@ public class ArticlePageQuery {
         }
         if (SORT_FEATURED.equals(sort)) {
             return SORT_FEATURED;
+        }
+        if (SORT_RECOMMEND.equals(sort)) {
+            return SORT_RECOMMEND;
         }
         return SORT_LATEST;
     }

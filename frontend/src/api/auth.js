@@ -32,7 +32,7 @@ export const sendRegisterEmailCodeApi = async (email) => {
     });
 };
 
-export const currentUserApi = async () => normalizeUser(await request('/users/me'));
+export const currentUserApi = async (options = {}) => normalizeUser(await request('/users/me', options));
 
 export const updateProfileApi = async (payload) => normalizeUser(await request('/users/me/profile', {
     method: 'PUT',

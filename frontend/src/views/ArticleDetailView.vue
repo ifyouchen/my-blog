@@ -38,6 +38,9 @@ const sourceTopicTitle = computed(() => route.query.topicTitle ? String(route.qu
 const isFromColumn = computed(() => sourceFrom.value === 'column' && !!sourceColumnId.value);
 const isFromTopic = computed(() => sourceFrom.value === 'topic' && !!sourceTopicId.value);
 const isInContext = computed(() => isFromColumn.value || isFromTopic.value);
+const showRelatedSidebar = computed(() => (
+    !isInContext.value && (relatedLoading.value || recommendationSections.value.length > 0)
+));
 
 // 面包屑信息
 const contextLabel = computed(() => {
@@ -282,6 +285,7 @@ const fetchRecommendations = async (id) => {
     // 从专栏/专题进入时，不显示相关推荐（侧边栏改为专栏/专题文章列表）
     if (isInContext.value) {
         recommendationSections.value = [];
+        relatedLoading.value = false;
         return;
     }
     relatedLoading.value = true;
@@ -482,10 +486,17 @@ watch(() => remoteArticle.value?.id, (id) => {
     const currentArticle = remoteArticle.value;
     if (id && currentArticle) {
         saveRecentArticle(currentArticle);
-        fetchRecommendations(id);
-        fetchNeighbors(id);
     }
 });
+watch(
+    () => [remoteArticle.value?.id, route.query.from, route.query.columnId, route.query.topicId],
+    ([id]) => {
+        if (id && remoteArticle.value) {
+            fetchRecommendations(id);
+            fetchNeighbors(id);
+        }
+    }
+);
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
@@ -560,7 +571,18 @@ watch(tocDrawerOpen, (open) => {
         aria-valuemax="100"
         :style="{ width: `${readingProgress}%` }"
     ></div>
-    <main v-if="article" :class="['page-shell', 'detail-layout', { 'detail-layout--context': isInContext }]" data-testid="article-detail-page">
+    <main
+        v-if="article"
+        :class="[
+            'page-shell',
+            'detail-layout',
+            {
+                'detail-layout--context': isInContext,
+                'detail-layout--related-left': showRelatedSidebar
+            }
+        ]"
+        data-testid="article-detail-page"
+    >
         <!-- 左侧：专栏/专题文章列表（仅从专栏/专题进入时显示） -->
         <aside v-if="isInContext" class="detail-context-side" aria-label="专栏文章列表">
             <div class="context-side-inner">
@@ -594,6 +616,51 @@ watch(tocDrawerOpen, (open) => {
                     {{ contextArticlesLoading ? '加载中...' : '查看全部文章 ↓' }}
                 </button>
             </div>
+        </aside>
+
+        <aside v-else-if="showRelatedSidebar" class="detail-related-side" aria-label="相关推荐">
+            <section class="side-related" data-testid="article-related-section">
+                <h2 class="side-related-title">相关推荐</h2>
+                <div
+                    v-if="relatedLoading && recommendationSections.length === 0"
+                    class="side-related-loading"
+                >
+                    加载中...
+                </div>
+                <div v-else class="side-related-sections">
+                    <section
+                        v-for="section in recommendationSections"
+                        :key="section.key"
+                        class="side-related-group"
+                    >
+                        <h3>{{ section.title }}</h3>
+                        <div class="side-related-list">
+                            <RouterLink
+                                v-for="rel in section.items.slice(0, 5)"
+                                :key="rel.id"
+                                class="side-related-item article-related-item"
+                                :to="`/articles/${rel.id}`"
+                            >
+                                <img
+                                    v-if="rel.cover"
+                                    class="side-related-thumb"
+                                    :src="rel.cover"
+                                    :alt="rel.title"
+                                    loading="lazy"
+                                    decoding="async"
+                                >
+                                <div class="side-related-info">
+                                    <p class="side-related-item-title">{{ rel.title }}</p>
+                                    <div class="side-related-stats">
+                                        <span v-if="rel.category">{{ rel.category }}</span>
+                                        <span>{{ rel.viewCount }} 阅读</span>
+                                    </div>
+                                </div>
+                            </RouterLink>
+                        </div>
+                    </section>
+                </div>
+            </section>
         </aside>
 
         <article :class="['article-main', { 'article-main--loading': isLoading && remoteArticle }]" data-testid="article-detail-main">
@@ -759,54 +826,6 @@ watch(tocDrawerOpen, (open) => {
                 class="detail-toc"
             />
 
-            <!-- 无上下文：显示相关推荐（从专栏/专题进入时不显示） -->
-            <section
-                v-if="!isInContext && (recommendationSections.length > 0 || relatedLoading)"
-                class="side-related"
-                data-testid="article-related-section"
-            >
-                <h2 class="side-related-title">相关推荐</h2>
-                <div
-                    v-if="relatedLoading && recommendationSections.length === 0"
-                    class="side-related-loading"
-                >
-                    加载中...
-                </div>
-                <div v-else class="side-related-sections">
-                    <section
-                        v-for="section in recommendationSections"
-                        :key="section.key"
-                        class="side-related-group"
-                    >
-                        <h3>{{ section.title }}</h3>
-                        <div class="side-related-list">
-                            <RouterLink
-                                v-for="rel in section.items.slice(0, 5)"
-                                :key="rel.id"
-                                class="side-related-item article-related-item"
-                                :to="`/articles/${rel.id}`"
-                            >
-                                <img
-                                    v-if="rel.cover"
-                                    class="side-related-thumb"
-                                    :src="rel.cover"
-                                    :alt="rel.title"
-                                    loading="lazy"
-                                    decoding="async"
-                                >
-                                <div class="side-related-info">
-                                    <p class="side-related-item-title">{{ rel.title }}</p>
-                                    <div class="side-related-stats">
-                                        <span v-if="rel.category">{{ rel.category }}</span>
-                                        <span>{{ rel.viewCount }} 阅读</span>
-                                    </div>
-                                </div>
-                            </RouterLink>
-                        </div>
-                    </section>
-                </div>
-            </section>
-
             <AdBanner v-if="!isInContext" class="article-sidebar-ad" :slot-code="'article_sidebar'" />
         </aside>
     </main>
@@ -900,9 +919,19 @@ watch(tocDrawerOpen, (open) => {
 </template>
 
 <style scoped>
+.detail-layout {
+    max-width: var(--layout-article-max-width);
+    grid-template-columns: minmax(0, 996px) minmax(300px, 1fr);
+}
+
 /* ===== 三列布局：从专栏/专题进入时，左=文章列表 / 中=正文 / 右=目录 ===== */
 .detail-layout--context {
-    grid-template-columns: 220px minmax(0, 1fr) 260px;
+    grid-template-columns: minmax(220px, 1fr) minmax(0, 1016px) minmax(260px, 1fr);
+}
+
+/* ===== 三列布局：普通入口，左=相关推荐 / 中=正文 / 右=目录 ===== */
+.detail-layout--related-left {
+    grid-template-columns: minmax(240px, 1fr) minmax(0, 996px) minmax(260px, 1fr);
 }
 
 .detail-toc {
@@ -931,6 +960,24 @@ watch(tocDrawerOpen, (open) => {
     min-height: 0;
     flex: 1;
     overflow: hidden;
+}
+
+.detail-related-side {
+    position: sticky;
+    top: 72px;
+    min-width: 0;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.detail-related-side::-webkit-scrollbar {
+    width: 4px;
+}
+
+.detail-related-side::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
 }
 
 .context-side-header {
@@ -1348,7 +1395,19 @@ watch(tocDrawerOpen, (open) => {
         display: inline-flex;
     }
 
+    .detail-layout {
+        grid-template-columns: minmax(0, 1fr) 260px;
+    }
+
     .article-sidebar-ad {
+        display: none;
+    }
+
+    .detail-layout--related-left {
+        grid-template-columns: minmax(0, 1fr) 260px;
+    }
+
+    .detail-related-side {
         display: none;
     }
 
@@ -1814,7 +1873,15 @@ watch(tocDrawerOpen, (open) => {
 }
 
 @media (max-width: 760px) {
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+
     .detail-layout--context {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-layout--related-left {
         grid-template-columns: 1fr;
     }
 
