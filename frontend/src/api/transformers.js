@@ -46,14 +46,33 @@ export const extractToc = (content) => {
     const lines = source.split('\n');
     const toc = [];
     let headingIndex = 0;
+    let fencedCode = null;
 
-    for (const line of lines) {
-        const trimmed = line.trim();
-        const matched = trimmed.match(/^(#{1,5})\s+(.+)$/);
+    for (const rawLine of lines) {
+        const fenceMatched = rawLine.match(/^ {0,3}(`{3,}|~{3,})/);
+        if (fencedCode) {
+            const closingFenceMatched = rawLine.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+            if (closingFenceMatched
+                && closingFenceMatched[1][0] === fencedCode.marker
+                && closingFenceMatched[1].length >= fencedCode.length) {
+                fencedCode = null;
+            }
+            continue;
+        }
+
+        if (fenceMatched) {
+            fencedCode = {
+                marker: fenceMatched[1][0],
+                length: fenceMatched[1].length
+            };
+            continue;
+        }
+
+        const matched = rawLine.match(/^ {0,3}(#{1,5})(?:[ \t]+|$)(.*)$/);
         if (matched) {
             headingIndex++;
             const level = matched[1].length;
-            const text = matched[2].trim();
+            const text = matched[2].replace(/[ \t]+#+[ \t]*$/, '').trim();
             const id = `toc-heading-${headingIndex}`;
             toc.push({ id, text, level });
         }

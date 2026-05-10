@@ -500,9 +500,6 @@ onBeforeRouteLeave(() => {
             :loading="!bootstrapLoaded"
             @article-click="(payload) => track('home_featured_article_clicked', payload)"
         />
-        <section class="home-channel-bar" aria-label="频道导航" data-testid="home-channel-bar">
-            <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
-        </section>
         <section
             v-if="knowledgeTopicItems.length || knowledgeTags.length || knowledgeKeywords.length"
             class="knowledge-map-band"
@@ -544,6 +541,9 @@ onBeforeRouteLeave(() => {
                     </RouterLink>
                 </div>
             </div>
+        </section>
+        <section class="home-channel-bar" aria-label="频道导航" data-testid="home-channel-bar">
+            <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
         </section>
         <section class="home-feed-toolbar" aria-label="内容频道">
             <div class="feed-tabs" role="tablist" aria-label="文章通道">
