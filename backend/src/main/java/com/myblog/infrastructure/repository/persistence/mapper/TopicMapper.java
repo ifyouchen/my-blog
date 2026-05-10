@@ -1,6 +1,7 @@
 package com.myblog.infrastructure.repository.persistence.mapper;
 
 import com.myblog.infrastructure.repository.persistence.entity.TopicDO;
+import com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -29,6 +30,15 @@ public interface TopicMapper {
     int update(TopicDO topicDO);
 
     List<Long> selectArticleIds(@Param("topicId") Long topicId);
+
+    List<LearningPathArticleDO> selectArticleRelations(@Param("topicId") Long topicId);
+
+    List<TopicDO> searchPublished(@Param("keyword") String keyword,
+                                  @Param("difficulty") String difficulty,
+                                  @Param("offset") int offset,
+                                  @Param("limit") int limit);
+
+    long countSearchPublished(@Param("keyword") String keyword, @Param("difficulty") String difficulty);
 
     int countTopicArticle(@Param("topicId") Long topicId, @Param("articleId") Long articleId);
 

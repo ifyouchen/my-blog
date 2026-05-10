@@ -24,8 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -46,8 +44,7 @@ public class AdminAppService {
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
     private final CommentAppService commentAppService;
-    private final HomeBootstrapAppService homeBootstrapAppService;
-    private final RecommendationAppService recommendationAppService;
+    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
     private final SensitiveWordAppService sensitiveWordAppService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -55,16 +52,14 @@ public class AdminAppService {
                            ArticleRepository articleRepository,
                            CommentRepository commentRepository,
                            CommentAppService commentAppService,
-                           HomeBootstrapAppService homeBootstrapAppService,
-                           RecommendationAppService recommendationAppService,
+                           HomePortalCacheInvalidator homePortalCacheInvalidator,
                            SensitiveWordAppService sensitiveWordAppService,
                            ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.commentRepository = commentRepository;
         this.commentAppService = commentAppService;
-        this.homeBootstrapAppService = homeBootstrapAppService;
-        this.recommendationAppService = recommendationAppService;
+        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
         this.sensitiveWordAppService = sensitiveWordAppService;
         this.eventPublisher = eventPublisher;
     }
@@ -417,6 +412,7 @@ public class AdminAppService {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
         }
+        evictArticlePortalCaches(article, previousStatus);
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", article.getId().getValue());
@@ -448,6 +444,7 @@ public class AdminAppService {
         ArticleStatus previousStatus = article.getStatus();
         article.offline(reason);
         articleRepository.save(article);
+        evictArticlePortalCaches(article, previousStatus);
 
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("id", article.getId().getValue());
@@ -475,21 +472,22 @@ public class AdminAppService {
         long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
-        String previousStatus = article.getStatus().name();
+        ArticleStatus previousStatus = article.getStatus();
         article.delete();
         articleRepository.save(article);
+        evictArticlePortalCaches(article, previousStatus);
 
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("id", article.getId().getValue());
         result.put("title", article.getTitle());
-        result.put("previousStatus", previousStatus);
+        result.put("previousStatus", previousStatus.name());
         result.put("status", ArticleStatus.DELETED.name());
         result.put("deleted", true);
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "管理员 删除文章",
             BizLogHelper.trace(),
             BizLogHelper.params("articleId", articleId),
-            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus, ArticleStatus.DELETED.name())),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), ArticleStatus.DELETED.name())),
             BizLogHelper.elapsed(_start));
         return result;
     }
@@ -510,6 +508,8 @@ public class AdminAppService {
         ArticleStatus newStatus = ArticleStatus.valueOf(status);
         int processedCount = 0;
         List<Long> processedIds = new ArrayList<Long>();
+        boolean statsCacheInvalidationNeeded = false;
+        boolean featuredCacheInvalidationNeeded = false;
         for (Long articleId : articleIds) {
             if (articleId == null) {
                 continue;
@@ -522,11 +522,17 @@ public class AdminAppService {
             if (ArticleStatus.PUBLISHED.equals(newStatus)) {
                 sanitizeArticleBeforeAdminPublish(article);
             }
+            ArticleStatus previousStatus = article.getStatus();
             applyArticleStatus(article, newStatus);
             articleRepository.save(article);
+            statsCacheInvalidationNeeded = statsCacheInvalidationNeeded
+                || isPublishVisibilityChanged(previousStatus, article.getStatus());
+            featuredCacheInvalidationNeeded = featuredCacheInvalidationNeeded
+                || isFeaturedVisibilityChanged(article, previousStatus);
             processedCount++;
             processedIds.add(articleId);
         }
+        evictArticlePortalCaches(statsCacheInvalidationNeeded, featuredCacheInvalidationNeeded);
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put("status", newStatus.name());
         result.put("processedCount", processedCount);
@@ -554,6 +560,8 @@ public class AdminAppService {
         }
         int processedCount = 0;
         List<Long> processedIds = new ArrayList<Long>();
+        boolean statsCacheInvalidationNeeded = false;
+        boolean featuredCacheInvalidationNeeded = false;
         for (Long articleId : articleIds) {
             if (articleId == null) {
                 continue;
@@ -563,11 +571,17 @@ public class AdminAppService {
             if (ArticleStatus.DELETED.equals(article.getStatus())) {
                 continue;
             }
+            ArticleStatus previousStatus = article.getStatus();
             article.delete();
             articleRepository.save(article);
+            statsCacheInvalidationNeeded = statsCacheInvalidationNeeded
+                || isPublishVisibilityChanged(previousStatus, article.getStatus());
+            featuredCacheInvalidationNeeded = featuredCacheInvalidationNeeded
+                || isFeaturedVisibilityChanged(article, previousStatus);
             processedCount++;
             processedIds.add(articleId);
         }
+        evictArticlePortalCaches(statsCacheInvalidationNeeded, featuredCacheInvalidationNeeded);
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put("deleted", true);
         result.put("processedCount", processedCount);
@@ -780,6 +794,31 @@ public class AdminAppService {
         article.updateStatus(status);
     }
 
+    private void evictArticlePortalCaches(Article article, ArticleStatus previousStatus) {
+        evictArticlePortalCaches(
+            isPublishVisibilityChanged(previousStatus, article.getStatus()),
+            isFeaturedVisibilityChanged(article, previousStatus)
+        );
+    }
+
+    private void evictArticlePortalCaches(boolean statsCacheInvalidationNeeded,
+                                          boolean featuredCacheInvalidationNeeded) {
+        if (featuredCacheInvalidationNeeded) {
+            homePortalCacheInvalidator.evictFeaturedAndBootstrap();
+        }
+        if (statsCacheInvalidationNeeded) {
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
+        }
+    }
+
+    private boolean isPublishVisibilityChanged(ArticleStatus previousStatus, ArticleStatus currentStatus) {
+        return ArticleStatus.PUBLISHED.equals(previousStatus) != ArticleStatus.PUBLISHED.equals(currentStatus);
+    }
+
+    private boolean isFeaturedVisibilityChanged(Article article, ArticleStatus previousStatus) {
+        return article.isFeatured() && isPublishVisibilityChanged(previousStatus, article.getStatus());
+    }
+
     private void sanitizeArticleBeforeAdminPublish(Article article) {
         String sensitiveText = buildArticleSensitiveText(article);
         List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
@@ -860,7 +899,7 @@ public class AdminAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         article.feature();
         articleRepository.save(article);
-        evictFeaturedArticleCachesAfterCommit();
+        homePortalCacheInvalidator.evictFeaturedAndBootstrap();
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", article.getId().getValue());
@@ -885,7 +924,7 @@ public class AdminAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         article.unfeature();
         articleRepository.save(article);
-        evictFeaturedArticleCachesAfterCommit();
+        homePortalCacheInvalidator.evictFeaturedAndBootstrap();
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", article.getId().getValue());
@@ -898,21 +937,6 @@ public class AdminAppService {
             BizLogHelper.result("featured=false"),
             BizLogHelper.elapsed(_start));
         return result;
-    }
-
-    private void evictFeaturedArticleCachesAfterCommit() {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            recommendationAppService.evictFeaturedArticles();
-            homeBootstrapAppService.evict();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                recommendationAppService.evictFeaturedArticles();
-                homeBootstrapAppService.evict();
-            }
-        });
     }
 
     /**

@@ -2,7 +2,6 @@ package com.myblog.application.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.dto.CategoryDTO;
-import com.myblog.application.dto.HomeBootstrapDTO;
 import com.myblog.domain.model.aggregate.Category;
 import com.myblog.domain.model.valueobject.CategoryId;
 import com.myblog.domain.repository.CategoryRepository;
@@ -22,14 +21,14 @@ public class CategoryAppService {
 
     private final CategoryRepository categoryRepository;
     private final Cache<String, List<CategoryDTO>> categoriesCache;
-    private final Cache<String, HomeBootstrapDTO> homeBootstrapCache;
+    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
 
     public CategoryAppService(CategoryRepository categoryRepository,
                               @Qualifier("categoriesCache") Cache<String, List<CategoryDTO>> categoriesCache,
-                              @Qualifier("homeBootstrapCache") Cache<String, HomeBootstrapDTO> homeBootstrapCache) {
+                              HomePortalCacheInvalidator homePortalCacheInvalidator) {
         this.categoryRepository = categoryRepository;
         this.categoriesCache = categoriesCache;
-        this.homeBootstrapCache = homeBootstrapCache;
+        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
     }
 
     public List<CategoryDTO> getCategories(Boolean enabled) {
@@ -116,7 +115,7 @@ public class CategoryAppService {
 
     private void invalidateCategoryCache() {
         categoriesCache.invalidateAll();
-        homeBootstrapCache.invalidateAll();
+        homePortalCacheInvalidator.evictBootstrap();
     }
 
     private List<CategoryDTO> copyCategories(List<CategoryDTO> source) {

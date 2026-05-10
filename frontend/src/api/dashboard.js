@@ -16,6 +16,10 @@ export const getDashboardInteractionsApi = async () => {
     return await request('/dashboard/interactions');
 };
 
+export const getDashboardContentOpportunitiesApi = async () => {
+    return await request('/dashboard/content-opportunities');
+};
+
 export const getArticleStatsApi = async (articleId, range = '7d') => {
     return await request(`/dashboard/articles/${articleId}/stats?range=${encodeURIComponent(range)}`);
 };

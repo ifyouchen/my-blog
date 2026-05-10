@@ -1,9 +1,11 @@
 package com.myblog.infrastructure.repository.persistence.repository;
 
 import com.myblog.domain.model.aggregate.Topic;
+import com.myblog.domain.model.valueobject.LearningPathArticle;
 import com.myblog.domain.model.valueobject.TopicId;
 import com.myblog.domain.repository.TopicRepository;
 import com.myblog.infrastructure.repository.persistence.converter.TopicPersistenceConverter;
+import com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO;
 import com.myblog.infrastructure.repository.persistence.entity.TopicDO;
 import com.myblog.infrastructure.repository.persistence.mapper.TopicMapper;
 import org.springframework.stereotype.Repository;
@@ -71,6 +73,33 @@ public class MyBatisTopicRepository implements TopicRepository {
     }
 
     @Override
+    public List<LearningPathArticle> findArticleRelations(TopicId topicId) {
+        List<LearningPathArticleDO> list = topicMapper.selectArticleRelations(topicId.getValue());
+        List<LearningPathArticle> result = new ArrayList<>(list.size());
+        for (LearningPathArticleDO item : list) {
+            result.add(toPathArticle(item));
+        }
+        return result;
+    }
+
+    @Override
+    public List<Topic> searchPublished(String keyword, String difficulty, int page, int pageSize) {
+        int p = Math.max(page, 1);
+        int ps = Math.max(pageSize, 1);
+        List<TopicDO> list = topicMapper.searchPublished(keyword, difficulty, (p - 1) * ps, ps);
+        List<Topic> topics = new ArrayList<>(list.size());
+        for (TopicDO topicDO : list) {
+            topics.add(toDomain(topicDO));
+        }
+        return topics;
+    }
+
+    @Override
+    public long countSearchPublished(String keyword, String difficulty) {
+        return topicMapper.countSearchPublished(keyword, difficulty);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void bindArticle(TopicId topicId, Long articleId, int sortOrder) {
         if (topicMapper.countTopicArticle(topicId.getValue(), articleId) > 0) {
@@ -130,5 +159,15 @@ public class MyBatisTopicRepository implements TopicRepository {
             topicDO.setVersion(0);
         }
         return topicDO;
+    }
+
+    private LearningPathArticle toPathArticle(LearningPathArticleDO item) {
+        return new LearningPathArticle(
+            item.getArticleId(),
+            item.getSectionTitle(),
+            item.getStepOrder() == null ? 0 : item.getStepOrder(),
+            item.getRequired() == null || item.getRequired(),
+            item.getEditorNote()
+        );
     }
 }

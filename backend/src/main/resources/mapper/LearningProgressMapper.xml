@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.LearningProgressMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.LearningProgressDO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="asset_type" property="assetType"/>
+        <result column="asset_id" property="assetId"/>
+        <result column="completed_article_ids" property="completedArticleIds"/>
+        <result column="completed_count" property="completedCount"/>
+        <result column="progress_percent" property="progressPercent"/>
+        <result column="last_article_id" property="lastArticleId"/>
+        <result column="last_read_at" property="lastReadAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, asset_type, asset_id, completed_article_ids, completed_count, progress_percent,
+        last_article_id, last_read_at, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <select id="selectByUserAndAsset" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_learning_progress
+        WHERE user_id = #{userId}
+        AND asset_type = #{assetType}
+        AND asset_id = #{assetId}
+        AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.LearningProgressDO">
+        INSERT INTO blog_learning_progress (
+            id, user_id, asset_type, asset_id, completed_article_ids, completed_count, progress_percent,
+            last_article_id, last_read_at, created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{id}, #{userId}, #{assetType}, #{assetId}, #{completedArticleIds}, #{completedCount},
+            #{progressPercent}, #{lastArticleId}, #{lastReadAt}, #{createdAt}, #{updatedAt},
+            #{deletedAt}, #{version}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.LearningProgressDO">
+        UPDATE blog_learning_progress
+        SET completed_article_ids = #{completedArticleIds},
+            completed_count = #{completedCount},
+            progress_percent = #{progressPercent},
+            last_article_id = #{lastArticleId},
+            last_read_at = #{lastReadAt},
+            updated_at = #{updatedAt},
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+
+    <select id="selectNextId" resultType="long">
+        SELECT COALESCE(MAX(id), 0) + 1
+        FROM blog_learning_progress
+        WHERE id &lt; 10000000000
+    </select>
+</mapper>

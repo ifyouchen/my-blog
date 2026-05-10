@@ -54,7 +54,7 @@ public class TopicController {
 
     @GetMapping("/{id}")
     public Result<TopicResponse> getTopicDetail(@PathVariable Long id) {
-        return Result.success(toResponse(topicAppService.getTopicDetail(id)));
+        return Result.success(toResponse(topicAppService.getTopicDetail(id, AuthContext.getCurrentUserId())));
     }
 
     @GetMapping("/{id}/articles/{articleId}/neighbors")
@@ -93,6 +93,16 @@ public class TopicController {
         response.setSummary(dto.getSummary());
         response.setCoverUrl(dto.getCoverUrl());
         response.setArticleCount(dto.getArticleCount());
+        response.setIntro(dto.getIntro());
+        response.setDifficulty(dto.getDifficulty());
+        response.setEstimatedMinutes(dto.getEstimatedMinutes());
+        response.setSourceType(dto.getSourceType());
+        response.setSourceNote(dto.getSourceNote());
+        response.setRecommended(dto.isRecommended());
+        response.setRecommendWeight(dto.getRecommendWeight());
+        response.setProgress(dto.getProgress());
+        response.setOutline(dto.getOutline());
+        response.setNextArticle(dto.getNextArticle() == null ? null : restDtoMapper.toPublicResponse(dto.getNextArticle()));
         return response;
     }
 }

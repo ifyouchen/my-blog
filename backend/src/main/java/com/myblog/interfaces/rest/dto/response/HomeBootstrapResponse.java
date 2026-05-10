@@ -1,6 +1,7 @@
 package com.myblog.interfaces.rest.dto.response;
 
 import com.myblog.application.dto.CategoryDTO;
+import com.myblog.application.dto.TagDTO;
 import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 
@@ -20,6 +21,10 @@ public class HomeBootstrapResponse {
     private List<AuthorRankingResponse> authorRankings;
     private List<ArticleResponse> featuredArticles;
     private List<TopicDTO> hotTopics;
+    private ArticleResponse todayFocus;
+    private List<TopicDTO> learningTopics;
+    private List<TagDTO> hotTags;
+    private List<String> hotKeywords;
 
     public HomeStats getStats() {
         return stats;
@@ -67,5 +72,37 @@ public class HomeBootstrapResponse {
 
     public void setHotTopics(List<TopicDTO> hotTopics) {
         this.hotTopics = hotTopics;
+    }
+
+    public ArticleResponse getTodayFocus() {
+        return todayFocus;
+    }
+
+    public void setTodayFocus(ArticleResponse todayFocus) {
+        this.todayFocus = todayFocus;
+    }
+
+    public List<TopicDTO> getLearningTopics() {
+        return learningTopics;
+    }
+
+    public void setLearningTopics(List<TopicDTO> learningTopics) {
+        this.learningTopics = learningTopics;
+    }
+
+    public List<TagDTO> getHotTags() {
+        return hotTags;
+    }
+
+    public void setHotTags(List<TagDTO> hotTags) {
+        this.hotTags = hotTags;
+    }
+
+    public List<String> getHotKeywords() {
+        return hotKeywords;
+    }
+
+    public void setHotKeywords(List<String> hotKeywords) {
+        this.hotKeywords = hotKeywords;
     }
 }

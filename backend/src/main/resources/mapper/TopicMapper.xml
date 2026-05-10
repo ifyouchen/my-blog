@@ -11,6 +11,13 @@
         <result column="status" property="status"/>
         <result column="sort_order" property="sortOrder"/>
         <result column="article_count" property="articleCount"/>
+        <result column="intro" property="intro"/>
+        <result column="difficulty" property="difficulty"/>
+        <result column="estimated_minutes" property="estimatedMinutes"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_note" property="sourceNote"/>
+        <result column="recommended" property="recommended"/>
+        <result column="recommend_weight" property="recommendWeight"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="deleted_at" property="deletedAt"/>
@@ -19,7 +26,8 @@
 
     <sql id="Base_Column_List">
         t.id, t.title, t.summary, t.cover_url, t.status, t.sort_order,
-        t.article_count,
+        t.article_count, t.intro, t.difficulty, t.estimated_minutes,
+        t.source_type, t.source_note, t.recommended, t.recommend_weight,
         t.created_at, t.updated_at, t.deleted_at, t.version
     </sql>
 
@@ -36,7 +44,7 @@
         FROM blog_topic t
         WHERE t.deleted_at IS NULL
         AND t.status = 'PUBLISHED'
-        ORDER BY t.sort_order ASC, t.id DESC
+        ORDER BY t.recommended DESC, t.recommend_weight DESC, t.sort_order ASC, t.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
@@ -61,10 +69,12 @@
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.TopicDO">
         INSERT INTO blog_topic (
             id, title, summary, cover_url, status, sort_order, article_count,
+            intro, difficulty, estimated_minutes, source_type, source_note, recommended, recommend_weight,
             created_at, updated_at, deleted_at, version
         ) VALUES (
             #{id}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder},
-            #{articleCount}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
+            #{articleCount}, #{intro}, #{difficulty}, #{estimatedMinutes}, #{sourceType}, #{sourceNote},
+            #{recommended}, #{recommendWeight}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
         )
     </insert>
 
@@ -76,6 +86,13 @@
             status = #{status},
             sort_order = #{sortOrder},
             article_count = #{articleCount},
+            intro = #{intro},
+            difficulty = #{difficulty},
+            estimated_minutes = #{estimatedMinutes},
+            source_type = #{sourceType},
+            source_note = #{sourceNote},
+            recommended = #{recommended},
+            recommend_weight = #{recommendWeight},
             updated_at = #{updatedAt},
             deleted_at = #{deletedAt},
             version = version + 1
@@ -84,9 +101,13 @@
 
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.TopicDO">
         INSERT INTO blog_topic
-        (id, title, summary, cover_url, status, sort_order, article_count, created_at, updated_at, deleted_at, version)
+        (id, title, summary, cover_url, status, sort_order, article_count,
+         intro, difficulty, estimated_minutes, source_type, source_note, recommended, recommend_weight,
+         created_at, updated_at, deleted_at, version)
         VALUES
-        (#{id}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{articleCount}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
+        (#{id}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{articleCount},
+         #{intro}, #{difficulty}, #{estimatedMinutes}, #{sourceType}, #{sourceNote}, #{recommended}, #{recommendWeight},
+         #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
         ON DUPLICATE KEY UPDATE
             title = #{title},
             summary = #{summary},
@@ -94,6 +115,13 @@
             status = #{status},
             sort_order = #{sortOrder},
             article_count = #{articleCount},
+            intro = #{intro},
+            difficulty = #{difficulty},
+            estimated_minutes = #{estimatedMinutes},
+            source_type = #{sourceType},
+            source_note = #{sourceNote},
+            recommended = #{recommended},
+            recommend_weight = #{recommendWeight},
             updated_at = NOW(),
             deleted_at = #{deletedAt},
             version = version + 1
@@ -107,7 +135,61 @@
         AND ta.deleted_at IS NULL
         AND a.deleted_at IS NULL
         AND a.status = 'PUBLISHED'
-        ORDER BY ta.sort_order ASC, ta.id ASC
+        ORDER BY COALESCE(ta.step_order, ta.sort_order) ASC, ta.sort_order ASC, ta.id ASC
+    </select>
+
+    <select id="selectArticleRelations" resultType="com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO">
+        SELECT
+            ta.article_id AS articleId,
+            COALESCE(NULLIF(ta.section_title, ''), '推荐阅读') AS sectionTitle,
+            COALESCE(ta.step_order, ta.sort_order, 0) AS stepOrder,
+            COALESCE(ta.required, 1) AS required,
+            COALESCE(ta.editor_note, '') AS editorNote
+        FROM blog_topic_article ta
+        INNER JOIN blog_article a ON a.id = ta.article_id
+        WHERE ta.topic_id = #{topicId}
+        AND ta.deleted_at IS NULL
+        AND a.deleted_at IS NULL
+        AND a.status = 'PUBLISHED'
+        ORDER BY COALESCE(ta.step_order, ta.sort_order) ASC, ta.sort_order ASC, ta.id ASC
+    </select>
+
+    <select id="searchPublished" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_topic t
+        WHERE t.deleted_at IS NULL
+        AND t.status = 'PUBLISHED'
+        <if test="difficulty != null and difficulty != ''">
+            AND t.difficulty = #{difficulty}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                t.title LIKE CONCAT('%', #{keyword}, '%')
+                OR t.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR t.intro LIKE CONCAT('%', #{keyword}, '%')
+                OR t.source_note LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY t.recommended DESC, t.recommend_weight DESC, t.sort_order ASC, t.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countSearchPublished" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_topic t
+        WHERE t.deleted_at IS NULL
+        AND t.status = 'PUBLISHED'
+        <if test="difficulty != null and difficulty != ''">
+            AND t.difficulty = #{difficulty}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                t.title LIKE CONCAT('%', #{keyword}, '%')
+                OR t.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR t.intro LIKE CONCAT('%', #{keyword}, '%')
+                OR t.source_note LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
     </select>
 
     <select id="countTopicArticle" resultType="int">

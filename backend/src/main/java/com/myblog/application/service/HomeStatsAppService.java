@@ -16,7 +16,7 @@ import javax.annotation.PostConstruct;
 public class HomeStatsAppService {
 
     private static final Logger log = LoggerFactory.getLogger(HomeStatsAppService.class);
-    private static final Long HOME_STATS_KEY = 1L;
+    static final Long HOME_STATS_KEY = 1L;
 
     private final ArticleRepository articleRepository;
     private final ColumnRepository columnRepository;

@@ -116,6 +116,26 @@ export const normalizeArticle = (article) => {
     };
 };
 
+const normalizeLearningProgress = (progress = {}) => ({
+    assetType: progress.assetType || '',
+    assetId: progress.assetId || null,
+    completedCount: progress.completedCount || 0,
+    totalCount: progress.totalCount || 0,
+    progressPercent: progress.progressPercent || 0,
+    completedArticleIds: progress.completedArticleIds || [],
+    nextArticleId: progress.nextArticleId || null,
+    nextArticle: progress.nextArticle ? normalizeArticle(progress.nextArticle) : null
+});
+
+const normalizeOutline = (outline = []) => (outline || []).map((item) => ({
+    article: item.article ? normalizeArticle(item.article) : null,
+    sectionTitle: item.sectionTitle || '推荐阅读',
+    stepOrder: item.stepOrder || 0,
+    required: item.required !== false,
+    editorNote: item.editorNote || '',
+    completed: Boolean(item.completed)
+})).filter((item) => item.article);
+
 export const normalizeColumn = (column) => ({
     id: column.id,
     title: column.title,
@@ -127,7 +147,17 @@ export const normalizeColumn = (column) => ({
     subscriberCount: column.subscriberCount || 0,
     articleCount: column.articleCount || 0,
     subscribed: Boolean(column.subscribed),
-    author: normalizeUser(column.author || {})
+    author: normalizeUser(column.author || {}),
+    intro: column.intro || '',
+    difficulty: column.difficulty || 'INTERMEDIATE',
+    estimatedMinutes: column.estimatedMinutes || 0,
+    sourceType: column.sourceType || 'ORIGINAL',
+    sourceNote: column.sourceNote || '',
+    recommended: Boolean(column.recommended),
+    recommendWeight: column.recommendWeight || 0,
+    progress: normalizeLearningProgress(column.progress || {}),
+    outline: normalizeOutline(column.outline || []),
+    nextArticle: column.nextArticle ? normalizeArticle(column.nextArticle) : null
 });
 
 export const normalizeTopic = (topic) => ({
@@ -139,7 +169,17 @@ export const normalizeTopic = (topic) => ({
         'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=900&q=80'
     ),
     articleCount: topic.articleCount || 0,
-    status: topic.status
+    status: topic.status,
+    intro: topic.intro || '',
+    difficulty: topic.difficulty || 'INTERMEDIATE',
+    estimatedMinutes: topic.estimatedMinutes || 0,
+    sourceType: topic.sourceType || 'ORIGINAL',
+    sourceNote: topic.sourceNote || '',
+    recommended: topic.recommended !== false,
+    recommendWeight: topic.recommendWeight || 0,
+    progress: normalizeLearningProgress(topic.progress || {}),
+    outline: normalizeOutline(topic.outline || []),
+    nextArticle: topic.nextArticle ? normalizeArticle(topic.nextArticle) : null
 });
 
 export const normalizeAuthorRanking = (item) => ({

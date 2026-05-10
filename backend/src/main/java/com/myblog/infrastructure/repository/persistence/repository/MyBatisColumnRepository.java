@@ -2,9 +2,11 @@ package com.myblog.infrastructure.repository.persistence.repository;
 
 import com.myblog.domain.model.aggregate.Column;
 import com.myblog.domain.model.valueobject.ColumnId;
+import com.myblog.domain.model.valueobject.LearningPathArticle;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ColumnRepository;
 import com.myblog.infrastructure.repository.persistence.entity.ColumnDO;
+import com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO;
 import com.myblog.infrastructure.repository.persistence.mapper.ColumnMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +79,16 @@ public class MyBatisColumnRepository implements ColumnRepository {
     @Override
     public List<Long> findArticleIds(ColumnId columnId) {
         return columnMapper.selectArticleIds(columnId.getValue());
+    }
+
+    @Override
+    public List<LearningPathArticle> findArticleRelations(ColumnId columnId) {
+        List<LearningPathArticleDO> list = columnMapper.selectArticleRelations(columnId.getValue());
+        List<LearningPathArticle> result = new ArrayList<LearningPathArticle>(list.size());
+        for (LearningPathArticleDO item : list) {
+            result.add(toPathArticle(item));
+        }
+        return result;
     }
 
     @Override
@@ -163,6 +175,13 @@ public class MyBatisColumnRepository implements ColumnRepository {
             columnDO.getSortOrder(),
             columnDO.getSubscriberCount(),
             columnDO.getArticleCount(),
+            columnDO.getIntro(),
+            columnDO.getDifficulty(),
+            columnDO.getEstimatedMinutes(),
+            columnDO.getSourceType(),
+            columnDO.getSourceNote(),
+            columnDO.getRecommended(),
+            columnDO.getRecommendWeight(),
             columnDO.getCreatedAt(),
             columnDO.getUpdatedAt(),
             columnDO.getDeletedAt(),
@@ -181,10 +200,27 @@ public class MyBatisColumnRepository implements ColumnRepository {
         columnDO.setSortOrder(column.getSortOrder());
         columnDO.setSubscriberCount(column.getSubscriberCount());
         columnDO.setArticleCount(column.getArticleCount());
+        columnDO.setIntro(column.getIntro());
+        columnDO.setDifficulty(column.getDifficulty());
+        columnDO.setEstimatedMinutes(column.getEstimatedMinutes());
+        columnDO.setSourceType(column.getSourceType());
+        columnDO.setSourceNote(column.getSourceNote());
+        columnDO.setRecommended(column.isRecommended());
+        columnDO.setRecommendWeight(column.getRecommendWeight());
         columnDO.setCreatedAt(column.getCreatedAt() != null ? column.getCreatedAt() : LocalDateTime.now());
         columnDO.setUpdatedAt(LocalDateTime.now());
         columnDO.setDeletedAt(column.getDeletedAt());
         columnDO.setVersion(column.getVersion() != null ? column.getVersion() : 0);
         return columnDO;
+    }
+
+    private LearningPathArticle toPathArticle(LearningPathArticleDO item) {
+        return new LearningPathArticle(
+            item.getArticleId(),
+            item.getSectionTitle(),
+            item.getStepOrder() == null ? 0 : item.getStepOrder(),
+            item.getRequired() == null || item.getRequired(),
+            item.getEditorNote()
+        );
     }
 }

@@ -16,6 +16,16 @@ public class ColumnDTO {
     private String coverUrl;
     private int subscriberCount;
     private int articleCount;
+    private String intro;
+    private String difficulty;
+    private Integer estimatedMinutes;
+    private String sourceType;
+    private String sourceNote;
+    private boolean recommended;
+    private Integer recommendWeight;
+    private LearningProgressDTO progress;
+    private java.util.List<LearningPathArticleDTO> outline;
+    private ArticleDTO nextArticle;
     private boolean subscribed;
     private UserDTO author;
     /** 专栏状态（PUBLISHED / DRAFT），管理后台使用 */
@@ -73,6 +83,86 @@ public class ColumnDTO {
 
     public void setArticleCount(int articleCount) {
         this.articleCount = articleCount;
+    }
+
+    public String getIntro() {
+        return intro;
+    }
+
+    public void setIntro(String intro) {
+        this.intro = intro;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty;
+    }
+
+    public Integer getEstimatedMinutes() {
+        return estimatedMinutes;
+    }
+
+    public void setEstimatedMinutes(Integer estimatedMinutes) {
+        this.estimatedMinutes = estimatedMinutes;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public String getSourceNote() {
+        return sourceNote;
+    }
+
+    public void setSourceNote(String sourceNote) {
+        this.sourceNote = sourceNote;
+    }
+
+    public boolean isRecommended() {
+        return recommended;
+    }
+
+    public void setRecommended(boolean recommended) {
+        this.recommended = recommended;
+    }
+
+    public Integer getRecommendWeight() {
+        return recommendWeight;
+    }
+
+    public void setRecommendWeight(Integer recommendWeight) {
+        this.recommendWeight = recommendWeight;
+    }
+
+    public LearningProgressDTO getProgress() {
+        return progress;
+    }
+
+    public void setProgress(LearningProgressDTO progress) {
+        this.progress = progress;
+    }
+
+    public java.util.List<LearningPathArticleDTO> getOutline() {
+        return outline;
+    }
+
+    public void setOutline(java.util.List<LearningPathArticleDTO> outline) {
+        this.outline = outline;
+    }
+
+    public ArticleDTO getNextArticle() {
+        return nextArticle;
+    }
+
+    public void setNextArticle(ArticleDTO nextArticle) {
+        this.nextArticle = nextArticle;
     }
 
     public boolean isSubscribed() {

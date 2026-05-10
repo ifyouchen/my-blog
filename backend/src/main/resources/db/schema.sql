@@ -92,8 +92,8 @@ DROP TABLE IF EXISTS `blog_article`;
 CREATE TABLE `blog_article` (
     `id`              bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `author_id`       bigint unsigned NOT NULL COMMENT '作者ID',
-    `title`           varchar(120)    NOT NULL COMMENT '文章标题',
-    `summary`         varchar(300)    NOT NULL DEFAULT '' COMMENT '文章摘要',
+    `title`           varchar(256)    NOT NULL COMMENT '文章标题',
+    `summary`         varchar(500)    NOT NULL DEFAULT '' COMMENT '文章摘要',
     `content`         mediumtext      NOT NULL COMMENT '文章正文',
     `cover_url`       varchar(500)    NULL DEFAULT NULL COMMENT '封面地址',
     `category`        varchar(50)     NOT NULL COMMENT '文章分类',
@@ -127,6 +127,8 @@ CREATE TABLE `blog_article` (
 ) ENGINE = InnoDB AUTO_INCREMENT = 9004
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '博客文章表' ROW_FORMAT = Dynamic;
+
+ALTER TABLE `blog_article` MODIFY COLUMN `summary` varchar(500) NOT NULL DEFAULT '' COMMENT '文章摘要';
 
 -- ----------------------------
 -- blog_article_version
@@ -239,6 +241,11 @@ CREATE TABLE `blog_column` (
     `sort_order`       int             NOT NULL DEFAULT 0 COMMENT '排序值',
     `subscriber_count` int             NOT NULL DEFAULT 0 COMMENT '订阅数',
     `article_count`    int             NOT NULL DEFAULT 0 COMMENT '已发布文章数（冗余字段，避免子查询）',
+    `intro`            text            NULL COMMENT '专栏导读',
+    `difficulty`       varchar(20)     NOT NULL DEFAULT 'INTERMEDIATE' COMMENT '难度：BEGINNER/INTERMEDIATE/ADVANCED',
+    `estimated_minutes` int            NOT NULL DEFAULT 0 COMMENT '预计阅读分钟数',
+    `source_type`      varchar(20)     NOT NULL DEFAULT 'ORIGINAL' COMMENT '来源类型：ORIGINAL/CURATED/IMPORTED',
+    `source_note`      varchar(500)    NULL DEFAULT '' COMMENT '来源说明',
     `recommended`      tinyint(1)      NOT NULL DEFAULT 0 COMMENT '是否推荐：1-推荐 0-不推荐',
     `recommend_weight` int             NOT NULL DEFAULT 0 COMMENT '推荐权重，值越大越靠前',
     `created_at`       datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -248,7 +255,8 @@ CREATE TABLE `blog_column` (
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_blog_column_author` (`author_id`) USING BTREE,
     INDEX `idx_column_published_sort_v2` (`status`, `deleted_at`, `sort_order` ASC, `subscriber_count` DESC, `id` DESC) USING BTREE,
-    INDEX `idx_column_recommended` (`recommended`, `deleted_at`, `recommend_weight` DESC, `subscriber_count` DESC) USING BTREE
+    INDEX `idx_column_recommended` (`recommended`, `deleted_at`, `recommend_weight` DESC, `subscriber_count` DESC) USING BTREE,
+    FULLTEXT INDEX `ft_column_knowledge` (`title`, `summary`, `intro`) WITH PARSER ngram
 ) ENGINE = InnoDB AUTO_INCREMENT = 2004
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '博客专栏表' ROW_FORMAT = Dynamic;
@@ -262,6 +270,10 @@ CREATE TABLE `blog_column_article` (
     `column_id`  bigint unsigned NOT NULL COMMENT '专栏ID',
     `article_id` bigint unsigned NOT NULL COMMENT '文章ID',
     `sort_order` int             NOT NULL DEFAULT 0 COMMENT '排序值',
+    `section_title` varchar(120)  NULL DEFAULT '推荐阅读' COMMENT '章节名称',
+    `step_order` int              NOT NULL DEFAULT 0 COMMENT '学习路径步骤序号',
+    `required` tinyint(1)         NOT NULL DEFAULT 1 COMMENT '是否必读',
+    `editor_note` varchar(500)    NULL DEFAULT '' COMMENT '编者备注',
     `created_at` datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at` datetime        NULL DEFAULT NULL COMMENT '删除时间',
@@ -524,12 +536,21 @@ CREATE TABLE `blog_topic` (
     `status`        varchar(20)     NOT NULL DEFAULT 'PUBLISHED' COMMENT '状态：PUBLISHED-已发布 OFFLINE-已下架',
     `sort_order`    int             NOT NULL DEFAULT 0 COMMENT '排序值',
     `article_count` int             NOT NULL DEFAULT 0 COMMENT '专题内文章数',
+    `intro`         text            NULL COMMENT '专题导读',
+    `difficulty`    varchar(20)     NOT NULL DEFAULT 'INTERMEDIATE' COMMENT '难度：BEGINNER/INTERMEDIATE/ADVANCED',
+    `estimated_minutes` int         NOT NULL DEFAULT 0 COMMENT '预计阅读分钟数',
+    `source_type`   varchar(20)     NOT NULL DEFAULT 'ORIGINAL' COMMENT '来源类型：ORIGINAL/CURATED/IMPORTED',
+    `source_note`   varchar(500)    NULL DEFAULT '' COMMENT '来源说明',
+    `recommended`   tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否推荐：1-推荐 0-不推荐',
+    `recommend_weight` int          NOT NULL DEFAULT 0 COMMENT '推荐权重，值越大越靠前',
     `created_at`    datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`    datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at`    datetime        NULL DEFAULT NULL COMMENT '删除时间',
     `version`       int             NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_topic_status_sort` (`status`, `deleted_at`, `sort_order` ASC, `id` DESC) USING BTREE
+    INDEX `idx_topic_status_sort` (`status`, `deleted_at`, `sort_order` ASC, `id` DESC) USING BTREE,
+    INDEX `idx_topic_recommended` (`recommended`, `deleted_at`, `recommend_weight` DESC, `sort_order` ASC) USING BTREE,
+    FULLTEXT INDEX `ft_topic_knowledge` (`title`, `summary`, `intro`) WITH PARSER ngram
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '博客专题表' ROW_FORMAT = Dynamic;
@@ -543,6 +564,10 @@ CREATE TABLE `blog_topic_article` (
     `topic_id`   bigint unsigned NOT NULL COMMENT '专题ID',
     `article_id` bigint unsigned NOT NULL COMMENT '文章ID',
     `sort_order` int             NOT NULL DEFAULT 0 COMMENT '排序值',
+    `section_title` varchar(120)  NULL DEFAULT '推荐阅读' COMMENT '章节名称',
+    `step_order` int              NOT NULL DEFAULT 0 COMMENT '学习路径步骤序号',
+    `required` tinyint(1)         NOT NULL DEFAULT 1 COMMENT '是否必读',
+    `editor_note` varchar(500)    NULL DEFAULT '' COMMENT '编者备注',
     `created_at` datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at` datetime        NULL DEFAULT NULL COMMENT '删除时间',
@@ -554,6 +579,32 @@ CREATE TABLE `blog_topic_article` (
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '博客专题文章关联表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- blog_learning_progress
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_learning_progress`;
+CREATE TABLE `blog_learning_progress` (
+    `id`                    bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`               bigint unsigned NOT NULL COMMENT '用户ID',
+    `asset_type`            varchar(20)     NOT NULL COMMENT '学习资产类型：TOPIC/COLUMN',
+    `asset_id`              bigint unsigned NOT NULL COMMENT '学习资产ID',
+    `completed_article_ids` text            NULL COMMENT '已读文章ID列表，逗号分隔',
+    `completed_count`       int             NOT NULL DEFAULT 0 COMMENT '已读文章数',
+    `progress_percent`      int             NOT NULL DEFAULT 0 COMMENT '学习进度百分比',
+    `last_article_id`       bigint unsigned NULL COMMENT '最后操作文章ID',
+    `last_read_at`          datetime        NULL DEFAULT NULL COMMENT '最后阅读时间',
+    `created_at`            datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`            datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`            datetime        NULL DEFAULT NULL COMMENT '删除时间',
+    `version`               int             NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_learning_progress_user_asset` (`user_id`, `asset_type`, `asset_id`) USING BTREE,
+    INDEX `idx_learning_progress_asset` (`asset_type`, `asset_id`, `deleted_at`) USING BTREE,
+    INDEX `idx_learning_progress_user_updated` (`user_id`, `updated_at` DESC) USING BTREE
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '用户学习进度表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- blog_ad_slot

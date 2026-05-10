@@ -17,6 +17,10 @@ export const getHomeBootstrapApi = async () => {
         recommendedColumns: (data?.recommendedColumns || []).map(normalizeColumn),
         authorRankings: (data?.authorRankings || []).map(normalizeAuthorRanking),
         featuredArticles: (data?.featuredArticles || []).map(normalizeArticle),
-        hotTopics: (data?.hotTopics || []).map(normalizeTopic)
+        hotTopics: (data?.hotTopics || []).map(normalizeTopic),
+        todayFocus: data?.todayFocus ? normalizeArticle(data.todayFocus) : null,
+        learningTopics: (data?.learningTopics || []).map(normalizeTopic),
+        hotTags: data?.hotTags || [],
+        hotKeywords: data?.hotKeywords || []
     };
 };

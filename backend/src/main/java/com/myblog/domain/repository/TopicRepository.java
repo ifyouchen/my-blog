@@ -1,6 +1,7 @@
 package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.Topic;
+import com.myblog.domain.model.valueobject.LearningPathArticle;
 import com.myblog.domain.model.valueobject.TopicId;
 
 import java.util.List;
@@ -25,6 +26,12 @@ public interface TopicRepository {
     Long nextId();
 
     List<Long> findArticleIds(TopicId topicId);
+
+    List<LearningPathArticle> findArticleRelations(TopicId topicId);
+
+    List<Topic> searchPublished(String keyword, String difficulty, int page, int pageSize);
+
+    long countSearchPublished(String keyword, String difficulty);
 
     void bindArticle(TopicId topicId, Long articleId, int sortOrder);
 

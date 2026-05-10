@@ -11,6 +11,7 @@ import {deleteArticleApi, exportMyArticlesApi, getMyArticlesApi, updateArticleSt
 import {
   getArticleStatsApi,
   getDashboardArticlePerformanceApi,
+  getDashboardContentOpportunitiesApi,
   getDashboardInteractionsApi,
   getDashboardOverviewApi,
   getDashboardTrendsApi
@@ -68,6 +69,7 @@ const trendRange = ref(String(route.query.range || '7d') === '30d' ? '30d' : '7d
 const performanceSort = ref(String(route.query.sort || 'view'));
 const performanceArticles = ref([]);
 const interactions = ref([]);
+const contentOpportunities = ref([]);
 const columnCount = ref(0);
 const dashboardLoading = ref(false);
 const dashboardError = ref('');
@@ -270,23 +272,33 @@ const fetchDashboardAnalytics = async () => {
         trends.value = [];
         performanceArticles.value = [];
         interactions.value = [];
+        contentOpportunities.value = [];
         columnCount.value = 0;
         return;
     }
     dashboardLoading.value = true;
     dashboardError.value = '';
     try {
-        const [overviewResult, trendResult, performanceResult, interactionResult, columnsResult] = await Promise.all([
+        const [
+            overviewResult,
+            trendResult,
+            performanceResult,
+            interactionResult,
+            opportunityResult,
+            columnsResult
+        ] = await Promise.all([
             getDashboardOverviewApi(),
             getDashboardTrendsApi(trendRange.value),
             getDashboardArticlePerformanceApi(performanceSort.value),
             getDashboardInteractionsApi(),
+            getDashboardContentOpportunitiesApi().catch(() => []),
             getMyColumnsApi().catch(() => [])
         ]);
         overview.value = overviewResult;
         trends.value = trendResult || [];
         performanceArticles.value = performanceResult || [];
         interactions.value = interactionResult || [];
+        contentOpportunities.value = opportunityResult || [];
         columnCount.value = (columnsResult || []).length;
     } catch (error) {
         dashboardError.value = error.message || '创作台数据加载失败';
@@ -357,13 +369,14 @@ const fetchCurrentTab = async () => {
     ]);
 };
 
-const changePage = (page) => {
+const changePage = async (page) => {
     const totalPages = Math.max(1, Math.ceil(total.value / pageSize));
     if (page < 1 || page > totalPages || page === currentPage.value || isLoading.value) {
         return;
     }
     currentPage.value = page;
     syncRoute({ page });
+    await fetchCurrentTab();
 };
 
 const changeStatus = (status) => {
@@ -947,6 +960,25 @@ onUnmounted(() => {
                             />
                         </section>
                     </div>
+                    <section v-if="contentOpportunities.length" class="content-opportunity-panel">
+                        <header class="dashboard-panel-header">
+                            <div>
+                                <p class="eyebrow">选题机会</p>
+                                <h2>搜索驱动的内容建议</h2>
+                            </div>
+                            <RouterLink class="creator-overview-inline-link" to="/editor/new">开始写作</RouterLink>
+                        </header>
+                        <div class="content-opportunity-list">
+                            <article
+                                v-for="item in contentOpportunities"
+                                :key="item.keyword || item.title"
+                                class="content-opportunity-item"
+                            >
+                                <strong>{{ item.title }}</strong>
+                                <span>{{ item.reason }}</span>
+                            </article>
+                        </div>
+                    </section>
                 </template>
             </section>
 
@@ -1713,6 +1745,38 @@ onUnmounted(() => {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 18px;
+}
+
+.content-opportunity-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.content-opportunity-list {
+    display: grid;
+    gap: 8px;
+}
+
+.content-opportunity-item {
+    display: grid;
+    gap: 4px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.content-opportunity-item:last-child {
+    border-bottom: 0;
+}
+
+.content-opportunity-item strong {
+    color: var(--text);
+    font-size: 14px;
+}
+
+.content-opportunity-item span {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
 }
 
 .dashboard-panel-header {

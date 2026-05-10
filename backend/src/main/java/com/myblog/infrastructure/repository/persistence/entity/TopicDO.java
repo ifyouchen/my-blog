@@ -17,6 +17,13 @@ public class TopicDO {
     private String status;
     private Integer sortOrder;
     private Integer articleCount;
+    private String intro;
+    private String difficulty;
+    private Integer estimatedMinutes;
+    private String sourceType;
+    private String sourceNote;
+    private Boolean recommended;
+    private Integer recommendWeight;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
@@ -76,6 +83,62 @@ public class TopicDO {
 
     public void setArticleCount(Integer articleCount) {
         this.articleCount = articleCount;
+    }
+
+    public String getIntro() {
+        return intro;
+    }
+
+    public void setIntro(String intro) {
+        this.intro = intro;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty;
+    }
+
+    public Integer getEstimatedMinutes() {
+        return estimatedMinutes;
+    }
+
+    public void setEstimatedMinutes(Integer estimatedMinutes) {
+        this.estimatedMinutes = estimatedMinutes;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public String getSourceNote() {
+        return sourceNote;
+    }
+
+    public void setSourceNote(String sourceNote) {
+        this.sourceNote = sourceNote;
+    }
+
+    public Boolean getRecommended() {
+        return recommended;
+    }
+
+    public void setRecommended(Boolean recommended) {
+        this.recommended = recommended;
+    }
+
+    public Integer getRecommendWeight() {
+        return recommendWeight;
+    }
+
+    public void setRecommendWeight(Integer recommendWeight) {
+        this.recommendWeight = recommendWeight;
     }
 
     public LocalDateTime getCreatedAt() {

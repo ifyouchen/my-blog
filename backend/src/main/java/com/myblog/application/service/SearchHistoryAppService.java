@@ -38,17 +38,23 @@ public class SearchHistoryAppService {
     private final Cache<Integer, List<String>> hotKeywordsCache;
     private final CategoryAppService categoryAppService;
     private final TagAppService tagAppService;
+    private final TopicAppService topicAppService;
+    private final ColumnAppService columnAppService;
 
     public SearchHistoryAppService(UserSearchHistoryRepository userSearchHistoryRepository,
                                    Cache<String, SearchBootstrapDTO> searchBootstrapCache,
                                    Cache<Integer, List<String>> hotKeywordsCache,
                                    CategoryAppService categoryAppService,
-                                   TagAppService tagAppService) {
+                                   TagAppService tagAppService,
+                                   TopicAppService topicAppService,
+                                   ColumnAppService columnAppService) {
         this.userSearchHistoryRepository = userSearchHistoryRepository;
         this.searchBootstrapCache = searchBootstrapCache;
         this.hotKeywordsCache = hotKeywordsCache;
         this.categoryAppService = categoryAppService;
         this.tagAppService = tagAppService;
+        this.topicAppService = topicAppService;
+        this.columnAppService = columnAppService;
     }
 
     /**
@@ -71,6 +77,8 @@ public class SearchHistoryAppService {
         List<TagDTO> tags = tagAppService.getTags(true);
         bootstrap.setCategories(categories);
         bootstrap.setTags(tags);
+        bootstrap.setRecommendedTopics(topicAppService.listHotTopics(4));
+        bootstrap.setRecommendedColumns(columnAppService.listRecommendedColumns(4, userId));
 
         // Load hot keywords
         List<String> hotKeywords = hotKeywordsCache.getIfPresent(HOT_KEYWORDS_LIMIT);

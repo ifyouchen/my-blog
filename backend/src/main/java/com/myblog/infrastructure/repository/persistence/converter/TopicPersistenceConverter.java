@@ -17,6 +17,13 @@ public class TopicPersistenceConverter {
             topicDO.getStatus(),
             topicDO.getSortOrder(),
             topicDO.getArticleCount(),
+            topicDO.getIntro(),
+            topicDO.getDifficulty(),
+            topicDO.getEstimatedMinutes(),
+            topicDO.getSourceType(),
+            topicDO.getSourceNote(),
+            topicDO.getRecommended(),
+            topicDO.getRecommendWeight(),
             topicDO.getCreatedAt(),
             topicDO.getUpdatedAt(),
             topicDO.getDeletedAt(),
@@ -36,6 +43,13 @@ public class TopicPersistenceConverter {
         topicDO.setStatus(topic.getStatus());
         topicDO.setSortOrder(topic.getSortOrder());
         topicDO.setArticleCount(topic.getArticleCount());
+        topicDO.setIntro(topic.getIntro());
+        topicDO.setDifficulty(topic.getDifficulty());
+        topicDO.setEstimatedMinutes(topic.getEstimatedMinutes());
+        topicDO.setSourceType(topic.getSourceType());
+        topicDO.setSourceNote(topic.getSourceNote());
+        topicDO.setRecommended(topic.isRecommended());
+        topicDO.setRecommendWeight(topic.getRecommendWeight());
         topicDO.setCreatedAt(topic.getCreatedAt());
         topicDO.setUpdatedAt(topic.getUpdatedAt());
         topicDO.setDeletedAt(topic.getDeletedAt());

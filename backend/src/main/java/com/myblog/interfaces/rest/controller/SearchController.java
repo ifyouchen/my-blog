@@ -2,8 +2,10 @@ package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
+import com.myblog.application.dto.UnifiedSearchResultDTO;
 import com.myblog.application.dto.UserSearchDTO;
 import com.myblog.application.service.ColumnAppService;
+import com.myblog.application.service.KnowledgeSearchAppService;
 import com.myblog.application.service.SearchHistoryAppService;
 import com.myblog.application.service.UserAppService;
 import com.myblog.infrastructure.security.AuthContext;
@@ -35,15 +37,18 @@ public class SearchController {
 
     private final UserAppService userAppService;
     private final ColumnAppService columnAppService;
+    private final KnowledgeSearchAppService knowledgeSearchAppService;
     private final SearchHistoryAppService searchHistoryAppService;
     private final RestDtoMapper restDtoMapper;
 
     public SearchController(UserAppService userAppService,
                             ColumnAppService columnAppService,
+                            KnowledgeSearchAppService knowledgeSearchAppService,
                             SearchHistoryAppService searchHistoryAppService,
                             RestDtoMapper restDtoMapper) {
         this.userAppService = userAppService;
         this.columnAppService = columnAppService;
+        this.knowledgeSearchAppService = knowledgeSearchAppService;
         this.searchHistoryAppService = searchHistoryAppService;
         this.restDtoMapper = restDtoMapper;
     }
@@ -90,6 +95,35 @@ public class SearchController {
             result.getPage(),
             result.getPageSize(),
             result.getTotal()
+        ));
+    }
+
+    /**
+     * 统一知识搜索。
+     *
+     * @return articles/topics/columns/tags 分组搜索结果
+     */
+    @GetMapping("/unified")
+    public Result<UnifiedSearchResultDTO> unifiedSearch(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(defaultValue = "recommend") String sort,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        Long currentUserId = AuthContext.getCurrentUserId();
+        return Result.success(knowledgeSearchAppService.unifiedSearch(
+            keyword,
+            type,
+            category,
+            tag,
+            difficulty,
+            sort,
+            page,
+            pageSize,
+            currentUserId
         ));
     }
 

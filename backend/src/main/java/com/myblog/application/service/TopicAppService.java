@@ -7,6 +7,7 @@ import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Topic;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.ArticleId;
+import com.myblog.domain.model.valueobject.LearningPathArticle;
 import com.myblog.domain.model.valueobject.TopicId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.TopicRepository;
@@ -39,15 +40,21 @@ public class TopicAppService {
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
     private final ArticleAssembler articleAssembler;
+    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
+    private final LearningProgressAppService learningProgressAppService;
 
     public TopicAppService(TopicRepository topicRepository,
                            ArticleRepository articleRepository,
                            UserRepository userRepository,
-                           ArticleAssembler articleAssembler) {
+                           ArticleAssembler articleAssembler,
+                           HomePortalCacheInvalidator homePortalCacheInvalidator,
+                           LearningProgressAppService learningProgressAppService) {
         this.topicRepository = topicRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
         this.articleAssembler = articleAssembler;
+        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
+        this.learningProgressAppService = learningProgressAppService;
     }
 
     // ==================== 前台接口 ====================
@@ -86,8 +93,17 @@ public class TopicAppService {
      * 获取专题详情。
      */
     public TopicDTO getTopicDetail(Long topicId) {
+        return getTopicDetail(topicId, null);
+    }
+
+    /**
+     * 获取专题详情。
+     */
+    public TopicDTO getTopicDetail(Long topicId, Long currentUserId) {
         Topic topic = loadPublishedTopic(topicId);
-        return toDTO(topic);
+        TopicDTO dto = toDTO(topic);
+        populateLearningPath(dto, currentUserId);
+        return dto;
     }
 
     /**
@@ -140,6 +156,26 @@ public class TopicAppService {
         return result;
     }
 
+    /**
+     * 统一搜索：分页查询已发布专题。
+     */
+    public PageResult<TopicDTO> searchTopics(String keyword, String difficulty, int page,
+                                             int pageSize, Long currentUserId) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        List<Topic> topics = topicRepository.searchPublished(keyword, difficulty, currentPage, currentPageSize);
+        List<TopicDTO> items = new ArrayList<TopicDTO>(topics.size());
+        for (Topic topic : topics) {
+            items.add(toDTO(topic));
+        }
+        return new PageResult<TopicDTO>(
+            items,
+            currentPage,
+            currentPageSize,
+            topicRepository.countSearchPublished(keyword, difficulty)
+        );
+    }
+
     private ArticleDTO toNeighborDTO(Long articleId) {
         Article article = articleRepository.findById(new ArticleId(articleId)).orElse(null);
         if (article == null) {
@@ -177,6 +213,7 @@ public class TopicAppService {
             title, summary, coverUrl, sortOrder
         );
         topicRepository.save(topic);
+        homePortalCacheInvalidator.evictBootstrap();
         TopicDTO result = toAdminDTO(topic);
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -198,6 +235,7 @@ public class TopicAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
         topic.update(title, summary, coverUrl, sortOrder, status);
         topicRepository.save(topic);
+        homePortalCacheInvalidator.evictBootstrap();
         TopicDTO result = toAdminDTO(topic);
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -218,6 +256,7 @@ public class TopicAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
         topic.delete();
         topicRepository.save(topic);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             "后台删除专题",
@@ -276,19 +315,40 @@ public class TopicAppService {
         dto.setSummary(topic.getSummary());
         dto.setCoverUrl(topic.getCoverUrl());
         dto.setArticleCount(topic.getArticleCount());
+        dto.setIntro(topic.getIntro());
+        dto.setDifficulty(topic.getDifficulty());
+        dto.setEstimatedMinutes(topic.getEstimatedMinutes());
+        dto.setSourceType(topic.getSourceType());
+        dto.setSourceNote(topic.getSourceNote());
+        dto.setRecommended(topic.isRecommended());
+        dto.setRecommendWeight(topic.getRecommendWeight());
         return dto;
     }
 
     private TopicDTO toAdminDTO(Topic topic) {
-        TopicDTO dto = new TopicDTO();
-        dto.setId(topic.getId().getValue());
-        dto.setTitle(topic.getTitle());
-        dto.setSummary(topic.getSummary());
-        dto.setCoverUrl(topic.getCoverUrl());
-        dto.setArticleCount(topic.getArticleCount());
+        TopicDTO dto = toDTO(topic);
         dto.setStatus(topic.getStatus());
         dto.setSortOrder(topic.getSortOrder());
         dto.setCreatedAt(topic.getCreatedAt());
         return dto;
+    }
+
+    private void populateLearningPath(TopicDTO dto, Long currentUserId) {
+        List<LearningPathArticle> relations = topicRepository.findArticleRelations(new TopicId(dto.getId()));
+        dto.setProgress(learningProgressAppService.buildProgress(
+            LearningProgressAppService.ASSET_TYPE_TOPIC,
+            dto.getId(),
+            relations,
+            currentUserId
+        ));
+        dto.setOutline(learningProgressAppService.buildOutline(
+            LearningProgressAppService.ASSET_TYPE_TOPIC,
+            dto.getId(),
+            relations,
+            currentUserId
+        ));
+        if (dto.getProgress() != null) {
+            dto.setNextArticle(dto.getProgress().getNextArticle());
+        }
     }
 }

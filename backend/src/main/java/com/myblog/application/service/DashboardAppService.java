@@ -45,13 +45,16 @@ public class DashboardAppService {
     private final ArticleRepository articleRepository;
     private final UserFollowRepository userFollowRepository;
     private final NotificationAppService notificationAppService;
+    private final SearchHistoryAppService searchHistoryAppService;
 
     public DashboardAppService(ArticleRepository articleRepository,
                                UserFollowRepository userFollowRepository,
-                               NotificationAppService notificationAppService) {
+                               NotificationAppService notificationAppService,
+                               SearchHistoryAppService searchHistoryAppService) {
         this.articleRepository = articleRepository;
         this.userFollowRepository = userFollowRepository;
         this.notificationAppService = notificationAppService;
+        this.searchHistoryAppService = searchHistoryAppService;
     }
 
     public DashboardOverviewDTO getOverview(Long userId) {
@@ -126,6 +129,38 @@ public class DashboardAppService {
 
     public List<NotificationDTO> getInteractions(Long userId) {
         return notificationAppService.listRecent(userId, "all", 8);
+    }
+
+    /**
+     * 创作者选题建议。
+     *
+     * @param userId 当前用户 ID
+     * @return 选题建议列表
+     */
+    public List<Map<String, Object>> getContentOpportunities(Long userId) {
+        AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, null);
+        List<String> hotKeywords = searchHistoryAppService.getHotKeywords(6);
+        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        int publishedCount = safeInt(metrics != null ? metrics.getPublishedCount() : null);
+        for (String keyword : hotKeywords) {
+            Map<String, Object> item = new HashMap<String, Object>();
+            item.put("keyword", keyword);
+            item.put("title", "围绕「" + keyword + "」补一篇可复用知识卡");
+            item.put("reason", "近期搜索热度较高，适合作为专题或专栏里的入口文章。");
+            item.put("type", "SEARCH_DEMAND");
+            item.put("priority", publishedCount == 0 ? "HIGH" : "MEDIUM");
+            result.add(item);
+        }
+        if (result.isEmpty()) {
+            Map<String, Object> item = new HashMap<String, Object>();
+            item.put("keyword", "技术笔记");
+            item.put("title", "整理一篇基础知识清单");
+            item.put("reason", "先把已有经验沉淀为可检索、可编排的知识资产。");
+            item.put("type", "KNOWLEDGE_ASSET");
+            item.put("priority", "MEDIUM");
+            result.add(item);
+        }
+        return result;
     }
 
     /**

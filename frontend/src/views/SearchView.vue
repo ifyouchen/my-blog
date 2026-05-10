@@ -4,7 +4,14 @@ import {useWindowSize} from '@/composables/useWindowSize';
 import {useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {listArticlesApi} from '@/api/articles';
-import {clearRecentKeywordsApi, getSearchBootstrapApi, saveRecentKeywordApi, searchColumnsApi, searchUsersApi} from '@/api/search';
+import {
+    clearRecentKeywordsApi,
+    getSearchBootstrapApi,
+    saveRecentKeywordApi,
+    searchColumnsApi,
+    searchUsersApi,
+    unifiedSearchApi
+} from '@/api/search';
 import {track} from '@/utils/track';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
@@ -46,6 +53,8 @@ const articles = ref([]);
 const articleTotal = ref(0);
 const users = ref([]);
 const userTotal = ref(0);
+const topics = ref([]);
+const topicTotal = ref(0);
 const columns = ref([]);
 const columnTotal = ref(0);
 const {
@@ -202,7 +211,7 @@ const clearAllFilters = () => {
 };
 
 const switchSearchTab = (tab) => {
-    const targetTab = tab === 'users' || tab === 'columns' ? tab : 'articles';
+    const targetTab = ['articles', 'topics', 'users', 'columns'].includes(tab) ? tab : 'articles';
     if (activeTab.value === targetTab) {
         return;
     }
@@ -236,6 +245,7 @@ const hotKeywords = computed(() => bootstrap.value?.hotKeywords || []);
 const showKeywordChips = computed(() =>
     !keyword.value.trim() &&
     articles.value.length === 0 &&
+    topics.value.length === 0 &&
     users.value.length === 0 &&
     columns.value.length === 0
 );
@@ -246,6 +256,8 @@ const suggestedCategories = computed(() =>
 const suggestedTags = computed(() =>
     tagOptions.value.filter((item) => item !== '全部').slice(0, 12)
 );
+const suggestedTopics = computed(() => (bootstrap.value?.recommendedTopics || []).slice(0, 4));
+const suggestedColumns = computed(() => (bootstrap.value?.recommendedColumns || []).slice(0, 4));
 const hasArticleFilters = computed(() => Boolean(
     activeCategory.value
     || activeTag.value
@@ -270,6 +282,7 @@ const isSearchEmpty = computed(() =>
     && hasLoadedOnce.value
     && !loading.value
     && articles.value.length === 0
+    && topics.value.length === 0
     && users.value.length === 0
     && columns.value.length === 0
 );
@@ -369,6 +382,28 @@ const fetchUsers = async () => {
     const pageResult = response.result || {};
     users.value = pageResult.items || [];
     userTotal.value = pageResult.total || 0;
+};
+
+const fetchTopics = async () => {
+    const response = await runStableRequest(
+        () => unifiedSearchApi({
+            keyword: keyword.value.trim(),
+            type: 'topics',
+            page: currentPage.value,
+            pageSize
+        }),
+        {
+            silent: hasLoadedOnce.value,
+            initialErrorMessage: '搜索失败，请稍后重试',
+            refreshErrorMessage: '专题结果刷新失败，请稍后重试'
+        }
+    );
+    if (response?.ignored || response?.error) {
+        return;
+    }
+    const pageResult = response.result?.topics || {};
+    topics.value = pageResult.items || [];
+    topicTotal.value = pageResult.total || 0;
 };
 
 const fetchColumns = async () => {
@@ -479,6 +514,8 @@ const fetchCurrentTab = async () => {
         articleTotal.value = 0;
         users.value = [];
         userTotal.value = 0;
+        topics.value = [];
+        topicTotal.value = 0;
         columns.value = [];
         columnTotal.value = 0;
         return;
@@ -489,6 +526,9 @@ const fetchCurrentTab = async () => {
             break;
         case 'users':
             await fetchUsers();
+            break;
+        case 'topics':
+            await fetchTopics();
             break;
         case 'columns':
             await fetchColumns();
@@ -559,6 +599,10 @@ const addGuestRecentSearch = (kw) => {
 
 const goToUser = (userId) => {
     router.push(`/users/${userId}`);
+};
+
+const goToTopic = (topicId) => {
+    router.push(`/topics/${topicId}`);
 };
 
 const goToColumn = (columnId) => {
@@ -658,6 +702,13 @@ onMounted(fetchBootstrap);
                     @click="changeTab('articles')"
                 >
                     文章
+                </button>
+                <button
+                    type="button"
+                    :class="{ active: activeTab === 'topics' }"
+                    @click="changeTab('topics')"
+                >
+                    专题
                 </button>
                 <button
                     type="button"
@@ -861,6 +912,36 @@ onMounted(fetchBootstrap);
                             </button>
                         </div>
                     </div>
+                    <div v-if="suggestedTopics.length" class="search-suggestion-section">
+                        <span class="search-suggestion-label">推荐专题</span>
+                        <div class="search-suggestion-row vertical">
+                            <button
+                                v-for="topic in suggestedTopics"
+                                :key="topic.id"
+                                type="button"
+                                class="search-suggestion-card"
+                                @click="goToTopic(topic.id)"
+                            >
+                                <strong>{{ topic.title }}</strong>
+                                <span>{{ topic.articleCount || 0 }} 篇文章</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="suggestedColumns.length" class="search-suggestion-section">
+                        <span class="search-suggestion-label">推荐专栏</span>
+                        <div class="search-suggestion-row vertical">
+                            <button
+                                v-for="column in suggestedColumns"
+                                :key="column.id"
+                                type="button"
+                                class="search-suggestion-card"
+                                @click="goToColumn(column.id)"
+                            >
+                                <strong>{{ column.title }}</strong>
+                                <span>{{ column.articleCount || 0 }} 篇文章</span>
+                            </button>
+                        </div>
+                    </div>
                     <div v-if="suggestedCategories.length" class="search-suggestion-section">
                         <span class="search-suggestion-label">热门分类</span>
                         <div class="search-suggestion-row">
@@ -894,6 +975,7 @@ onMounted(fetchBootstrap);
 
             <p v-if="!showSearchDefaultState" class="result-note">
                 <template v-if="activeTab === 'articles'">共找到 {{ articleTotal }} 篇文章</template>
+                <template v-else-if="activeTab === 'topics'">共找到 {{ topicTotal }} 个专题</template>
                 <template v-else-if="activeTab === 'users'">共找到 {{ userTotal }} 位作者</template>
                 <template v-else>共找到 {{ columnTotal }} 个专栏</template>
             </p>
@@ -1023,6 +1105,12 @@ onMounted(fetchBootstrap);
                         @click="switchSearchTab('articles')"
                     >查看文章</button>
                     <button
+                        v-if="activeTab !== 'topics'"
+                        type="button"
+                        class="search-empty-chip"
+                        @click="switchSearchTab('topics')"
+                    >查看专题</button>
+                    <button
                         v-if="activeTab !== 'users'"
                         type="button"
                         class="search-empty-chip"
@@ -1037,6 +1125,60 @@ onMounted(fetchBootstrap);
                 </div>
             </div>
         </section>
+
+        <!-- Topic Results -->
+        <div v-else-if="activeTab === 'topics'" class="topic-results">
+            <div v-if="refreshing && topics.length" class="refresh-state">正在更新专题结果...</div>
+            <div v-if="inlineError" class="error-state search-state-panel">{{ inlineError }}</div>
+            <div v-if="initialLoading && !topics.length" class="loading-state">加载中...</div>
+            <div v-else-if="errorMessage && !topics.length" class="error-state">{{ errorMessage }}</div>
+            <EmptyState
+                v-else-if="!refreshing && hasLoadedOnce && topics.length === 0"
+                compact
+                eyebrow="搜索结果"
+                title="暂无匹配专题"
+                description="可改用文章搜索，或先浏览推荐专栏。"
+            >
+                <button type="button" class="empty-action" @click="switchSearchTab('articles')">查看相关文章</button>
+            </EmptyState>
+            <div v-else class="topic-list">
+                <div
+                    v-for="topic in topics"
+                    :key="topic.id"
+                    class="topic-card"
+                    @click="goToTopic(topic.id)"
+                >
+                    <img :src="topic.coverUrl" :alt="topic.title" class="topic-cover" decoding="async">
+                    <div class="topic-info">
+                        <div class="topic-name">{{ topic.title }}</div>
+                        <div class="topic-summary">{{ topic.intro || topic.summary || '' }}</div>
+                        <div class="topic-stats">
+                            <span>{{ topic.difficulty || 'INTERMEDIATE' }}</span>
+                            <span>文章 {{ topic.articleCount || 0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-if="topicTotal > pageSize" class="pagination">
+                <button
+                    v-if="currentPage > 1"
+                    type="button"
+                    :disabled="loading"
+                    @click="changePage(currentPage - 1)"
+                >
+                    上一页
+                </button>
+                <span class="page-info">{{ currentPage }} / {{ Math.ceil(topicTotal / pageSize) }}</span>
+                <button
+                    v-if="currentPage * pageSize < topicTotal"
+                    type="button"
+                    :disabled="loading"
+                    @click="changePage(currentPage + 1)"
+                >
+                    下一页
+                </button>
+            </div>
+        </div>
 
         <!-- User Results -->
         <div v-else-if="activeTab === 'users'" class="user-results">
@@ -1384,6 +1526,11 @@ onMounted(fetchBootstrap);
     gap: 6px;
 }
 
+.search-suggestion-row.vertical {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
 .search-suggestion-chip {
     display: inline-flex;
     align-items: center;
@@ -1413,6 +1560,36 @@ onMounted(fetchBootstrap);
 .search-suggestion-chip.subtle {
     color: var(--muted);
     border-style: dashed;
+}
+
+.search-suggestion-card {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.search-suggestion-card:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.search-suggestion-card strong {
+    overflow: hidden;
+    color: var(--text-strong);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-suggestion-card span {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .expand-btn {
@@ -1537,7 +1714,7 @@ onMounted(fetchBootstrap);
     margin-top: 0;
 }
 
-.user-results, .column-results {
+.user-results, .topic-results, .column-results {
     margin-top: 20px;
 }
 
@@ -1562,12 +1739,12 @@ onMounted(fetchBootstrap);
     margin-top: 8px;
 }
 
-.user-list, .column-list {
+.user-list, .topic-list, .column-list {
     display: grid;
     gap: 16px;
 }
 
-.user-card, .column-card {
+.user-card, .topic-card, .column-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
@@ -1581,7 +1758,7 @@ onMounted(fetchBootstrap);
     transition: background 0.12s;
 }
 
-.user-card:hover, .column-card:hover {
+.user-card:hover, .topic-card:hover, .column-card:hover {
     background: var(--surface-soft);
     border-color: var(--line-strong);
 }
@@ -1594,7 +1771,7 @@ onMounted(fetchBootstrap);
     box-shadow: none;
 }
 
-.column-cover {
+.topic-cover, .column-cover {
     width: 96px;
     height: 68px;
     border-radius: var(--radius-sm);
@@ -1602,20 +1779,20 @@ onMounted(fetchBootstrap);
     box-shadow: none;
 }
 
-.user-info, .column-info {
+.user-info, .topic-info, .column-info {
     display: grid;
     gap: 6px;
     min-width: 0;
 }
 
-.user-name, .column-name {
+.user-name, .topic-name, .column-name {
     color: var(--text-strong);
     font-weight: 700;
     font-size: 18px;
     line-height: 1.25;
 }
 
-.user-bio, .column-summary {
+.user-bio, .topic-summary, .column-summary {
     font-size: 14px;
     color: var(--muted);
     overflow: hidden;
@@ -1644,7 +1821,7 @@ onMounted(fetchBootstrap);
     object-fit: cover;
 }
 
-.user-stats, .column-stats {
+.user-stats, .topic-stats, .column-stats {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
@@ -1652,7 +1829,7 @@ onMounted(fetchBootstrap);
     color: var(--muted);
 }
 
-.user-stats span, .column-stats span {
+.user-stats span, .topic-stats span, .column-stats span {
     display: inline-flex;
     align-items: center;
     min-height: 22px;
@@ -1740,7 +1917,7 @@ onMounted(fetchBootstrap);
         width: 100%;
     }
 
-    .user-card, .column-card {
+    .user-card, .topic-card, .column-card {
         grid-template-columns: auto minmax(0, 1fr);
     }
 

@@ -14,6 +14,8 @@ public class SearchBootstrapDTO {
     private List<TagDTO> tags;
     private List<String> hotKeywords;
     private List<String> recentKeywords;
+    private List<TopicDTO> recommendedTopics;
+    private List<ColumnDTO> recommendedColumns;
 
     public List<CategoryDTO> getCategories() {
         return categories;
@@ -45,5 +47,21 @@ public class SearchBootstrapDTO {
 
     public void setRecentKeywords(List<String> recentKeywords) {
         this.recentKeywords = recentKeywords;
+    }
+
+    public List<TopicDTO> getRecommendedTopics() {
+        return recommendedTopics;
+    }
+
+    public void setRecommendedTopics(List<TopicDTO> recommendedTopics) {
+        this.recommendedTopics = recommendedTopics;
+    }
+
+    public List<ColumnDTO> getRecommendedColumns() {
+        return recommendedColumns;
+    }
+
+    public void setRecommendedColumns(List<ColumnDTO> recommendedColumns) {
+        this.recommendedColumns = recommendedColumns;
     }
 }

@@ -6,10 +6,9 @@ import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
+import com.myblog.application.dto.TagDTO;
 import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +25,7 @@ import java.util.concurrent.Executor;
 @Service
 public class HomeBootstrapAppService {
 
-    private static final Logger log = LoggerFactory.getLogger(HomeBootstrapAppService.class);
-    private static final String BOOTSTRAP_CACHE_KEY = "home-bootstrap";
+    static final String BOOTSTRAP_CACHE_KEY = "home-bootstrap";
 
     private final Cache<String, HomeBootstrapDTO> homeBootstrapCache;
     private final HomeStatsAppService homeStatsAppService;
@@ -36,6 +34,8 @@ public class HomeBootstrapAppService {
     private final RankingAppService rankingAppService;
     private final RecommendationAppService recommendationAppService;
     private final TopicAppService topicAppService;
+    private final TagAppService tagAppService;
+    private final SearchHistoryAppService searchHistoryAppService;
     private final Executor taskExecutor;
 
     public HomeBootstrapAppService(@Qualifier("homeBootstrapCache") Cache<String, HomeBootstrapDTO> homeBootstrapCache,
@@ -45,6 +45,8 @@ public class HomeBootstrapAppService {
                                    RankingAppService rankingAppService,
                                    RecommendationAppService recommendationAppService,
                                    TopicAppService topicAppService,
+                                   TagAppService tagAppService,
+                                   SearchHistoryAppService searchHistoryAppService,
                                    Executor taskExecutor) {
         this.homeBootstrapCache = homeBootstrapCache;
         this.homeStatsAppService = homeStatsAppService;
@@ -53,6 +55,8 @@ public class HomeBootstrapAppService {
         this.rankingAppService = rankingAppService;
         this.recommendationAppService = recommendationAppService;
         this.topicAppService = topicAppService;
+        this.tagAppService = tagAppService;
+        this.searchHistoryAppService = searchHistoryAppService;
         this.taskExecutor = taskExecutor;
     }
 
@@ -62,11 +66,10 @@ public class HomeBootstrapAppService {
      * @return 首页引导数据
      */
     public HomeBootstrapDTO getBootstrap() {
-        HomeBootstrapDTO cached = homeBootstrapCache.getIfPresent(BOOTSTRAP_CACHE_KEY);
-        if (cached != null) {
-            return cached;
-        }
+        return homeBootstrapCache.get(BOOTSTRAP_CACHE_KEY, key -> loadBootstrap());
+    }
 
+    private HomeBootstrapDTO loadBootstrap() {
         // 并行加载 6 路数据，总耗时取决于最慢的那一路
         CompletableFuture<HomeStats> statsFuture =
             CompletableFuture.supplyAsync(() -> homeStatsAppService.getStats(), taskExecutor);
@@ -84,18 +87,28 @@ public class HomeBootstrapAppService {
             CompletableFuture.supplyAsync(() -> recommendationAppService.listFeaturedArticles(1, 5), taskExecutor);
 
         CompletableFuture<List<TopicDTO>> hotTopicsFuture =
-            CompletableFuture.supplyAsync(() -> topicAppService.listHotTopics(5), taskExecutor);
+            CompletableFuture.supplyAsync(() -> topicAppService.listHotTopics(6), taskExecutor);
+
+        CompletableFuture<List<TagDTO>> hotTagsFuture =
+            CompletableFuture.supplyAsync(() -> tagAppService.getHotTags(12), taskExecutor);
+
+        CompletableFuture<List<String>> hotKeywordsFuture =
+            CompletableFuture.supplyAsync(() -> searchHistoryAppService.getHotKeywords(10), taskExecutor);
 
         // 等待所有完成并组装结果
+        List<ArticleDTO> featuredArticles = featuredFuture.join();
+        List<TopicDTO> hotTopics = hotTopicsFuture.join();
         HomeBootstrapDTO bootstrap = new HomeBootstrapDTO();
         bootstrap.setStats(statsFuture.join());
         bootstrap.setCategories(categoriesFuture.join());
         bootstrap.setRecommendedColumns(columnsFuture.join());
         bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
-        bootstrap.setFeaturedArticles(featuredFuture.join());
-        bootstrap.setHotTopics(hotTopicsFuture.join());
-
-        homeBootstrapCache.put(BOOTSTRAP_CACHE_KEY, bootstrap);
+        bootstrap.setFeaturedArticles(featuredArticles);
+        bootstrap.setTodayFocus(featuredArticles.isEmpty() ? null : featuredArticles.get(0));
+        bootstrap.setHotTopics(hotTopics);
+        bootstrap.setLearningTopics(hotTopics);
+        bootstrap.setHotTags(hotTagsFuture.join());
+        bootstrap.setHotKeywords(hotKeywordsFuture.join());
         return bootstrap;
     }
 

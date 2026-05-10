@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.cnblogs.com)",
+      "Bash(curl -sL \"https://www.cnblogs.com/pick/\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -sL \"https://www.cnblogs.com/cate/all\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(python3 -c ' *)",
+      "Read(//f/software/IdeaProject/my-blog/**)",
+      "Bash(python scripts/crawl_cnblogs.py --help)",
+      "Bash(python scripts/crawl_cnblogs.py --catalog-only --category 精华区 --limit 5)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data['精华区'][0], ensure_ascii=False, indent=2\\)\\)\")",
+      "Bash(python3 *)",
+      "Bash(python scripts/crawl_cnblogs.py --category 精华区 --limit 1 --delay 0.1 --dry-run)",
+      "Bash(python scripts/crawl_cnblogs.py --category 精华区 --limit 1 --delay 0.1 --dry-run --no-images)",
+      "Bash(python scripts/crawl_cnblogs.py --category 精华区 --limit 1 --delay 0.1 --dry-run --no-images --force)"
+    ]
+  }
+}

@@ -2,6 +2,7 @@ package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.Column;
 import com.myblog.domain.model.valueobject.ColumnId;
+import com.myblog.domain.model.valueobject.LearningPathArticle;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,8 @@ public interface ColumnRepository {
     Long nextId();
 
     List<Long> findArticleIds(ColumnId columnId);
+
+    List<LearningPathArticle> findArticleRelations(ColumnId columnId);
 
     void bindArticle(ColumnId columnId, Long articleId, int sortOrder);
 

@@ -1,7 +1,13 @@
 import { request } from './http';
+import {normalizeArticle, normalizeColumn, normalizeTopic} from './transformers';
 
 export const getSearchBootstrapApi = async () => {
-    return await request('/search/bootstrap');
+    const data = await request('/search/bootstrap');
+    return {
+        ...(data || {}),
+        recommendedTopics: (data?.recommendedTopics || []).map(normalizeTopic),
+        recommendedColumns: (data?.recommendedColumns || []).map(normalizeColumn)
+    };
 };
 
 export const searchUsersApi = async ({ keyword, page = 1, pageSize = 10 }) => {
@@ -10,6 +16,47 @@ export const searchUsersApi = async ({ keyword, page = 1, pageSize = 10 }) => {
 
 export const searchColumnsApi = async ({ keyword, page = 1, pageSize = 10 }) => {
     return await request(`/search/columns?keyword=${encodeURIComponent(keyword || '')}&page=${page}&pageSize=${pageSize}`);
+};
+
+export const unifiedSearchApi = async ({
+    keyword = '',
+    type = 'all',
+    category = '',
+    tag = '',
+    difficulty = '',
+    sort = 'recommend',
+    page = 1,
+    pageSize = 10
+} = {}) => {
+    const params = new URLSearchParams({
+        keyword,
+        type,
+        category,
+        tag,
+        difficulty,
+        sort,
+        page: String(page),
+        pageSize: String(pageSize)
+    });
+    const data = await request(`/search/unified?${params.toString()}`, {
+        suppressAuthPrompt: true
+    });
+    return {
+        keyword: data?.keyword || keyword,
+        articles: {
+            ...(data?.articles || {}),
+            items: (data?.articles?.items || []).map(normalizeArticle)
+        },
+        topics: {
+            ...(data?.topics || {}),
+            items: (data?.topics?.items || []).map(normalizeTopic)
+        },
+        columns: {
+            ...(data?.columns || {}),
+            items: (data?.columns?.items || []).map(normalizeColumn)
+        },
+        tags: data?.tags || []
+    };
 };
 
 export const getHotKeywordsApi = async (limit = 10) => {

@@ -1,15 +1,17 @@
 <script setup>
-import {ref, watch} from 'vue';
+import {computed, ref, watch} from 'vue';
 import {onBeforeRouteLeave, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getTopicArticlesApi, getTopicDetailApi} from '@/api/topic';
+import {updateLearningProgressApi} from '@/api/learning';
 import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 
 const route = useRoute();
 const topic = ref(null);
+const progressUpdatingId = ref(null);
 const pageSize = 10;
 const {
     articles,
@@ -84,6 +86,38 @@ const loadMoreArticles = async () => {
     }
 };
 
+const outlineSections = computed(() => {
+    const sections = [];
+    for (const item of topic.value?.outline || []) {
+        const title = item.sectionTitle || '推荐阅读';
+        let section = sections.find((entry) => entry.title === title);
+        if (!section) {
+            section = { title, items: [] };
+            sections.push(section);
+        }
+        section.items.push(item);
+    }
+    return sections;
+});
+
+const markArticleProgress = async (item, completed = true) => {
+    if (!topic.value || !item?.article?.id) {
+        return;
+    }
+    progressUpdatingId.value = item.article.id;
+    try {
+        await updateLearningProgressApi({
+            assetType: 'TOPIC',
+            assetId: topic.value.id,
+            articleId: item.article.id,
+            completed
+        });
+        topic.value = await getTopicDetailApi(topic.value.id);
+    } finally {
+        progressUpdatingId.value = null;
+    }
+};
+
 watch(() => route.params.id, async () => {
     await fetchTopic({ reset: true });
 }, { immediate: true });
@@ -132,6 +166,52 @@ onBeforeRouteLeave(() => {
             :description="errorMessage || '请稍后重试。'"
             tone="error"
         />
+
+        <section v-if="false && topic && topic.outline.length" class="learning-path-panel">
+            <div class="learning-path-head">
+                <div>
+                    <p class="eyebrow">学习路径</p>
+                    <h2>{{ topic.intro || topic.summary }}</h2>
+                </div>
+                <div class="learning-progress">
+                    <strong>{{ topic.progress.progressPercent }}%</strong>
+                    <span>{{ topic.progress.completedCount }} / {{ topic.progress.totalCount }} 已读</span>
+                </div>
+            </div>
+            <div class="learning-progress-bar">
+                <span :style="{ width: `${topic.progress.progressPercent}%` }"></span>
+            </div>
+            <RouterLink
+                v-if="topic.nextArticle"
+                class="continue-link"
+                :to="{ path: `/articles/${topic.nextArticle.id}`, query: { from: 'topic', topicId: topic.id, topicTitle: topic.title } }"
+            >
+                继续阅读：{{ topic.nextArticle.title }}
+            </RouterLink>
+            <div class="learning-section-list">
+                <section v-for="section in outlineSections" :key="section.title" class="learning-section">
+                    <h3>{{ section.title }}</h3>
+                    <article v-for="item in section.items" :key="item.article.id" class="learning-step">
+                        <RouterLink
+                            class="learning-step-title"
+                            :to="{ path: `/articles/${item.article.id}`, query: { from: 'topic', topicId: topic.id, topicTitle: topic.title } }"
+                        >
+                            <span>{{ item.required ? '必读' : '选读' }}</span>
+                            <strong>{{ item.article.title }}</strong>
+                        </RouterLink>
+                        <p v-if="item.editorNote">{{ item.editorNote }}</p>
+                        <button
+                            type="button"
+                            class="learning-step-action"
+                            :disabled="progressUpdatingId === item.article.id"
+                            @click="markArticleProgress(item, !item.completed)"
+                        >
+                            {{ item.completed ? '已读' : '标记已读' }}
+                        </button>
+                    </article>
+                </section>
+            </div>
+        </section>
 
         <ArticleFeed
             :articles="articles"
@@ -275,6 +355,135 @@ onBeforeRouteLeave(() => {
     white-space: nowrap;
 }
 
+.learning-path-panel {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.learning-path-head {
+    display: flex;
+    gap: 18px;
+    align-items: start;
+    justify-content: space-between;
+}
+
+.learning-path-head h2,
+.learning-path-head p {
+    margin: 0;
+}
+
+.learning-path-head h2 {
+    color: var(--text-strong);
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+.learning-progress {
+    display: grid;
+    gap: 4px;
+    min-width: 92px;
+    text-align: right;
+}
+
+.learning-progress strong {
+    color: var(--brand-strong);
+    font-size: 22px;
+}
+
+.learning-progress span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.learning-progress-bar {
+    overflow: hidden;
+    height: 8px;
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
+}
+
+.learning-progress-bar span {
+    display: block;
+    height: 100%;
+    background: var(--brand);
+    border-radius: inherit;
+}
+
+.continue-link {
+    width: fit-content;
+    color: var(--brand);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.learning-section-list {
+    display: grid;
+    gap: 14px;
+}
+
+.learning-section {
+    display: grid;
+    gap: 8px;
+}
+
+.learning-section h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 15px;
+}
+
+.learning-step {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+}
+
+.learning-step-title {
+    display: inline-flex;
+    gap: 10px;
+    align-items: baseline;
+    min-width: 0;
+    color: inherit;
+}
+
+.learning-step-title span {
+    flex: none;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.learning-step-title strong {
+    overflow: hidden;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.learning-step p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.learning-step-action {
+    min-height: 30px;
+    padding: 0 10px;
+    color: var(--brand);
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
 @media (max-width: 960px) {
     .topic-detail-cover-panel {
         aspect-ratio: 16 / 9;
@@ -285,6 +494,19 @@ onBeforeRouteLeave(() => {
     .topic-detail-loading-media {
         aspect-ratio: 16 / 9;
         min-height: 180px;
+    }
+
+    .learning-path-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .learning-progress {
+        text-align: left;
+    }
+
+    .learning-step {
+        grid-template-columns: 1fr;
     }
 }
 </style>

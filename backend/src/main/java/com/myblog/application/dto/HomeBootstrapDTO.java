@@ -19,6 +19,14 @@ public class HomeBootstrapDTO {
     private List<ArticleDTO> featuredArticles;
     /** 首页侧边栏热门专题 */
     private List<TopicDTO> hotTopics;
+    /** 今日焦点：默认取编辑精选第一篇 */
+    private ArticleDTO todayFocus;
+    /** 学习路径专题：强调专题资产入口 */
+    private List<TopicDTO> learningTopics;
+    /** 知识地图热门标签 */
+    private List<TagDTO> hotTags;
+    /** 热门搜索词 */
+    private List<String> hotKeywords;
 
     public HomeStats getStats() {
         return stats;
@@ -66,5 +74,37 @@ public class HomeBootstrapDTO {
 
     public void setHotTopics(List<TopicDTO> hotTopics) {
         this.hotTopics = hotTopics;
+    }
+
+    public ArticleDTO getTodayFocus() {
+        return todayFocus;
+    }
+
+    public void setTodayFocus(ArticleDTO todayFocus) {
+        this.todayFocus = todayFocus;
+    }
+
+    public List<TopicDTO> getLearningTopics() {
+        return learningTopics;
+    }
+
+    public void setLearningTopics(List<TopicDTO> learningTopics) {
+        this.learningTopics = learningTopics;
+    }
+
+    public List<TagDTO> getHotTags() {
+        return hotTags;
+    }
+
+    public void setHotTags(List<TagDTO> hotTags) {
+        this.hotTags = hotTags;
+    }
+
+    public List<String> getHotKeywords() {
+        return hotKeywords;
+    }
+
+    public void setHotKeywords(List<String> hotKeywords) {
+        this.hotKeywords = hotKeywords;
     }
 }

@@ -77,6 +77,7 @@ public class ArticleAppService {
     private final ApplicationEventPublisher eventPublisher;
     private final ArticleVersionRepository articleVersionRepository;
     private final SensitiveWordAppService sensitiveWordAppService;
+    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
     private final String defaultArticleCoverUrl;
     private final Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache;
     private final Set<RecommendArticleCacheKey> recommendedArticleCacheKeys = ConcurrentHashMap.newKeySet();
@@ -90,6 +91,7 @@ public class ArticleAppService {
                              ApplicationEventPublisher eventPublisher,
                              ArticleVersionRepository articleVersionRepository,
                              SensitiveWordAppService sensitiveWordAppService,
+                             HomePortalCacheInvalidator homePortalCacheInvalidator,
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl,
                              @Qualifier("recommendedArticleFeedCache")
                              Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache) {
@@ -102,6 +104,7 @@ public class ArticleAppService {
         this.eventPublisher = eventPublisher;
         this.articleVersionRepository = articleVersionRepository;
         this.sensitiveWordAppService = sensitiveWordAppService;
+        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
         this.recommendedArticleFeedCache = recommendedArticleFeedCache;
@@ -426,6 +429,7 @@ public class ArticleAppService {
         if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
         }
         saveVersionSnapshot(article, command.getAuthorId());
         ArticleDTO result = buildDetailDto(article, author, command.getAuthorId());
@@ -499,6 +503,7 @@ public class ArticleAppService {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
         }
+        evictArticlePortalCaches(article, oldStatus);
         saveVersionSnapshot(article, userId);
         ArticleDTO result = buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
@@ -537,6 +542,7 @@ public class ArticleAppService {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
         }
+        evictArticlePortalCaches(article, oldStatus);
         ArticleDTO result = buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
@@ -561,8 +567,10 @@ public class ArticleAppService {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
+        ArticleStatus oldStatus = article.getStatus();
         article.delete();
         articleRepository.save(article);
+        evictArticlePortalCaches(article, oldStatus);
     }
 
     /**
@@ -577,13 +585,17 @@ public class ArticleAppService {
             return;
         }
         int publishedCount = 0;
+        boolean featuredCacheInvalidationNeeded = false;
         for (Article article : articles) {
             try {
                 sanitizeExistingArticleForPublish(article, "定时发布文章");
+                ArticleStatus oldStatus = article.getStatus();
                 article.publish();
                 articleRepository.save(article);
                 eventPublisher.publishEvent(new ArticlePublishedEvent(
                     article.getId().getValue(), article.getAuthorId().getValue()));
+                featuredCacheInvalidationNeeded = featuredCacheInvalidationNeeded
+                    || isFeaturedVisibilityChanged(article, oldStatus);
                 saveVersionSnapshot(article, article.getAuthorId().getValue());
                 publishedCount++;
                 log.info("{} | 系统 定时发布文章 | 入参({}) | 结果({}) | {}",
@@ -594,6 +606,12 @@ public class ArticleAppService {
             } catch (RuntimeException ex) {
                 log.warn("定时发布文章失败，articleId={}, reason={}", article.getId().getValue(), ex.getMessage());
             }
+        }
+        if (publishedCount > 0) {
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
+        }
+        if (featuredCacheInvalidationNeeded) {
+            homePortalCacheInvalidator.evictFeaturedAndBootstrap();
         }
         log.info("{} | 系统 定时发布扫描 | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -676,6 +694,23 @@ public class ArticleAppService {
 
     private void applyStatus(Article article, String status) {
         applyStatus(article, resolveCreateStatus(status), null);
+    }
+
+    private void evictArticlePortalCaches(Article article, ArticleStatus oldStatus) {
+        if (isFeaturedVisibilityChanged(article, oldStatus)) {
+            homePortalCacheInvalidator.evictFeaturedAndBootstrap();
+        }
+        if (isPublishVisibilityChanged(oldStatus, article.getStatus())) {
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
+        }
+    }
+
+    private boolean isPublishVisibilityChanged(ArticleStatus oldStatus, ArticleStatus newStatus) {
+        return ArticleStatus.PUBLISHED.equals(oldStatus) != ArticleStatus.PUBLISHED.equals(newStatus);
+    }
+
+    private boolean isFeaturedVisibilityChanged(Article article, ArticleStatus oldStatus) {
+        return article.isFeatured() && isPublishVisibilityChanged(oldStatus, article.getStatus());
     }
 
     private String resolveActionText(ArticleStatus status) {
@@ -885,6 +920,7 @@ public class ArticleAppService {
             version.getContent(),
             "恢复文章版本"
         );
+        ArticleStatus oldStatus = article.getStatus();
         // 用版本内容更新文章并保存为草稿
         article.updateContent(
             sanitizedContent.getTitle(),
@@ -900,6 +936,7 @@ public class ArticleAppService {
         article.saveDraft();
         applyWarnFlag(article, sanitizedContent);
         articleRepository.save(article);
+        evictArticlePortalCaches(article, oldStatus);
         // 恢复操作本身也生成一条新版本快照
         saveVersionSnapshot(article, userId);
         return buildDetailDto(article, userRepository.findById(article.getAuthorId())

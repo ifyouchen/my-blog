@@ -10,6 +10,7 @@ import com.myblog.domain.model.aggregate.ColumnSubscription;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.ColumnId;
+import com.myblog.domain.model.valueobject.LearningPathArticle;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.ColumnRepository;
@@ -44,17 +45,23 @@ public class ColumnAppService {
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
     private final ArticleAssembler articleAssembler;
+    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
+    private final LearningProgressAppService learningProgressAppService;
 
     public ColumnAppService(ColumnRepository columnRepository,
                             ColumnSubscriptionRepository columnSubscriptionRepository,
                             UserRepository userRepository,
                             ArticleRepository articleRepository,
-                            ArticleAssembler articleAssembler) {
+                            ArticleAssembler articleAssembler,
+                            HomePortalCacheInvalidator homePortalCacheInvalidator,
+                            LearningProgressAppService learningProgressAppService) {
         this.columnRepository = columnRepository;
         this.columnSubscriptionRepository = columnSubscriptionRepository;
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.articleAssembler = articleAssembler;
+        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
+        this.learningProgressAppService = learningProgressAppService;
     }
 
     /**
@@ -101,7 +108,9 @@ public class ColumnAppService {
      */
     public ColumnDTO getColumnDetail(Long columnId, Long currentUserId) {
         Column column = loadPublishedColumn(columnId);
-        return toDTO(column, currentUserId);
+        ColumnDTO dto = toDTO(column, currentUserId);
+        populateLearningPath(dto, currentUserId);
+        return dto;
     }
 
     /**
@@ -354,6 +363,7 @@ public class ColumnAppService {
         }
         Column column = Column.create(columnRepository.nextId(), new UserId(userId), title, summary, coverUrl, 0);
         columnRepository.save(column);
+        homePortalCacheInvalidator.evictStatsAndBootstrap();
         ColumnDTO result = toAdminDTO(column);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -383,6 +393,7 @@ public class ColumnAppService {
         ensureColumnOwner(column, userId);
         column.update(title, summary, coverUrl, column.getSortOrder(), column.getStatus());
         columnRepository.save(column);
+        homePortalCacheInvalidator.evictBootstrap();
         ColumnDTO result = toAdminDTO(column);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -406,8 +417,14 @@ public class ColumnAppService {
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         ensureColumnOwner(column, userId);
+        boolean published = column.isPublished();
         column.delete();
         columnRepository.save(column);
+        if (published) {
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
+        } else {
+            homePortalCacheInvalidator.evictBootstrap();
+        }
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(userId),
@@ -506,6 +523,7 @@ public class ColumnAppService {
             title, summary, coverUrl, sortOrder
         );
         columnRepository.save(column);
+        homePortalCacheInvalidator.evictStatsAndBootstrap();
         ColumnDTO result = toAdminDTO(column);
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "后台创建专栏",
@@ -525,8 +543,14 @@ public class ColumnAppService {
         long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
+        boolean wasPublished = column.isPublished();
         column.update(title, summary, coverUrl, sortOrder, status);
         columnRepository.save(column);
+        if (wasPublished != column.isPublished()) {
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
+        } else {
+            homePortalCacheInvalidator.evictBootstrap();
+        }
         ColumnDTO result = toAdminDTO(column);
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "后台更新专栏",
@@ -545,8 +569,14 @@ public class ColumnAppService {
         long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
+        boolean published = column.isPublished();
         column.delete();
         columnRepository.save(column);
+        if (published) {
+            homePortalCacheInvalidator.evictStatsAndBootstrap();
+        } else {
+            homePortalCacheInvalidator.evictBootstrap();
+        }
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "后台删除专栏",
             BizLogHelper.trace(),
@@ -556,13 +586,7 @@ public class ColumnAppService {
     }
 
     private ColumnDTO toAdminDTO(Column column) {
-        ColumnDTO dto = new ColumnDTO();
-        dto.setId(column.getId().getValue());
-        dto.setTitle(column.getTitle());
-        dto.setSummary(column.getSummary());
-        dto.setCoverUrl(column.getCoverUrl());
-        dto.setSubscriberCount(column.getSubscriberCount());
-        dto.setArticleCount(column.getArticleCount());
+        ColumnDTO dto = toBaseDTO(column);
         dto.setStatus(column.getStatus());
         dto.setSortOrder(column.getSortOrder());
         dto.setAuthorId(column.getAuthorId().getValue());
@@ -575,6 +599,13 @@ public class ColumnAppService {
     private ColumnDTO toDTO(Column column, Long currentUserId) {
         User author = userRepository.findById(column.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏作者不存在"));
+        ColumnDTO dto = toBaseDTO(column);
+        dto.setSubscribed(currentUserId != null && columnSubscriptionRepository.exists(column.getId(), new UserId(currentUserId)));
+        dto.setAuthor(UserAssembler.toDTO(author));
+        return dto;
+    }
+
+    private ColumnDTO toBaseDTO(Column column) {
         ColumnDTO dto = new ColumnDTO();
         dto.setId(column.getId().getValue());
         dto.setTitle(column.getTitle());
@@ -582,8 +613,32 @@ public class ColumnAppService {
         dto.setCoverUrl(column.getCoverUrl());
         dto.setSubscriberCount(column.getSubscriberCount());
         dto.setArticleCount(column.getArticleCount());
-        dto.setSubscribed(currentUserId != null && columnSubscriptionRepository.exists(column.getId(), new UserId(currentUserId)));
-        dto.setAuthor(UserAssembler.toDTO(author));
+        dto.setIntro(column.getIntro());
+        dto.setDifficulty(column.getDifficulty());
+        dto.setEstimatedMinutes(column.getEstimatedMinutes());
+        dto.setSourceType(column.getSourceType());
+        dto.setSourceNote(column.getSourceNote());
+        dto.setRecommended(column.isRecommended());
+        dto.setRecommendWeight(column.getRecommendWeight());
         return dto;
+    }
+
+    private void populateLearningPath(ColumnDTO dto, Long currentUserId) {
+        List<LearningPathArticle> relations = columnRepository.findArticleRelations(new ColumnId(dto.getId()));
+        dto.setProgress(learningProgressAppService.buildProgress(
+            LearningProgressAppService.ASSET_TYPE_COLUMN,
+            dto.getId(),
+            relations,
+            currentUserId
+        ));
+        dto.setOutline(learningProgressAppService.buildOutline(
+            LearningProgressAppService.ASSET_TYPE_COLUMN,
+            dto.getId(),
+            relations,
+            currentUserId
+        ));
+        if (dto.getProgress() != null) {
+            dto.setNextArticle(dto.getProgress().getNextArticle());
+        }
     }
 }

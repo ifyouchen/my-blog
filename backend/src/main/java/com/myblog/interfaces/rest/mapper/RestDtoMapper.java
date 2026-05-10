@@ -218,6 +218,16 @@ public class RestDtoMapper {
         response.setSubscriberCount(dto.getSubscriberCount());
         response.setArticleCount(dto.getArticleCount());
         response.setSubscribed(dto.isSubscribed());
+        response.setIntro(dto.getIntro());
+        response.setDifficulty(dto.getDifficulty());
+        response.setEstimatedMinutes(dto.getEstimatedMinutes());
+        response.setSourceType(dto.getSourceType());
+        response.setSourceNote(dto.getSourceNote());
+        response.setRecommended(dto.isRecommended());
+        response.setRecommendWeight(dto.getRecommendWeight());
+        response.setProgress(dto.getProgress());
+        response.setOutline(dto.getOutline());
+        response.setNextArticle(dto.getNextArticle() == null ? null : toPublicResponse(dto.getNextArticle()));
         if (dto.getAuthor() != null) {
             response.setAuthor(publicUser ? toPublicResponse(dto.getAuthor()) : toResponse(dto.getAuthor()));
         }

@@ -22,6 +22,13 @@ public class Column {
     private Integer sortOrder;
     private Integer subscriberCount;
     private Integer articleCount;
+    private String intro;
+    private String difficulty;
+    private Integer estimatedMinutes;
+    private String sourceType;
+    private String sourceNote;
+    private boolean recommended;
+    private Integer recommendWeight;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
@@ -42,6 +49,13 @@ public class Column {
         column.sortOrder = sortOrder == null ? 0 : sortOrder;
         column.subscriberCount = 0;
         column.articleCount = 0;
+        column.intro = "";
+        column.difficulty = "INTERMEDIATE";
+        column.estimatedMinutes = 0;
+        column.sourceType = "ORIGINAL";
+        column.sourceNote = "";
+        column.recommended = false;
+        column.recommendWeight = 0;
         column.createdAt = LocalDateTime.now();
         column.updatedAt = column.createdAt;
         column.deletedAt = null;
@@ -54,6 +68,18 @@ public class Column {
                                  Integer subscriberCount, Integer articleCount,
                                  LocalDateTime createdAt, LocalDateTime updatedAt,
                                  LocalDateTime deletedAt, Integer version) {
+        return restore(id, authorId, title, summary, coverUrl, status, sortOrder,
+            subscriberCount, articleCount, "", "INTERMEDIATE", 0, "ORIGINAL", "",
+            false, 0, createdAt, updatedAt, deletedAt, version);
+    }
+
+    public static Column restore(Long id, UserId authorId, String title, String summary,
+                                 String coverUrl, String status, Integer sortOrder,
+                                 Integer subscriberCount, Integer articleCount,
+                                 String intro, String difficulty, Integer estimatedMinutes,
+                                 String sourceType, String sourceNote, Boolean recommended,
+                                 Integer recommendWeight, LocalDateTime createdAt,
+                                 LocalDateTime updatedAt, LocalDateTime deletedAt, Integer version) {
         Column column = new Column();
         column.id = new ColumnId(id);
         column.authorId = authorId;
@@ -64,6 +90,13 @@ public class Column {
         column.sortOrder = sortOrder == null ? 0 : sortOrder;
         column.subscriberCount = subscriberCount == null ? 0 : subscriberCount;
         column.articleCount = articleCount == null ? 0 : articleCount;
+        column.intro = intro == null ? "" : intro;
+        column.difficulty = difficulty == null ? "INTERMEDIATE" : difficulty;
+        column.estimatedMinutes = estimatedMinutes == null ? 0 : estimatedMinutes;
+        column.sourceType = sourceType == null ? "ORIGINAL" : sourceType;
+        column.sourceNote = sourceNote == null ? "" : sourceNote;
+        column.recommended = recommended != null && recommended;
+        column.recommendWeight = recommendWeight == null ? 0 : recommendWeight;
         column.createdAt = createdAt;
         column.updatedAt = updatedAt;
         column.deletedAt = deletedAt;
@@ -143,6 +176,34 @@ public class Column {
 
     public Integer getArticleCount() {
         return articleCount == null ? 0 : articleCount;
+    }
+
+    public String getIntro() {
+        return intro == null ? "" : intro;
+    }
+
+    public String getDifficulty() {
+        return difficulty == null ? "INTERMEDIATE" : difficulty;
+    }
+
+    public Integer getEstimatedMinutes() {
+        return estimatedMinutes == null ? 0 : estimatedMinutes;
+    }
+
+    public String getSourceType() {
+        return sourceType == null ? "ORIGINAL" : sourceType;
+    }
+
+    public String getSourceNote() {
+        return sourceNote == null ? "" : sourceNote;
+    }
+
+    public boolean isRecommended() {
+        return recommended;
+    }
+
+    public Integer getRecommendWeight() {
+        return recommendWeight == null ? 0 : recommendWeight;
     }
 
     public LocalDateTime getCreatedAt() {

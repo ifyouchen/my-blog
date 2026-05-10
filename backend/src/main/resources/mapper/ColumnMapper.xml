@@ -13,6 +13,13 @@
         <result column="sort_order" property="sortOrder"/>
         <result column="subscriber_count" property="subscriberCount"/>
         <result column="article_count" property="articleCount"/>
+        <result column="intro" property="intro"/>
+        <result column="difficulty" property="difficulty"/>
+        <result column="estimated_minutes" property="estimatedMinutes"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_note" property="sourceNote"/>
+        <result column="recommended" property="recommended"/>
+        <result column="recommend_weight" property="recommendWeight"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="deleted_at" property="deletedAt"/>
@@ -21,7 +28,8 @@
 
     <sql id="Base_Column_List">
         c.id, c.author_id, c.title, c.summary, c.cover_url, c.status, c.sort_order,
-        c.subscriber_count, c.article_count,
+        c.subscriber_count, c.article_count, c.intro, c.difficulty, c.estimated_minutes,
+        c.source_type, c.source_note, c.recommended, c.recommend_weight,
         c.created_at, c.updated_at, c.deleted_at, c.version
     </sql>
 
@@ -38,7 +46,7 @@
         FROM blog_column c
         WHERE c.deleted_at IS NULL
         AND c.status = 'PUBLISHED'
-        ORDER BY c.sort_order ASC, c.subscriber_count DESC, c.id DESC
+        ORDER BY c.recommended DESC, c.recommend_weight DESC, c.sort_order ASC, c.subscriber_count DESC, c.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
@@ -54,7 +62,7 @@
         FROM blog_column c
         WHERE c.deleted_at IS NULL
         AND c.status = 'PUBLISHED'
-        ORDER BY c.sort_order ASC, c.subscriber_count DESC, c.id DESC
+        ORDER BY c.recommended DESC, c.recommend_weight DESC, c.sort_order ASC, c.subscriber_count DESC, c.id DESC
         LIMIT #{limit}
     </select>
 
@@ -72,10 +80,13 @@
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
         INSERT INTO blog_column (
             id, author_id, title, summary, cover_url, status, sort_order, subscriber_count, article_count,
+            intro, difficulty, estimated_minutes, source_type, source_note, recommended, recommend_weight,
             created_at, updated_at, deleted_at, version
         ) VALUES (
             #{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder},
             #{subscriberCount}, #{articleCount},
+            #{intro}, #{difficulty}, #{estimatedMinutes}, #{sourceType}, #{sourceNote},
+            #{recommended}, #{recommendWeight},
             #{createdAt}, #{updatedAt}, #{deletedAt}, #{version}
         )
     </insert>
@@ -90,6 +101,13 @@
             sort_order = #{sortOrder},
             subscriber_count = #{subscriberCount},
             article_count = #{articleCount},
+            intro = #{intro},
+            difficulty = #{difficulty},
+            estimated_minutes = #{estimatedMinutes},
+            source_type = #{sourceType},
+            source_note = #{sourceNote},
+            recommended = #{recommended},
+            recommend_weight = #{recommendWeight},
             updated_at = #{updatedAt},
             deleted_at = #{deletedAt},
             version = version + 1
@@ -104,7 +122,23 @@
         AND ca.deleted_at IS NULL
         AND a.deleted_at IS NULL
         AND a.status = 'PUBLISHED'
-        ORDER BY ca.sort_order ASC, ca.id ASC
+        ORDER BY COALESCE(ca.step_order, ca.sort_order) ASC, ca.sort_order ASC, ca.id ASC
+    </select>
+
+    <select id="selectArticleRelations" resultType="com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO">
+        SELECT
+            ca.article_id AS articleId,
+            COALESCE(NULLIF(ca.section_title, ''), '推荐阅读') AS sectionTitle,
+            COALESCE(ca.step_order, ca.sort_order, 0) AS stepOrder,
+            COALESCE(ca.required, 1) AS required,
+            COALESCE(ca.editor_note, '') AS editorNote
+        FROM blog_column_article ca
+        INNER JOIN blog_article a ON a.id = ca.article_id
+        WHERE ca.column_id = #{columnId}
+        AND ca.deleted_at IS NULL
+        AND a.deleted_at IS NULL
+        AND a.status = 'PUBLISHED'
+        ORDER BY COALESCE(ca.step_order, ca.sort_order) ASC, ca.sort_order ASC, ca.id ASC
     </select>
 
     <select id="countColumnArticle" resultType="int">
@@ -165,6 +199,8 @@
             AND (
                 c.title LIKE CONCAT('%', #{keyword}, '%')
                 OR c.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR c.intro LIKE CONCAT('%', #{keyword}, '%')
+                OR c.source_note LIKE CONCAT('%', #{keyword}, '%')
             )
         </if>
         ORDER BY
@@ -188,6 +224,8 @@
             AND (
                 c.title LIKE CONCAT('%', #{keyword}, '%')
                 OR c.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR c.intro LIKE CONCAT('%', #{keyword}, '%')
+                OR c.source_note LIKE CONCAT('%', #{keyword}, '%')
             )
         </if>
     </select>
@@ -216,9 +254,13 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ColumnDO">
         INSERT INTO blog_column
-        (id, author_id, title, summary, cover_url, status, sort_order, subscriber_count, article_count, created_at, updated_at, deleted_at, version)
+        (id, author_id, title, summary, cover_url, status, sort_order, subscriber_count, article_count,
+         intro, difficulty, estimated_minutes, source_type, source_note, recommended, recommend_weight,
+         created_at, updated_at, deleted_at, version)
         VALUES
-        (#{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{subscriberCount}, #{articleCount}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
+        (#{id}, #{authorId}, #{title}, #{summary}, #{coverUrl}, #{status}, #{sortOrder}, #{subscriberCount},
+         #{articleCount}, #{intro}, #{difficulty}, #{estimatedMinutes}, #{sourceType}, #{sourceNote},
+         #{recommended}, #{recommendWeight}, #{createdAt}, #{updatedAt}, #{deletedAt}, #{version})
         ON DUPLICATE KEY UPDATE
             author_id = #{authorId},
             title = #{title},
@@ -228,6 +270,13 @@
             sort_order = #{sortOrder},
             subscriber_count = #{subscriberCount},
             article_count = #{articleCount},
+            intro = #{intro},
+            difficulty = #{difficulty},
+            estimated_minutes = #{estimatedMinutes},
+            source_type = #{sourceType},
+            source_note = #{sourceNote},
+            recommended = #{recommended},
+            recommend_weight = #{recommendWeight},
             updated_at = NOW(),
             deleted_at = #{deletedAt},
             version = version + 1

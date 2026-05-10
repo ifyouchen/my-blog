@@ -28,10 +28,21 @@ const props = defineProps({
 
 const emit = defineEmits(['article-click']);
 
+const PICK_SKELETON_ROWS = [
+    { tag: '56px', title: '88%', meta: '48%' },
+    { tag: '64px', title: '76%', meta: '42%' },
+    { tag: '52px', title: '82%', meta: '46%' },
+    { tag: '60px', title: '70%', meta: '38%' }
+];
+const HOTSPOT_SKELETON_ROWS = ['78%', '64%', '72%'];
+
 const primaryArticle = computed(() => props.articles[0] || null);
 const secondaryArticles = computed(() => props.articles.slice(1, 5));
 const visibleTopics = computed(() => props.topics.slice(0, 3));
 const visibleColumns = computed(() => props.columns.slice(0, 3));
+const showPickSkeleton = computed(() => props.loading && !secondaryArticles.value.length);
+const showTopicSkeleton = computed(() => props.loading && !visibleTopics.value.length);
+const showColumnSkeleton = computed(() => props.loading && !visibleColumns.value.length);
 
 const articlePath = (article) => {
     if (!article) return '/';
@@ -44,6 +55,12 @@ const compactNumber = (value) => {
         return `${(number / 10000).toFixed(number >= 100000 ? 0 : 1)}万`;
     }
     return String(number);
+};
+
+const pickMetaText = (article) => {
+    const publishedText = article?.publishedText || '刚刚更新';
+    const likesText = article?.stats?.likes || `${article?.likeCount || 0} 赞`;
+    return `${publishedText} · ${likesText}`;
 };
 
 const emitArticleClick = (article, area) => {
@@ -106,22 +123,42 @@ const setCoverFallback = (event) => {
                 <h2 id="portal-picks-title">精选文章</h2>
             </header>
             <div class="portal-pick-list">
-                <RouterLink
-                    v-for="article in secondaryArticles"
-                    :key="article.id"
-                    class="portal-pick-item"
-                    :to="articlePath(article)"
-                    @click="emitArticleClick(article, 'weekly_pick')"
-                >
-                    <span class="portal-pick-tag">{{ article.category || '技术' }}</span>
-                    <span class="portal-pick-title">{{ article.title }}</span>
-                    <span class="portal-pick-meta">
-                        {{ article.publishedText || '刚刚更新' }} · {{ article.stats?.likes || `${article.likeCount || 0} 赞` }}
-                    </span>
-                </RouterLink>
-                <div v-if="!secondaryArticles.length" class="portal-muted-state">
-                    {{ loading ? '精选内容加载中...' : '暂时没有更多精选文章' }}
-                </div>
+                <template v-if="showPickSkeleton">
+                    <div
+                        v-for="(row, index) in PICK_SKELETON_ROWS"
+                        :key="`pick-skeleton-${index}`"
+                        class="portal-pick-item portal-pick-skeleton"
+                        aria-hidden="true"
+                    >
+                        <span class="portal-skeleton-block portal-pick-skeleton-tag" :style="{ width: row.tag }"></span>
+                        <span
+                            class="portal-skeleton-block portal-pick-skeleton-title"
+                            :style="{ width: row.title }"
+                        ></span>
+                        <span
+                            class="portal-skeleton-block portal-pick-skeleton-meta"
+                            :style="{ width: row.meta }"
+                        ></span>
+                    </div>
+                </template>
+                <template v-else>
+                    <RouterLink
+                        v-for="article in secondaryArticles"
+                        :key="article.id"
+                        class="portal-pick-item"
+                        :to="articlePath(article)"
+                        @click="emitArticleClick(article, 'weekly_pick')"
+                    >
+                        <span class="portal-pick-tag">{{ article.category || '技术' }}</span>
+                        <span class="portal-pick-title">{{ article.title }}</span>
+                        <span class="portal-pick-meta">
+                            {{ pickMetaText(article) }}
+                        </span>
+                    </RouterLink>
+                    <div v-if="!secondaryArticles.length" class="portal-muted-state">
+                        暂时没有更多精选文章
+                    </div>
+                </template>
             </div>
         </section>
 
@@ -132,18 +169,31 @@ const setCoverFallback = (event) => {
                     <RouterLink to="/topics">更多</RouterLink>
                 </header>
                 <div class="portal-hot-list">
-                    <RouterLink
-                        v-for="topic in visibleTopics"
-                        :key="topic.id"
-                        class="portal-hot-item"
-                        :to="`/topics/${topic.id}`"
-                    >
-                        <span>{{ topic.title }}</span>
-                        <small>{{ compactNumber(topic.articleCount) }} 篇</small>
-                    </RouterLink>
-                    <div v-if="!visibleTopics.length" class="portal-muted-state compact">
-                        {{ loading ? '专题加载中...' : '暂无专题' }}
-                    </div>
+                    <template v-if="showTopicSkeleton">
+                        <div
+                            v-for="(width, index) in HOTSPOT_SKELETON_ROWS"
+                            :key="`topic-skeleton-${index}`"
+                            class="portal-hot-item portal-hot-skeleton"
+                            aria-hidden="true"
+                        >
+                            <span class="portal-skeleton-block portal-hot-skeleton-title" :style="{ width }"></span>
+                            <small class="portal-skeleton-block portal-hot-skeleton-count"></small>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <RouterLink
+                            v-for="topic in visibleTopics"
+                            :key="topic.id"
+                            class="portal-hot-item"
+                            :to="`/topics/${topic.id}`"
+                        >
+                            <span>{{ topic.title }}</span>
+                            <small>{{ compactNumber(topic.articleCount) }} 篇</small>
+                        </RouterLink>
+                        <div v-if="!visibleTopics.length" class="portal-muted-state compact">
+                            暂无专题
+                        </div>
+                    </template>
                 </div>
             </section>
 
@@ -153,18 +203,31 @@ const setCoverFallback = (event) => {
                     <RouterLink to="/columns">更多</RouterLink>
                 </header>
                 <div class="portal-hot-list">
-                    <RouterLink
-                        v-for="column in visibleColumns"
-                        :key="column.id"
-                        class="portal-hot-item"
-                        :to="`/columns/${column.id}`"
-                    >
-                        <span>{{ column.title }}</span>
-                        <small>{{ compactNumber(column.articleCount) }} 篇</small>
-                    </RouterLink>
-                    <div v-if="!visibleColumns.length" class="portal-muted-state compact">
-                        {{ loading ? '专栏加载中...' : '暂无专栏' }}
-                    </div>
+                    <template v-if="showColumnSkeleton">
+                        <div
+                            v-for="(width, index) in HOTSPOT_SKELETON_ROWS"
+                            :key="`column-skeleton-${index}`"
+                            class="portal-hot-item portal-hot-skeleton"
+                            aria-hidden="true"
+                        >
+                            <span class="portal-skeleton-block portal-hot-skeleton-title" :style="{ width }"></span>
+                            <small class="portal-skeleton-block portal-hot-skeleton-count"></small>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <RouterLink
+                            v-for="column in visibleColumns"
+                            :key="column.id"
+                            class="portal-hot-item"
+                            :to="`/columns/${column.id}`"
+                        >
+                            <span>{{ column.title }}</span>
+                            <small>{{ compactNumber(column.articleCount) }} 篇</small>
+                        </RouterLink>
+                        <div v-if="!visibleColumns.length" class="portal-muted-state compact">
+                            暂无专栏
+                        </div>
+                    </template>
                 </div>
             </section>
 
@@ -492,6 +555,40 @@ const setCoverFallback = (event) => {
 .portal-muted-state.compact {
     padding: 8px 0;
     font-size: 12px;
+}
+
+.portal-pick-skeleton,
+.portal-hot-skeleton {
+    cursor: default;
+    pointer-events: none;
+}
+
+.portal-skeleton-block {
+    display: block;
+    height: 12px;
+    background: var(--surface-muted);
+    border-radius: var(--radius-sm);
+}
+
+.portal-pick-skeleton-tag {
+    height: 10px;
+}
+
+.portal-pick-skeleton-title {
+    height: 15px;
+}
+
+.portal-pick-skeleton-meta {
+    height: 10px;
+}
+
+.portal-hot-skeleton-title {
+    height: 13px;
+}
+
+.portal-hot-skeleton-count {
+    width: 36px;
+    height: 11px;
 }
 
 @media (max-width: 1180px) {

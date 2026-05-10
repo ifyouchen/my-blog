@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 创作者工作台接口。
@@ -53,6 +54,11 @@ public class DashboardController {
     @GetMapping("/interactions")
     public Result<List<NotificationDTO>> interactions() {
         return Result.success(dashboardAppService.getInteractions(requiredUserId()));
+    }
+
+    @GetMapping("/content-opportunities")
+    public Result<List<Map<String, Object>>> contentOpportunities() {
+        return Result.success(dashboardAppService.getContentOpportunities(requiredUserId()));
     }
 
     @GetMapping("/articles/{id}/stats")

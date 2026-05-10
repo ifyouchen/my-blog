@@ -1,6 +1,7 @@
 package com.myblog.infrastructure.repository.persistence.mapper;
 
 import com.myblog.infrastructure.repository.persistence.entity.ColumnDO;
+import com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -31,6 +32,8 @@ public interface ColumnMapper {
     int update(ColumnDO columnDO);
 
     List<Long> selectArticleIds(@Param("columnId") Long columnId);
+
+    List<LearningPathArticleDO> selectArticleRelations(@Param("columnId") Long columnId);
 
     int countColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId);
 
