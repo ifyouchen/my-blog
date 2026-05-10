@@ -57,6 +57,17 @@ public class RestDtoMapper {
     }
 
     /**
+     * 将登录请求转换为登录命令。
+     *
+     * @param request 登录请求
+     * @param loginIp 登录 IP
+     * @return 登录命令
+     */
+    public LoginCommand toCommand(LoginRequest request, String loginIp) {
+        return new LoginCommand(request.getAccount(), request.getPassword(), loginIp);
+    }
+
+    /**
      * 将创建文章请求转换为创建文章命令。
      *
      * @param request 创建文章请求

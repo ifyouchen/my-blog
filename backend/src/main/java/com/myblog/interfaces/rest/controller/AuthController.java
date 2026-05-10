@@ -90,8 +90,11 @@ public class AuthController {
      * @return 认证响应
      */
     @PostMapping("/auth/login")
-    public Result<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
-        AuthDTO authDTO = authAppService.login(restDtoMapper.toCommand(request));
+    public Result<AuthResponse> login(@RequestBody @Valid LoginRequest request,
+                                      HttpServletRequest servletRequest) {
+        AuthDTO authDTO = authAppService.login(
+            restDtoMapper.toCommand(request, resolveClientIp(servletRequest))
+        );
         return Result.success(restDtoMapper.toResponse(authDTO));
     }
 

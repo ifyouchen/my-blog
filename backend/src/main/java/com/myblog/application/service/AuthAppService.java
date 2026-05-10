@@ -115,6 +115,7 @@ public class AuthAppService {
      * @param command 登录命令
      * @return 认证结果
      */
+    @Transactional(rollbackFor = Exception.class)
     public AuthDTO login(LoginCommand command) {
         long _start = System.currentTimeMillis();
         Optional<User> optionalUser = userRepository.findByAccount(command.getAccount());
@@ -126,6 +127,8 @@ public class AuthAppService {
         if (!passwordDomainService.matches(command.getPassword(), user.getPasswordHash())) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "账号或密码错误");
         }
+        user.recordLogin(command.getLoginIp());
+        userRepository.save(user);
         String token = jwtTokenProvider.createToken(user.getId().getValue(), user.getUsername(), user.getRole().name());
         AuthDTO result = new AuthDTO(token, UserAssembler.toDTO(user));
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
