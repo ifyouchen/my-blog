@@ -20,6 +20,7 @@ public class HomeBootstrapResponse {
     private List<ColumnResponse> recommendedColumns;
     private List<AuthorRankingResponse> authorRankings;
     private List<ArticleResponse> featuredArticles;
+    private List<ArticleResponse> weeklyArticles;
     private List<TopicDTO> hotTopics;
     private ArticleResponse todayFocus;
     private List<TopicDTO> learningTopics;
@@ -64,6 +65,14 @@ public class HomeBootstrapResponse {
 
     public void setFeaturedArticles(List<ArticleResponse> featuredArticles) {
         this.featuredArticles = featuredArticles;
+    }
+
+    public List<ArticleResponse> getWeeklyArticles() {
+        return weeklyArticles;
+    }
+
+    public void setWeeklyArticles(List<ArticleResponse> weeklyArticles) {
+        this.weeklyArticles = weeklyArticles;
     }
 
     public List<TopicDTO> getHotTopics() {

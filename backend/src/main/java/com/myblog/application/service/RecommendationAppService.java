@@ -143,6 +143,23 @@ public class RecommendationAppService {
     }
 
     /**
+     * 本周必读算法文章列表，不使用管理员精选权重排序。
+     */
+    public List<ArticleDTO> listWeeklyArticles(Long excludeArticleId, int limit) {
+        int safeLimit = Math.max(limit, 1);
+        List<Article> articles = articleRepository.findWeeklyPicks(excludeArticleId, safeLimit);
+        List<ArticleDTO> items = new ArrayList<>(articles.size());
+        for (Article article : articles) {
+            User author = userRepository.findById(article.getAuthorId()).orElse(null);
+            if (author == null) {
+                continue;
+            }
+            items.add(articleAssembler.toDTO(article, author));
+        }
+        return items;
+    }
+
+    /**
      * 文章详情页推荐分组。
      */
     public ArticleRecommendationsDTO getArticleRecommendations(Long articleId, int limit) {

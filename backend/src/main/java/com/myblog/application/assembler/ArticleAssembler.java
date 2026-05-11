@@ -52,6 +52,7 @@ public class ArticleAssembler {
         dto.setFavoriteCount(article.getFavoriteCount());
         dto.setCommentCount(article.getCommentCount());
         dto.setFeatured(article.isFeatured());
+        dto.setFeatureWeight(article.getFeatureWeight());
         String rawContent = article.getContent();
         dto.setWordCount(rawContent != null ? rawContent.length() : 0);
         dto.setSlug(article.getSlug());
@@ -61,6 +62,9 @@ public class ArticleAssembler {
         dto.setWarnFlag(article.isWarnFlag());
         if (article.getScheduledPublishAt() != null) {
             dto.setScheduledPublishAt(FORMATTER.format(article.getScheduledPublishAt()));
+        }
+        if (article.getFeaturedAt() != null) {
+            dto.setFeaturedAt(FORMATTER.format(article.getFeaturedAt()));
         }
         if (article.getPublishedAt() != null) {
             dto.setPublishedAt(FORMATTER.format(article.getPublishedAt()));

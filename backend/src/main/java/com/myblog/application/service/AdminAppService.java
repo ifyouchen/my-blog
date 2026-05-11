@@ -375,6 +375,7 @@ public class AdminAppService {
             map.put("commentCount", article.getCommentCount());
             map.put("featured", article.isFeatured());
             map.put("featuredAt", article.getFeaturedAt());
+            map.put("featureWeight", article.getFeatureWeight());
             map.put("scheduledPublishAt", article.getScheduledPublishAt());
             map.put("publishedAt", article.getPublishedAt());
             map.put("createdAt", article.getCreatedAt());

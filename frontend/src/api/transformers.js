@@ -120,6 +120,7 @@ export const normalizeArticle = (article) => {
         commentCount: article.commentCount || 0,
         featured: Boolean(article.featured),
         featuredAt: article.featuredAt || '',
+        featureWeight: Number(article.featureWeight || 0),
         favoritedAt: article.favoritedAt || '',
         liked: Boolean(article.liked),
         favorited: Boolean(article.favorited),

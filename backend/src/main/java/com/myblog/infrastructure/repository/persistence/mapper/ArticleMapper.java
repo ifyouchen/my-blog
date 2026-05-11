@@ -343,6 +343,10 @@ public interface ArticleMapper {
     List<ArticleDO> selectFeatured(@Param("offset") int offset,
                                    @Param("pageSize") int pageSize);
 
+    /** 查询本周必读算法文章。 */
+    List<ArticleDO> selectWeeklyPicks(@Param("excludeArticleId") Long excludeArticleId,
+                                      @Param("limit") int limit);
+
     /**
      * 查询同分类相关文章（排除当前文章，按热度降序）。
      *

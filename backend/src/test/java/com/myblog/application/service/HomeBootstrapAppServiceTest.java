@@ -76,7 +76,10 @@ class HomeBootstrapAppServiceTest {
         List<CategoryDTO> categories = Collections.singletonList(new CategoryDTO());
         List<ColumnDTO> columns = Collections.singletonList(new ColumnDTO());
         List<AuthorRankingDTO> rankings = Collections.singletonList(new AuthorRankingDTO());
-        List<ArticleDTO> featuredArticles = Collections.singletonList(new ArticleDTO());
+        ArticleDTO focusArticle = new ArticleDTO();
+        focusArticle.setId(1L);
+        List<ArticleDTO> featuredArticles = Collections.singletonList(focusArticle);
+        List<ArticleDTO> weeklyArticles = Collections.singletonList(new ArticleDTO());
         List<TopicDTO> hotTopics = Collections.singletonList(new TopicDTO());
         List<TagDTO> hotTags = Collections.singletonList(new TagDTO());
         List<String> hotKeywords = Collections.singletonList("Java");
@@ -86,6 +89,8 @@ class HomeBootstrapAppServiceTest {
         when(columnAppService.listRecommendedColumns(3, null)).thenReturn(columns);
         when(rankingAppService.listAuthorRankings(3, null)).thenReturn(rankings);
         when(recommendationAppService.listFeaturedArticles(1, 5)).thenReturn(featuredArticles);
+        when(recommendationAppService.listWeeklyArticles(1L, 4)).thenReturn(weeklyArticles);
+        when(topicAppService.listHotTopicsByActivity(7, 6)).thenReturn(hotTopics);
         when(topicAppService.listHotTopics(6)).thenReturn(hotTopics);
         when(tagAppService.getHotTags(12)).thenReturn(hotTags);
         when(searchHistoryAppService.getHotKeywords(10)).thenReturn(hotKeywords);
@@ -100,6 +105,7 @@ class HomeBootstrapAppServiceTest {
         assertThat(first.getAuthorRankings()).isSameAs(rankings);
         assertThat(first.getFeaturedArticles()).isSameAs(featuredArticles);
         assertThat(first.getTodayFocus()).isSameAs(featuredArticles.get(0));
+        assertThat(first.getWeeklyArticles()).isSameAs(weeklyArticles);
         assertThat(first.getHotTopics()).isSameAs(hotTopics);
         assertThat(first.getLearningTopics()).isSameAs(hotTopics);
         assertThat(first.getHotTags()).isSameAs(hotTags);
@@ -109,6 +115,8 @@ class HomeBootstrapAppServiceTest {
         verify(columnAppService, times(1)).listRecommendedColumns(3, null);
         verify(rankingAppService, times(1)).listAuthorRankings(3, null);
         verify(recommendationAppService, times(1)).listFeaturedArticles(1, 5);
+        verify(recommendationAppService, times(1)).listWeeklyArticles(1L, 4);
+        verify(topicAppService, times(1)).listHotTopicsByActivity(7, 6);
         verify(topicAppService, times(1)).listHotTopics(6);
         verify(tagAppService, times(1)).getHotTags(12);
         verify(searchHistoryAppService, times(1)).getHotKeywords(10);

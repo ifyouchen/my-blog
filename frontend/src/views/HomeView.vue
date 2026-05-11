@@ -208,6 +208,22 @@ const sidebarColumnItems = computed(() => sidebarColumns.value.slice(0, 4));
 // 知识地图专题独立于侧边栏热门专题，使用运营权重排序，不回退到热度列表
 const knowledgeTopicItems = computed(() => learningTopics.value.slice(0, 3));
 
+const buildPortalArticles = (focus = null, weekly = [], featured = []) => {
+    const seenIds = new Set();
+    const items = [];
+    const append = (article) => {
+        if (!article || seenIds.has(article.id)) {
+            return;
+        }
+        seenIds.add(article.id);
+        items.push(article);
+    };
+    append(focus);
+    (weekly || []).forEach(append);
+    (featured || []).forEach(append);
+    return items.slice(0, 5);
+};
+
 // 热门关键词去重：过滤掉已在热门标签中出现的词，避免两组 chip 显示重复内容
 const deduplicatedKeywords = computed(() => {
     const tagNameSet = new Set(knowledgeTags.value.map(t => t.name.toLowerCase()));
@@ -295,8 +311,17 @@ const loadHomeBootstrap = async () => {
         const nextTopicItems = buildTopicItems(bootstrap?.categories || []);
         topicItems.value = nextTopicItems;
         writeCachedTopicItems(nextTopicItems);
-        featuredArticles.value = bootstrap?.featuredArticles || [];
-        setPortalArticlesOnce(featuredArticles.value);
+        featuredArticles.value = buildPortalArticles(
+            bootstrap?.todayFocus,
+            bootstrap?.weeklyArticles || [],
+            bootstrap?.featuredArticles || []
+        );
+        if (featuredArticles.value.length) {
+            portalFallbackArticles.value = [];
+            portalArticles.value = featuredArticles.value;
+        } else if (!portalArticles.value.length && portalFallbackArticles.value.length) {
+            portalArticles.value = portalFallbackArticles.value;
+        }
         sidebarTopics.value = bootstrap?.hotTopics || [];
         sidebarColumns.value = bootstrap?.recommendedColumns || [];
         learningTopics.value = bootstrap?.learningTopics || [];

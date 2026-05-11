@@ -17,6 +17,7 @@ export const getHomeBootstrapApi = async () => {
         recommendedColumns: (data?.recommendedColumns || []).map(normalizeColumn),
         authorRankings: (data?.authorRankings || []).map(normalizeAuthorRanking),
         featuredArticles: (data?.featuredArticles || []).map(normalizeArticle),
+        weeklyArticles: (data?.weeklyArticles || []).map(normalizeArticle),
         hotTopics: (data?.hotTopics || []).map(normalizeTopic),
         todayFocus: data?.todayFocus ? normalizeArticle(data.todayFocus) : null,
         learningTopics: (data?.learningTopics || []).map(normalizeTopic),

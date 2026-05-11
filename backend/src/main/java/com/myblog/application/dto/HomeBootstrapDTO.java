@@ -17,6 +17,8 @@ public class HomeBootstrapDTO {
     private List<ColumnDTO> recommendedColumns;
     private List<AuthorRankingDTO> authorRankings;
     private List<ArticleDTO> featuredArticles;
+    /** 本周必读：算法挑选，不受管理员精选权重影响 */
+    private List<ArticleDTO> weeklyArticles;
     /** 首页侧边栏热门专题 */
     private List<TopicDTO> hotTopics;
     /** 今日焦点：默认取编辑精选第一篇 */
@@ -66,6 +68,14 @@ public class HomeBootstrapDTO {
 
     public void setFeaturedArticles(List<ArticleDTO> featuredArticles) {
         this.featuredArticles = featuredArticles;
+    }
+
+    public List<ArticleDTO> getWeeklyArticles() {
+        return weeklyArticles;
+    }
+
+    public void setWeeklyArticles(List<ArticleDTO> weeklyArticles) {
+        this.weeklyArticles = weeklyArticles;
     }
 
     public List<TopicDTO> getHotTopics() {

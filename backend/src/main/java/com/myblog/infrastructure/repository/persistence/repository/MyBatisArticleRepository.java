@@ -456,6 +456,11 @@ public class MyBatisArticleRepository implements ArticleRepository {
     }
 
     @Override
+    public List<Article> findWeeklyPicks(Long excludeArticleId, int limit) {
+        return toDomainList(articleMapper.selectWeeklyPicks(excludeArticleId, Math.max(limit, 1)));
+    }
+
+    @Override
     public long countFeatured() {
         return articleMapper.countFeatured();
     }

@@ -33,6 +33,8 @@ public class ArticleResponse {
     private boolean liked;
     private boolean favorited;
     private boolean featured;
+    private String featuredAt;
+    private int featureWeight;
     private String slug;
     private String seoTitle;
     private String seoDescription;
@@ -351,6 +353,22 @@ public class ArticleResponse {
 
     public void setFeatured(boolean featured) {
         this.featured = featured;
+    }
+
+    public String getFeaturedAt() {
+        return featuredAt;
+    }
+
+    public void setFeaturedAt(String featuredAt) {
+        this.featuredAt = featuredAt;
+    }
+
+    public int getFeatureWeight() {
+        return featureWeight;
+    }
+
+    public void setFeatureWeight(int featureWeight) {
+        this.featureWeight = featureWeight;
     }
 
     public String getSlug() {

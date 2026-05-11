@@ -68,6 +68,7 @@ public class HomeController {
         response.setRecommendedColumns(toColumnResponses(dto.getRecommendedColumns()));
         response.setAuthorRankings(toAuthorRankingResponses(dto.getAuthorRankings()));
         response.setFeaturedArticles(toArticleResponses(dto.getFeaturedArticles()));
+        response.setWeeklyArticles(toArticleResponses(dto.getWeeklyArticles()));
         response.setHotTopics(dto.getHotTopics());
         response.setTodayFocus(dto.getTodayFocus() == null ? null : restDtoMapper.toPublicResponse(dto.getTodayFocus()));
         response.setLearningTopics(dto.getLearningTopics());

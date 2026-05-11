@@ -86,6 +86,11 @@ public class HomeBootstrapAppService {
         CompletableFuture<List<ArticleDTO>> featuredFuture =
             CompletableFuture.supplyAsync(() -> recommendationAppService.listFeaturedArticles(1, 5), taskExecutor);
 
+        CompletableFuture<List<ArticleDTO>> weeklyArticlesFuture = featuredFuture.thenApplyAsync(featured -> {
+            Long focusArticleId = featured == null || featured.isEmpty() ? null : featured.get(0).getId();
+            return recommendationAppService.listWeeklyArticles(focusArticleId, 4);
+        }, taskExecutor);
+
         // 热门专题：按近7天文章互动热度动态排序，用于侧边栏"本周热议"
         CompletableFuture<List<TopicDTO>> hotTopicsFuture =
             CompletableFuture.supplyAsync(() -> topicAppService.listHotTopicsByActivity(7, 6), taskExecutor);
@@ -109,6 +114,7 @@ public class HomeBootstrapAppService {
         bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
         bootstrap.setFeaturedArticles(featuredArticles);
         bootstrap.setTodayFocus(featuredArticles.isEmpty() ? null : featuredArticles.get(0));
+        bootstrap.setWeeklyArticles(weeklyArticlesFuture.join());
         bootstrap.setHotTopics(hotTopicsFuture.join());
         bootstrap.setLearningTopics(learningTopicsFuture.join());
         bootstrap.setHotTags(hotTagsFuture.join());

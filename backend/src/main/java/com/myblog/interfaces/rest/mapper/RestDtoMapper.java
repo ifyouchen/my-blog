@@ -330,6 +330,8 @@ public class RestDtoMapper {
         response.setLiked(dto.isLiked());
         response.setFavorited(dto.isFavorited());
         response.setFeatured(dto.isFeatured());
+        response.setFeaturedAt(dto.getFeaturedAt());
+        response.setFeatureWeight(dto.getFeatureWeight());
         response.setSlug(dto.getSlug());
         response.setSeoTitle(dto.getSeoTitle());
         response.setSeoDescription(dto.getSeoDescription());
