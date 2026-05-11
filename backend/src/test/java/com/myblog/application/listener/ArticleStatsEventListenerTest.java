@@ -1,6 +1,7 @@
 package com.myblog.application.listener;
 
 import com.myblog.application.event.CommentCreatedEvent;
+import com.myblog.application.service.HomePortalCacheInvalidator;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.CommentId;
@@ -28,6 +29,9 @@ class ArticleStatsEventListenerTest {
     @Mock
     private CommentRepository commentRepository;
 
+    @Mock
+    private HomePortalCacheInvalidator homePortalCacheInvalidator;
+
     @Test
     void onCommentCreatedIncrementsCountForPublishedComment() {
         Comment comment = comment(1595L, 100L, 1L);
@@ -37,6 +41,7 @@ class ArticleStatsEventListenerTest {
         listener().onCommentCreated(new CommentCreatedEvent(1595L, 100L, 1L));
 
         verify(articleRepository).incrementCommentCount(100L);
+        verify(homePortalCacheInvalidator).evictRecommendedArticles();
     }
 
     @Test
@@ -47,10 +52,11 @@ class ArticleStatsEventListenerTest {
         listener().onCommentCreated(new CommentCreatedEvent(1595L, 100L, 1L));
 
         verify(articleRepository, never()).incrementCommentCount(100L);
+        verify(homePortalCacheInvalidator, never()).evictRecommendedArticles();
     }
 
     private ArticleStatsEventListener listener() {
-        return new ArticleStatsEventListener(articleRepository, commentRepository);
+        return new ArticleStatsEventListener(articleRepository, commentRepository, homePortalCacheInvalidator);
     }
 
     private Comment comment(Long commentId, Long articleId, Long userId) {

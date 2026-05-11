@@ -430,6 +430,7 @@ public class ArticleAppService {
             eventPublisher.publishEvent(new ArticlePublishedEvent(
                 article.getId().getValue(), article.getAuthorId().getValue()));
             homePortalCacheInvalidator.evictStatsAndBootstrap();
+            homePortalCacheInvalidator.evictRecommendedArticles();
         }
         saveVersionSnapshot(article, command.getAuthorId());
         ArticleDTO result = buildDetailDto(article, author, command.getAuthorId());
@@ -609,6 +610,7 @@ public class ArticleAppService {
         }
         if (publishedCount > 0) {
             homePortalCacheInvalidator.evictStatsAndBootstrap();
+            homePortalCacheInvalidator.evictRecommendedArticles();
         }
         if (featuredCacheInvalidationNeeded) {
             homePortalCacheInvalidator.evictFeaturedAndBootstrap();
@@ -697,11 +699,15 @@ public class ArticleAppService {
     }
 
     private void evictArticlePortalCaches(Article article, ArticleStatus oldStatus) {
-        if (isFeaturedVisibilityChanged(article, oldStatus)) {
+        boolean featuredCacheInvalidationNeeded = isFeaturedVisibilityChanged(article, oldStatus);
+        if (featuredCacheInvalidationNeeded) {
             homePortalCacheInvalidator.evictFeaturedAndBootstrap();
         }
         if (isPublishVisibilityChanged(oldStatus, article.getStatus())) {
             homePortalCacheInvalidator.evictStatsAndBootstrap();
+        }
+        if (!featuredCacheInvalidationNeeded && isRecommendFeedAffected(article, oldStatus)) {
+            homePortalCacheInvalidator.evictRecommendedArticles();
         }
     }
 
@@ -711,6 +717,10 @@ public class ArticleAppService {
 
     private boolean isFeaturedVisibilityChanged(Article article, ArticleStatus oldStatus) {
         return article.isFeatured() && isPublishVisibilityChanged(oldStatus, article.getStatus());
+    }
+
+    private boolean isRecommendFeedAffected(Article article, ArticleStatus oldStatus) {
+        return ArticleStatus.PUBLISHED.equals(oldStatus) || ArticleStatus.PUBLISHED.equals(article.getStatus());
     }
 
     private String resolveActionText(ArticleStatus status) {

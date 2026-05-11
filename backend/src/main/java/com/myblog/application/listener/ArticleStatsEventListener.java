@@ -9,6 +9,7 @@ import com.myblog.application.event.CommentCreatedEvent;
 import com.myblog.application.event.CommentDeletedEvent;
 import com.myblog.application.event.CommentLikedEvent;
 import com.myblog.application.event.CommentUnlikedEvent;
+import com.myblog.application.service.HomePortalCacheInvalidator;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.repository.ArticleRepository;
@@ -42,11 +43,14 @@ public class ArticleStatsEventListener {
 
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
+    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
 
     public ArticleStatsEventListener(ArticleRepository articleRepository,
-                                     CommentRepository commentRepository) {
+                                     CommentRepository commentRepository,
+                                     HomePortalCacheInvalidator homePortalCacheInvalidator) {
         this.articleRepository = articleRepository;
         this.commentRepository = commentRepository;
+        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -58,6 +62,7 @@ public class ArticleStatsEventListener {
             BizLogHelper.params("articleId", event.getArticleId()));
         try {
             articleRepository.incrementViewCount(event.getArticleId());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理浏览事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
@@ -76,6 +81,7 @@ public class ArticleStatsEventListener {
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.incrementLikeCount(event.getArticleId());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理点赞事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
@@ -94,6 +100,7 @@ public class ArticleStatsEventListener {
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.decrementLikeCount(event.getArticleId());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理取消点赞事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
@@ -112,6 +119,7 @@ public class ArticleStatsEventListener {
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.incrementFavoriteCount(event.getArticleId());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理收藏事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
@@ -130,6 +138,7 @@ public class ArticleStatsEventListener {
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
         try {
             articleRepository.decrementFavoriteCount(event.getArticleId());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理取消收藏事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
@@ -165,6 +174,7 @@ public class ArticleStatsEventListener {
                 return;
             }
             articleRepository.incrementCommentCount(event.getArticleId());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理评论事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
@@ -183,6 +193,7 @@ public class ArticleStatsEventListener {
             BizLogHelper.params("articleId", event.getArticleId(), "decrement", event.getDecrement()));
         try {
             articleRepository.decrementCommentCount(event.getArticleId(), event.getDecrement());
+            homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | {} 处理删除评论事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),

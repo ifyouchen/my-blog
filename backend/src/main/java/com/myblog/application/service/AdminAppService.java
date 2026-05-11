@@ -809,6 +809,9 @@ public class AdminAppService {
         }
         if (statsCacheInvalidationNeeded) {
             homePortalCacheInvalidator.evictStatsAndBootstrap();
+            if (!featuredCacheInvalidationNeeded) {
+                homePortalCacheInvalidator.evictRecommendedArticles();
+            }
         }
     }
 
