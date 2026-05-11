@@ -75,6 +75,7 @@ public class HomePortalCacheInvalidator {
             @Override
             public void run() {
                 recommendedArticleFeedCache.invalidateAll();
+                homeBootstrapCache.invalidate(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY);
             }
         });
     }

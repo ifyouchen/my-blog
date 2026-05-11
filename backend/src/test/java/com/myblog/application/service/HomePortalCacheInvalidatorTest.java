@@ -97,7 +97,7 @@ class HomePortalCacheInvalidatorTest {
     }
 
     @Test
-    void evictRecommendedArticlesClearsRecommendFeedCache() {
+    void evictRecommendedArticlesClearsRecommendFeedAndBootstrapCache() {
         Cache<String, HomeBootstrapDTO> bootstrapCache = Caffeine.newBuilder().build();
         Cache<String, List<ArticleDTO>> featuredCache = Caffeine.newBuilder().build();
         Cache<Long, HomeStats> statsCache = Caffeine.newBuilder().build();
@@ -109,10 +109,12 @@ class HomePortalCacheInvalidatorTest {
             recommendedCache
         );
         RecommendArticleCacheKey recommendKey = RecommendArticleCacheKey.of(null, 1, 10);
+        bootstrapCache.put(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY, new HomeBootstrapDTO());
         recommendedCache.put(recommendKey, new PageResult<Article>(Collections.<Article>emptyList(), 1, 10, 0));
 
         invalidator.evictRecommendedArticles();
 
+        assertThat(bootstrapCache.getIfPresent(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY)).isNull();
         assertThat(recommendedCache.getIfPresent(recommendKey)).isNull();
     }
 }

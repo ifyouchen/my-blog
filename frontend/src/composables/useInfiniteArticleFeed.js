@@ -6,6 +6,7 @@ const CACHE_TTL = 30 * 60 * 1000;
 export function useInfiniteArticleFeed(options = {}) {
     const pageSize = Number(options.pageSize || 10);
     const getItemKey = options.getItemKey || ((item) => item?.id);
+    const defaultCacheVersion = options.cacheVersion ? String(options.cacheVersion) : '';
 
     const articles = ref([]);
     const currentPage = ref(1);
@@ -68,7 +69,12 @@ export function useInfiniteArticleFeed(options = {}) {
         loadMoreError.value = '';
     };
 
-    const saveFeedCache = (cacheKey) => {
+    const resolveCacheVersion = (cacheOptions = {}) => {
+        const version = cacheOptions.cacheVersion ?? defaultCacheVersion;
+        return version ? String(version) : '';
+    };
+
+    const saveFeedCache = (cacheKey, cacheOptions = {}) => {
         if (!cacheKey || typeof sessionStorage === 'undefined') {
             return;
         }
@@ -76,29 +82,40 @@ export function useInfiniteArticleFeed(options = {}) {
             return;
         }
         try {
-            sessionStorage.setItem(`${CACHE_PREFIX}${cacheKey}`, JSON.stringify({
+            const cacheVersion = resolveCacheVersion(cacheOptions);
+            const payload = {
                 items: articles.value,
                 page: currentPage.value,
                 total: total.value,
                 savedAt: Date.now()
-            }));
+            };
+            if (cacheVersion) {
+                payload.cacheVersion = cacheVersion;
+            }
+            sessionStorage.setItem(`${CACHE_PREFIX}${cacheKey}`, JSON.stringify(payload));
         } catch {
             // Ignore storage quota and privacy-mode failures.
         }
     };
 
-    const restoreFeedCache = (cacheKey) => {
+    const restoreFeedCache = (cacheKey, cacheOptions = {}) => {
         if (!cacheKey || typeof sessionStorage === 'undefined') {
             return false;
         }
         try {
-            const raw = sessionStorage.getItem(`${CACHE_PREFIX}${cacheKey}`);
+            const storageKey = `${CACHE_PREFIX}${cacheKey}`;
+            const raw = sessionStorage.getItem(storageKey);
             if (!raw) {
                 return false;
             }
             const cached = JSON.parse(raw);
+            const cacheVersion = resolveCacheVersion(cacheOptions);
+            if (cacheVersion && cached.cacheVersion !== cacheVersion) {
+                sessionStorage.removeItem(storageKey);
+                return false;
+            }
             if (!cached?.savedAt || Date.now() - cached.savedAt > CACHE_TTL) {
-                sessionStorage.removeItem(`${CACHE_PREFIX}${cacheKey}`);
+                sessionStorage.removeItem(storageKey);
                 return false;
             }
             setFeedState({

@@ -8,6 +8,7 @@ import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.assembler.UserAssembler;
+import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Column;
 import com.myblog.domain.model.aggregate.User;
@@ -40,6 +41,7 @@ public class RecommendationAppService {
 
     private static final int DEFAULT_ARTICLE_RECOMMENDATION_LIMIT = 12;
     private static final int MAX_ARTICLE_RECOMMENDATION_LIMIT = 24;
+    private static final int WEEKLY_RECOMMEND_FEED_EXCLUDE_LIMIT = 10;
 
     private final UserRepository userRepository;
     private final ColumnRepository columnRepository;
@@ -147,7 +149,8 @@ public class RecommendationAppService {
      */
     public List<ArticleDTO> listWeeklyArticles(Long excludeArticleId, int limit) {
         int safeLimit = Math.max(limit, 1);
-        List<Article> articles = articleRepository.findWeeklyPicks(excludeArticleId, safeLimit);
+        List<Long> excludedArticleIds = buildWeeklyExcludedArticleIds(excludeArticleId);
+        List<Article> articles = articleRepository.findWeeklyPicks(excludedArticleIds, safeLimit);
         List<ArticleDTO> items = new ArrayList<>(articles.size());
         for (Article article : articles) {
             User author = userRepository.findById(article.getAuthorId()).orElse(null);
@@ -157,6 +160,27 @@ public class RecommendationAppService {
             items.add(articleAssembler.toDTO(article, author));
         }
         return items;
+    }
+
+    private List<Long> buildWeeklyExcludedArticleIds(Long focusArticleId) {
+        Set<Long> excludedArticleIds = new HashSet<Long>();
+        if (focusArticleId != null) {
+            excludedArticleIds.add(focusArticleId);
+        }
+        List<Article> recommendedHeadArticles = articleRepository.findPublishedWithLimit(
+            null,
+            null,
+            null,
+            ArticlePageQuery.SORT_RECOMMEND,
+            WEEKLY_RECOMMEND_FEED_EXCLUDE_LIMIT,
+            0
+        );
+        for (Article article : recommendedHeadArticles) {
+            if (article != null && article.getId() != null) {
+                excludedArticleIds.add(article.getId().getValue());
+            }
+        }
+        return new ArrayList<Long>(excludedArticleIds);
     }
 
     /**

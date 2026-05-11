@@ -381,7 +381,7 @@ public interface ArticleRepository {
     List<Article> findFeatured(int page, int pageSize);
 
     /** 查询本周必读算法文章。 */
-    List<Article> findWeeklyPicks(Long excludeArticleId, int limit);
+    List<Article> findWeeklyPicks(List<Long> excludeArticleIds, int limit);
 
     /**
      * 根据 Slug 查询文章。

@@ -32,6 +32,7 @@ const homeStats = ref({
     totalColumns: 0
 });
 const pageSize = 10;
+const HOME_RECOMMEND_FEED_CACHE_VERSION = 'recommend-algorithm-v2-20260511';
 const {
     articles,
     currentPage,
@@ -155,6 +156,14 @@ const getSortQueryValue = (tab, sort) => {
     }
     return isDefaultArticleSort(normalizedSort) ? undefined : normalizedSort;
 };
+const getFeedCacheVersion = (
+    tab = feedTab.value,
+    sort = activeSort.value
+) => (
+    tab === 'recommend' && normalizeArticleSort(sort) === ARTICLE_SORT_RECOMMEND
+        ? HOME_RECOMMEND_FEED_CACHE_VERSION
+        : ''
+);
 const getChannelSortQueryValue = (channel, sort) => {
     if (channel.key === 'recommend') {
         return undefined;
@@ -170,6 +179,7 @@ const createFeedCacheState = () => ({
     total: 0,
     category: '',
     sort: resolveDefaultSort(),
+    cacheVersion: '',
     loaded: false
 });
 const feedCache = ref({
@@ -368,15 +378,24 @@ const buildFeedCacheKey = (
     category = activeCategory.value
 ) => `home:${tab}:${normalizeArticleSort(sort)}:${normalizeCategory(category) || 'all'}`;
 
+const getFeedCacheOptions = (
+    tab = feedTab.value,
+    sort = activeSort.value
+) => {
+    const cacheVersion = getFeedCacheVersion(tab, sort);
+    return cacheVersion ? { cacheVersion } : {};
+};
+
 const saveActiveFeedCache = () => {
     feedCache.value[feedTab.value] = {
         ...feedCache.value[feedTab.value],
         ...getFeedState(),
         category: activeCategory.value,
         sort: activeSort.value,
+        cacheVersion: getFeedCacheVersion(),
         loaded: true
     };
-    saveFeedCache(buildFeedCacheKey());
+    saveFeedCache(buildFeedCacheKey(), getFeedCacheOptions());
 };
 
 const restoreMemoryFeedState = (state) => {
@@ -388,11 +407,13 @@ const restoreMemoryFeedState = (state) => {
 const loadArticles = async ({ sort, category } = {}) => {
     const targetSort = normalizeArticleSort(sort || resolveDefaultSort(feedTab.value));
     const normalizedCategory = normalizeCategory(category);
+    const targetCacheVersion = getFeedCacheVersion(feedTab.value, targetSort);
     const cachedState = feedCache.value[feedTab.value] || createFeedCacheState();
     if (
         cachedState.loaded
         && cachedState.category === normalizedCategory
         && normalizeArticleSort(cachedState.sort) === targetSort
+        && (cachedState.cacheVersion || '') === targetCacheVersion
     ) {
         resetStableRequest();
         resetFeed();
@@ -404,7 +425,12 @@ const loadArticles = async ({ sort, category } = {}) => {
         });
         return;
     }
-    if (restoreFeedCache(buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory))) {
+    if (
+        restoreFeedCache(
+            buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory),
+            getFeedCacheOptions(feedTab.value, targetSort)
+        )
+    ) {
         activeSort.value = targetSort;
         activeCategory.value = normalizedCategory;
         feedCache.value[feedTab.value] = {
@@ -412,6 +438,7 @@ const loadArticles = async ({ sort, category } = {}) => {
             ...getFeedState(),
             category: normalizedCategory,
             sort: targetSort,
+            cacheVersion: targetCacheVersion,
             loaded: true
         };
         setPortalFallbackArticles(articles.value, {

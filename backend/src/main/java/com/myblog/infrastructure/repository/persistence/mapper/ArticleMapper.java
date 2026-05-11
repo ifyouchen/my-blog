@@ -344,7 +344,7 @@ public interface ArticleMapper {
                                    @Param("pageSize") int pageSize);
 
     /** 查询本周必读算法文章。 */
-    List<ArticleDO> selectWeeklyPicks(@Param("excludeArticleId") Long excludeArticleId,
+    List<ArticleDO> selectWeeklyPicks(@Param("excludeArticleIds") List<Long> excludeArticleIds,
                                       @Param("limit") int limit);
 
     /**

@@ -132,6 +132,15 @@
         )
     </sql>
 
+    <!-- 用于关键词过滤后的排序；ELSE 表示正文/全文命中，避免对 content 大字段重复 LIKE。 -->
+    <sql id="Search_Alias_Hit_Priority">
+        CASE
+            WHEN a.title LIKE CONCAT('%', #{keyword}, '%') THEN 3
+            WHEN a.summary LIKE CONCAT('%', #{keyword}, '%') THEN 2
+            ELSE 1
+        END
+    </sql>
+
     <select id="selectBySlug" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_article
@@ -792,8 +801,9 @@
             <include refid="Recommend_Alias_Candidate_Condition"/>
         </if>
         <choose>
-            <when test="keyword != null and keyword != '' and useFulltext == true and sort != 'hot' and sort != 'featured' and sort != 'recommend'">
-                ORDER BY MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE) DESC, a.published_at DESC, a.id DESC
+            <when test="keyword != null and keyword != '' and sort != 'hot' and sort != 'featured' and sort != 'recommend'">
+                ORDER BY <include refid="Search_Alias_Hit_Priority"/> DESC,
+                    a.published_at DESC, a.id DESC
             </when>
             <when test="sort == 'recommend'">
                 ORDER BY <include refid="Recommend_Alias_Score"/> DESC,
@@ -919,6 +929,10 @@
             AND a.featured = 1
         </if>
         <choose>
+            <when test="keyword != null and keyword != '' and sort == 'latest'">
+                ORDER BY <include refid="Search_Alias_Hit_Priority"/> DESC,
+                    a.published_at DESC, a.id DESC
+            </when>
             <when test="sort == 'featured'">
                 ORDER BY a.featured_at DESC, a.published_at DESC, a.id DESC
             </when>
@@ -1164,26 +1178,24 @@
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
-    <!-- 本周必读：算法自选，不使用 featured / feature_weight 参与排序 -->
+    <!-- 本周必读：算法自选，不使用 featured / feature_weight 参与排序，候选限制近 2 年 -->
     <select id="selectWeeklyPicks" resultMap="BaseResultMap">
         SELECT <include refid="List_Alias_Column_List"/>
         FROM blog_article a
         WHERE a.status = 'PUBLISHED'
         AND a.deleted_at IS NULL
-        <if test="excludeArticleId != null">
-            AND a.id != #{excludeArticleId}
+        AND a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 2 YEAR)
+        <if test="excludeArticleIds != null and excludeArticleIds.size() > 0">
+            AND a.id NOT IN
+            <foreach collection="excludeArticleIds" item="excludeArticleId" open="(" separator="," close=")">
+                #{excludeArticleId}
+            </foreach>
         </if>
         ORDER BY (
-            CASE
-                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 70
-                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 28
-                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 10
-                ELSE 0
-            END
-            + LOG10(COALESCE(a.view_count, 0) + 1) * 18
-            + COALESCE(a.like_count, 0) * 5
-            + COALESCE(a.comment_count, 0) * 4
-            + COALESCE(a.favorite_count, 0) * 6
+            LOG10(COALESCE(a.view_count, 0) + 1) * 12
+            + SQRT(COALESCE(a.like_count, 0)) * 18
+            + SQRT(COALESCE(a.comment_count, 0)) * 14
+            + SQRT(COALESCE(a.favorite_count, 0)) * 22
             + CASE
                 WHEN a.cover_url IS NOT NULL
                     AND a.cover_url != ''
@@ -1195,6 +1207,13 @@
                 WHEN a.content IS NOT NULL AND CHAR_LENGTH(a.content) &gt;= 1200 THEN 6
                 WHEN a.content IS NOT NULL AND CHAR_LENGTH(a.content) &gt;= 500 THEN 3
                 ELSE 0
+            END
+            + CASE
+                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 90
+                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 55
+                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 30
+                WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 12
+                ELSE 4
             END
         ) DESC, a.published_at DESC, a.id DESC
         LIMIT #{limit}
