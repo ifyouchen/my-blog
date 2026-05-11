@@ -36,6 +36,8 @@ public class Article {
     private boolean warnFlag;
     private boolean featured;
     private LocalDateTime featuredAt;
+    /** 精选权重（0-1000000），值越大在精选列表和推荐中排越靠前 */
+    private int featureWeight;
     private String slug;
     private String seoTitle;
     private String seoDescription;
@@ -82,6 +84,7 @@ public class Article {
         article.commentCount = 0;
         article.featured = false;
         article.featuredAt = null;
+        article.featureWeight = 0;
         article.slug = normalizeNullableText(slug);
         article.seoTitle = normalizeNullableText(seoTitle);
         article.seoDescription = normalizeNullableText(seoDescription);
@@ -124,7 +127,7 @@ public class Article {
     public static Article restore(Long id, UserId authorId, String title, String summary, String content,
                                   String coverUrl, String category, String offlineReason, List<String> tags, ArticleStatus status,
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
-                                  boolean warnFlag, boolean featured, LocalDateTime featuredAt,
+                                  boolean warnFlag, boolean featured, LocalDateTime featuredAt, int featureWeight,
                                   String slug, String seoTitle, String seoDescription,
                                   LocalDateTime scheduledPublishAt, LocalDateTime publishedAt,
                                   LocalDateTime createdAt, LocalDateTime updatedAt,
@@ -147,6 +150,7 @@ public class Article {
         article.warnFlag = warnFlag;
         article.featured = featured;
         article.featuredAt = featuredAt;
+        article.featureWeight = Math.max(0, Math.min(1000000, featureWeight));
         article.slug = slug;
         article.seoTitle = seoTitle;
         article.seoDescription = seoDescription;
@@ -351,14 +355,24 @@ public class Article {
     }
 
     /**
-     * 设为精选。
+     * 设为精选（带权重）。
+     *
+     * @param weight 精选权重 0-1000000，值越大排序越靠前
      */
-    public void feature() {
+    public void feature(int weight) {
         this.featured = true;
         if (this.featuredAt == null) {
             this.featuredAt = LocalDateTime.now();
         }
+        this.featureWeight = Math.max(0, Math.min(1000000, weight));
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 设为精选（默认权重 500）。
+     */
+    public void feature() {
+        feature(500);
     }
 
     /**
@@ -367,6 +381,7 @@ public class Article {
     public void unfeature() {
         this.featured = false;
         this.featuredAt = null;
+        this.featureWeight = 0;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -567,6 +582,15 @@ public class Article {
      */
     public LocalDateTime getFeaturedAt() {
         return featuredAt;
+    }
+
+    /**
+     * 获取精选权重。
+     *
+     * @return 精选权重 0-1000000
+     */
+    public int getFeatureWeight() {
+        return featureWeight;
     }
 
     /**

@@ -61,6 +61,7 @@ public class TopicAppService {
 
     /**
      * 查询热门专题（按排序权重取前 N 条已发布专题）。
+     * 用于知识地图模块：体现系统学习路径，权重稳定。
      *
      * @param limit 返回数量
      * @return 热门专题列表
@@ -74,6 +75,23 @@ public class TopicAppService {
         return items;
     }
 
+    /**
+     * 查询近期活跃热门专题（按近 N 天内文章互动热度分排序）。
+     * 用于首页侧边栏热门专题模块：体现社区当前热点，动态变化。
+     * 热度分 = view_count + like_count*3 + comment_count*5。
+     *
+     * @param withinDays 统计天数
+     * @param limit      返回数量
+     * @return 按热度降序的专题列表
+     */
+    public List<TopicDTO> listHotTopicsByActivity(int withinDays, int limit) {
+        List<Topic> topics = topicRepository.findHotByActivity(withinDays, limit);
+        List<TopicDTO> items = new ArrayList<>(topics.size());
+        for (Topic topic : topics) {
+            items.add(toDTO(topic));
+        }
+        return items;
+    }
 
     /**
      * 分页查询专题。

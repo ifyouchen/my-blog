@@ -247,4 +247,33 @@
         SET deleted_at = NOW(), updated_at = NOW(), version = version + 1
         WHERE id = #{id} AND deleted_at IS NULL
     </update>
+
+    <!--
+        按近期活跃度查询热门专题。
+        热度分 = SUM(view_count + like_count*3 + comment_count*5) of articles published within withinDays days.
+        没有近期文章的专题热度分视为 0，仍可出现在结果中（保底兜底），但排在有热度的后面。
+        最终兜底排序：recommend_weight DESC, sort_order ASC。
+    -->
+    <select id="selectHotByActivity" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>,
+            COALESCE(hot.hot_score, 0) AS _hot_score
+        FROM blog_topic t
+        LEFT JOIN (
+            SELECT
+                ta.topic_id,
+                SUM(a.view_count + a.like_count * 3 + a.comment_count * 5) AS hot_score
+            FROM blog_topic_article ta
+            INNER JOIN blog_article a ON a.id = ta.article_id
+            WHERE ta.deleted_at IS NULL
+              AND a.deleted_at IS NULL
+              AND a.status = 'PUBLISHED'
+              AND a.published_at >= DATE_SUB(NOW(), INTERVAL #{withinDays} DAY)
+            GROUP BY ta.topic_id
+        ) hot ON hot.topic_id = t.id
+        WHERE t.deleted_at IS NULL
+          AND t.status = 'PUBLISHED'
+        ORDER BY COALESCE(hot.hot_score, 0) DESC, t.recommend_weight DESC, t.sort_order ASC, t.id DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

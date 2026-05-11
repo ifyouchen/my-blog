@@ -21,6 +21,7 @@ public class ArticleDO {
     private Boolean warnFlag;
     private Boolean featured;
     private LocalDateTime featuredAt;
+    private Integer featureWeight;
     private String slug;
     private String seoTitle;
     private String seoDescription;
@@ -213,6 +214,14 @@ public class ArticleDO {
 
     public void setFeaturedAt(LocalDateTime featuredAt) {
         this.featuredAt = featuredAt;
+    }
+
+    public Integer getFeatureWeight() {
+        return featureWeight;
+    }
+
+    public void setFeatureWeight(Integer featureWeight) {
+        this.featureWeight = featureWeight;
     }
 
     public String getSlug() {

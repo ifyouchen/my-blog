@@ -100,6 +100,7 @@ CREATE TABLE `blog_article` (
     `offline_reason`  varchar(500)    NULL DEFAULT NULL COMMENT '下架原因',
     `featured`        tinyint(1)      NOT NULL DEFAULT 0 COMMENT '是否精选：1-精选 0-非精选',
     `featured_at`     datetime        NULL DEFAULT NULL COMMENT '精选时间',
+    `feature_weight`  int unsigned     NOT NULL DEFAULT 0 COMMENT '精选权重 0-1000000，值越大在精选列表和推荐中排越靠前',
     `slug`            varchar(255)    NULL DEFAULT NULL COMMENT 'URL 友好标识，唯一索引',
     `seo_title`       varchar(255)    NULL DEFAULT NULL COMMENT 'SEO 标题',
     `seo_description` varchar(500)    NULL DEFAULT NULL COMMENT 'SEO 描述',

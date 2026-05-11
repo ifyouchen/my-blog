@@ -145,6 +145,18 @@ public class MyBatisTopicRepository implements TopicRepository {
         topicMapper.softDelete(topicId.getValue());
     }
 
+    @Override
+    public List<Topic> findHotByActivity(int withinDays, int limit) {
+        int days = Math.max(withinDays, 1);
+        int lim = Math.max(limit, 1);
+        List<TopicDO> list = topicMapper.selectHotByActivity(days, lim);
+        List<Topic> topics = new ArrayList<>(list.size());
+        for (TopicDO d : list) {
+            topics.add(toDomain(d));
+        }
+        return topics;
+    }
+
     private Topic toDomain(TopicDO topicDO) {
         return TopicPersistenceConverter.toDomain(topicDO);
     }

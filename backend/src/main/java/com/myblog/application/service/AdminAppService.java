@@ -890,14 +890,18 @@ public class AdminAppService {
     }
 
     /**
-     * 设为精选。
+     * 设为精选（带权重）。
+     *
+     * @param articleId 文章 ID
+     * @param weight    精选权重 0-1000000，值越大排序越靠前，null 时取默认值 500
      */
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> featureArticle(Long articleId) {
+    public Map<String, Object> featureArticle(Long articleId, Integer weight) {
         long _start = System.currentTimeMillis();
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
-        article.feature();
+        int effectiveWeight = (weight == null) ? 500 : weight;
+        article.feature(effectiveWeight);
         articleRepository.save(article);
         homePortalCacheInvalidator.evictFeaturedAndBootstrap();
 
@@ -905,11 +909,12 @@ public class AdminAppService {
         result.put("id", article.getId().getValue());
         result.put("title", article.getTitle());
         result.put("featured", article.isFeatured());
+        result.put("featureWeight", article.getFeatureWeight());
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "管理员 设为精选",
             BizLogHelper.trace(),
-            BizLogHelper.params("articleId", articleId, "title", article.getTitle()),
-            BizLogHelper.result("featured=true"),
+            BizLogHelper.params("articleId", articleId, "title", article.getTitle(), "weight", effectiveWeight),
+            BizLogHelper.result("featured=true, featureWeight=" + article.getFeatureWeight()),
             BizLogHelper.elapsed(_start));
         return result;
     }

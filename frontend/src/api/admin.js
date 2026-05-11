@@ -266,9 +266,10 @@ export const removeAdminTopicArticleApi = async (topicId, articleId) => {
 
 // ===== 精选文章 =====
 
-export const featureAdminArticleApi = async (articleId) => {
+export const featureAdminArticleApi = async (articleId, weight) => {
     return await request(`/admin/articles/${articleId}/feature`, {
-        method: 'POST'
+        method: 'POST',
+        body: { weight: weight ?? 500 }
     });
 };
 

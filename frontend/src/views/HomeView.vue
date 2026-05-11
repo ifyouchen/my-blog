@@ -10,13 +10,13 @@ import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {
-    ARTICLE_SORT_FEATURED,
-    ARTICLE_SORT_HOT,
-    ARTICLE_SORT_ITEMS,
-    ARTICLE_SORT_LATEST,
-    ARTICLE_SORT_RECOMMEND,
-    isDefaultArticleSort,
-    normalizeArticleSort
+  ARTICLE_SORT_FEATURED,
+  ARTICLE_SORT_HOT,
+  ARTICLE_SORT_ITEMS,
+  ARTICLE_SORT_LATEST,
+  ARTICLE_SORT_RECOMMEND,
+  isDefaultArticleSort,
+  normalizeArticleSort
 } from '@/constants/articleSort';
 import HomePortalHero from '@/components/HomePortalHero.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
@@ -205,9 +205,21 @@ const feedTitle = computed(() => {
 const feedEyebrow = computed(() => activeCategory.value || '全部内容');
 const sidebarTopicItems = computed(() => sidebarTopics.value.slice(0, 5));
 const sidebarColumnItems = computed(() => sidebarColumns.value.slice(0, 4));
-const knowledgeTopicItems = computed(() =>
-    (learningTopics.value.length ? learningTopics.value : sidebarTopicItems.value).slice(0, 3)
-);
+// 知识地图专题独立于侧边栏热门专题，使用运营权重排序，不回退到热度列表
+const knowledgeTopicItems = computed(() => learningTopics.value.slice(0, 3));
+
+// 热门关键词去重：过滤掉已在热门标签中出现的词，避免两组 chip 显示重复内容
+const deduplicatedKeywords = computed(() => {
+    const tagNameSet = new Set(knowledgeTags.value.map(t => t.name.toLowerCase()));
+    return knowledgeKeywords.value.filter(k => !tagNameSet.has(k.toLowerCase()));
+});
+
+const DIFFICULTY_LABEL_MAP = {
+    BEGINNER: '入门',
+    INTERMEDIATE: '进阶',
+    ADVANCED: '深入'
+};
+const difficultyLabel = (difficulty) => DIFFICULTY_LABEL_MAP[difficulty] || '进阶';
 
 const switchFeedTab = async (tab) => {
     if (tab === feedTab.value) return;
@@ -501,7 +513,7 @@ onBeforeRouteLeave(() => {
             @article-click="(payload) => track('home_featured_article_clicked', payload)"
         />
         <section
-            v-if="knowledgeTopicItems.length || knowledgeTags.length || knowledgeKeywords.length"
+            v-if="knowledgeTopicItems.length || knowledgeTags.length || deduplicatedKeywords.length"
             class="knowledge-map-band"
             aria-label="知识地图"
         >
@@ -516,7 +528,7 @@ onBeforeRouteLeave(() => {
                     class="knowledge-topic-link"
                     :to="`/topics/${topic.id}`"
                 >
-                    <span>{{ topic.difficulty || 'INTERMEDIATE' }}</span>
+                    <span :class="`kt-diff difficulty-${(topic.difficulty || 'INTERMEDIATE').toLowerCase()}`">{{ difficultyLabel(topic.difficulty) }}</span>
                     <strong>{{ topic.title }}</strong>
                     <small>{{ topic.articleCount }} 篇文章</small>
                 </RouterLink>
@@ -530,9 +542,9 @@ onBeforeRouteLeave(() => {
                         {{ tag.name }}
                     </RouterLink>
                 </div>
-                <div v-if="knowledgeKeywords.length" class="knowledge-chip-group">
-                    <RouterLink
-                        v-for="keyword in knowledgeKeywords.slice(0, 8)"
+                <div v-if="deduplicatedKeywords.length" class="knowledge-chip-group">
+                <RouterLink
+                    v-for="keyword in deduplicatedKeywords.slice(0, 8)"
                         :key="`keyword-${keyword}`"
                         class="knowledge-chip hot"
                         :to="{ path: '/search', query: { keyword } }"
@@ -702,6 +714,33 @@ onBeforeRouteLeave(() => {
 .knowledge-topic-link small {
     color: var(--muted);
     font-size: 12px;
+}
+
+/* 难度标签颜色 */
+.kt-diff {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.kt-diff.difficulty-beginner {
+    color: #166534;
+    background: #dcfce7;
+}
+
+.kt-diff.difficulty-intermediate {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.kt-diff.difficulty-advanced {
+    color: #991b1b;
+    background: #fee2e2;
 }
 
 .knowledge-topic-link strong {

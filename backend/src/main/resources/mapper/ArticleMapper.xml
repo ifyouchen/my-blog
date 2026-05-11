@@ -15,6 +15,7 @@
         <result column="warn_flag" property="warnFlag"/>
         <result column="featured" property="featured"/>
         <result column="featured_at" property="featuredAt"/>
+        <result column="feature_weight" property="featureWeight"/>
         <result column="slug" property="slug"/>
         <result column="seo_title" property="seoTitle"/>
         <result column="seo_description" property="seoDescription"/>
@@ -33,21 +34,21 @@
 
     <sql id="Base_Column_List">
         id, author_id, title, summary, content, cover_url, category, offline_reason, warn_flag, featured, featured_at,
-        slug, seo_title, seo_description, status, scheduled_publish_at,
+        feature_weight, slug, seo_title, seo_description, status, scheduled_publish_at,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Column_List">
         id, author_id, title, summary, cover_url, category, offline_reason, warn_flag, featured, featured_at,
-        slug, seo_title, seo_description, status, scheduled_publish_at,
+        feature_weight, slug, seo_title, seo_description, status, scheduled_publish_at,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Alias_Column_List">
         a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.offline_reason,
-        a.warn_flag, a.featured, a.featured_at, a.slug, a.seo_title, a.seo_description, a.status,
+        a.warn_flag, a.featured, a.featured_at, a.feature_weight, a.slug, a.seo_title, a.seo_description, a.status,
         a.scheduled_publish_at,
         a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
         a.created_at, a.updated_at, a.deleted_at, a.version
@@ -164,6 +165,7 @@
             <when test="sort == 'recommend'">
                 ORDER BY (
                     CASE WHEN featured = 1 THEN 80 ELSE 0 END
+                    + COALESCE(feature_weight, 0)
                     + LOG10(COALESCE(view_count, 0) + 1) * 12
                     + COALESCE(like_count, 0) * 3
                     + COALESCE(comment_count, 0) * 2
@@ -186,7 +188,7 @@
                         WHEN published_at &gt;= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 8
                         ELSE 0
                     END
-                ) DESC, featured_at DESC, published_at DESC, id DESC
+                ) DESC, feature_weight DESC, featured_at DESC, published_at DESC, id DESC
             </when>
             <when test="sort == 'hot'">
                 ORDER BY view_count DESC, published_at DESC, id DESC
@@ -540,6 +542,7 @@
             status = #{status},
             featured = #{featured},
             featured_at = #{featuredAt},
+            feature_weight = #{featureWeight},
             slug = #{slug},
             seo_title = #{seoTitle},
             seo_description = #{seoDescription},
@@ -560,12 +563,12 @@
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article (
             id, author_id, title, summary, content, cover_url, category, offline_reason, warn_flag, status,
-            featured, featured_at, slug, seo_title, seo_description, scheduled_publish_at,
+            featured, featured_at, feature_weight, slug, seo_title, seo_description, scheduled_publish_at,
             view_count, like_count, favorite_count, comment_count, published_at,
             created_at, updated_at
         ) VALUES (
             #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{offlineReason}, #{warnFlag}, #{status},
-            #{featured}, #{featuredAt}, #{slug}, #{seoTitle}, #{seoDescription}, #{scheduledPublishAt},
+            #{featured}, #{featuredAt}, #{featureWeight}, #{slug}, #{seoTitle}, #{seoDescription}, #{scheduledPublishAt},
             #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
             #{createdAt}, #{updatedAt}
         )
@@ -580,6 +583,7 @@
             status = #{status},
             featured = #{featured},
             featured_at = #{featuredAt},
+            feature_weight = #{featureWeight},
             slug = #{slug},
             seo_title = #{seoTitle},
             seo_description = #{seoDescription},
@@ -724,6 +728,7 @@
             <when test="sort == 'recommend'">
                 ORDER BY (
                     CASE WHEN a.featured = 1 THEN 80 ELSE 0 END
+                    + COALESCE(a.feature_weight, 0)
                     + LOG10(COALESCE(a.view_count, 0) + 1) * 12
                     + COALESCE(a.like_count, 0) * 3
                     + COALESCE(a.comment_count, 0) * 2
@@ -746,7 +751,7 @@
                         WHEN a.published_at &gt;= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 8
                         ELSE 0
                     END
-                ) DESC, a.featured_at DESC, a.published_at DESC, a.id DESC
+                ) DESC, a.feature_weight DESC, a.featured_at DESC, a.published_at DESC, a.id DESC
             </when>
             <when test="sort == 'hot'">
                 ORDER BY a.view_count DESC, a.published_at DESC, a.id DESC
@@ -1101,7 +1106,7 @@
         WHERE a.featured = 1
         AND a.status = 'PUBLISHED'
         AND a.deleted_at IS NULL
-        ORDER BY a.featured_at DESC, a.published_at DESC, a.id DESC
+        ORDER BY a.feature_weight DESC, a.featured_at DESC, a.published_at DESC, a.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 

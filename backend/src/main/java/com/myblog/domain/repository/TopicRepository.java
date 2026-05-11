@@ -46,4 +46,13 @@ public interface TopicRepository {
 
     /** 后台管理：软删除专题 */
     void softDelete(TopicId topicId);
+
+    /**
+     * 按近期活跃度查询热门专题：统计 N 天内专题下文章的互动热度，取前 limit 条。
+     *
+     * @param withinDays 统计天数（如 7）
+     * @param limit      返回数量
+     * @return 按热度降序的专题列表
+     */
+    List<Topic> findHotByActivity(int withinDays, int limit);
 }

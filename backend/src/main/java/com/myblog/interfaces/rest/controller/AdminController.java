@@ -775,12 +775,17 @@ public class AdminController {
      */
     @PostMapping("/articles/{id}/feature")
     public Result<Map<String, Object>> featureArticle(@PathVariable Long id,
+                                                      @RequestBody(required = false) Map<String, Object> body,
                                                       @Nullable HttpServletRequest httpServletRequest) {
         ensureAdmin();
-        Result<Map<String, Object>> result = Result.success(adminAppService.featureArticle(id));
+        Integer weight = null;
+        if (body != null && body.get("weight") instanceof Number) {
+            weight = ((Number) body.get("weight")).intValue();
+        }
+        Result<Map<String, Object>> result = Result.success(adminAppService.featureArticle(id, weight));
         adminLogAppService.recordOperation(buildLogCommand(
             "FEATURE_ARTICLE", "ARTICLE", id,
-            "精选文章 " + id, null, result.getData(), httpServletRequest));
+            "精选文章 " + id + " weight=" + weight, null, result.getData(), httpServletRequest));
         return result;
     }
 

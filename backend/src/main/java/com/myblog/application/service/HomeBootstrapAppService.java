@@ -86,7 +86,12 @@ public class HomeBootstrapAppService {
         CompletableFuture<List<ArticleDTO>> featuredFuture =
             CompletableFuture.supplyAsync(() -> recommendationAppService.listFeaturedArticles(1, 5), taskExecutor);
 
+        // 热门专题：按近7天文章互动热度动态排序，用于侧边栏"本周热议"
         CompletableFuture<List<TopicDTO>> hotTopicsFuture =
+            CompletableFuture.supplyAsync(() -> topicAppService.listHotTopicsByActivity(7, 6), taskExecutor);
+
+        // 知识地图专题：按运营权重静态排序，用于学习路径入口
+        CompletableFuture<List<TopicDTO>> learningTopicsFuture =
             CompletableFuture.supplyAsync(() -> topicAppService.listHotTopics(6), taskExecutor);
 
         CompletableFuture<List<TagDTO>> hotTagsFuture =
@@ -97,7 +102,6 @@ public class HomeBootstrapAppService {
 
         // 等待所有完成并组装结果
         List<ArticleDTO> featuredArticles = featuredFuture.join();
-        List<TopicDTO> hotTopics = hotTopicsFuture.join();
         HomeBootstrapDTO bootstrap = new HomeBootstrapDTO();
         bootstrap.setStats(statsFuture.join());
         bootstrap.setCategories(categoriesFuture.join());
@@ -105,8 +109,8 @@ public class HomeBootstrapAppService {
         bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
         bootstrap.setFeaturedArticles(featuredArticles);
         bootstrap.setTodayFocus(featuredArticles.isEmpty() ? null : featuredArticles.get(0));
-        bootstrap.setHotTopics(hotTopics);
-        bootstrap.setLearningTopics(hotTopics);
+        bootstrap.setHotTopics(hotTopicsFuture.join());
+        bootstrap.setLearningTopics(learningTopicsFuture.join());
         bootstrap.setHotTags(hotTagsFuture.join());
         bootstrap.setHotKeywords(hotKeywordsFuture.join());
         return bootstrap;

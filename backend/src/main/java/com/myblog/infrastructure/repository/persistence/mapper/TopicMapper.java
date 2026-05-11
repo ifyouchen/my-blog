@@ -60,4 +60,10 @@ public interface TopicMapper {
 
     /** 后台管理：软删除专题 */
     int softDelete(@Param("id") Long id);
+
+    /**
+     * 按近期活跃度查询热门专题。
+     * 统计指定天数内专题下文章的互动热度分（view_count + like_count*3 + comment_count*5），取前 limit 条。
+     */
+    List<TopicDO> selectHotByActivity(@Param("withinDays") int withinDays, @Param("limit") int limit);
 }

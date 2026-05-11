@@ -14,9 +14,17 @@ import {
   updateAdminArticleStatusApi
 } from '@/api/admin';
 import {getArticleApi} from '@/api/articles';
-import {createPagedState, formatAdminDateTime, readPositiveInt, readQueryText, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {
+  createPagedState,
+  formatAdminDateTime,
+  readPositiveInt,
+  readQueryText,
+  resolveAdminOverflowPage,
+  syncAdminQuery,
+  useAdminRefresh
+} from '@/views/admin/adminShared';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
-import { useToast } from '@/composables/useToast';
+import {useToast} from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
@@ -224,20 +232,60 @@ const deleteArticle = async (article) => {
     });
 };
 
-const toggleFeatured = async (article) => {
-    const newFeatured = !article.featured;
+// 精选权重弹窗
+const featureDialog = reactive({
+    visible: false,
+    article: null,
+    weight: 500
+});
+
+const openFeatureDialog = (article) => {
+    featureDialog.article = article;
+    featureDialog.weight = article.featureWeight ?? 500;
+    featureDialog.visible = true;
+};
+
+const closeFeatureDialog = () => {
+    featureDialog.visible = false;
+    featureDialog.article = null;
+};
+
+const confirmFeature = async () => {
+    const article = featureDialog.article;
+    if (!article) return;
+    const weight = Math.max(0, Math.min(1000000, Number(featureDialog.weight) || 500));
     state.actionLoadingId = article.id;
+    featureDialog.visible = false;
     try {
-        if (newFeatured) {
-            await featureAdminArticleApi(article.id);
-        } else {
-            await unfeatureAdminArticleApi(article.id);
-        }
-        article.featured = newFeatured;
+        const res = await featureAdminArticleApi(article.id, weight);
+        article.featured = true;
+        article.featureWeight = res?.featureWeight ?? weight;
+        toast.success(`已精选，权重 ${article.featureWeight}`);
     } catch (error) {
         toast.error(error.message || '精选操作失败');
     } finally {
         state.actionLoadingId = null;
+        featureDialog.article = null;
+    }
+};
+
+const toggleFeatured = async (article) => {
+    if (article.featured) {
+        // 取消精选无需权重，直接执行
+        state.actionLoadingId = article.id;
+        try {
+            await unfeatureAdminArticleApi(article.id);
+            article.featured = false;
+            article.featureWeight = 0;
+            toast.success('已取消精选');
+        } catch (error) {
+            toast.error(error.message || '取消精选失败');
+        } finally {
+            state.actionLoadingId = null;
+        }
+    } else {
+        // 设为精选：弹出权重输入框
+        openFeatureDialog(article);
     }
 };
 
@@ -364,7 +412,9 @@ watch(
                                     <span v-if="article.warnFlag" class="status-pill review-pending" title="含敏感词，待审核">待审核</span>
                                 </td>
                                 <td>
-                                    <span v-if="article.featured" class="status-pill">精选</span>
+                                    <span v-if="article.featured" class="status-pill" :title="`精选权重 ${article.featureWeight ?? 0}`">
+                                        精选 · {{ article.featureWeight ?? 0 }}
+                                    </span>
                                     <span v-else class="admin-subtext">—</span>
                                 </td>
                                 <td>
@@ -430,6 +480,36 @@ watch(
             @close="closeConfirmDialog"
             @confirm="executeConfirmDialog"
         />
+
+        <!-- 精选权重设置弹窗 -->
+        <Teleport to="body">
+            <div v-if="featureDialog.visible" class="feature-dialog-mask" @click.self="closeFeatureDialog">
+                <div class="feature-dialog">
+                    <p class="feature-dialog-title">设置精选权重</p>
+                    <p class="feature-dialog-desc">权重越高，文章在精选列表和推荐流中排越靠前（0–1000000）</p>
+                    <div class="feature-dialog-field">
+                        <label for="feature-weight-input">权重</label>
+                <input
+                    id="feature-weight-input"
+                    v-model.number="featureDialog.weight"
+                    type="number"
+                    min="0"
+                    max="1000000"
+                    step="1000"
+                    autofocus
+                    @input="featureDialog.weight = Math.max(0, Math.min(1000000, Number($event.target.value) || 0))"
+                    @keydown.enter="confirmFeature"
+                    @keydown.esc="closeFeatureDialog"
+                >
+                        <span class="feature-dialog-hint">0 最低 · 500 默认 · 1000000 最高</span>
+                    </div>
+                    <div class="feature-dialog-actions">
+                        <button type="button" class="feature-dialog-cancel" @click="closeFeatureDialog">取消</button>
+                        <button type="button" class="feature-dialog-confirm" @click="confirmFeature">确认精选</button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
         <!-- 快速预览抽屉 -->
         <Teleport to="body">
             <div v-if="previewId" class="preview-overlay" @click.self="closePreview">
@@ -676,5 +756,112 @@ watch(
 
 .preview-open-link:hover {
     text-decoration: underline;
+}
+
+/* 精选权重弹窗 */
+.feature-dialog-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.feature-dialog {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 320px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.feature-dialog-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-strong);
+    margin: 0;
+}
+
+.feature-dialog-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+}
+
+.feature-dialog-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feature-dialog-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.feature-dialog-field input[type="number"] {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-strong);
+    background: var(--surface);
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.feature-dialog-field input[type="number"]:focus {
+    border-color: var(--brand);
+}
+
+.feature-dialog-hint {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.feature-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.feature-dialog-cancel {
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.feature-dialog-cancel:hover {
+    background: var(--surface-soft);
+}
+
+.feature-dialog-confirm {
+    padding: 7px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.feature-dialog-confirm:hover {
+    opacity: 0.88;
 }
 </style>
