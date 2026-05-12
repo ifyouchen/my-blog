@@ -21,6 +21,10 @@ public interface ColumnRepository {
 
     long countPublished();
 
+    List<Column> findPublishedByAuthorId(Long authorId, int page, int pageSize);
+
+    long countPublishedByAuthorId(Long authorId);
+
     List<Column> findRecommended(int limit);
 
     Column save(Column column);

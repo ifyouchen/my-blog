@@ -20,6 +20,12 @@ public interface ColumnMapper {
 
     long countPublished();
 
+    List<ColumnDO> selectPublishedByAuthorId(@Param("authorId") Long authorId,
+                                             @Param("offset") int offset,
+                                             @Param("pageSize") int pageSize);
+
+    long countPublishedByAuthorId(@Param("authorId") Long authorId);
+
     List<ColumnDO> selectRecommended(@Param("limit") int limit);
 
     Long selectNextId();

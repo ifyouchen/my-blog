@@ -38,8 +38,23 @@ public class TopicController {
 
     @GetMapping
     public Result<PageResult<TopicResponse>> pageTopics(@RequestParam(defaultValue = "1") int page,
-                                                         @RequestParam(defaultValue = "10") int pageSize) {
-        PageResult<TopicDTO> pageResult = topicAppService.pageTopics(page, pageSize);
+                                                         @RequestParam(defaultValue = "10") int pageSize,
+                                                         @RequestParam(required = false) String keyword,
+                                                         @RequestParam(required = false) String difficulty) {
+        PageResult<TopicDTO> pageResult;
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasDifficulty = difficulty != null && !difficulty.trim().isEmpty();
+        if (hasKeyword || hasDifficulty) {
+            pageResult = topicAppService.searchTopics(
+                keyword,
+                difficulty,
+                page,
+                pageSize,
+                AuthContext.getCurrentUserId()
+            );
+        } else {
+            pageResult = topicAppService.pageTopics(page, pageSize);
+        }
         List<TopicResponse> items = new ArrayList<>(pageResult.getItems().size());
         for (TopicDTO item : pageResult.getItems()) {
             items.add(toResponse(item));

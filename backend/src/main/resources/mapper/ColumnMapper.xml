@@ -57,6 +57,24 @@
         AND status = 'PUBLISHED'
     </select>
 
+    <select id="selectPublishedByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_column c
+        WHERE c.deleted_at IS NULL
+        AND c.status = 'PUBLISHED'
+        AND c.author_id = #{authorId}
+        ORDER BY c.recommended DESC, c.recommend_weight DESC, c.sort_order ASC, c.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countPublishedByAuthorId" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_column c
+        WHERE c.deleted_at IS NULL
+        AND c.status = 'PUBLISHED'
+        AND c.author_id = #{authorId}
+    </select>
+
     <select id="selectRecommended" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM blog_column c

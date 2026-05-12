@@ -54,6 +54,27 @@ public class MyBatisColumnRepository implements ColumnRepository {
     }
 
     @Override
+    public List<Column> findPublishedByAuthorId(Long authorId, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        List<ColumnDO> list = columnMapper.selectPublishedByAuthorId(
+            authorId,
+            (currentPage - 1) * currentPageSize,
+            currentPageSize
+        );
+        List<Column> columns = new ArrayList<Column>(list.size());
+        for (ColumnDO columnDO : list) {
+            columns.add(toDomain(columnDO));
+        }
+        return columns;
+    }
+
+    @Override
+    public long countPublishedByAuthorId(Long authorId) {
+        return columnMapper.countPublishedByAuthorId(authorId);
+    }
+
+    @Override
     public List<Column> findRecommended(int limit) {
         List<ColumnDO> columnDOList = columnMapper.selectRecommended(limit);
         List<Column> columns = new ArrayList<Column>(columnDOList.size());

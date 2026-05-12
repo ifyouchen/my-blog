@@ -42,8 +42,14 @@ public class ColumnController {
 
     @GetMapping
     public Result<PageResult<ColumnResponse>> pageColumns(@RequestParam(defaultValue = "1") int page,
-                                                          @RequestParam(defaultValue = "9") int pageSize) {
-        PageResult<ColumnDTO> pageResult = columnAppService.pageColumns(page, pageSize, AuthContext.getCurrentUserId());
+                                                          @RequestParam(defaultValue = "9") int pageSize,
+                                                          @RequestParam(required = false) String keyword) {
+        PageResult<ColumnDTO> pageResult;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            pageResult = columnAppService.searchColumns(keyword, page, pageSize, AuthContext.getCurrentUserId());
+        } else {
+            pageResult = columnAppService.pageColumns(page, pageSize, AuthContext.getCurrentUserId());
+        }
         List<ColumnResponse> items = new ArrayList<ColumnResponse>(pageResult.getItems().size());
         for (ColumnDTO item : pageResult.getItems()) {
             items.add(restDtoMapper.toPublicResponse(item));
@@ -63,6 +69,28 @@ public class ColumnController {
             items.add(restDtoMapper.toPublicResponse(item));
         }
         return Result.success(items);
+    }
+
+    @GetMapping("/users/{authorId}")
+    public Result<PageResult<ColumnResponse>> pageAuthorColumns(@PathVariable Long authorId,
+                                                                @RequestParam(defaultValue = "1") int page,
+                                                                @RequestParam(defaultValue = "12") int pageSize) {
+        PageResult<ColumnDTO> pageResult = columnAppService.pagePublishedColumnsByAuthor(
+            authorId,
+            page,
+            pageSize,
+            AuthContext.getCurrentUserId()
+        );
+        List<ColumnResponse> items = new ArrayList<ColumnResponse>(pageResult.getItems().size());
+        for (ColumnDTO item : pageResult.getItems()) {
+            items.add(restDtoMapper.toPublicResponse(item));
+        }
+        return Result.success(new PageResult<ColumnResponse>(
+            items,
+            pageResult.getPage(),
+            pageResult.getPageSize(),
+            pageResult.getTotal()
+        ));
     }
 
     @GetMapping("/{id}")
