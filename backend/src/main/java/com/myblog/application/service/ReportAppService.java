@@ -227,6 +227,12 @@ public class ReportAppService {
         return result;
     }
 
+    /**
+     * 检查举报请求频率，超过时间窗口内上限则抛出异常。
+     *
+     * @param reporterUserId 举报者用户 ID
+     * @throws ApplicationException 举报过于频繁时抛出
+     */
     private void ensureCreateRate(Long reporterUserId) {
         AtomicInteger counter = reportCreateRateCache.get(reporterUserId, key -> new AtomicInteger(0));
         if (counter.incrementAndGet() > MAX_REPORTS_PER_WINDOW) {
@@ -234,6 +240,14 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 校验举报目标的合法性，验证目标存在且可被举报。
+     *
+     * @param targetType     举报目标类型
+     * @param targetId       目标 ID
+     * @param reporterUserId 举报者用户 ID
+     * @throws ApplicationException 目标不存在或不允许举报自己时抛出
+     */
     private void ensureTargetCanBeReported(ReportTargetType targetType, Long targetId, Long reporterUserId) {
         if (targetId == null || targetId.longValue() <= 0L) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "举报目标不能为空");
@@ -258,12 +272,25 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 校验举报的目标类型是否与期望一致。
+     *
+     * @param report       举报领域对象
+     * @param expectedType 期望目标类型
+     * @throws ApplicationException 类型不匹配时抛出
+     */
     private void ensureTargetType(Report report, ReportTargetType expectedType) {
         if (!expectedType.equals(report.getTargetType())) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "处理动作与举报目标不匹配");
         }
     }
 
+    /**
+     * 构建举报相关用户映射（举报者和处理人），避免 N+1 查询。
+     *
+     * @param reports 举报列表
+     * @return 用户 ID 到用户领域对象的映射
+     */
     private Map<Long, User> buildUserMap(List<Report> reports) {
         Set<Long> userIds = new HashSet<Long>();
         for (Report report : reports) {
@@ -283,6 +310,14 @@ public class ReportAppService {
         return userMap;
     }
 
+    /**
+     * 将举报领域对象转换为 DTO。
+     *
+     * @param report               举报领域对象
+     * @param userMap              用户映射
+     * @param includeTargetSummary 是否包含目标摘要信息
+     * @return 举报 DTO
+     */
     private ReportDTO toDTO(Report report, Map<Long, User> userMap, boolean includeTargetSummary) {
         ReportDTO dto = new ReportDTO();
         dto.setId(report.getId().getValue());
@@ -304,6 +339,12 @@ public class ReportAppService {
         return dto;
     }
 
+    /**
+     * 将举报者和处理人的用户信息填充到 DTO。
+     *
+     * @param dto     举报 DTO
+     * @param userMap 用户映射
+     */
     private void populateUser(ReportDTO dto, Map<Long, User> userMap) {
         User reporter = userMap.get(dto.getReporterUserId());
         if (reporter != null) {
@@ -320,6 +361,12 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 构建举报目标的摘要信息（文章、评论或用户）。
+     *
+     * @param report 举报领域对象
+     * @return 目标摘要 Map，包含类型、ID、可用状态及关键内容
+     */
     private Map<String, Object> buildTargetSummary(Report report) {
         Map<String, Object> summary = new LinkedHashMap<String, Object>();
         summary.put("type", report.getTargetType().name());
@@ -362,6 +409,13 @@ public class ReportAppService {
         return summary;
     }
 
+    /**
+     * 解析举报目标类型字符串为枚举，失败时抛出参数异常。
+     *
+     * @param value 目标类型字符串
+     * @return 举报目标类型枚举
+     * @throws ApplicationException 字符串为空或不支持时抛出
+     */
     private ReportTargetType parseTargetType(String value) {
         try {
             return ReportTargetType.valueOf(normalizeRequired(value, "举报目标类型不能为空"));
@@ -370,6 +424,13 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 解析举报原因类型字符串为枚举，失败时抛出参数异常。
+     *
+     * @param value 原因类型字符串
+     * @return 举报原因类型枚举
+     * @throws ApplicationException 字符串为空或不支持时抛出
+     */
     private ReportReasonType parseReasonType(String value) {
         try {
             return ReportReasonType.valueOf(normalizeRequired(value, "举报原因不能为空"));
@@ -378,6 +439,13 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 解析举报处理动作字符串为枚举，失败时抛出参数异常。
+     *
+     * @param value 处理动作字符串
+     * @return 举报处理动作枚举
+     * @throws ApplicationException 字符串为空或不支持时抛出
+     */
     private ReportResolveAction parseResolveAction(String value) {
         try {
             return ReportResolveAction.valueOf(normalizeRequired(value, "处理动作不能为空"));
@@ -386,6 +454,13 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 解析可空的举报状态字符串为枚举。
+     *
+     * @param value 状态字符串，空时返回 null
+     * @return 举报状态枚举，或 null
+     * @throws ApplicationException 字符串不支持时抛出
+     */
     private ReportStatus parseNullableStatus(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -397,6 +472,12 @@ public class ReportAppService {
         }
     }
 
+    /**
+     * 解析可空的举报目标类型字符串为枚举。
+     *
+     * @param value 目标类型字符串，空时返回 null
+     * @return 举报目标类型枚举，或 null
+     */
     private ReportTargetType parseNullableTargetType(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -404,6 +485,12 @@ public class ReportAppService {
         return parseTargetType(value);
     }
 
+    /**
+     * 解析可空的举报原因类型字符串为枚举。
+     *
+     * @param value 原因类型字符串，空时返回 null
+     * @return 举报原因类型枚举，或 null
+     */
     private ReportReasonType parseNullableReasonType(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -411,6 +498,14 @@ public class ReportAppService {
         return parseReasonType(value);
     }
 
+    /**
+     * 规范化必填字符串，为空时抛出参数异常。
+     *
+     * @param value   原始字符串
+     * @param message 为空时的错误信息
+     * @return 去除首尾空白后的字符串
+     * @throws ApplicationException 字符串为空时抛出
+     */
     private String normalizeRequired(String value, String message) {
         if (!StringUtils.hasText(value)) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, message);

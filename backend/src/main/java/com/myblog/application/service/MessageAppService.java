@@ -3,7 +3,6 @@ package com.myblog.application.service;
 import com.myblog.application.assembler.UserAssembler;
 import com.myblog.application.dto.ConversationDTO;
 import com.myblog.application.dto.MessageDTO;
-import com.myblog.application.dto.UserDTO;
 import com.myblog.domain.model.aggregate.Conversation;
 import com.myblog.domain.model.aggregate.Message;
 import com.myblog.domain.model.aggregate.User;
@@ -20,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -200,6 +198,12 @@ public class MessageAppService {
         return toMessageDTO(message);
     }
 
+    /**
+     * 规范化消息类型，无效时抛出异常。
+     *
+     * @param type 原始消息类型字符串
+     * @return 规范化后的消息类型
+     */
     private String normalizeMessageType(String type) {
         if (type == null || type.trim().isEmpty()) {
             return MESSAGE_TYPE_TEXT;
@@ -211,6 +215,13 @@ public class MessageAppService {
         throw new ApplicationException(ErrorCode.PARAM_ERROR, "不支持的消息类型");
     }
 
+    /**
+     * 规范化消息内容，图片消息校验 URL 前缀。
+     *
+     * @param content 原始消息内容
+     * @param type    消息类型
+     * @return 规范化后的消息内容
+     */
     private String normalizeMessageContent(String content, String type) {
         String normalized = content == null ? "" : content.trim();
         if (MESSAGE_TYPE_IMAGE.equals(type) && !normalized.startsWith(UPLOAD_FILE_URL_PREFIX)) {
@@ -258,6 +269,13 @@ public class MessageAppService {
         return messageRepository.countTotalUnread(userId);
     }
 
+    /**
+     * 将会话领域对象转换为 DTO，填充对方用户信息和未读数。
+     *
+     * @param conversation  会话领域对象
+     * @param currentUserId 当前用户 ID
+     * @return 会话 DTO
+     */
     private ConversationDTO toConversationDTO(Conversation conversation, Long currentUserId) {
         Long otherId = conversation.getOtherParticipantId(currentUserId);
         User otherUser = userRepository.findById(new com.myblog.domain.model.valueobject.UserId(otherId)).orElse(null);
@@ -276,6 +294,12 @@ public class MessageAppService {
         return dto;
     }
 
+    /**
+     * 将消息领域对象转换为 DTO，填充发送者信息。
+     *
+     * @param message 消息领域对象
+     * @return 消息 DTO
+     */
     private MessageDTO toMessageDTO(Message message) {
         User sender = userRepository.findById(
             new com.myblog.domain.model.valueobject.UserId(message.getSenderId())).orElse(null);

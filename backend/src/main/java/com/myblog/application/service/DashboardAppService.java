@@ -10,15 +10,13 @@ import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
-import com.myblog.shared.exception.ApplicationException;
-import com.myblog.shared.exception.BusinessException;
-import com.myblog.shared.exception.ErrorCode;
-import com.myblog.shared.util.BizLogHelper;
 import com.myblog.domain.repository.UserFollowRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
+import com.myblog.shared.exception.ApplicationException;
+import com.myblog.shared.exception.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -57,6 +55,12 @@ public class DashboardAppService {
         this.searchHistoryAppService = searchHistoryAppService;
     }
 
+    /**
+     * 获取创作者工作台概览数据（包含文章各状态数、历史累计指标及推荐行动）。
+     *
+     * @param userId 用户 ID
+     * @return 工作台概览 DTO
+     */
     public DashboardOverviewDTO getOverview(Long userId) {
         AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, null);
         Article latestArticle = articleRepository.findLatestByAuthorId(userId).orElse(null);
@@ -81,6 +85,13 @@ public class DashboardAppService {
         return overview;
     }
 
+    /**
+     * 获取创作者占位趋势数据（默认最近 7 天，支持8 天 / 30 天切换）。
+     *
+     * @param userId 用户 ID
+     * @param range  时间范围（7d / 30d）
+     * @return 趋势数据点列表
+     */
     public List<DashboardTrendPointDTO> getTrends(Long userId, String range) {
         int days = "30d".equalsIgnoreCase(range) ? 30 : 7;
         LocalDate endDate = LocalDate.now();
@@ -107,6 +118,13 @@ public class DashboardAppService {
         return points;
     }
 
+    /**
+     * 获取文章表现排行（Top 8）。
+     *
+     * @param userId 用户 ID
+     * @param sort   排序方式（view / like / favorite / comment / updated）
+     * @return 文章表现列表
+     */
     public List<DashboardArticlePerformanceDTO> getArticlePerformance(Long userId, String sort) {
         String normalizedSort = normalizePerformanceSort(sort);
         List<Article> articles = articleRepository.findAuthorPerformance(userId, normalizedSort, 8);
@@ -127,6 +145,12 @@ public class DashboardAppService {
         return result;
     }
 
+    /**
+     * 获取创作者最近互动（内容为最近 8 条通知）。
+     *
+     * @param userId 用户 ID
+     * @return 通知 DTO 列表
+     */
     public List<NotificationDTO> getInteractions(Long userId) {
         return notificationAppService.listRecent(userId, "all", 8);
     }
@@ -211,6 +235,12 @@ public class DashboardAppService {
         return stats;
     }
 
+    /**
+     * 规范化文章表现排序方式，无效时回退到阅读量排序。
+     *
+     * @param sort 原始排序字符串
+     * @return 规范化后的排序方式
+     */
     private String normalizePerformanceSort(String sort) {
         if ("like".equalsIgnoreCase(sort)) {
             return "like";
@@ -227,18 +257,41 @@ public class DashboardAppService {
         return "view";
     }
 
+    /**
+     * 格式化日期时间为字符串。
+     *
+     * @param dateTime 日期时间
+     * @return 格式化后的字符串，null 时返回 null
+     */
     private String formatDateTime(java.time.LocalDateTime dateTime) {
         return dateTime == null ? null : DATETIME_FORMATTER.format(dateTime);
     }
 
+    /**
+     * 安全转换为 int，null 时返回 0。
+     *
+     * @param value 数字值
+     * @return int 值
+     */
     private int safeInt(Number value) {
         return value == null ? 0 : value.intValue();
     }
 
+    /**
+     * 安全转换为 long，null 时返回 0L。
+     *
+     * @param value 数字值
+     * @return long 值
+     */
     private long safeLong(Number value) {
         return value == null ? 0L : value.longValue();
     }
 
+    /**
+     * 根据工作台数据填充推荐行动建议。
+     *
+     * @param overview 工作台概览 DTO
+     */
     private void populateRecommendedAction(DashboardOverviewDTO overview) {
         if (overview.getTotalCount() <= 0) {
             overview.setRecommendedActionType("CREATE");

@@ -33,6 +33,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
+/**
+ * 排行榜应用服务。
+ * <p>
+ * 提供文章排行榜和作者排行榜查询功能，支持按时间段（7天/30天/全部）和分类过滤。
+ * 内置 Caffeine 缓存，并通过定时任务每小时刷新缓存数据。
+ * </p>
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 @Service
 public class RankingAppService {
 
@@ -68,10 +78,24 @@ public class RankingAppService {
         this.authorRankingsCache = authorRankingsCache;
     }
 
+    /**
+     * 查询文章排行榜（使用全部时间段，无分类过滤）。
+     *
+     * @param limit 返回数量
+     * @return 文章排行榜列表
+     */
     public List<ArticleDTO> listArticleRankings(int limit) {
         return listArticleRankings(limit, PERIOD_ALL, null);
     }
 
+    /**
+     * 查询文章排行榜（支持时间段和分类过滤）。
+     *
+     * @param limit    返回数量
+     * @param period   时间段（7d / 30d / all）
+     * @param category 分类筛选（null 表示不限）
+     * @return 文章排行榜列表
+     */
     public List<ArticleDTO> listArticleRankings(int limit, String period, String category) {
         long _start = System.currentTimeMillis();
         int normalizedLimit = normalizeLimit(limit);
@@ -104,6 +128,14 @@ public class RankingAppService {
         return items;
     }
 
+    /**
+     * 从仓储层加载文章排行条目，若指定时段无数据则自动回退到全时段。
+     *
+     * @param normalizedLimit    已规范化的返回数量
+     * @param normalizedPeriod   已规范化的时间段
+     * @param normalizedCategory 已规范化的分类
+     * @return 文章 DTO 列表
+     */
     private List<ArticleDTO> loadArticleRankingItems(int normalizedLimit,
                                                      String normalizedPeriod,
                                                      String normalizedCategory) {
@@ -139,10 +171,26 @@ public class RankingAppService {
         return items;
     }
 
+    /**
+     * 查询作者排行榜（使用全部时间段，无分类过滤）。
+     *
+     * @param limit         返回数量
+     * @param currentUserId 当前用户 ID（用于填充关注状态，未登录时为 null）
+     * @return 作者排行榜列表
+     */
     public List<AuthorRankingDTO> listAuthorRankings(int limit, Long currentUserId) {
         return listAuthorRankings(limit, PERIOD_ALL, null, currentUserId);
     }
 
+    /**
+     * 查询作者排行榜（支持时间段和分类过滤）。
+     *
+     * @param limit         返回数量
+     * @param period        时间段（7d / 30d / all）
+     * @param category      分类筛选（null 表示不限）
+     * @param currentUserId 当前用户 ID（用于填充关注状态，未登录时为 null）
+     * @return 作者排行榜列表
+     */
     public List<AuthorRankingDTO> listAuthorRankings(int limit, String period, String category, Long currentUserId) {
         long _start = System.currentTimeMillis();
         int normalizedLimit = normalizeLimit(limit);
@@ -180,6 +228,14 @@ public class RankingAppService {
         return finalResult;
     }
 
+    /**
+     * 从仓储层加载作者排行基础条目（不含关注状态），若指定时段无数据则自动回退全时段。
+     *
+     * @param normalizedLimit    已规范化的返回数量
+     * @param normalizedPeriod   已规范化的时间段
+     * @param normalizedCategory 已规范化的分类
+     * @return 作者排行 DTO 列表
+     */
     private List<AuthorRankingDTO> loadBaseAuthorRankingItems(int normalizedLimit,
                                                               String normalizedPeriod,
                                                               String normalizedCategory) {
@@ -236,6 +292,9 @@ public class RankingAppService {
         return result;
     }
 
+    /**
+     * 定时刷新排行榜缓存（默认每小时一次）。
+     */
     @Scheduled(cron = "${my-blog.ranking.refresh-cron:0 0 * * * *}")
     public void refreshRankingCaches() {
         long _start = System.currentTimeMillis();
@@ -286,6 +345,12 @@ public class RankingAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 根据缓存中现有的 key 构建需要刷新的查询列表，同时补充默认查询项。
+     *
+     * @param cache 目标缓存
+     * @return 需要刷新的查询列表
+     */
     private List<RankingQuery> buildRefreshQueries(Cache<String, ?> cache) {
         Map<String, RankingQuery> queryMap = new LinkedHashMap<String, RankingQuery>();
         for (String period : Arrays.asList(PERIOD_7_DAYS, PERIOD_30_DAYS, PERIOD_ALL)) {
@@ -300,6 +365,14 @@ public class RankingAppService {
         return new ArrayList<RankingQuery>(queryMap.values());
     }
 
+    /**
+     * 将刷新查询项放入查询 Map（key 为缓存键，避免重复）。
+     *
+     * @param queryMap 查询 Map
+     * @param limit    返回数量
+     * @param period   时间段
+     * @param category 分类
+     */
     private void putRefreshQuery(Map<String, RankingQuery> queryMap, int limit, String period, String category) {
         RankingQuery query = new RankingQuery(
             normalizeLimit(limit),
@@ -309,6 +382,12 @@ public class RankingAppService {
         queryMap.put(query.cacheKey, query);
     }
 
+    /**
+     * 解析缓存 key 为 RankingQuery 对象，解析失败时返回 null。
+     *
+     * @param cacheKey 缓存键字符串
+     * @return 解析后的 RankingQuery，解析失败时返回 null
+     */
     private RankingQuery parseCacheKey(String cacheKey) {
         if (cacheKey == null) {
             return null;
@@ -331,6 +410,12 @@ public class RankingAppService {
         }
     }
 
+    /**
+     * 规范化返回数量，小于等于 0 时使用默认值，超过最大值时截断。
+     *
+     * @param limit 原始限制数量
+     * @return 规范化后的限制数量
+     */
     private int normalizeLimit(int limit) {
         if (limit <= 0) {
             return DEFAULT_LIMIT;
@@ -338,6 +423,12 @@ public class RankingAppService {
         return Math.min(limit, MAX_LIMIT);
     }
 
+    /**
+     * 规范化时间段，无效值时回退到 7d。
+     *
+     * @param period 原始时间段字符串
+     * @return 规范化后的时间段
+     */
     private String normalizePeriod(String period) {
         String value = period == null ? "" : period.trim().toLowerCase();
         if (PERIOD_30_DAYS.equals(value) || PERIOD_ALL.equals(value)) {
@@ -346,6 +437,12 @@ public class RankingAppService {
         return PERIOD_7_DAYS;
     }
 
+    /**
+     * 规范化分类，空字符串转为 null。
+     *
+     * @param category 原始分类字符串
+     * @return 规范化后的分类，无效时返回 null
+     */
     private String normalizeCategory(String category) {
         if (category == null) {
             return null;
@@ -354,6 +451,12 @@ public class RankingAppService {
         return value.isEmpty() ? null : value;
     }
 
+    /**
+     * 根据时间段计算发布时间下限，全部时间段返回 null。
+     *
+     * @param period 时间段字符串
+     * @return 发布时间下限，全部时段时为 null
+     */
     private LocalDateTime resolvePublishedAfter(String period) {
         if (PERIOD_ALL.equals(period)) {
             return null;
@@ -364,10 +467,26 @@ public class RankingAppService {
         return LocalDateTime.now().minusDays(7);
     }
 
+    /**
+     * 构建缓存键。
+     *
+     * @param limit    返回数量
+     * @param period   时间段
+     * @param category 分类
+     * @return 缓存键字符串
+     */
     private String buildCacheKey(int limit, String period, String category) {
         return limit + ":" + period + ":" + (category == null ? "" : category);
     }
 
+    /**
+     * 构建作者 ID 到其最热文章 DTO 的映射（每个作者只取一篇）。
+     *
+     * @param authorIds      作者 ID 列表
+     * @param category       分类筛选
+     * @param publishedAfter 发布时间下限
+     * @return 作者 ID 到热门文章摘要 DTO 的映射
+     */
     private Map<Long, ArticleSummaryDTO> buildTopArticleMap(List<Long> authorIds,
                                                             String category,
                                                             LocalDateTime publishedAfter) {
@@ -386,6 +505,12 @@ public class RankingAppService {
         return result;
     }
 
+    /**
+     * 将文章领域对象转换为摘要 DTO（仅含 ID、标题、Slug）。
+     *
+     * @param article 文章领域对象
+     * @return 文章摘要 DTO
+     */
     private ArticleSummaryDTO toArticleSummary(Article article) {
         ArticleSummaryDTO dto = new ArticleSummaryDTO();
         dto.setId(article.getId().getValue());
@@ -394,6 +519,13 @@ public class RankingAppService {
         return dto;
     }
 
+    /**
+     * 构建当前用户对指定作者列表的关注状态 Map。
+     *
+     * @param currentUserId 当前用户 ID
+     * @param authorIds     作者 ID 列表
+     * @return 作者 ID 到关注状态的映射
+     */
     private Map<Long, Boolean> buildFollowStatusMap(Long currentUserId, List<Long> authorIds) {
         if (currentUserId == null || authorIds.isEmpty()) {
             return Collections.emptyMap();
@@ -410,6 +542,13 @@ public class RankingAppService {
         return result;
     }
 
+    /**
+     * 将关注状态填充到作者排行列表中。
+     *
+     * @param items         作者排行 DTO 列表
+     * @param currentUserId 当前用户 ID（未登录时为 null）
+     * @return 填充关注状态后的列表
+     */
     private List<AuthorRankingDTO> applyFollowStatus(List<AuthorRankingDTO> items, Long currentUserId) {
         if (items.isEmpty()) {
             return items;
@@ -424,6 +563,12 @@ public class RankingAppService {
         return items;
     }
 
+    /**
+     * 深拷贝作者排行列表（防止缓存对象被外部修改）。
+     *
+     * @param source 原始列表
+     * @return 深拷贝后的列表
+     */
     private List<AuthorRankingDTO> copyAuthorRankings(List<AuthorRankingDTO> source) {
         List<AuthorRankingDTO> copies = new ArrayList<AuthorRankingDTO>(source.size());
         for (AuthorRankingDTO item : source) {
@@ -441,6 +586,12 @@ public class RankingAppService {
         return copies;
     }
 
+    /**
+     * 深拷贝文章摘要 DTO。
+     *
+     * @param source 原始 DTO
+     * @return 拷贝后的 DTO，source 为 null 时返回 null
+     */
     private ArticleSummaryDTO copyArticleSummary(ArticleSummaryDTO source) {
         if (source == null) {
             return null;
@@ -466,6 +617,12 @@ public class RankingAppService {
         }
     }
 
+    /**
+     * 深拷贝用户 DTO（仅拷贝排行榜展示所需字段）。
+     *
+     * @param source 原始用户 DTO
+     * @return 拷贝后的用户 DTO
+     */
     private UserDTO copyUser(UserDTO source) {
         UserDTO dto = new UserDTO();
         dto.setId(source.getId());

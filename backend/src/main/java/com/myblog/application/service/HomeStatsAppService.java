@@ -4,9 +4,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.ColumnRepository;
 import com.myblog.shared.util.BizLogHelper;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
