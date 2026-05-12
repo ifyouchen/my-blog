@@ -32,6 +32,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * 文章收藏应用服务。
+ * <p>
+ * 提供文章收藏、取消收藏、查询收藏状态及分页查询用户收藏列表功能。
+ * 采用底层幂等写入策略保证并发安全，避免唯一键冲突。
+ * </p>
+ */
 @Service
 public class ArticleFavoriteAppService {
 
@@ -108,6 +115,13 @@ public class ArticleFavoriteAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 取消收藏文章。
+     *
+     * @param articleId 文章 ID
+     * @param userId    当前用户 ID
+     * @throws ApplicationException 文章不存在、收藏记录不存在或已取消时抛出
+     */
     @Transactional(rollbackFor = Exception.class)
     public void unfavoriteArticle(Long articleId, Long userId) {
         long _start = System.currentTimeMillis();
@@ -133,14 +147,38 @@ public class ArticleFavoriteAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 查询指定用户是否已收藏该文章。
+     *
+     * @param articleId 文章 ID
+     * @param userId    用户 ID
+     * @return 已收藏返回 true，否则返回 false
+     */
     public boolean hasFavorited(Long articleId, Long userId) {
         return articleFavoriteRepository.exists(new ArticleId(articleId), new UserId(userId));
     }
 
+    /**
+     * 分页查询用户收藏的文章列表（不含关键字筛选）。
+     *
+     * @param userId   用户 ID
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 收藏文章分页结果
+     */
     public PageResult<ArticleDTO> getUserFavorites(Long userId, int page, int pageSize) {
         return getUserFavorites(userId, page, pageSize, null);
     }
 
+    /**
+     * 分页查询用户收藏的文章列表（支持关键字筛选）。
+     *
+     * @param userId   用户 ID
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @param keyword  标题搜索关键字，可为 null
+     * @return 收藏文章分页结果
+     */
     public PageResult<ArticleDTO> getUserFavorites(Long userId, int page, int pageSize, String keyword) {
         UserId currentUserId = new UserId(userId);
         int safePage = Math.max(page, 1);

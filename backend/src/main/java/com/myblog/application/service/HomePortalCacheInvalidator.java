@@ -40,6 +40,9 @@ public class HomePortalCacheInvalidator {
         this.recommendedArticleFeedCache = recommendedArticleFeedCache;
     }
 
+    /**
+     * 失效首页启动缓存（事务提交后执行）。
+     */
     public void evictBootstrap() {
         afterCommit(new Runnable() {
             @Override
@@ -49,6 +52,10 @@ public class HomePortalCacheInvalidator {
         });
     }
 
+    /**
+     * 失效精选文章缓存、推荐动态流缓存和首页启动缓存（事务提交后执行）。
+     * <p>精选文章发生可见性变化时调用。</p>
+     */
     public void evictFeaturedAndBootstrap() {
         afterCommit(new Runnable() {
             @Override
@@ -60,6 +67,10 @@ public class HomePortalCacheInvalidator {
         });
     }
 
+    /**
+     * 失效首页统计缓存和首页启动缓存（事务提交后执行）。
+     * <p>文章发布可见性变化时调用。</p>
+     */
     public void evictStatsAndBootstrap() {
         afterCommit(new Runnable() {
             @Override
@@ -70,6 +81,9 @@ public class HomePortalCacheInvalidator {
         });
     }
 
+    /**
+     * 失效推荐文章动态流缓存和首页启动缓存（事务提交后执行）。
+     */
     public void evictRecommendedArticles() {
         afterCommit(new Runnable() {
             @Override
@@ -80,6 +94,11 @@ public class HomePortalCacheInvalidator {
         });
     }
 
+    /**
+     * 如果当前处于事务中，则在事务提交后执行指定操作；否则立即执行。
+     *
+     * @param action 待执行的操作
+     */
     private void afterCommit(final Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             action.run();

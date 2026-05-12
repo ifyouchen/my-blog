@@ -12,6 +12,13 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 
+/**
+ * 首页统计数据应用服务。
+ * <p>
+ * 缓存首页展示的全局统计指标（已发布文章数、作者数、专栏数），
+ * 应用启动时预热并每 3 分钟自动刷新。
+ * </p>
+ */
 @Service
 public class HomeStatsAppService {
 
@@ -30,6 +37,9 @@ public class HomeStatsAppService {
         this.homeStatsCache = homeStatsCache;
     }
 
+    /**
+     * 应用启动完成后预热首页统计缓存。
+     */
     @PostConstruct
     public void init() {
         long _start = System.currentTimeMillis();
@@ -40,10 +50,18 @@ public class HomeStatsAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 获取首页统计数据，优先从缓存返回。
+     *
+     * @return 首页统计对象
+     */
     public HomeStats getStats() {
         return homeStatsCache.get(HOME_STATS_KEY, k -> loadStats());
     }
 
+    /**
+     * 定时刷新首页统计缓存（每 3 分钟执行一次）。
+     */
     @Scheduled(fixedRate = 180000)
     public void refreshStats() {
         long _start = System.currentTimeMillis();
@@ -55,6 +73,11 @@ public class HomeStatsAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 从数据库加载首页统计数据。
+     *
+     * @return 首页统计对象
+     */
     private HomeStats loadStats() {
         long totalArticles = articleRepository.countPublished();
         long totalAuthors = articleRepository.countPublishedAuthors();
@@ -62,25 +85,50 @@ public class HomeStatsAppService {
         return new HomeStats(totalArticles, totalAuthors, totalColumns);
     }
 
+    /**
+     * 首页统计数据值对象。
+     */
     public static class HomeStats {
         private final long totalArticles;
         private final long totalAuthors;
         private final long totalColumns;
 
+        /**
+         * 构建首页统计。
+         *
+         * @param totalArticles 已发布文章总数
+         * @param totalAuthors  有文章的作者数
+         * @param totalColumns  已发布专栏总数
+         */
         public HomeStats(long totalArticles, long totalAuthors, long totalColumns) {
             this.totalArticles = totalArticles;
             this.totalAuthors = totalAuthors;
             this.totalColumns = totalColumns;
         }
 
+        /**
+         * 返回已发布文章总数。
+         *
+         * @return 文章总数
+         */
         public long getTotalArticles() {
             return totalArticles;
         }
 
+        /**
+         * 返回有文章的作者数。
+         *
+         * @return 作者数
+         */
         public long getTotalAuthors() {
             return totalAuthors;
         }
 
+        /**
+         * 返回已发布专栏总数。
+         *
+         * @return 专栏总数
+         */
         public long getTotalColumns() {
             return totalColumns;
         }

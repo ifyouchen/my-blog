@@ -20,6 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+/**
+ * 文章点赞应用服务。
+ * <p>
+ * 提供文章点赞、取消点赞以及查询点赞状态功能。
+ * 为保证并发安全，采用底层幂等写入策略避免唯一键冲突。
+ * </p>
+ */
 @Service
 public class ArticleLikeAppService {
 
@@ -90,6 +97,13 @@ public class ArticleLikeAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 取消点赞文章。
+     *
+     * @param articleId 文章 ID
+     * @param userId    当前用户 ID
+     * @throws ApplicationException 文章不存在、点赞记录不存在或已取消时抛出
+     */
     @Transactional(rollbackFor = Exception.class)
     public void unlikeArticle(Long articleId, Long userId) {
         long _start = System.currentTimeMillis();
@@ -116,6 +130,13 @@ public class ArticleLikeAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 查询指定用户是否已点赞该文章。
+     *
+     * @param articleId 文章 ID
+     * @param userId    用户 ID
+     * @return 已点赞返回 true，否则返回 false
+     */
     public boolean hasLiked(Long articleId, Long userId) {
         return articleLikeRepository.exists(new ArticleId(articleId), new UserId(userId));
     }

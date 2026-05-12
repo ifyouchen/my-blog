@@ -18,6 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * 邀请码应用服务。
+ * <p>
+ * 提供邀请码的生成、查询、使用和管理功能。
+ * 每个用户最多同时持有 3 个有效邀请码，默认有效期 7 天。
+ * </p>
+ */
 @Service
 public class InviteCodeAppService {
 
@@ -32,6 +39,13 @@ public class InviteCodeAppService {
         this.mapper = mapper;
     }
 
+    /**
+     * 生成新的邀请码。
+     *
+     * @param userId 创建者用户 ID
+     * @return 邀请码详情 Map
+     * @throws ApplicationException 当前有效邀请码数量达到上限时抛出
+     */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> generate(Long userId) {
         long _start = System.currentTimeMillis();
@@ -55,6 +69,12 @@ public class InviteCodeAppService {
         return toMap(row);
     }
 
+    /**
+     * 查询指定用户创建的邀请码列表。
+     *
+     * @param userId 用户 ID
+     * @return 邀请码详情 Map 列表
+     */
     public List<Map<String, Object>> listByUser(Long userId) {
         List<InviteCodeDO> rows = mapper.selectByCreatorId(userId);
         List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
@@ -62,6 +82,15 @@ public class InviteCodeAppService {
         return result;
     }
 
+    /**
+     * 使用邀请码（注册时调用）。
+     * <p>
+     * 如果邀请码不存在、已过期或已用完，将静默进行处理（不抛异常）。
+     * </p>
+     *
+     * @param code   邀请码字符串
+     * @param userId 使用者用户 ID
+     */
     @Transactional(rollbackFor = Exception.class)
     public void useCode(String code, Long userId) {
         long _start = System.currentTimeMillis();
@@ -81,6 +110,14 @@ public class InviteCodeAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 管理员分页查询邀请码列表。
+     *
+     * @param keyword  搜索关键字，可为 null
+     * @param page     页码
+     * @param pageSize 每页数量（最大 100）
+     * @return 邀请码分页结果
+     */
     public PageResult<Map<String, Object>> adminPage(String keyword, int page, int pageSize) {
         int ps = Math.max(1, Math.min(pageSize, 100));
         int p = Math.max(1, page);
@@ -92,6 +129,12 @@ public class InviteCodeAppService {
         return new PageResult<Map<String, Object>>(items, p, ps, total);
     }
 
+    /**
+     * 管理员软删除邀请码。
+     *
+     * @param id 邀请码 ID
+     * @throws ApplicationException 邀请码不存在时抛出
+     */
     @Transactional(rollbackFor = Exception.class)
     public void adminDelete(Long id) {
         long _start = System.currentTimeMillis();
@@ -105,6 +148,12 @@ public class InviteCodeAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 将邀请码 DO 转换为 Map 表示，并计算当前状态。
+     *
+     * @param r 邀请码 DO
+     * @return 包含邀请码信息和状态的 Map
+     */
     private Map<String, Object> toMap(InviteCodeDO r) {
         Map<String, Object> m = new HashMap<String, Object>();
         m.put("id", r.getId());

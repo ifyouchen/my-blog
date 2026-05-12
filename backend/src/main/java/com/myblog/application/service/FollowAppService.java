@@ -29,6 +29,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 关注应用服务。
+ * <p>
+ * 提供用户关注与取消关注功能，并支持查询关注列表、粉丝列表、关注动态流等能力。
+ * </p>
+ */
 @Service
 public class FollowAppService {
 
@@ -52,6 +58,13 @@ public class FollowAppService {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * 关注指定用户。
+     *
+     * @param targetUserId  被关注的用户 ID
+     * @param currentUserId 当前登录用户 ID
+     * @throws ApplicationException 已关注、关注自己或目标用户不存在时抛出
+     */
     @Transactional(rollbackFor = Exception.class)
     public void followUser(Long targetUserId, Long currentUserId) {
         long _start = System.currentTimeMillis();
@@ -84,6 +97,13 @@ public class FollowAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 取消关注指定用户。
+     *
+     * @param targetUserId  被取消关注的用户 ID
+     * @param currentUserId 当前登录用户 ID
+     * @throws ApplicationException 关注关系不存在或已取消时抛出
+     */
     @Transactional(rollbackFor = Exception.class)
     public void unfollowUser(Long targetUserId, Long currentUserId) {
         long _start = System.currentTimeMillis();
@@ -106,6 +126,12 @@ public class FollowAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 查询当前用户的关注列表。
+     *
+     * @param currentUserId 当前登录用户 ID
+     * @return 关注的用户 DTO 列表
+     */
     public List<UserDTO> listFollowingUsers(Long currentUserId) {
         List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(currentUserId));
         if (followingUserIds.isEmpty()) {
@@ -188,6 +214,16 @@ public class FollowAppService {
         return result;
     }
 
+    /**
+     * 分页查询当前用户关注作者的动态流文章。
+     *
+     * @param currentUserId 当前登录用户 ID
+     * @param page          页码
+     * @param pageSize      每页数量
+     * @param sort          排序方式
+     * @param category      分类筛选
+     * @return 文章分页结果
+     */
     public PageResult<ArticleDTO> pageFollowingFeed(Long currentUserId, int page, int pageSize, String sort, String category) {
         List<Long> followingUserIds = userFollowRepository.findFollowingUserIds(new UserId(currentUserId));
         if (followingUserIds.isEmpty()) {
@@ -217,6 +253,13 @@ public class FollowAppService {
         return new PageResult<ArticleDTO>(items, Math.max(page, 1), Math.max(pageSize, 1), total);
     }
 
+    /**
+     * 校验关注目标的合法性，包括非空检查、非自关检查以及目标用户状态检查。
+     *
+     * @param targetUserId  被关注的用户 ID
+     * @param currentUserId 当前登录用户 ID
+     * @throws ApplicationException 目标用户不存在、已被禁用或尝试关注自己时抛出
+     */
     private void validateFollowTarget(Long targetUserId, Long currentUserId) {
         if (targetUserId == null || currentUserId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
