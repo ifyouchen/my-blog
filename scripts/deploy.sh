@@ -323,6 +323,14 @@ build_ssh_batch_args
 build_scp_args
 build_scp_quiet_args
 
+# SQL 初始化提示（默认不初始化）
+INIT_SQL=""
+read -p "是否初始化 SQL 数据？(输入 yes 确认，直接回车跳过): " init_choice
+if [ "${init_choice,,}" = "yes" ]; then
+    INIT_SQL="init"
+    echo "SQL 初始化已开启"
+fi
+
 run_step "Build frontend" build_frontend
 run_step "Package backend" package_backend
 
@@ -343,7 +351,7 @@ if can_probe_upload_progress; then
 fi
 
 REMOTE_PREPARE_COMMAND="set -e; mkdir -p '$REMOTE_FRONTEND_PARENT'; rm -rf '$REMOTE_FRONTEND_DIST'; rm -f '$REMOTE_JAR'"
-REMOTE_RESTART_COMMAND="set -e; cd '$REMOTE_ROOT'; chmod +x './restart.sh'; ./restart.sh"
+REMOTE_RESTART_COMMAND="set -e; cd '$REMOTE_ROOT'; chmod +x './restart.sh'; ./restart.sh${INIT_SQL:+ $INIT_SQL}"
 
 run_step "Prepare remote directories" prepare_remote_directories
 
