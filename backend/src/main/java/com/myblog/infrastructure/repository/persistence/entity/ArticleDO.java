@@ -200,50 +200,110 @@ public class ArticleDO {
         this.warnFlag = warnFlag;
     }
 
+    /**
+     * 获取是否精选。
+     *
+     * @return 是否精选
+     */
     public Boolean getFeatured() {
         return featured;
     }
 
+    /**
+     * 设置是否精选。
+     *
+     * @param featured 是否精选
+     */
     public void setFeatured(Boolean featured) {
         this.featured = featured;
     }
 
+    /**
+     * 获取精选时间。
+     *
+     * @return 精选时间
+     */
     public LocalDateTime getFeaturedAt() {
         return featuredAt;
     }
 
+    /**
+     * 设置精选时间。
+     *
+     * @param featuredAt 精选时间
+     */
     public void setFeaturedAt(LocalDateTime featuredAt) {
         this.featuredAt = featuredAt;
     }
 
+    /**
+     * 获取精选权重。
+     *
+     * @return 精选权重
+     */
     public Integer getFeatureWeight() {
         return featureWeight;
     }
 
+    /**
+     * 设置精选权重。
+     *
+     * @param featureWeight 精选权重
+     */
     public void setFeatureWeight(Integer featureWeight) {
         this.featureWeight = featureWeight;
     }
 
+    /**
+     * 获取 URL 别名（slug）。
+     *
+     * @return URL 别名
+     */
     public String getSlug() {
         return slug;
     }
 
+    /**
+     * 设置 URL 别名（slug）。
+     *
+     * @param slug URL 别名
+     */
     public void setSlug(String slug) {
         this.slug = slug;
     }
 
+    /**
+     * 获取 SEO 标题。
+     *
+     * @return SEO 标题
+     */
     public String getSeoTitle() {
         return seoTitle;
     }
 
+    /**
+     * 设置 SEO 标题。
+     *
+     * @param seoTitle SEO 标题
+     */
     public void setSeoTitle(String seoTitle) {
         this.seoTitle = seoTitle;
     }
 
+    /**
+     * 获取 SEO 描述。
+     *
+     * @return SEO 描述
+     */
     public String getSeoDescription() {
         return seoDescription;
     }
 
+    /**
+     * 设置 SEO 描述。
+     *
+     * @param seoDescription SEO 描述
+     */
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
     }
@@ -266,10 +326,20 @@ public class ArticleDO {
         this.status = status;
     }
 
+    /**
+     * 获取定时发布时间。
+     *
+     * @return 定时发布时间
+     */
     public LocalDateTime getScheduledPublishAt() {
         return scheduledPublishAt;
     }
 
+    /**
+     * 设置定时发布时间。
+     *
+     * @param scheduledPublishAt 定时发布时间
+     */
     public void setScheduledPublishAt(LocalDateTime scheduledPublishAt) {
         this.scheduledPublishAt = scheduledPublishAt;
     }

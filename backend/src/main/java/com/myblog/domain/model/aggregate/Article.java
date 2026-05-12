@@ -571,6 +571,11 @@ public class Article {
         this.updatedAt = java.time.LocalDateTime.now();
     }
 
+    /**
+     * 判断文章是否已设为精选。
+     *
+     * @return 是否已精选
+     */
     public boolean isFeatured() {
         return featured;
     }

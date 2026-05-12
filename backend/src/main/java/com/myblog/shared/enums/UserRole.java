@@ -7,6 +7,14 @@ package com.myblog.shared.enums;
  * @since 1.0.0
  */
 public enum UserRole {
+
+    /**
+     * 普通用户
+     */
     USER,
+
+    /**
+     * 管理员
+     */
     ADMIN
 }

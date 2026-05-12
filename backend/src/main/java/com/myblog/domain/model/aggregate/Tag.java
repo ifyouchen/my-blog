@@ -4,20 +4,65 @@ import com.myblog.domain.model.valueobject.TagId;
 
 import java.time.LocalDateTime;
 
+/**
+ * 标签聚合根。
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 public class Tag {
 
+    /**
+     * 标签 ID
+     */
     private TagId id;
+
+    /**
+     * 标签名称
+     */
     private String name;
+
+    /**
+     * 标签描述
+     */
     private String description;
+
+    /**
+     * 是否启用
+     */
     private Boolean enabled;
+
+    /**
+     * 标签创建时间
+     */
     private LocalDateTime createdAt;
+
+    /**
+     * 标签最后更新时间
+     */
     private LocalDateTime updatedAt;
+
+    /**
+     * 软删除时间，为 null 表示未删除
+     */
     private LocalDateTime deletedAt;
+
+    /**
+     * 乐观锁版本号
+     */
     private Integer version;
 
     private Tag() {
     }
 
+    /**
+     * 创建标签聚合根。
+     *
+     * @param id          标签 ID
+     * @param name        标签名称
+     * @param description 标签描述
+     * @return 标签聚合根
+     */
     public static Tag create(Long id, String name, String description) {
         Tag tag = new Tag();
         tag.id = new TagId(id);
@@ -31,6 +76,19 @@ public class Tag {
         return tag;
     }
 
+    /**
+     * 从持久化数据还原标签聚合根。
+     *
+     * @param id          标签 ID
+     * @param name        标签名称
+     * @param description 标签描述
+     * @param enabled     是否启用
+     * @param createdAt   创建时间
+     * @param updatedAt   更新时间
+     * @param deletedAt   删除时间
+     * @param version     乐观锁版本号
+     * @return 标签聚合根
+     */
     public static Tag restore(Long id, String name, String description, Boolean enabled,
                              LocalDateTime createdAt, LocalDateTime updatedAt,
                              LocalDateTime deletedAt, Integer version) {
@@ -46,6 +104,13 @@ public class Tag {
         return tag;
     }
 
+    /**
+     * 更新标签信息。
+     *
+     * @param name        新标签名称
+     * @param description 新标签描述
+     * @param enabled     是否启用
+     */
     public void update(String name, String description, Boolean enabled) {
         this.name = name;
         this.description = description;
@@ -54,44 +119,92 @@ public class Tag {
         this.version = this.version + 1;
     }
 
+    /**
+     * 软删除标签。
+     */
     public void delete() {
         this.deletedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.version = this.version + 1;
     }
 
+    /**
+     * 判断标签是否已删除。
+     *
+     * @return 已删除返回 true，否则返回 false
+     */
     public boolean isDeleted() {
         return this.deletedAt != null;
     }
 
+    /**
+     * 获取标签 ID。
+     *
+     * @return 标签 ID
+     */
     public TagId getId() {
         return id;
     }
 
+    /**
+     * 获取标签名称。
+     *
+     * @return 标签名称
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * 获取标签描述。
+     *
+     * @return 标签描述
+     */
     public String getDescription() {
         return description;
     }
 
+    /**
+     * 获取是否启用。
+     *
+     * @return 是否启用
+     */
     public Boolean getEnabled() {
         return enabled;
     }
 
+    /**
+     * 获取标签创建时间。
+     *
+     * @return 创建时间
+     */
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
+    /**
+     * 获取标签最后更新时间。
+     *
+     * @return 最后更新时间
+     */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
+    /**
+     * 获取软删除时间。
+     *
+     * @return 删除时间，未删除则为 null
+     */
     public LocalDateTime getDeletedAt() {
         return deletedAt;
     }
 
+    /**
+     * 获取乐观锁版本号。
+     *
+     * @return 版本号
+     */
     public Integer getVersion() {
         return version;
     }

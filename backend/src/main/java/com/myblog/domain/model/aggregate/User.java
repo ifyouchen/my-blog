@@ -455,15 +455,30 @@ public class User {
         return updatedAt;
     }
 
+    /**
+     * 判断用户是否推荐展示。
+     *
+     * @return 是否推荐
+     */
     public boolean isRecommended() {
         return recommended;
     }
 
+    /**
+     * 设置用户是否推荐展示。
+     *
+     * @param recommended 是否推荐
+     */
     public void setRecommended(boolean recommended) {
         this.recommended = recommended;
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * 获取用户推荐权重。
+     *
+     * @return 推荐权重，值越大越靠前
+     */
     public int getRecommendWeight() {
         return recommendWeight;
     }

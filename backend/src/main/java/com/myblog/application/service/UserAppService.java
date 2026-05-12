@@ -70,6 +70,19 @@ public class UserAppService {
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
+    /**
+     * 更新用户个人资料。
+     *
+     * @param userId    用户 ID
+     * @param nickname  昵称
+     * @param avatarUrl 头像 URL
+     * @param bio       个人简介
+     * @param website   个人网站
+     * @param github    GitHub 主页
+     * @param twitter   Twitter 主页
+     * @param location  所在地
+     * @return 更新后的用户 DTO
+     */
     @Transactional(rollbackFor = Exception.class)
     public UserDTO updateProfile(Long userId, String nickname, String avatarUrl, String bio,
                                  String website, String github, String twitter, String location) {
@@ -215,6 +228,13 @@ public class UserAppService {
         return UserAssembler.toDTO(user);
     }
 
+    /**
+     * 获取用户主页资料（含统计数据和关注状态）。
+     *
+     * @param userId        被查看用户 ID
+     * @param currentUserId 当前登录用户 ID（未登录时为 null）
+     * @return 用户主页资料 DTO
+     */
     public UserProfileDTO getUserProfile(Long userId, Long currentUserId) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
@@ -234,6 +254,14 @@ public class UserAppService {
         return profileDTO;
     }
 
+    /**
+     * 分页查询指定用户已发布的文章列表。
+     *
+     * @param userId   用户 ID
+     * @param page     页码（从 1 开始）
+     * @param pageSize 每页数量
+     * @return 文章分页结果
+     */
     public PageResult<ArticleDTO> pagePublishedArticles(Long userId, int page, int pageSize) {
         User author = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
@@ -248,12 +276,29 @@ public class UserAppService {
         return buildArticlePage(publishedArticles, author, page, pageSize, total);
     }
 
+    /**
+     * 查询指定用户最热门的已发布文章列表。
+     *
+     * @param userId 用户 ID
+     * @param limit  最大返回数量
+     * @return 热门文章列表
+     */
     public List<ArticleDTO> listHotPublishedArticles(Long userId, int limit) {
         User author = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         return buildArticleItems(articleRepository.findHotPublishedByAuthorId(userId, limit), author);
     }
 
+    /**
+     * 分页查询当前登录用户自己的文章列表（支持状态和关键词过滤）。
+     *
+     * @param userId   用户 ID
+     * @param page     页码（从 1 开始）
+     * @param pageSize 每页数量
+     * @param status   文章状态筛选（null 表示不限）
+     * @param keyword  关键词搜索（null 表示不限）
+     * @return 文章分页结果
+     */
     public PageResult<ArticleDTO> pageMyArticles(Long userId, int page, int pageSize, String status, String keyword) {
         User author = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
@@ -270,6 +315,12 @@ public class UserAppService {
         return buildArticlePage(ownArticles, author, page, pageSize, total);
     }
 
+    /**
+     * 获取当前用户文章创作台概览（包含各状态文章数量、累计数据及推荐行动）。
+     *
+     * @param userId 用户 ID
+     * @return 文章创作台概览 DTO
+     */
     public MyArticleOverviewDTO getMyArticleOverview(Long userId) {
         AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, null);
         Article latestArticle = articleRepository.findLatestByAuthorId(userId).orElse(null);
@@ -293,10 +344,25 @@ public class UserAppService {
         return overviewDTO;
     }
 
+    /**
+     * 判断给定角色是否为管理员。
+     *
+     * @param role 角色名称
+     * @return true 表示是管理员，false 表示不是
+     */
     public boolean isAdmin(String role) {
         return UserRole.ADMIN.name().equals(role);
     }
 
+    /**
+     * 搜索用户（支持用户名/昵称关键词搜索）。
+     *
+     * @param keyword       搜索关键词
+     * @param page          页码（从 1 开始）
+     * @param pageSize      每页数量
+     * @param currentUserId 当前登录用户 ID（用于判断是否已关注，未登录时为 null）
+     * @return 用户搜索结果分页
+     */
     public PageResult<UserSearchDTO> searchUsers(String keyword, int page, int pageSize, Long currentUserId) {
         List<User> users = userRepository.searchUsers(keyword, "followers", page, pageSize);
         long total = userRepository.countSearchUsers(keyword);
@@ -340,10 +406,27 @@ public class UserAppService {
         return new PageResult<>(dtos, page, pageSize, total);
     }
 
+    /**
+     * 构建文章分页结果。
+     *
+     * @param source   文章列表
+     * @param author   作者领域对象
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @param total    总数
+     * @return 文章分页结果
+     */
     private PageResult<ArticleDTO> buildArticlePage(List<Article> source, User author, int page, int pageSize, long total) {
         return new PageResult<ArticleDTO>(buildArticleItems(source, author), page, pageSize, total);
     }
 
+    /**
+     * 将文章领域对象列表转换为 DTO 列表。
+     *
+     * @param source 文章领域对象列表
+     * @param author 作者领域对象
+     * @return 文章 DTO 列表
+     */
     private List<ArticleDTO> buildArticleItems(List<Article> source, User author) {
         List<ArticleDTO> items = new ArrayList<ArticleDTO>(source.size());
         for (Article article : source) {
@@ -352,14 +435,31 @@ public class UserAppService {
         return items;
     }
 
+    /**
+     * 安全转换为 int，null 时返回 0。
+     *
+     * @param value 数字值
+     * @return int 值
+     */
     private int safeInt(Number value) {
         return value == null ? 0 : value.intValue();
     }
 
+    /**
+     * 安全转换为 long，null 时返回 0L。
+     *
+     * @param value 数字值
+     * @return long 值
+     */
     private long safeLong(Number value) {
         return value == null ? 0L : value.longValue();
     }
 
+    /**
+     * 根据文章概览数据填充推荐行动建议。
+     *
+     * @param overviewDTO 文章创作台概览 DTO
+     */
     private void populateRecommendedAction(MyArticleOverviewDTO overviewDTO) {
         if (overviewDTO.getTotalCount() <= 0) {
             overviewDTO.setRecommendedActionType("CREATE");
@@ -388,6 +488,12 @@ public class UserAppService {
         overviewDTO.setRecommendedActionRoute("/dashboard/articles?status=PUBLISHED");
     }
 
+    /**
+     * 构建密码重置链接。
+     *
+     * @param token 重置 Token
+     * @return 完整的重置链接 URL
+     */
     private String buildResetLink(String token) {
         String baseUrl = frontendBaseUrl == null || frontendBaseUrl.trim().isEmpty()
             ? "http://localhost:5173"
@@ -398,6 +504,12 @@ public class UserAppService {
         return baseUrl + "/auth/reset-password?token=" + token;
     }
 
+    /**
+     * 规范化搜索关键词（去除首尾空格，空字符串转为 null）。
+     *
+     * @param keyword 原始关键词
+     * @return 规范化后的关键词，无效时返回 null
+     */
     private String normalizeKeyword(String keyword) {
         if (keyword == null) {
             return null;
@@ -406,6 +518,14 @@ public class UserAppService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /**
+     * 导出当前用户文章列表为 CSV 格式。
+     *
+     * @param userId  用户 ID
+     * @param status  文章状态筛选（null 表示不限）
+     * @param keyword 关键词搜索（null 表示不限）
+     * @return CSV 文件字节数组（UTF-8 编码）
+     */
     public byte[] exportMyArticlesCsv(Long userId, String status, String keyword) {
         long _start = System.currentTimeMillis();
         PageResult<ArticleDTO> page = pageMyArticles(userId, 1, 10000, status, keyword);
@@ -432,6 +552,12 @@ public class UserAppService {
             BizLogHelper.elapsed(_start));
         return result;
     }
+    /**
+     * 对 CSV 字段进行转义，处理包含逗号、引号或换行的情况。
+     *
+     * @param v 原始字段值
+     * @return 转义后的 CSV 字段
+     */
     private String escapeCsvUser(String v) {
         if (v == null) return "";
         if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) return "\"" + v.replace("\"", "\"\"\"") + "\"";

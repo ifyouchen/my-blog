@@ -7,7 +7,19 @@ package com.myblog.shared.enums;
  * @since 1.0.0
  */
 public enum ReportTargetType {
+
+    /**
+     * 文章
+     */
     ARTICLE,
+
+    /**
+     * 评论
+     */
     COMMENT,
+
+    /**
+     * 用户
+     */
     USER
 }

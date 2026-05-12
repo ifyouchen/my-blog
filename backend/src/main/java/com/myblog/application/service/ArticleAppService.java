@@ -27,13 +27,13 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.util.BizLogHelper;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,11 +43,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -226,6 +226,9 @@ public class ArticleAppService {
         return new PageResult<ArticleDTO>(items, page, pageSize, total);
     }
 
+    /**
+     * 应用启动完成后预热推荐文章 Feed 缓存。
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void warmRecommendedArticleFeedCacheOnStartup() {
         RecommendArticleCacheKey defaultKey = RecommendArticleCacheKey.of(null, 1, RECOMMEND_CACHE_WARM_PAGE_SIZE);
@@ -233,6 +236,9 @@ public class ArticleAppService {
         refreshRecommendedArticleCache(defaultKey);
     }
 
+    /**
+     * 定时刷新推荐文章 Feed 缓存（默认每小时一次）。
+     */
     @Scheduled(cron = "${my-blog.article.recommend-refresh-cron:0 0 * * * *}")
     public void refreshRecommendedArticleFeedCache() {
         Set<RecommendArticleCacheKey> keys = new HashSet<RecommendArticleCacheKey>(recommendedArticleCacheKeys);
@@ -244,6 +250,13 @@ public class ArticleAppService {
         }
     }
 
+    /**
+     * 判断当前查询是否可以使用推荐 Feed 缓存。
+     *
+     * @param query               文章分页查询参数
+     * @param needsEnhancedSearch 是否需要增强搜索
+     * @return true 表示可用缓存
+     */
     private boolean isRecommendFeedCacheable(ArticlePageQuery query, boolean needsEnhancedSearch) {
         return ArticlePageQuery.SORT_RECOMMEND.equals(query.getSort())
             && !query.isFollowingOnly()
@@ -252,6 +265,14 @@ public class ArticleAppService {
             && !StringUtils.hasText(query.getTag());
     }
 
+    /**
+     * 加载推荐文章分页（优先读缓存）。
+     *
+     * @param category 分类筛选
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 文章分页结果
+     */
     private PageResult<Article> loadRecommendedArticlePage(String category, int page, int pageSize) {
         RecommendArticleCacheKey key = RecommendArticleCacheKey.of(category, page, pageSize);
         recommendedArticleCacheKeys.add(key);
@@ -262,12 +283,24 @@ public class ArticleAppService {
         return refreshRecommendedArticleCache(key);
     }
 
+    /**
+     * 刷新指定 Key 对应的推荐文章缓存。
+     *
+     * @param key 缓存键
+     * @return 刷新后的文章分页结果
+     */
     private PageResult<Article> refreshRecommendedArticleCache(RecommendArticleCacheKey key) {
         PageResult<Article> page = queryRecommendedArticlePage(key);
         recommendedArticleFeedCache.put(key, page);
         return page;
     }
 
+    /**
+     * 从仓储层查询推荐文章分页。
+     *
+     * @param key 缓存键
+     * @return 文章分页结果
+     */
     private PageResult<Article> queryRecommendedArticlePage(RecommendArticleCacheKey key) {
         int currentPage = Math.max(key.getPage(), 1);
         int currentPageSize = Math.max(key.getPageSize(), 1);
@@ -290,6 +323,13 @@ public class ArticleAppService {
         return new PageResult<Article>(articles, currentPage, currentPageSize, total);
     }
 
+    /**
+     * 批量将文章领域对象转换为 DTO，同时填充点赞、收藏和关注状态。
+     *
+     * @param articles      文章领域对象列表
+     * @param currentUserId 当前用户 ID（未登录时为 null）
+     * @return 文章 DTO 列表
+     */
     private List<ArticleDTO> toDTOList(List<Article> articles, Long currentUserId) {
         if (articles.isEmpty()) {
             return new ArrayList<>();
@@ -342,6 +382,12 @@ public class ArticleAppService {
         return items;
     }
 
+    /**
+     * 获取当前用户已关注的作者 ID 列表。
+     *
+     * @param userId 当前用户 ID
+     * @return 已关注作者 ID 列表
+     */
     private List<Long> getFollowingAuthorIds(Long userId) {
         return userFollowRepository.findFollowingUserIds(new UserId(userId));
     }
@@ -621,12 +667,27 @@ public class ArticleAppService {
             BizLogHelper.elapsed(_start));
     }
 
+    /**
+     * 将单篇文章领域对象转换为 DTO。
+     *
+     * @param article       文章领域对象
+     * @param currentUserId 当前用户 ID
+     * @return 文章 DTO
+     */
     private ArticleDTO toDTO(Article article, Long currentUserId) {
         User author = userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
         return buildDto(article, author, currentUserId);
     }
 
+    /**
+     * 构建文章分页结果（内存切片分页）。
+     *
+     * @param articles 全量文章列表
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 文章分页结果
+     */
     private PageResult<ArticleDTO> buildPageResult(List<Article> articles, int page, int pageSize) {
         int fromIndex = Math.min((page - 1) * pageSize, articles.size());
         int toIndex = Math.min(fromIndex + pageSize, articles.size());
@@ -637,6 +698,14 @@ public class ArticleAppService {
         return new PageResult<ArticleDTO>(items, page, pageSize, articles.size());
     }
 
+    /**
+     * 判断当前用户是否有权访问指定文章。
+     *
+     * @param article         文章领域对象
+     * @param currentUserId   当前用户 ID
+     * @param currentUserRole 当前用户角色
+     * @return true 表示可以访问
+     */
     private boolean canAccessArticle(Article article, Long currentUserId, String currentUserRole) {
         if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             return true;
@@ -648,6 +717,13 @@ public class ArticleAppService {
             || UserRole.ADMIN.name().equals(currentUserRole);
     }
 
+    /**
+     * 确保当前用户有权管理指定文章（作者或管理员），无权时抛出异常。
+     *
+     * @param article         文章领域对象
+     * @param userId          当前用户 ID
+     * @param currentUserRole 当前用户角色
+     */
     private void ensureCanManage(Article article, Long userId, String currentUserRole) {
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
@@ -658,6 +734,12 @@ public class ArticleAppService {
         throw new ApplicationException(ErrorCode.FORBIDDEN, "无权操作这篇文章");
     }
 
+    /**
+     * 解析创建/更新文章时的目标状态，默认返回草稿状态。
+     *
+     * @param status 状态字符串
+     * @return 文章状态枚举
+     */
     private ArticleStatus resolveCreateStatus(String status) {
         if (ArticleStatus.PUBLISHED.name().equals(status)) {
             return ArticleStatus.PUBLISHED;
@@ -671,6 +753,13 @@ public class ArticleAppService {
         return ArticleStatus.DRAFT;
     }
 
+    /**
+     * 将文章状态应用到领域对象。
+     *
+     * @param article              文章领域对象
+     * @param status               目标状态
+     * @param scheduledPublishAt   定时发布时间（仅定时发布时有效）
+     */
     private void applyStatus(Article article, ArticleStatus status, LocalDateTime scheduledPublishAt) {
         if (status == null) {
             article.saveDraft();
@@ -694,10 +783,22 @@ public class ArticleAppService {
         article.saveDraft();
     }
 
+    /**
+     * 将文章状态应用到领域对象（按字符串解析状态）。
+     *
+     * @param article 文章领域对象
+     * @param status  状态字符串
+     */
     private void applyStatus(Article article, String status) {
         applyStatus(article, resolveCreateStatus(status), null);
     }
 
+    /**
+     * 根据文章状态变化清除相关的门户页缓存。
+     *
+     * @param article   文章领域对象
+     * @param oldStatus 变化前的旧状态
+     */
     private void evictArticlePortalCaches(Article article, ArticleStatus oldStatus) {
         boolean featuredCacheInvalidationNeeded = isFeaturedVisibilityChanged(article, oldStatus);
         if (featuredCacheInvalidationNeeded) {
@@ -711,18 +812,45 @@ public class ArticleAppService {
         }
     }
 
+    /**
+     * 判断发布可见性是否发生变化（即发布/取消发布）。
+     *
+     * @param oldStatus 变化前状态
+     * @param newStatus 变化后状态
+     * @return true 表示可见性发生变化
+     */
     private boolean isPublishVisibilityChanged(ArticleStatus oldStatus, ArticleStatus newStatus) {
         return ArticleStatus.PUBLISHED.equals(oldStatus) != ArticleStatus.PUBLISHED.equals(newStatus);
     }
 
+    /**
+     * 判断精选文章可见性是否发生变化。
+     *
+     * @param article   文章领域对象
+     * @param oldStatus 变化前状态
+     * @return true 表示精选可见性发生变化
+     */
     private boolean isFeaturedVisibilityChanged(Article article, ArticleStatus oldStatus) {
         return article.isFeatured() && isPublishVisibilityChanged(oldStatus, article.getStatus());
     }
 
+    /**
+     * 判断该文章状态变化是否影响推荐 Feed。
+     *
+     * @param article   文章领域对象
+     * @param oldStatus 变化前状态
+     * @return true 表示需要刷新推荐 Feed
+     */
     private boolean isRecommendFeedAffected(Article article, ArticleStatus oldStatus) {
         return ArticleStatus.PUBLISHED.equals(oldStatus) || ArticleStatus.PUBLISHED.equals(article.getStatus());
     }
 
+    /**
+     * 根据目标状态获取操作描述文本（用于敕感词检测错误提示）。
+     *
+     * @param status 目标文章状态
+     * @return 操作描述文本
+     */
     private String resolveActionText(ArticleStatus status) {
         if (ArticleStatus.SCHEDULED.equals(status)) {
             return "定时发布文章";
@@ -733,6 +861,12 @@ public class ArticleAppService {
         return "保存文章";
     }
 
+    /**
+     * 解析定时发布时间字符串为 LocalDateTime。
+     *
+     * @param value 时间字符串（ISO 8601 格式）
+     * @return 定时发布时间
+     */
     private LocalDateTime parseScheduledPublishAt(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -744,6 +878,12 @@ public class ArticleAppService {
         }
     }
 
+    /**
+     * 解析封面图 URL，若为空或为旧默认封面则返回新默认封面。
+     *
+     * @param coverUrl 封面图 URL
+     * @return 解析后的封面图 URL
+     */
     private String resolveCoverUrl(String coverUrl) {
         if (StringUtils.hasText(coverUrl) && !LEGACY_DEFAULT_COVER_URL.equals(coverUrl)) {
             return coverUrl.trim();
@@ -751,6 +891,12 @@ public class ArticleAppService {
         return defaultArticleCoverUrl;
     }
 
+    /**
+     * 确保 URL Slug 可用（未被其他文章占用）。
+     *
+     * @param slug             要检查的 Slug
+     * @param currentArticleId 当前文章 ID（更新时传入，排除自身）
+     */
     private void ensureSlugAvailable(String slug, Long currentArticleId) {
         if (!StringUtils.hasText(slug)) {
             return;
@@ -763,6 +909,15 @@ public class ArticleAppService {
         });
     }
 
+    /**
+     * 对文章内容进行敘感词过滤，返回处理后的内容。
+     *
+     * @param title   文章标题
+     * @param summary 文章摘要
+     * @param content 文章正文
+     * @param action  操作描述（用于错误提示）
+     * @return 过滤后的文章内容
+     */
     private SanitizedArticleContent sanitizeArticleContent(String title, String summary,
                                                            String content, String action) {
         String sensitiveText = buildArticleSensitiveText(title, summary, content);
@@ -780,6 +935,12 @@ public class ArticleAppService {
         );
     }
 
+    /**
+     * 对已存在文章进行内容效验和敘感词过滤（发布前调用）。
+     *
+     * @param article 文章领域对象
+     * @param action  操作描述（用于错误提示）
+     */
     private void sanitizeExistingArticleForPublish(Article article, String action) {
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             article.getTitle(),
@@ -801,10 +962,24 @@ public class ArticleAppService {
         applyWarnFlag(article, sanitizedContent);
     }
 
+    /**
+     * 根据敨感词检测结果更新文章警告标记。
+     *
+     * @param article          文章领域对象
+     * @param sanitizedContent 敨感词过滤结果
+     */
     private void applyWarnFlag(Article article, SanitizedArticleContent sanitizedContent) {
         article.updateWarnFlag(sanitizedContent.hasWarnHits());
     }
 
+    /**
+     * 构建用于敨感词检测的文章内容文本。
+     *
+     * @param title   标题
+     * @param summary 摘要
+     * @param content 正文
+     * @return 合并后的文本内容
+     */
     private String buildArticleSensitiveText(String title, String summary, String content) {
         return normalizeValue(title) + "\n" + normalizeValue(summary) + "\n" + normalizeValue(content);
     }
@@ -839,12 +1014,28 @@ public class ArticleAppService {
         }
     }
 
+    /**
+     * 构建文章列表 DTO（不含正文）。
+     *
+     * @param article       文章领域对象
+     * @param author        作者领域对象
+     * @param currentUserId 当前用户 ID
+     * @return 文章 DTO
+     */
     private ArticleDTO buildDto(Article article, User author, Long currentUserId) {
         ArticleDTO dto = articleAssembler.toDTO(article, author);
         populateUserStatus(dto, article, currentUserId);
         return dto;
     }
 
+    /**
+     * 构建文章详情 DTO（含正文和作者粉丝数）。
+     *
+     * @param article       文章领域对象
+     * @param author        作者领域对象
+     * @param currentUserId 当前用户 ID
+     * @return 文章详情 DTO
+     */
     private ArticleDTO buildDetailDto(Article article, User author, Long currentUserId) {
         ArticleDTO dto = articleAssembler.toDetailDTO(article, author);
         dto.getAuthor().setFollowerCount(userRepository.countFollowers(author.getId().getValue()));
@@ -852,6 +1043,13 @@ public class ArticleAppService {
         return dto;
     }
 
+    /**
+     * 填充文章 DTO 中当前用户的互动状态（点赞、收藏、关注）。
+     *
+     * @param dto           文章 DTO
+     * @param article       文章领域对象
+     * @param currentUserId 当前用户 ID（未登录时为 null）
+     */
     private void populateUserStatus(ArticleDTO dto, Article article, Long currentUserId) {
         if (dto.getAuthor() != null) {
             dto.getAuthor().setFollowed(resolveAuthorFollowed(article, currentUserId));
@@ -973,6 +1171,12 @@ public class ArticleAppService {
         }
     }
 
+    /**
+     * 将文章版本 DO 转换为 DTO（不含正文）。
+     *
+     * @param v 文章版本 DO
+     * @return 文章版本 DTO
+     */
     private ArticleVersionDTO toVersionDTO(ArticleVersionDO v) {
         ArticleVersionDTO dto = new ArticleVersionDTO();
         dto.setVersionNo(v.getVersionNo());
@@ -982,6 +1186,13 @@ public class ArticleAppService {
         return dto;
     }
 
+    /**
+     * 判断当前用户是否已关注文章作者。
+     *
+     * @param article       文章领域对象
+     * @param currentUserId 当前用户 ID（未登录时为 null）
+     * @return true 表示已关注
+     */
     private boolean resolveAuthorFollowed(Article article, Long currentUserId) {
         if (currentUserId == null || article.getAuthorId().getValue().equals(currentUserId)) {
             return false;
@@ -1092,6 +1303,18 @@ public class ArticleAppService {
         return validation;
     }
 
+    /**
+     * 添加一条发布当前的校验条目。
+     *
+     * @param checks        所有校验条目列表
+     * @param messages      要收集的错误或警告消息列表
+     * @param key           条目标识符
+     * @param label         条目显示名称
+     * @param passed        是否通过
+     * @param level         级别（error/warning）
+     * @param passedMessage 通过时的消息
+     * @param failedMessage 未通过时的消息
+     */
     private void appendCheck(List<Map<String, Object>> checks,
                              List<String> messages,
                              String key,
@@ -1112,6 +1335,12 @@ public class ArticleAppService {
         }
     }
 
+    /**
+     * 规范化字符串将6，null 转化为空字符串并去除首尾空格。
+     *
+     * @param source 原始字符串
+     * @return 规范化后的字符串
+     */
     private String normalizeValue(String source) {
         return source == null ? "" : source.trim();
     }
@@ -1143,6 +1372,12 @@ public class ArticleAppService {
         return baos.toByteArray();
     }
 
+    /**
+     * 将文章领域对象构建为 Markdown 格式内容。
+     *
+     * @param article 文章领域对象
+     * @return Markdown 格式的内容字符串
+     */
     private String buildMarkdown(Article article) {
         StringBuilder sb = new StringBuilder();
         sb.append("# ").append(article.getTitle() == null ? "" : article.getTitle()).append("\n\n");
@@ -1174,6 +1409,12 @@ public class ArticleAppService {
         return result;
     }
 
+    /**
+     * 将文章领域对象转换为上下篇导航用 DTO。
+     *
+     * @param article 文章领域对象
+     * @return 文章 DTO，作者不存在时返回 null
+     */
     private ArticleDTO toNeighborDTO(Article article) {
         return userRepository.findById(article.getAuthorId())
             .map(author -> articleAssembler.toDTO(article, author))

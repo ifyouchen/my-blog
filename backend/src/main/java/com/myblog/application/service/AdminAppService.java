@@ -1,5 +1,6 @@
 package com.myblog.application.service;
 
+import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.aggregate.User;
@@ -12,7 +13,6 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO;
 import com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
-import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
@@ -35,6 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 管理员应用服务。
+ * <p>
+ * 提供后台管理功能，包括用户管理、文章管理、评论管理以及后台统计概览。
+ * 负责处理管理员对用户、文章、评论的状态变更及批量操作，并在必要时清除相关缓存。
+ * </p>
+ */
 @Service
 public class AdminAppService {
 
@@ -775,6 +782,12 @@ public class AdminAppService {
             && value.toLowerCase().contains(keyword.toLowerCase());
     }
 
+    /**
+     * 根据目标状态调用对应的文章领域方法完成状态切换。
+     *
+     * @param article 文章聚合根
+     * @param status  目标状态
+     */
     private void applyArticleStatus(Article article, ArticleStatus status) {
         if (ArticleStatus.PUBLISHED.equals(status)) {
             article.publish();
@@ -795,6 +808,12 @@ public class AdminAppService {
         article.updateStatus(status);
     }
 
+    /**
+     * 根据文章和其前一状态判断并清除门户相关缓存。
+     *
+     * @param article        文章聚合根
+     * @param previousStatus 变更前的文章状态
+     */
     private void evictArticlePortalCaches(Article article, ArticleStatus previousStatus) {
         evictArticlePortalCaches(
             isPublishVisibilityChanged(previousStatus, article.getStatus()),
@@ -802,6 +821,12 @@ public class AdminAppService {
         );
     }
 
+    /**
+     * 根据标志位清除文章门户统计和精选缓存。
+     *
+     * @param statsCacheInvalidationNeeded    是否需要清除统计缓存
+     * @param featuredCacheInvalidationNeeded 是否需要清除精选缓存
+     */
     private void evictArticlePortalCaches(boolean statsCacheInvalidationNeeded,
                                           boolean featuredCacheInvalidationNeeded) {
         if (featuredCacheInvalidationNeeded) {
@@ -815,14 +840,37 @@ public class AdminAppService {
         }
     }
 
+    /**
+     * 判断文章发布可见性是否发生变化（即是否从已发布变为其他状态，或反之）。
+     *
+     * @param previousStatus 变更前状态
+     * @param currentStatus  变更后状态
+     * @return 如果发布可见性发生变化则返回 true
+     */
     private boolean isPublishVisibilityChanged(ArticleStatus previousStatus, ArticleStatus currentStatus) {
         return ArticleStatus.PUBLISHED.equals(previousStatus) != ArticleStatus.PUBLISHED.equals(currentStatus);
     }
 
+    /**
+     * 判断精选文章的可见性是否发生变化。
+     *
+     * @param article        文章聚合根
+     * @param previousStatus 变更前的文章状态
+     * @return 如果精选文章可见性发生变化则返回 true
+     */
     private boolean isFeaturedVisibilityChanged(Article article, ArticleStatus previousStatus) {
         return article.isFeatured() && isPublishVisibilityChanged(previousStatus, article.getStatus());
     }
 
+    /**
+     * 管理员发布前对文章进行敏感词检测与脱敏处理。
+     * <p>
+     * 若文章包含被禁止的敏感词则抛出异常阻止发布；若包含警告级敏感词则对内容进行掩码处理并打上警告标记。
+     * </p>
+     *
+     * @param article 待发布的文章聚合根
+     * @throws ApplicationException 内容包含被禁止的敏感词时抛出
+     */
     private void sanitizeArticleBeforeAdminPublish(Article article) {
         String sensitiveText = buildArticleSensitiveText(article);
         List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
@@ -845,16 +893,34 @@ public class AdminAppService {
         article.updateWarnFlag(!warnHits.isEmpty());
     }
 
+    /**
+     * 构建用于敏感词检测的文章文本（标题 + 摘要 + 正文）。
+     *
+     * @param article 文章聚合根
+     * @return 拼接后的待检测文本
+     */
     private String buildArticleSensitiveText(Article article) {
         return normalizeText(article.getTitle()) + "\n"
             + normalizeText(article.getSummary()) + "\n"
             + normalizeText(article.getContent());
     }
 
+    /**
+     * 对文本进行规范化处理，将 null 转换为空字符串并去除首尾空白。
+     *
+     * @param value 原始文本
+     * @return 规范化后的文本，不会返回 null
+     */
     private String normalizeText(String value) {
         return value == null ? "" : value.trim();
     }
 
+    /**
+     * 构建文章作者映射，避免文章后台列表 N+1 查询。
+     *
+     * @param articles 文章列表
+     * @return 以作者 ID 为键的用户映射
+     */
     private Map<Long, User> buildAuthorMap(List<Article> articles) {
         if (articles == null || articles.isEmpty()) {
             return Collections.emptyMap();
@@ -1017,6 +1083,12 @@ public class AdminAppService {
         return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
+    /**
+     * 对 CSV 字段进行转义处理，若字段包含逗号、引号或换行符则用双引号包裹，并将内部引号转义。
+     *
+     * @param value 原始字段值
+     * @return 转义后的字段值，null 返回空字符串
+     */
     private String escapeCsv(String value) {
         if (value == null) return "";
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
