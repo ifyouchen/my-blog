@@ -162,19 +162,24 @@ def save_progress(progress: Dict) -> None:
 # HTTP 请求
 # ---------------------------------------------------------------------------
 
-def fetch_url(url: str, timeout: int = 20, retry: int = 2,
-              prev_url: Optional[str] = None) -> Optional[str]:
-    """抓取 URL 返回 HTML，失败后指数退避重试"""
+def _encode_url(url: str) -> str:
+    """将 URL 路径中的非 ASCII 字符进行百分号编码，避免 requests 用 latin-1 编码 header 时报错"""
     from urllib.parse import urlparse, urlunparse, quote
-    # 将 URL 中的非 ASCII 路径部分进行百分号编码，避免 latin-1 编码错误
     try:
         parsed = urlparse(url)
         encoded_path = quote(parsed.path, safe="/-_.~!$&'()*+,;=:@")
-        url = urlunparse(parsed._replace(path=encoded_path))
+        return urlunparse(parsed._replace(path=encoded_path))
     except Exception:
-        pass
+        return url
 
-    referer = prev_url or random.choice(_REFERER_POOL)
+
+def fetch_url(url: str, timeout: int = 20, retry: int = 2,
+              prev_url: Optional[str] = None) -> Optional[str]:
+    """抓取 URL 返回 HTML，失败后指数退避重试"""
+    # 对目标 URL 和 Referer 都做路径编码，避免中文字符触发 latin-1 编码错误
+    url = _encode_url(url)
+
+    referer = _encode_url(prev_url) if prev_url else random.choice(_REFERER_POOL)
     for attempt in range(1, retry + 2):
         try:
             headers = _random_headers(referer=referer)
@@ -628,6 +633,10 @@ def main():
         if url in done_urls:
             results.append(done_urls[url])
 
+    # 下一个可用 ID = 已有数据中最大 ID + 1（确保断点续跑时不重复）
+    used_ids = [v["id"] for v in done_urls.values() if "id" in v]
+    next_id = max(used_ids) + 1 if used_ids else ID_START
+
     global_idx = 0
     prev_url: Optional[str] = None
 
@@ -639,7 +648,8 @@ def main():
             break
 
         global_idx += 1
-        art_id = ID_START + len(done_urls) + global_idx - 1
+        art_id = next_id
+        next_id += 1
         print("[{}/{}] ID={}  {}".format(global_idx, total, art_id, url))
 
         html = fetch_url(url, timeout=args.timeout, retry=args.retry, prev_url=prev_url)
