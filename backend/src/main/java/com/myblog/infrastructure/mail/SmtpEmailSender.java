@@ -15,15 +15,34 @@ import org.springframework.stereotype.Component;
 @Component
 public class SmtpEmailSender implements EmailSender {
 
+    /**
+     * SMTP 邮件发送器
+     */
     private final JavaMailSender mailSender;
+
+    /**
+     * 发件人邮箱地址
+     */
     private final String mailFrom;
 
+    /**
+     * 创建 SMTP 邮件发送器。
+     *
+     * @param mailSender JavaMail 邮件发送器
+     * @param mailFrom   发件人邮箱地址
+     */
     public SmtpEmailSender(JavaMailSender mailSender,
                            @Value("${my-blog.mail.from:no-reply@my-blog.local}") String mailFrom) {
         this.mailSender = mailSender;
         this.mailFrom = mailFrom;
     }
 
+    /**
+     * 发送注册验证码邮件。
+     *
+     * @param email 收件人邮箱
+     * @param code  验证码
+     */
     @Override
     public void sendRegisterCode(String email, String code) {
         String text = "你正在注册 my-blog，验证码为：" + code + "\n\n"
@@ -31,6 +50,13 @@ public class SmtpEmailSender implements EmailSender {
         sendSimpleMail(email, "my-blog 注册验证码", text);
     }
 
+    /**
+     * 发送密码重置链接邮件。
+     *
+     * @param email     收件人邮箱
+     * @param username  用户名
+     * @param resetLink 密码重置链接
+     */
     @Override
     public void sendPasswordResetLink(String email, String username, String resetLink) {
         String text = "你好，" + username + "：\n\n"
@@ -40,6 +66,13 @@ public class SmtpEmailSender implements EmailSender {
         sendSimpleMail(email, "my-blog 密码重置", text);
     }
 
+    /**
+     * 发送简单文本邮件。
+     *
+     * @param to      收件人邮箱
+     * @param subject 邮件主题
+     * @param text    邮件正文
+     */
     private void sendSimpleMail(String to, String subject, String text) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailFrom);

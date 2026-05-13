@@ -135,50 +135,110 @@ public class UserDTO {
         this.bio = bio;
     }
 
+    /**
+     * 获取个人网站。
+     *
+     * @return 个人网站
+     */
     public String getWebsite() {
         return website;
     }
 
+    /**
+     * 设置个人网站。
+     *
+     * @param website 个人网站
+     */
     public void setWebsite(String website) {
         this.website = website;
     }
 
+    /**
+     * 获取 GitHub 主页。
+     *
+     * @return GitHub 主页
+     */
     public String getGithub() {
         return github;
     }
 
+    /**
+     * 设置 GitHub 主页。
+     *
+     * @param github GitHub 主页
+     */
     public void setGithub(String github) {
         this.github = github;
     }
 
+    /**
+     * 获取 Twitter 主页。
+     *
+     * @return Twitter 主页
+     */
     public String getTwitter() {
         return twitter;
     }
 
+    /**
+     * 设置 Twitter 主页。
+     *
+     * @param twitter Twitter 主页
+     */
     public void setTwitter(String twitter) {
         this.twitter = twitter;
     }
 
+    /**
+     * 获取所在地。
+     *
+     * @return 所在地
+     */
     public String getLocation() {
         return location;
     }
 
+    /**
+     * 设置所在地。
+     *
+     * @param location 所在地
+     */
     public void setLocation(String location) {
         this.location = location;
     }
 
+    /**
+     * 获取最后登录时间。
+     *
+     * @return 最后登录时间
+     */
     public String getLastLoginAt() {
         return lastLoginAt;
     }
 
+    /**
+     * 设置最后登录时间。
+     *
+     * @param lastLoginAt 最后登录时间
+     */
     public void setLastLoginAt(String lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
     }
 
+    /**
+     * 获取最后登录 IP。
+     *
+     * @return 最后登录 IP
+     */
     public String getLastLoginIp() {
         return lastLoginIp;
     }
 
+    /**
+     * 设置最后登录 IP。
+     *
+     * @param lastLoginIp 最后登录 IP
+     */
     public void setLastLoginIp(String lastLoginIp) {
         this.lastLoginIp = lastLoginIp;
     }
@@ -201,10 +261,20 @@ public class UserDTO {
         this.role = role;
     }
 
+    /**
+     * 获取用户状态。
+     *
+     * @return 用户状态
+     */
     public String getStatus() {
         return status;
     }
 
+    /**
+     * 设置用户状态。
+     *
+     * @param status 用户状态
+     */
     public void setStatus(String status) {
         this.status = status;
     }
@@ -245,18 +315,38 @@ public class UserDTO {
         this.followerCount = followerCount;
     }
 
+    /**
+     * 获取文章数量。
+     *
+     * @return 文章数量
+     */
     public int getArticleCount() {
         return articleCount;
     }
 
+    /**
+     * 设置文章数量。
+     *
+     * @param articleCount 文章数量
+     */
     public void setArticleCount(int articleCount) {
         this.articleCount = articleCount;
     }
 
+    /**
+     * 获取总获赞数。
+     *
+     * @return 总获赞数
+     */
     public long getTotalLikeCount() {
         return totalLikeCount;
     }
 
+    /**
+     * 设置总获赞数。
+     *
+     * @param totalLikeCount 总获赞数
+     */
     public void setTotalLikeCount(long totalLikeCount) {
         this.totalLikeCount = totalLikeCount;
     }

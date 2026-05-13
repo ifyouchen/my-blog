@@ -6,22 +6,28 @@ import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
-import com.myblog.application.dto.TagDTO;
-import com.myblog.application.query.RecommendArticleCacheKey;
-import com.myblog.domain.model.aggregate.Article;
-import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
+import com.myblog.application.dto.TagDTO;
+import com.myblog.application.query.RecommendArticleCacheKey;
+import com.myblog.application.service.HomeStatsAppService.HomeStats;
+import com.myblog.domain.model.aggregate.Article;
 import com.myblog.shared.result.PageResult;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 应用缓存配置类，定义各类 Caffeine 本地缓存 Bean 及异步任务线程池。
+ *
+ * @author my-blog
+ * @since 1.0.0
+ */
 @Configuration
 public class CacheConfig {
 

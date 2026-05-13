@@ -10,31 +10,134 @@ import java.time.LocalDateTime;
  */
 public class ArticleDO {
 
+    /**
+     * 文章 ID
+     */
     private Long id;
+
+    /**
+     * 作者用户 ID
+     */
     private Long authorId;
+
+    /**
+     * 文章标题
+     */
     private String title;
+
+    /**
+     * 文章摘要
+     */
     private String summary;
+
+    /**
+     * 文章正文内容
+     */
     private String content;
+
+    /**
+     * 封面图片 URL
+     */
     private String coverUrl;
+
+    /**
+     * 文章分类
+     */
     private String category;
+
+    /**
+     * 下架原因
+     */
     private String offlineReason;
+
+    /**
+     * 敏感词警告标记
+     */
     private Boolean warnFlag;
+
+    /**
+     * 是否精选
+     */
     private Boolean featured;
+
+    /**
+     * 精选时间
+     */
     private LocalDateTime featuredAt;
+
+    /**
+     * 精选权重
+     */
     private Integer featureWeight;
+
+    /**
+     * URL 别名（slug）
+     */
     private String slug;
+
+    /**
+     * SEO 标题
+     */
     private String seoTitle;
+
+    /**
+     * SEO 描述
+     */
     private String seoDescription;
+
+    /**
+     * 文章状态
+     */
     private String status;
+
+    /**
+     * 定时发布时间
+     */
     private LocalDateTime scheduledPublishAt;
+
+    /**
+     * 阅读数
+     */
     private Integer viewCount;
+
+    /**
+     * 点赞数
+     */
     private Integer likeCount;
+
+    /**
+     * 收藏数
+     */
     private Integer favoriteCount;
+
+    /**
+     * 评论数
+     */
     private Integer commentCount;
+
+    /**
+     * 发布时间
+     */
     private LocalDateTime publishedAt;
+
+    /**
+     * 记录创建时间
+     */
     private LocalDateTime createdAt;
+
+    /**
+     * 记录最后更新时间
+     */
     private LocalDateTime updatedAt;
+
+    /**
+     * 软删除时间，为 null 表示未删除
+     */
     private LocalDateTime deletedAt;
+
+    /**
+     * 乐观锁版本号
+     */
     private Integer version;
 
     /**

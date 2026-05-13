@@ -327,90 +327,200 @@ public class ArticleDTO {
         this.favoritedAt = favoritedAt;
     }
 
+    /**
+     * 获取当前用户是否已点赞。
+     *
+     * @return 是否已点赞
+     */
     public boolean isLiked() {
         return liked;
     }
 
+    /**
+     * 设置当前用户是否已点赞。
+     *
+     * @param liked 是否已点赞
+     */
     public void setLiked(boolean liked) {
         this.liked = liked;
     }
 
+    /**
+     * 获取当前用户是否已收藏。
+     *
+     * @return 是否已收藏
+     */
     public boolean isFavorited() {
         return favorited;
     }
 
+    /**
+     * 设置当前用户是否已收藏。
+     *
+     * @param favorited 是否已收藏
+     */
     public void setFavorited(boolean favorited) {
         this.favorited = favorited;
     }
 
+    /**
+     * 获取是否为精选文章。
+     *
+     * @return 是否精选
+     */
     public boolean isFeatured() {
         return featured;
     }
 
+    /**
+     * 设置是否为精选文章。
+     *
+     * @param featured 是否精选
+     */
     public void setFeatured(boolean featured) {
         this.featured = featured;
     }
 
+    /**
+     * 获取精选时间。
+     *
+     * @return 精选时间
+     */
     public String getFeaturedAt() {
         return featuredAt;
     }
 
+    /**
+     * 设置精选时间。
+     *
+     * @param featuredAt 精选时间
+     */
     public void setFeaturedAt(String featuredAt) {
         this.featuredAt = featuredAt;
     }
 
+    /**
+     * 获取精选权重。
+     *
+     * @return 精选权重
+     */
     public int getFeatureWeight() {
         return featureWeight;
     }
 
+    /**
+     * 设置精选权重。
+     *
+     * @param featureWeight 精选权重
+     */
     public void setFeatureWeight(int featureWeight) {
         this.featureWeight = featureWeight;
     }
 
+    /**
+     * 获取 URL 别名。
+     *
+     * @return URL 别名
+     */
     public String getSlug() {
         return slug;
     }
 
+    /**
+     * 设置 URL 别名。
+     *
+     * @param slug URL 别名
+     */
     public void setSlug(String slug) {
         this.slug = slug;
     }
 
+    /**
+     * 获取 SEO 标题。
+     *
+     * @return SEO 标题
+     */
     public String getSeoTitle() {
         return seoTitle;
     }
 
+    /**
+     * 设置 SEO 标题。
+     *
+     * @param seoTitle SEO 标题
+     */
     public void setSeoTitle(String seoTitle) {
         this.seoTitle = seoTitle;
     }
 
+    /**
+     * 获取 SEO 描述。
+     *
+     * @return SEO 描述
+     */
     public String getSeoDescription() {
         return seoDescription;
     }
 
+    /**
+     * 设置 SEO 描述。
+     *
+     * @param seoDescription SEO 描述
+     */
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
     }
 
+    /**
+     * 获取定时发布时间。
+     *
+     * @return 定时发布时间
+     */
     public String getScheduledPublishAt() {
         return scheduledPublishAt;
     }
 
+    /**
+     * 设置定时发布时间。
+     *
+     * @param scheduledPublishAt 定时发布时间
+     */
     public void setScheduledPublishAt(String scheduledPublishAt) {
         this.scheduledPublishAt = scheduledPublishAt;
     }
 
+    /**
+     * 获取下线原因。
+     *
+     * @return 下线原因
+     */
     public String getOfflineReason() {
         return offlineReason;
     }
 
+    /**
+     * 设置下线原因。
+     *
+     * @param offlineReason 下线原因
+     */
     public void setOfflineReason(String offlineReason) {
         this.offlineReason = offlineReason;
     }
 
+    /**
+     * 获取是否有警告标记。
+     *
+     * @return 是否有警告标记
+     */
     public boolean isWarnFlag() {
         return warnFlag;
     }
 
+    /**
+     * 设置是否有警告标记。
+     *
+     * @param warnFlag 是否有警告标记
+     */
     public void setWarnFlag(boolean warnFlag) {
         this.warnFlag = warnFlag;
     }

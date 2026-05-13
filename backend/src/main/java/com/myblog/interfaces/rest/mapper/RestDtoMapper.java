@@ -6,9 +6,9 @@ import com.myblog.application.command.LoginCommand;
 import com.myblog.application.command.RegisterCommand;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticleSummaryDTO;
+import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.ColumnDTO;
-import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.dto.CommentDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.application.dto.UserProfileDTO;
@@ -18,12 +18,12 @@ import com.myblog.interfaces.rest.dto.request.LoginRequest;
 import com.myblog.interfaces.rest.dto.request.RegisterRequest;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
 import com.myblog.interfaces.rest.dto.response.ArticleSummaryResponse;
-import com.myblog.interfaces.rest.dto.response.AuthorRankingResponse;
 import com.myblog.interfaces.rest.dto.response.AuthResponse;
+import com.myblog.interfaces.rest.dto.response.AuthorRankingResponse;
 import com.myblog.interfaces.rest.dto.response.ColumnResponse;
 import com.myblog.interfaces.rest.dto.response.CommentResponse;
-import com.myblog.interfaces.rest.dto.response.UserResponse;
 import com.myblog.interfaces.rest.dto.response.UserProfileResponse;
+import com.myblog.interfaces.rest.dto.response.UserResponse;
 import org.springframework.stereotype.Component;
 
 /**

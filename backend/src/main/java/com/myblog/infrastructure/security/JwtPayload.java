@@ -8,9 +8,24 @@ package com.myblog.infrastructure.security;
  */
 public class JwtPayload {
 
+    /**
+     * 用户 ID
+     */
     private Long userId;
+
+    /**
+     * 用户名
+     */
     private String username;
+
+    /**
+     * 用户角色
+     */
     private String role;
+
+    /**
+     * 过期时间戳（毫秒）
+     */
     private long expireAt;
 
     /**
