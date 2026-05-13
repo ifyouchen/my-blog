@@ -16,6 +16,9 @@ import java.util.List;
  */
 public final class ArticlePersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private ArticlePersistenceConverter() {
     }
 
@@ -97,10 +100,22 @@ public final class ArticlePersistenceConverter {
         return articleDO;
     }
 
+    /**
+     * 将 Integer 安全转换为 int，null 视为 0。
+     *
+     * @param value Integer 值
+     * @return int 值
+     */
     private static int intValue(Integer value) {
         return value == null ? 0 : value.intValue();
     }
 
+    /**
+     * 将 Boolean 安全转换为 boolean，null 视为 false。
+     *
+     * @param value Boolean 值
+     * @return boolean 值
+     */
     private static boolean boolValue(Boolean value) {
         return value != null && value;
     }

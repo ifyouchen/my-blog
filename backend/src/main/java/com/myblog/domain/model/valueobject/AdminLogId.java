@@ -8,6 +8,7 @@ package com.myblog.domain.model.valueobject;
  */
 public class AdminLogId {
 
+    /** 日志 ID 的数字值。 */
     private final Long value;
 
     /**

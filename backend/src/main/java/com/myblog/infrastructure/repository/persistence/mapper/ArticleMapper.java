@@ -469,6 +469,14 @@ public interface ArticleMapper {
      */
     List<AuthorArticleStatsDO> selectAuthorArticleStats(@Param("limit") int limit);
 
+    /**
+     * 查询排行榜文章统计（支持分类和发布时间筛选）。
+     *
+     * @param limit          返回数量限制
+     * @param category       分类
+     * @param publishedAfter 发布时间下限
+     * @return 作者文章统计列表
+     */
     List<AuthorArticleStatsDO> selectAuthorArticleStatsForRanking(
             @Param("limit") int limit,
             @Param("category") String category,
@@ -515,26 +523,73 @@ public interface ArticleMapper {
                                   @Param("excludeId") Long excludeId,
                                   @Param("limit") int limit);
 
+    /**
+     * 查询同专栏的已发布文章。
+     *
+     * @param articleId 当前文章 ID
+     * @param excludeId 排除的文章 ID
+     * @param limit     返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectPublishedInSameColumns(@Param("articleId") Long articleId,
                                                  @Param("excludeId") Long excludeId,
                                                  @Param("limit") int limit);
 
+    /**
+     * 查询同一作者的其他已发布文章（排除指定文章）。
+     *
+     * @param authorId  作者 ID
+     * @param excludeId 排除的文章 ID
+     * @param limit     返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectPublishedByAuthorIdExcluding(@Param("authorId") Long authorId,
                                                        @Param("excludeId") Long excludeId,
                                                        @Param("limit") int limit);
 
+    /**
+     * 根据标签和分类信号查询已发布文章。
+     *
+     * @param tags      标签列表
+     * @param category  分类
+     * @param excludeId 排除的文章 ID
+     * @param limit     返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectPublishedBySignals(@Param("tags") List<String> tags,
                                              @Param("category") String category,
                                              @Param("excludeId") Long excludeId,
                                              @Param("limit") int limit);
 
+    /**
+     * 查询热门已发布文章（排除指定文章列表）。
+     *
+     * @param excludeIds 排除的文章 ID 列表
+     * @param limit      返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectPopularPublishedExcluding(@Param("excludeIds") List<Long> excludeIds,
                                                     @Param("limit") int limit);
 
+    /**
+     * 根据多个作者 ID 查询排行文章。
+     *
+     * @param authorIds      作者 ID 列表
+     * @param category       分类
+     * @param publishedAfter 发布时间下限
+     * @return 文章列表
+     */
     List<ArticleDO> selectTopRankingArticlesByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                                         @Param("category") String category,
                                                         @Param("publishedAfter") LocalDateTime publishedAfter);
 
+    /**
+     * 查询到期的定时发布文章。
+     *
+     * @param now  当前时间
+     * @param limit 返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectDueScheduled(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
     /** 统计待审核文章数量（warn_flag=1 且未删除）。 */
@@ -593,6 +648,12 @@ public interface ArticleMapper {
                                                          @Param("startDate") LocalDate startDate,
                                                          @Param("endDate") LocalDate endDate);
 
+    /**
+     * 根据多个作者 ID 查询文章统计聚合。
+     *
+     * @param authorIds 作者 ID 列表
+     * @return 作者文章统计列表
+     */
     List<AuthorArticleStatsDO> selectAuthorArticleStatsByAuthorIds(@Param("authorIds") List<Long> authorIds);
 }
 

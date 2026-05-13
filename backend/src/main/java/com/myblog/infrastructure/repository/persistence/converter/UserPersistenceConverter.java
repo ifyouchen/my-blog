@@ -13,6 +13,9 @@ import com.myblog.shared.enums.UserStatus;
  */
 public final class UserPersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private UserPersistenceConverter() {
     }
 

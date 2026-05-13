@@ -15,6 +15,9 @@ import com.myblog.shared.enums.ReportTargetType;
  */
 public final class ReportPersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private ReportPersistenceConverter() {
     }
 
