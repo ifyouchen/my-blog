@@ -6,6 +6,8 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -46,7 +48,9 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
      * @return 是否继续处理
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(@NonNull HttpServletRequest request,
+                             @NonNull HttpServletResponse response,
+                             @NonNull Object handler) {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
@@ -67,6 +71,14 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         return true;
     }
 
+    /**
+     * 尝试从请求头或查询参数中提取 token 并完成认证。
+     *
+     * @param header Authorization 请求头
+     * @param queryToken 查询参数中的 token，兼容 SSE 等不便携带 Header 的场景
+     * @param lenient 是否采用宽松模式；宽松模式下认证失败会回退为匿名访问
+     * @return 命中且认证成功时返回 {@code true}
+     */
     private boolean authenticateIfPresent(String header, String queryToken, boolean lenient) {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             return authenticateToken(header.substring(BEARER_PREFIX.length()), lenient);
@@ -77,6 +89,12 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         return false;
     }
 
+    /**
+     * 执行 token 解析与用户上下文注入。
+     *
+     * <p>公开接口会以宽松模式调用：token 无效时继续按匿名请求处理；
+     * 受保护接口则会直接抛出认证异常，避免错误 token 悄悄降级。</p>
+     */
     private boolean authenticateToken(String token, boolean lenient) {
         try {
             JwtPayload payload = jwtTokenProvider.parseToken(token);
@@ -91,6 +109,11 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         }
     }
 
+    /**
+     * 校验 token 对应的用户仍处于可用状态。
+     *
+     * <p>即使 token 尚未过期，也要阻止已禁用账号继续访问。</p>
+     */
     private void ensureUserAvailable(Long userId) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录"));
@@ -102,6 +125,7 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
     private boolean isPublicRequest(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
+        // 认证与健康检查接口始终允许匿名访问。
         if ("/api/auth/register".equals(path)
             || "/api/auth/register/email-code".equals(path)
             || "/api/auth/login".equals(path)
@@ -110,13 +134,15 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || "/api/health".equals(path)) {
             return true;
         }
+        // 广告曝光/点击上报由前台直接触发，不要求用户登录。
         if (path.matches("^/api/ads/\\d+/(impression|click)$")) {
             return true;
         }
         if (!"GET".equalsIgnoreCase(method)) {
             return false;
         }
-        if ("/api/articles".equals(path)
+        // 只读查询接口对匿名用户开放，但若携带有效 token 仍会补充登录态信息。
+        return "/api/articles".equals(path)
             || "/api/ads".equals(path)
             || "/api/categories".equals(path)
             || "/api/tags".equals(path)
@@ -160,10 +186,7 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || path.matches("^/api/topics/\\d+$")
             || path.matches("^/api/topics/\\d+/articles$")
             || path.matches("^/api/topics/\\d+/articles/\\d+/neighbors$")
-            || "/api/tags/hot".equals(path)) {
-            return true;
-        }
-        return false;
+            || "/api/tags/hot".equals(path);
     }
 
     /**
@@ -175,10 +198,10 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
      * @param ex 异常信息
      */
     @Override
-    public void afterCompletion(HttpServletRequest request,
-                                HttpServletResponse response,
-                                Object handler,
-                                Exception ex) {
+    public void afterCompletion(@NonNull HttpServletRequest request,
+                                @NonNull HttpServletResponse response,
+                                @NonNull Object handler,
+                                @Nullable Exception ex) {
         AuthContext.clear();
     }
 }

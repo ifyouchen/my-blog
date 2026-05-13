@@ -77,7 +77,7 @@ public class JwtTokenProvider {
             if (parts.length != 3) {
                 throw new ApplicationException(ErrorCode.UNAUTHORIZED, "Token格式错误");
             }
-            // 验证算法字段，防止algorithm confusion攻击
+            // 显式校验 alg 字段，避免攻击者将 token 伪装成其它算法绕过验签。
             String headerJson = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
             if (!headerJson.contains("\"HS256\"")) {
                 throw new ApplicationException(ErrorCode.UNAUTHORIZED, "不支持的Token算法");
@@ -99,6 +99,9 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * 使用 HMAC-SHA256 对 JWT 的 header.payload 段进行签名。
+     */
     private String sign(String content) throws Exception {
         Mac mac = Mac.getInstance(HMAC_SHA256);
         SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
@@ -106,6 +109,9 @@ public class JwtTokenProvider {
         return base64Url(mac.doFinal(content.getBytes(StandardCharsets.UTF_8)));
     }
 
+    /**
+     * 按 JWT 规范输出无填充的 Base64 URL Safe 编码。
+     */
     private String base64Url(byte[] bytes) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }

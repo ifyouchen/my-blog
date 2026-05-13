@@ -3,6 +3,7 @@ package com.myblog.infrastructure.config;
 import com.myblog.infrastructure.security.JwtAuthenticationInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -74,7 +75,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
      * @param registry 资源处理器注册器
      */
     @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
+        // 先将配置路径转为规范绝对路径，避免相对路径片段导致资源映射歧义。
         String location = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();
         if (!location.endsWith("/")) {
             location = location + "/";

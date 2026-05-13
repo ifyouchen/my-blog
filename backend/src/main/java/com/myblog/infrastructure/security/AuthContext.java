@@ -6,6 +6,9 @@ import com.myblog.shared.exception.ErrorCode;
 /**
  * 当前请求认证上下文。
  *
+ * <p>基于 ThreadLocal 保存单次请求内的登录信息，必须在请求结束时调用
+ * {@link #clear()} 释放，避免线程复用时把上一个请求的身份残留到下一个请求。</p>
+ *
  * @author Codex
  * @since 1.0.0
  */

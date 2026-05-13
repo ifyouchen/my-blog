@@ -156,6 +156,7 @@ public class RestDtoMapper {
      */
     private UserResponse toBaseUserResponse(UserDTO dto) {
         UserResponse response = new UserResponse();
+        // 仅填充公开资料与统计信息，邮箱和登录痕迹由上层按视图决定是否补回。
         response.setId(dto.getId());
         response.setUsername(dto.getUsername());
         response.setNickname(dto.getNickname());
@@ -351,6 +352,7 @@ public class RestDtoMapper {
      */
     private ArticleResponse toArticleResponse(ArticleDTO dto, boolean publicUser) {
         ArticleResponse response = new ArticleResponse();
+        // 文章主体与列表展示字段。
         response.setId(dto.getId());
         response.setTitle(dto.getTitle());
         response.setSummary(dto.getSummary());
@@ -360,6 +362,7 @@ public class RestDtoMapper {
         response.setCategory(dto.getCategory());
         response.setTags(dto.getTags());
         response.setStatus(dto.getStatus());
+        // 互动统计与用户侧状态。
         response.setViewCount(dto.getViewCount());
         response.setLikeCount(dto.getLikeCount());
         response.setFavoriteCount(dto.getFavoriteCount());
@@ -372,12 +375,14 @@ public class RestDtoMapper {
         response.setFeatured(dto.isFeatured());
         response.setFeaturedAt(dto.getFeaturedAt());
         response.setFeatureWeight(dto.getFeatureWeight());
+        // SEO 与定时发布等运营字段。
         response.setSlug(dto.getSlug());
         response.setSeoTitle(dto.getSeoTitle());
         response.setSeoDescription(dto.getSeoDescription());
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setOfflineReason(dto.getOfflineReason());
         response.setWarnFlag(dto.isWarnFlag());
+        // 作者信息是否脱敏取决于当前输出的是后台视图还是公开视图。
         if (dto.getAuthor() != null) {
             response.setAuthor(publicUser ? toPublicResponse(dto.getAuthor()) : toResponse(dto.getAuthor()));
         }

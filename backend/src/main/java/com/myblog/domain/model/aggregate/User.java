@@ -490,6 +490,9 @@ public class User {
         return this.deletedAt != null;
     }
 
+    /**
+     * 将可选资料字段中的空白输入统一折叠为 {@code null}。
+     */
     private static String normalizeNullableText(String value) {
         if (value == null) {
             return null;

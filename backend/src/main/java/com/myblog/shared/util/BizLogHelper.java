@@ -106,6 +106,9 @@ public final class BizLogHelper {
         return sb.toString();
     }
 
+    /**
+     * 根据参数名和参数值形态执行脱敏，尽量降低调用方逐一手工判断的成本。
+     */
     private static String safeParamValue(String key, Object raw) {
         if (raw == null) {
             return "null";
@@ -160,6 +163,7 @@ public final class BizLogHelper {
             if (ip.charAt(i) == '.') {
                 dotCount++;
                 if (dotCount == 2) {
+                    // 记录第二个点的位置，仅保留前两段网段信息。
                     lastDot = i;
                 }
             }

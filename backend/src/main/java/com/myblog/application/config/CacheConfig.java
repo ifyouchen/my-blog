@@ -31,6 +31,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Configuration
 public class CacheConfig {
 
+    /**
+     * 首页统计缓存。
+     *
+     * <p>统计值允许分钟级延迟，以换取首页高频访问下的聚合开销下降。</p>
+     */
     @Bean
     public Cache<Long, HomeStats> homeStatsCache() {
         return Caffeine.newBuilder()
@@ -38,6 +43,11 @@ public class CacheConfig {
                 .build();
     }
 
+    /**
+     * 首页引导信息缓存。
+     *
+     * <p>该接口通常首屏就会命中，使用更短 TTL 兼顾刷新速度与接口吞吐。</p>
+     */
     @Bean
     public Cache<String, HomeBootstrapDTO> homeBootstrapCache() {
         return Caffeine.newBuilder()
@@ -60,6 +70,11 @@ public class CacheConfig {
                 .build();
     }
 
+    /**
+     * 榜单类缓存。
+     *
+     * <p>排行榜变化相对较慢，允许小时级缓存以减少重复排序计算。</p>
+     */
     @Bean
     public Cache<String, List<ArticleDTO>> articleRankingsCache() {
         return Caffeine.newBuilder()
@@ -90,6 +105,11 @@ public class CacheConfig {
                 .build();
     }
 
+    /**
+     * 未读通知数缓存。
+     *
+     * <p>短 TTL 让角标尽快回落到真实值，避免用户长期看到过期未读数。</p>
+     */
     @Bean
     public Cache<Long, Long> notificationUnreadCountCache() {
         return Caffeine.newBuilder()
@@ -118,6 +138,11 @@ public class CacheConfig {
                 .build();
     }
 
+    /**
+     * 举报提交限流缓存。
+     *
+     * <p>以用户维度记录短时间内的提交次数，用于拦截突发刷举报行为。</p>
+     */
     @Bean
     public Cache<Long, AtomicInteger> reportCreateRateCache() {
         return Caffeine.newBuilder()
@@ -125,6 +150,11 @@ public class CacheConfig {
                 .build();
     }
 
+    /**
+     * 通用异步线程池。
+     *
+     * <p>队列满时回退到调用线程执行，优先保证任务不丢失；关闭应用时等待存量任务收尾。</p>
+     */
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

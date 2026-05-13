@@ -1,10 +1,10 @@
 package com.myblog.interfaces.rest.controller;
 
+import com.myblog.application.command.RecordAdminLogCommand;
 import com.myblog.application.dto.AdCampaignDTO;
 import com.myblog.application.dto.AdStatsDTO;
 import com.myblog.application.service.AdAppService;
 import com.myblog.application.service.AdminLogAppService;
-import com.myblog.application.command.RecordAdminLogCommand;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.CreateAdCampaignRequest;
 import com.myblog.shared.exception.ApplicationException;
@@ -120,6 +120,9 @@ public class AdminAdsController {
         return Result.success(null);
     }
 
+    /**
+     * 校验当前请求是否由管理员发起。
+     */
     private void ensureAdmin() {
         AuthContext.getRequiredUserId();
         if (!"ADMIN".equals(AuthContext.getRole())) {
@@ -127,6 +130,9 @@ public class AdminAdsController {
         }
     }
 
+    /**
+     * 组装后台操作日志命令，保留变更前后的审计快照。
+     */
     private RecordAdminLogCommand buildLogCommand(String operation, String targetType, Long targetId,
                                                    String detail, Object before, Object after,
                                                    @Nullable HttpServletRequest request) {
@@ -147,6 +153,9 @@ public class AdminAdsController {
         return command;
     }
 
+    /**
+     * 优先读取代理转发头中的首个客户端 IP，未命中时回退到直连地址。
+     */
     private String resolveIp(@Nullable HttpServletRequest request) {
         if (request == null) {
             return null;
@@ -158,6 +167,9 @@ public class AdminAdsController {
         return request.getRemoteAddr();
     }
 
+    /**
+     * 兼容前端常见的 datetime-local 提交格式。
+     */
     @Nullable
     private static LocalDateTime parseDateTime(@Nullable String value) {
         if (value == null || value.trim().isEmpty()) {
@@ -170,6 +182,7 @@ public class AdminAdsController {
             try {
                 return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
             } catch (DateTimeParseException e2) {
+                // 兜底兼容浏览器或网关补充的毫秒精度时间字符串。
                 return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
             }
         }
