@@ -22,10 +22,22 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
 
     private final ColumnSubscriptionMapper columnSubscriptionMapper;
 
+    /**
+     * 创建专栏订阅 MyBatis 仓储。
+     *
+     * @param columnSubscriptionMapper 专栏订阅 Mapper
+     */
     public MyBatisColumnSubscriptionRepository(ColumnSubscriptionMapper columnSubscriptionMapper) {
         this.columnSubscriptionMapper = columnSubscriptionMapper;
     }
 
+    /**
+     * 查询有效的专栏订阅记录（未取消）。
+     *
+     * @param columnId 专栏 ID
+     * @param userId   用户 ID
+     * @return 专栏订阅 Optional
+     */
     @Override
     public Optional<ColumnSubscription> findByColumnAndUser(ColumnId columnId, UserId userId) {
         ColumnSubscriptionDO columnSubscriptionDO = columnSubscriptionMapper.selectByColumnAndUser(
@@ -37,6 +49,13 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
             : Optional.of(toDomain(columnSubscriptionDO));
     }
 
+    /**
+     * 查询专栏订阅记录（包含已逻辑删除的记录）。
+     *
+     * @param columnId 专栏 ID
+     * @param userId   用户 ID
+     * @return 专栏订阅 Optional
+     */
     @Override
     public Optional<ColumnSubscription> findByColumnAndUserIncludingDeleted(ColumnId columnId, UserId userId) {
         ColumnSubscriptionDO columnSubscriptionDO = columnSubscriptionMapper.selectAnyByColumnAndUser(
@@ -48,6 +67,12 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
             : Optional.of(toDomain(columnSubscriptionDO));
     }
 
+    /**
+     * 保存专栏订阅记录（新记录插入，已有记录更新）。
+     *
+     * @param subscription 专栏订阅聚合根
+     * @return 保存后的专栏订阅聚合根
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ColumnSubscription save(ColumnSubscription subscription) {
@@ -63,16 +88,34 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
         return subscription;
     }
 
+    /**
+     * 生成下一个专栏订阅记录 ID。
+     *
+     * @return 专栏订阅记录 ID
+     */
     @Override
     public Long nextId() {
         return columnSubscriptionMapper.selectNextId();
     }
 
+    /**
+     * 判断用户是否已订阅专栏。
+     *
+     * @param columnId 专栏 ID
+     * @param userId   用户 ID
+     * @return 是否已订阅
+     */
     @Override
     public boolean exists(ColumnId columnId, UserId userId) {
         return columnSubscriptionMapper.countByColumnAndUser(columnId.getValue(), userId.getValue()) > 0;
     }
 
+    /**
+     * 将 DO 转换为领域对象。
+     *
+     * @param columnSubscriptionDO 专栏订阅数据对象
+     * @return 专栏订阅聚合根
+     */
     private ColumnSubscription toDomain(ColumnSubscriptionDO columnSubscriptionDO) {
         return ColumnSubscription.restore(
             columnSubscriptionDO.getId(),
@@ -85,6 +128,12 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
         );
     }
 
+    /**
+     * 将领域对象转换为 DO。
+     *
+     * @param subscription 专栏订阅聚合根
+     * @return 专栏订阅数据对象
+     */
     private ColumnSubscriptionDO toData(ColumnSubscription subscription) {
         ColumnSubscriptionDO columnSubscriptionDO = new ColumnSubscriptionDO();
         columnSubscriptionDO.setId(subscription.getId().getValue());

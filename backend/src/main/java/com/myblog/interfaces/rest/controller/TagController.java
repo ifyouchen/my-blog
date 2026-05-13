@@ -32,6 +32,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 标签控制器。
+ * <p>
+ * 提供标签列表、单条、热门标签和标签下文章列表等前台 API，
+ * 以及管理员可用的创建、更新、删除标签操作，操作均记录管理员日志。
+ * </p>
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 @RestController
 @RequestMapping("/api/tags")
 public class TagController {
@@ -61,11 +71,23 @@ public class TagController {
         }
     }
 
+    /**
+     * 查询标签列表。
+     *
+     * @param enabled 是否启用，为 null 时查询全部
+     * @return 标签列表
+     */
     @GetMapping
     public Result<List<TagDTO>> getTags(@RequestParam(required = false) Boolean enabled) {
         return Result.success(tagAppService.getTags(enabled));
     }
 
+    /**
+     * 查询单个标签。
+     *
+     * @param id 标签 ID
+     * @return 标签信息
+     */
     @GetMapping("/{id}")
     public Result<TagDTO> getTag(@PathVariable Long id) {
         return Result.success(tagAppService.getTag(id));

@@ -297,6 +297,13 @@ public class CommentAppService {
         return CommentAssembler.toDTO(comment, user);
     }
 
+    /**
+     * 对评论内容进行敏感词过滤，返回处理后的评论内容。
+     *
+     * @param content 原始评论内容
+     * @param action  操作描述（用于错误提示）
+     * @return 敏感词过滤后的评论内容
+     */
     private SanitizedCommentContent sanitizeCommentContent(String content, String action) {
         List<String> blockHits = sensitiveWordAppService.detectBlockWords(content);
         if (!blockHits.isEmpty()) {
@@ -517,6 +524,14 @@ public class CommentAppService {
         commentRepository.save(comment);
     }
 
+    /**
+     * 加载当前用户可访问的文章，无权访问时抛出异常。
+     *
+     * @param articleId       文章 ID
+     * @param currentUserId   当前用户 ID
+     * @param currentUserRole 当前用户角色
+     * @return 文章领域对象
+     */
     private Article loadAccessibleArticle(Long articleId, Long currentUserId, String currentUserRole) {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
@@ -532,10 +547,22 @@ public class CommentAppService {
         throw new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在");
     }
 
+    /**
+     * 规范化评论排序方式，无效时默认按最新排序。
+     *
+     * @param sort 原始排序字符串
+     * @return 规范化后的排序方式（hot / latest）
+     */
     private String normalizeSort(String sort) {
         return "hot".equalsIgnoreCase(sort) ? "hot" : "latest";
     }
 
+    /**
+     * 将评论列表转换为 ID 列表。
+     *
+     * @param comments 评论列表
+     * @return 评论 ID 列表
+     */
     private List<Long> toCommentIds(List<Comment> comments) {
         List<Long> commentIds = new ArrayList<Long>(comments.size());
         for (Comment comment : comments) {
@@ -544,6 +571,12 @@ public class CommentAppService {
         return commentIds;
     }
 
+    /**
+     * 批量加载一级评论的回复数。
+     *
+     * @param rootCommentIds 一级评论 ID 列表
+     * @return 评论 ID 到回复数的映射
+     */
     private Map<Long, Integer> loadReplyCounts(List<Long> rootCommentIds) {
         if (rootCommentIds == null || rootCommentIds.isEmpty()) {
             return new HashMap<Long, Integer>();
@@ -552,6 +585,12 @@ public class CommentAppService {
         return commentRepository.countRepliesBatch(rootCommentIds);
     }
 
+    /**
+     * 按根评论 ID 对回复评论进行分组。
+     *
+     * @param comments 回复评论列表
+     * @return 根评论 ID 到回复列表的映射
+     */
     private Map<Long, List<Comment>> groupByRootCommentId(List<Comment> comments) {
         Map<Long, List<Comment>> grouped = new HashMap<Long, List<Comment>>();
         for (Comment comment : comments) {
@@ -566,6 +605,12 @@ public class CommentAppService {
         return grouped;
     }
 
+    /**
+     * 批量加载评论列表中直接父评论（用于显示 "@用户" 信息）。
+     *
+     * @param comments 评论列表
+     * @return 父评论 ID 到评论领域对象的映射
+     */
     private Map<Long, Comment> loadParentComments(List<Comment> comments) {
         Set<Long> parentIds = new HashSet<Long>();
         for (Comment comment : comments) {
@@ -584,6 +629,14 @@ public class CommentAppService {
         return parentCommentMap;
     }
 
+    /**
+     * 批量加载所有评论涵盖的用户（包括一级评论、回复、父评论作者）。
+     *
+     * @param rootComments   一级评论列表
+     * @param replies        回复评论列表
+     * @param parentComments 父评论列表
+     * @return 用户 ID 到用户领域对象的映射
+     */
     private Map<Long, User> loadUsers(List<Comment> rootComments,
                                       List<Comment> replies,
                                       Iterable<Comment> parentComments) {
@@ -609,12 +662,26 @@ public class CommentAppService {
         return userMap;
     }
 
+    /**
+     * 从评论列表中收集用户 ID。
+     *
+     * @param comments 评论列表
+     * @param userIds  用户 ID 集合（目标）
+     */
     private void collectUserIds(List<Comment> comments, Set<Long> userIds) {
         for (Comment comment : comments) {
             userIds.add(comment.getUserId().getValue());
         }
     }
 
+    /**
+     * 加载当前用户对指定评论列表的点赞 ID 集合。
+     *
+     * @param rootComments  一级评论列表
+     * @param replies       回复评论列表
+     * @param currentUserId 当前用户 ID（未登录时返回空集合）
+     * @return 当前用户已点赞的评论 ID 集合
+     */
     private Set<Long> loadLikedCommentIds(List<Comment> rootComments, List<Comment> replies, Long currentUserId) {
         if (currentUserId == null) {
             return Collections.<Long>emptySet();
@@ -640,6 +707,20 @@ public class CommentAppService {
         return likedCommentIds;
     }
 
+    /**
+     * 构建评论 DTO，填充点赞、回复、操作权限和预览回复。
+     *
+     * @param comment          评论领域对象
+     * @param article          评论所属文章
+     * @param userMap          用户 ID 映射
+     * @param parentCommentMap 父评论映射
+     * @param likedCommentIds  当前用户已点赞的评论 ID 集合
+     * @param replyCount       回复数
+     * @param previewReplies   预览回复列表
+     * @param currentUserId    当前用户 ID
+     * @param currentUserRole  当前用户角色
+     * @return 评论 DTO
+     */
     private CommentDTO buildCommentDTO(Comment comment,
                                        Article article,
                                        Map<Long, User> userMap,
@@ -671,6 +752,18 @@ public class CommentAppService {
         return dto;
     }
 
+    /**
+     * 构建预览回复列表 DTO。
+     *
+     * @param previewReplies   预览回复列表
+     * @param article          评论所属文章
+     * @param userMap          用户 ID 映射
+     * @param parentCommentMap 父评论映射
+     * @param likedCommentIds  当前用户已点赞的评论 ID 集合
+     * @param currentUserId    当前用户 ID
+     * @param currentUserRole  当前用户角色
+     * @return 预览回复 DTO 列表
+     */
     private List<CommentDTO> buildReplyPreview(List<Comment> previewReplies,
                                                Article article,
                                                Map<Long, User> userMap,
@@ -705,6 +798,15 @@ public class CommentAppService {
         return replyPreview;
     }
 
+    /**
+     * 判断当前用户是否有权删除指定评论。
+     *
+     * @param comment         评论领域对象
+     * @param article         评论所属文章
+     * @param currentUserId   当前用户 ID
+     * @param currentUserRole 当前用户角色
+     * @return true 表示可以删除
+     */
     private boolean canDelete(Comment comment, Article article, Long currentUserId, String currentUserRole) {
         if (currentUserId == null) {
             return false;
@@ -718,6 +820,15 @@ public class CommentAppService {
         return UserRole.ADMIN.name().equals(currentUserRole);
     }
 
+    /**
+     * 判断当前用户是否有权置顶/取消置顶评论。
+     *
+     * @param comment         评论领域对象
+     * @param article         评论所属文章
+     * @param currentUserId   当前用户 ID
+     * @param currentUserRole 当前用户角色
+     * @return true 表示可置顶
+     */
     private boolean canPin(Comment comment, Article article, Long currentUserId, String currentUserRole) {
         if (currentUserId == null || !comment.isRootComment()) {
             return false;
@@ -725,6 +836,13 @@ public class CommentAppService {
         return article.getAuthorId().getValue().equals(currentUserId);
     }
 
+    /**
+     * 判断当前用户是否有权编辑评论（仅允许自身评论且未超过 10 分钟）。
+     *
+     * @param comment       评论领域对象
+     * @param currentUserId 当前用户 ID
+     * @return true 表示可编辑
+     */
     private boolean canEdit(Comment comment, Long currentUserId) {
         if (currentUserId == null) {
             return false;
@@ -738,6 +856,12 @@ public class CommentAppService {
         return java.time.LocalDateTime.now().isBefore(comment.getCreatedAt().plusMinutes(10));
     }
 
+    /**
+     * 将用户领域对象转换为 DTO。
+     *
+     * @param user 用户领域对象
+     * @return 用户 DTO，user 为 null 时返回 null
+     */
     private UserDTO toUserDTO(User user) {
         return user == null ? null : com.myblog.application.assembler.UserAssembler.toDTO(user);
     }

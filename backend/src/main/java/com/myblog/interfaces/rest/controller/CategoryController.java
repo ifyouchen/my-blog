@@ -32,6 +32,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 分类控制器。
+ * <p>
+ * 提供分类的列表查询、单条查询、分类下文章列表等前台 API，
+ * 以及管理员可用的创建、更新、删除分类操作，操作均记录管理员日志。
+ * </p>
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
@@ -61,11 +71,23 @@ public class CategoryController {
         }
     }
 
+    /**
+     * 查询分类列表。
+     *
+     * @param enabled 是否启用，为 null 时查询全部
+     * @return 分类列表
+     */
     @GetMapping
     public Result<List<CategoryDTO>> getCategories(@RequestParam(required = false) Boolean enabled) {
         return Result.success(categoryAppService.getCategories(enabled));
     }
 
+    /**
+     * 查询单个分类。
+     *
+     * @param id 分类 ID
+     * @return 分类信息
+     */
     @GetMapping("/{id}")
     public Result<CategoryDTO> getCategory(@PathVariable Long id) {
         return Result.success(categoryAppService.getCategory(id));

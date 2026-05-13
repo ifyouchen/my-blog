@@ -4,8 +4,20 @@ import com.myblog.domain.model.aggregate.Category;
 import com.myblog.domain.model.valueobject.CategoryId;
 import com.myblog.infrastructure.repository.persistence.entity.CategoryDO;
 
+/**
+ * 文章分类持久化转换器。
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 public class CategoryPersistenceConverter {
 
+    /**
+     * 将分类数据对象转换为领域对象。
+     *
+     * @param categoryDO 分类数据对象
+     * @return 分类领域对象，若 categoryDO 为 null 则返回 null
+     */
     public static Category toDomain(CategoryDO categoryDO) {
         if (categoryDO == null) {
             return null;
@@ -23,6 +35,12 @@ public class CategoryPersistenceConverter {
         );
     }
 
+    /**
+     * 将分类领域对象转换为数据对象。
+     *
+     * @param category 分类领域对象
+     * @return 分类数据对象，若 category 为 null 则返回 null
+     */
     public static CategoryDO toData(Category category) {
         if (category == null) {
             return null;

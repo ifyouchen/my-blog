@@ -37,6 +37,14 @@ public class AdminModerationController {
         this.adminLogAppService = adminLogAppService;
     }
 
+    /**
+     * 下架文章（设置为 OFFLINE 状态）。
+     *
+     * @param id                 文章 ID
+     * @param request            下架原因
+     * @param httpServletRequest HTTP 请求
+     * @return 操作结果
+     */
     @PostMapping("/articles/{id}/offline")
     public Result<Map<String, Object>> offlineArticle(@PathVariable Long id,
                                                       @RequestBody(required = false) ModerationReasonRequest request,
@@ -55,6 +63,14 @@ public class AdminModerationController {
         return Result.success(result);
     }
 
+    /**
+     * 禁用用户。
+     *
+     * @param id                 用户 ID
+     * @param request            禁用原因
+     * @param httpServletRequest HTTP 请求
+     * @return 操作结果
+     */
     @PostMapping("/users/{id}/disable")
     public Result<Map<String, Object>> disableUser(@PathVariable Long id,
                                                    @RequestBody(required = false) ModerationReasonRequest request,
@@ -73,6 +89,9 @@ public class AdminModerationController {
         return Result.success(result);
     }
 
+    /**
+     * 校验管理员权限，非管理员时抛出异常。
+     */
     private void ensureAdmin() {
         AuthContext.getRequiredUserId();
         if (!"ADMIN".equals(AuthContext.getRole())) {
@@ -80,6 +99,12 @@ public class AdminModerationController {
         }
     }
 
+    /**
+     * 构建状态变更前快照。
+     *
+     * @param result 操作结果
+     * @return 变更前快照
+     */
     private Map<String, Object> buildStatusBeforeSnapshot(Map<String, Object> result) {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", result.get("id"));
@@ -89,6 +114,12 @@ public class AdminModerationController {
         return snapshot;
     }
 
+    /**
+     * 构建状态变更后快照。
+     *
+     * @param result 操作结果
+     * @return 变更后快照
+     */
     private Map<String, Object> buildStatusAfterSnapshot(Map<String, Object> result) {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", result.get("id"));
@@ -100,6 +131,18 @@ public class AdminModerationController {
         return snapshot;
     }
 
+    /**
+     * 构建管理员日志命令。
+     *
+     * @param operation      操作类型
+     * @param targetType     目标类型
+     * @param targetId       目标 ID
+     * @param detail         操作详情
+     * @param beforeSnapshot 变更前快照
+     * @param afterSnapshot  变更后快照
+     * @param request        HTTP 请求
+     * @return 日志命令
+     */
     private RecordAdminLogCommand buildLogCommand(String operation, String targetType, Long targetId,
                                                   String detail, Object beforeSnapshot, Object afterSnapshot,
                                                   @Nullable HttpServletRequest request) {
@@ -120,6 +163,12 @@ public class AdminModerationController {
         return command;
     }
 
+    /**
+     * 解析请求 IP。
+     *
+     * @param request HTTP 请求
+     * @return 请求 IP
+     */
     private String resolveIpAddress(@Nullable HttpServletRequest request) {
         if (request == null) {
             return null;

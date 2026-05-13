@@ -28,17 +28,34 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 文件上传控制器。
+ * <p>
+ * 提供图片和附件的上传接口，支持头像、封面、正文图片、私信图片及通用附件上传。
+ * 上传文件按年月目录归档存储，文件名使用 UUID 随机生成以防止命名冲突。
+ * </p>
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 @RestController
 @RequestMapping("/api/uploads")
 public class UploadController {
 
+    /** 头像图片大小上限（2 MB）。 */
     private static final long AVATAR_MAX_BYTES = 2L * 1024L * 1024L;
+    /** 封面图片大小上限（5 MB）。 */
     private static final long COVER_MAX_BYTES = 5L * 1024L * 1024L;
+    /** 正文图片大小上限（5 MB）。 */
     private static final long CONTENT_IMAGE_MAX_BYTES = 5L * 1024L * 1024L;
+    /** 私信图片大小上限（10 MB）。 */
     private static final long MESSAGE_IMAGE_MAX_BYTES = 10L * 1024L * 1024L;
+    /** 通用附件大小上限（20 MB）。 */
     private static final long FILE_MAX_BYTES = 20L * 1024L * 1024L;
+    /** 按年月分目录存储的格式化器。 */
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM");
 
+    /** 允许上传的附件 MIME 类型集合。 */
     private static final Set<String> ALLOWED_ATTACHMENT_TYPES = new HashSet<>(Arrays.asList(
         "application/pdf",
         "application/msword",
@@ -52,16 +69,25 @@ public class UploadController {
         "text/markdown"
     ));
 
+    /** 允许上传的附件扩展名集合。 */
     private static final Set<String> ALLOWED_ATTACHMENT_EXTENSIONS = new HashSet<>(Arrays.asList(
         ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".zip", ".txt", ".md"
     ));
 
+    /** 文件上传根目录（绝对路径）。 */
     private final Path uploadRoot;
 
     public UploadController(@Value("${my-blog.upload-dir:uploads}") String uploadDir) {
         this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
+    /**
+     * 上传图片。
+     *
+     * @param file  上传的图片文件
+     * @param scope 图片用途（avatar/cover/content/message），决定大小限制
+     * @return 包含访问 URL 的结果
+     */
     @PostMapping("/images")
     public Result<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file,
                                                    @RequestParam(defaultValue = "cover") String scope) {
@@ -96,6 +122,12 @@ public class UploadController {
         return Result.success(data);
     }
 
+    /**
+     * 上传附件。
+     *
+     * @param file 上传的附件文件
+     * @return 包含访问 URL 和原始文件名的结果
+     */
     @PostMapping("/files")
     public Result<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
         Long userId = AuthContext.getRequiredUserId();
@@ -135,6 +167,12 @@ public class UploadController {
         return Result.success(data);
     }
 
+    /**
+     * 校验图片文件的合法性（类型和大小）。
+     *
+     * @param file  上传的文件
+     * @param scope 图片用途，决定大小限制
+     */
     private void validateImageFile(MultipartFile file, String scope) {
         String contentType = StringUtils.hasText(file.getContentType()) ? file.getContentType() : "";
         if (!contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
@@ -162,6 +200,11 @@ public class UploadController {
         }
     }
 
+    /**
+     * 校验附件文件的合法性（大小和文件类型）。
+     *
+     * @param file 上传的文件
+     */
     private void validateAttachmentFile(MultipartFile file) {
         if (file.getSize() > FILE_MAX_BYTES) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "附件不能超过 20MB");
@@ -183,6 +226,12 @@ public class UploadController {
         }
     }
 
+    /**
+     * 解析图片扩展名，优先从原始文件名提取，否则根据 Content-Type 推断。
+     *
+     * @param file 上传的文件
+     * @return 扩展名（含点号，如 {@code .jpg}）
+     */
     private String resolveImageExtension(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         if (StringUtils.hasText(originalFilename) && originalFilename.contains(".")) {

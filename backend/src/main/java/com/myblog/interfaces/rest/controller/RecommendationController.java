@@ -37,6 +37,12 @@ public class RecommendationController {
         this.restDtoMapper = restDtoMapper;
     }
 
+    /**
+     * 获取推荐作者列表。
+     *
+     * @param limit 返回条数，默认 5
+     * @return 推荐作者列表
+     */
     @GetMapping("/authors")
     public Result<List<UserResponse>> listRecommendedAuthors(@RequestParam(defaultValue = "5") int limit) {
         List<UserDTO> items = recommendationAppService.listRecommendedAuthors(limit, AuthContext.getCurrentUserId());
@@ -47,6 +53,12 @@ public class RecommendationController {
         return Result.success(responses);
     }
 
+    /**
+     * 获取推荐专栏列表。
+     *
+     * @param limit 返回条数，默认 5
+     * @return 推荐专栏列表
+     */
     @GetMapping("/columns")
     public Result<List<ColumnResponse>> listRecommendedColumns(@RequestParam(defaultValue = "5") int limit) {
         List<ColumnDTO> items = recommendationAppService.listRecommendedColumns(limit, AuthContext.getCurrentUserId());
@@ -57,6 +69,13 @@ public class RecommendationController {
         return Result.success(responses);
     }
 
+    /**
+     * 获取精选文章列表。
+     *
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 精选文章列表
+     */
     @GetMapping("/articles")
     public Result<List<ArticleResponse>> listFeaturedArticles(@RequestParam(defaultValue = "1") int page,
                                                                @RequestParam(defaultValue = "10") int pageSize) {

@@ -31,6 +31,12 @@ public class ArticleLikeController {
         this.articleLikeAppService = articleLikeAppService;
     }
 
+    /**
+     * 点赞文章。
+     *
+     * @param articleId 文章 ID
+     * @return 点赞结果
+     */
     @PostMapping("/articles/{articleId}/like")
     public Result<Map<String, Object>> likeArticle(@PathVariable Long articleId) {
         Long userId = AuthContext.getRequiredUserId();
@@ -43,6 +49,12 @@ public class ArticleLikeController {
         return Result.success(result);
     }
 
+    /**
+     * 取消点赞文章。
+     *
+     * @param articleId 文章 ID
+     * @return 取消点赞结果
+     */
     @DeleteMapping("/articles/{articleId}/like")
     public Result<Map<String, Object>> unlikeArticle(@PathVariable Long articleId) {
         Long userId = AuthContext.getRequiredUserId();
@@ -55,6 +67,12 @@ public class ArticleLikeController {
         return Result.success(result);
     }
 
+    /**
+     * 查询文章点赞状态。
+     *
+     * @param articleId 文章 ID
+     * @return 点赞状态
+     */
     @GetMapping("/articles/{articleId}/like/status")
     public Result<Map<String, Object>> getLikeStatus(@PathVariable Long articleId) {
         Long userId = AuthContext.getCurrentUserId();

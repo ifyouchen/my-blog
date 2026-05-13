@@ -40,6 +40,13 @@ public class ColumnController {
         this.restDtoMapper = restDtoMapper;
     }
 
+    /**
+     * 分页查询专栏列表。
+     *
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 专栏分页结果
+     */
     @GetMapping
     public Result<PageResult<ColumnResponse>> pageColumns(@RequestParam(defaultValue = "1") int page,
                                                           @RequestParam(defaultValue = "9") int pageSize) {
@@ -56,6 +63,12 @@ public class ColumnController {
         ));
     }
 
+    /**
+     * 获取推荐专栏列表。
+     *
+     * @param limit 返回条数，默认 3
+     * @return 推荐专栏列表
+     */
     @GetMapping("/recommended")
     public Result<List<ColumnResponse>> listRecommendedColumns(@RequestParam(defaultValue = "3") int limit) {
         List<ColumnResponse> items = new ArrayList<ColumnResponse>();
@@ -65,6 +78,12 @@ public class ColumnController {
         return Result.success(items);
     }
 
+    /**
+     * 获取专栏详情。
+     *
+     * @param id 专栏 ID
+     * @return 专栏详情
+     */
     @GetMapping("/{id}")
     public Result<ColumnResponse> getColumnDetail(@PathVariable Long id) {
         return Result.success(restDtoMapper.toPublicResponse(
@@ -72,6 +91,13 @@ public class ColumnController {
         ));
     }
 
+    /**
+     * 获取专栏内文章的上一篇和下一篇。
+     *
+     * @param id        专栏 ID
+     * @param articleId 当前文章 ID
+     * @return 包含 prev 和 next 的文章对
+     */
     @GetMapping("/{id}/articles/{articleId}/neighbors")
     public Result<java.util.Map<String, ArticleResponse>> getColumnArticleNeighbors(
             @PathVariable Long id,
@@ -84,6 +110,14 @@ public class ColumnController {
         return Result.success(resp);
     }
 
+    /**
+     * 分页查询专栏内文章列表。
+     *
+     * @param id       专栏 ID
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 文章分页结果
+     */
     @GetMapping("/{id}/articles")
     public Result<PageResult<ArticleResponse>> pageColumnArticles(@PathVariable Long id,
                                                                   @RequestParam(defaultValue = "1") int page,
@@ -101,6 +135,12 @@ public class ColumnController {
         ));
     }
 
+    /**
+     * 订阅专栏。
+     *
+     * @param id 专栏 ID
+     * @return 订阅结果
+     */
     @PostMapping("/{id}/subscribe")
     public Result<Void> subscribeColumn(@PathVariable Long id) {
         Long userId = AuthContext.getRequiredUserId();
@@ -111,6 +151,12 @@ public class ColumnController {
         return Result.success();
     }
 
+    /**
+     * 取消订阅专栏。
+     *
+     * @param id 专栏 ID
+     * @return 取消订阅结果
+     */
     @DeleteMapping("/{id}/subscribe")
     public Result<Void> unsubscribeColumn(@PathVariable Long id) {
         Long userId = AuthContext.getRequiredUserId();

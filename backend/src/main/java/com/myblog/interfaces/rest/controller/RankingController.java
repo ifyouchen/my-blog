@@ -34,6 +34,14 @@ public class RankingController {
         this.restDtoMapper = restDtoMapper;
     }
 
+    /**
+     * 获取文章排行榜。
+     *
+     * @param limit    返回条数，默认 10
+     * @param period   时间段（7d/30d/all）
+     * @param category 分类名称，可为 null（不过滤）
+     * @return 文章排行榜列表
+     */
     @GetMapping("/articles")
     public Result<List<ArticleResponse>> listArticleRankings(@RequestParam(defaultValue = "10") int limit,
                                                              @RequestParam(defaultValue = "7d") String period,
@@ -45,6 +53,14 @@ public class RankingController {
         return Result.success(items);
     }
 
+    /**
+     * 获取作者排行榜。
+     *
+     * @param limit    返回条数，默认 10
+     * @param period   时间段（7d/30d/all）
+     * @param category 分类名称，可为 null（不过滤）
+     * @return 作者排行榜列表
+     */
     @GetMapping("/authors")
     public Result<List<AuthorRankingResponse>> listAuthorRankings(@RequestParam(defaultValue = "10") int limit,
                                                                   @RequestParam(defaultValue = "7d") String period,

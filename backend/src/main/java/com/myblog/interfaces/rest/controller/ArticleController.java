@@ -328,6 +328,12 @@ public class ArticleController {
         return Result.success(resp);
     }
 
+    /**
+     * 将文章推荐 DTO 转换为响应对象。
+     *
+     * @param dto 文章推荐 DTO
+     * @return 文章推荐响应
+     */
     private ArticleRecommendationsResponse toRecommendationsResponse(ArticleRecommendationsDTO dto) {
         ArticleRecommendationsResponse response = new ArticleRecommendationsResponse();
         List<ArticleRecommendationSectionResponse> sections =

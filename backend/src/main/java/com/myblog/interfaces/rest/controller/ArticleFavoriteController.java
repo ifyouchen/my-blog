@@ -39,6 +39,12 @@ public class ArticleFavoriteController {
         this.restDtoMapper = restDtoMapper;
     }
 
+    /**
+     * 收藏文章。
+     *
+     * @param articleId 文章 ID
+     * @return 收藏结果
+     */
     @PostMapping("/articles/{articleId}/favorite")
     public Result<Map<String, Object>> favoriteArticle(@PathVariable Long articleId) {
         Long userId = AuthContext.getRequiredUserId();
@@ -51,6 +57,12 @@ public class ArticleFavoriteController {
         return Result.success(result);
     }
 
+    /**
+     * 取消收藏文章。
+     *
+     * @param articleId 文章 ID
+     * @return 取消收藏结果
+     */
     @DeleteMapping("/articles/{articleId}/favorite")
     public Result<Map<String, Object>> unfavoriteArticle(@PathVariable Long articleId) {
         Long userId = AuthContext.getRequiredUserId();
@@ -63,6 +75,12 @@ public class ArticleFavoriteController {
         return Result.success(result);
     }
 
+    /**
+     * 查询文章收藏状态。
+     *
+     * @param articleId 文章 ID
+     * @return 收藏状态
+     */
     @GetMapping("/articles/{articleId}/favorite/status")
     public Result<Map<String, Object>> getFavoriteStatus(@PathVariable Long articleId) {
         Long userId = AuthContext.getCurrentUserId();
@@ -75,6 +93,14 @@ public class ArticleFavoriteController {
         return Result.success(result);
     }
 
+    /**
+     * 查询当前用户的收藏列表。
+     *
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @param keyword  关键字搜索
+     * @return 收藏文章分页结果
+     */
     @GetMapping("/users/me/favorites")
     public Result<PageResult<ArticleResponse>> getMyFavorites(
             @RequestParam(defaultValue = "1") int page,

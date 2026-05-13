@@ -16,6 +16,12 @@ public final class ArticleFavoritePersistenceConverter {
     private ArticleFavoritePersistenceConverter() {
     }
 
+    /**
+     * 将文章收藏数据对象转换为领域对象。
+     *
+     * @param favoriteDO 文章收藏数据对象
+     * @return 文章收藏领域对象，若 favoriteDO 为 null 则返回 null
+     */
     public static ArticleFavorite toDomain(ArticleFavoriteDO favoriteDO) {
         if (favoriteDO == null) {
             return null;
@@ -31,6 +37,12 @@ public final class ArticleFavoritePersistenceConverter {
         );
     }
 
+    /**
+     * 将文章收藏领域对象转换为数据对象。
+     *
+     * @param favorite 文章收藏领域对象
+     * @return 文章收藏数据对象
+     */
     public static ArticleFavoriteDO toData(ArticleFavorite favorite) {
         ArticleFavoriteDO favoriteDO = new ArticleFavoriteDO();
         favoriteDO.setId(favorite.getId().getValue());

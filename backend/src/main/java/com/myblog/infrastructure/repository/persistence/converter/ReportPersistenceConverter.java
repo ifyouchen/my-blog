@@ -18,6 +18,12 @@ public final class ReportPersistenceConverter {
     private ReportPersistenceConverter() {
     }
 
+    /**
+     * 将举报数据对象转换为领域对象。
+     *
+     * @param reportDO 举报数据对象
+     * @return 举报领域对象，若 reportDO 为 null 则返回 null
+     */
     public static Report toDomain(ReportDO reportDO) {
         if (reportDO == null) {
             return null;
@@ -39,6 +45,12 @@ public final class ReportPersistenceConverter {
         );
     }
 
+    /**
+     * 将举报领域对象转换为数据对象。
+     *
+     * @param report 举报领域对象
+     * @return 举报数据对象
+     */
     public static ReportDO toData(Report report) {
         ReportDO reportDO = new ReportDO();
         reportDO.setId(report.getId().getValue());

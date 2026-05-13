@@ -16,6 +16,12 @@ public final class CommentLikePersistenceConverter {
     private CommentLikePersistenceConverter() {
     }
 
+    /**
+     * 将评论点赞数据对象转换为领域对象。
+     *
+     * @param commentLikeDO 评论点赞数据对象
+     * @return 评论点赞领域对象，若 commentLikeDO 为 null 则返回 null
+     */
     public static CommentLike toDomain(CommentLikeDO commentLikeDO) {
         if (commentLikeDO == null) {
             return null;
@@ -31,6 +37,12 @@ public final class CommentLikePersistenceConverter {
         );
     }
 
+    /**
+     * 将评论点赞领域对象转换为数据对象。
+     *
+     * @param commentLike 评论点赞领域对象
+     * @return 评论点赞数据对象
+     */
     public static CommentLikeDO toData(CommentLike commentLike) {
         CommentLikeDO commentLikeDO = new CommentLikeDO();
         commentLikeDO.setId(commentLike.getId().getValue());

@@ -41,6 +41,17 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 管理后台控制器。
+ * <p>
+ * 提供管理员后台的核心 API，包括用户、文章、评论、分类、标签、
+ * 专栏、专题、公告、敏感词等的管理操作，以及数据导出功能。
+ * 所有接口均需要管理员权限，操作均记录管理员日志。
+ * </p>
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
@@ -69,6 +80,9 @@ public class AdminController {
         this.sensitiveWordAppService = sensitiveWordAppService;
     }
 
+    /**
+     * 校验管理员权限，未登录或非管理员时抛出异常。
+     */
     private void ensureAdmin() {
         Long userId = AuthContext.getRequiredUserId();
         if (userId == null) {
@@ -187,6 +201,13 @@ public class AdminController {
         return Result.success(tagAppService.getTagPage(page, pageSize, enabled, keyword));
     }
 
+    /**
+     * 创建分类（管理员后台）。
+     *
+     * @param request            创建参数
+     * @param httpServletRequest HTTP 请求
+     * @return 分类信息
+     */
     @PostMapping("/categories")
     public Result<CategoryDTO> createCategory(@RequestBody Map<String, Object> request,
                                               @Nullable HttpServletRequest httpServletRequest) {
@@ -207,6 +228,14 @@ public class AdminController {
         return Result.success(categoryDTO);
     }
 
+    /**
+     * 更新分类（管理员后台）。
+     *
+     * @param id                 分类 ID
+     * @param request            更新参数
+     * @param httpServletRequest HTTP 请求
+     * @return 分类信息
+     */
     @PutMapping("/categories/{id}")
     public Result<CategoryDTO> updateCategory(@PathVariable Long id,
                                               @RequestBody Map<String, Object> request,
@@ -230,6 +259,13 @@ public class AdminController {
         return Result.success(categoryDTO);
     }
 
+    /**
+     * 删除分类（管理员后台）。
+     *
+     * @param id                 分类 ID
+     * @param httpServletRequest HTTP 请求
+     * @return 删除结果
+     */
     @DeleteMapping("/categories/{id}")
     public Result<Map<String, Object>> deleteCategory(@PathVariable Long id,
                                                       @Nullable HttpServletRequest httpServletRequest) {
@@ -250,6 +286,13 @@ public class AdminController {
         return Result.success(result);
     }
 
+    /**
+     * 创建标签（管理员后台）。
+     *
+     * @param request            创建参数
+     * @param httpServletRequest HTTP 请求
+     * @return 标签信息
+     */
     @PostMapping("/tags")
     public Result<TagDTO> createTag(@RequestBody Map<String, Object> request,
                                     @Nullable HttpServletRequest httpServletRequest) {
@@ -269,6 +312,14 @@ public class AdminController {
         return Result.success(tagDTO);
     }
 
+    /**
+     * 更新标签（管理员后台）。
+     *
+     * @param id                 标签 ID
+     * @param request            更新参数
+     * @param httpServletRequest HTTP 请求
+     * @return 标签信息
+     */
     @PutMapping("/tags/{id}")
     public Result<TagDTO> updateTag(@PathVariable Long id,
                                     @RequestBody Map<String, Object> request,
@@ -291,6 +342,13 @@ public class AdminController {
         return Result.success(tagDTO);
     }
 
+    /**
+     * 删除标签（管理员后台）。
+     *
+     * @param id                 标签 ID
+     * @param httpServletRequest HTTP 请求
+     * @return 删除结果
+     */
     @DeleteMapping("/tags/{id}")
     public Result<Map<String, Object>> deleteTag(@PathVariable Long id,
                                                  @Nullable HttpServletRequest httpServletRequest) {
@@ -451,6 +509,13 @@ public class AdminController {
         return result;
     }
 
+    /**
+     * 删除文章（管理员后台）。
+     *
+     * @param id      文章 ID
+     * @param request HTTP 请求
+     * @return 删除结果
+     */
     @DeleteMapping("/articles/{id}")
     public Result<Map<String, Object>> deleteArticle(@PathVariable Long id,
                                                      @Nullable HttpServletRequest request) {
@@ -954,6 +1019,12 @@ public class AdminController {
         return Result.success(r);
     }
 
+    /**
+     * 构建公告快照。
+     *
+     * @param dto 公告 DTO
+     * @return 快照数据
+     */
     private Map<String, Object> toAnnouncementSnapshot(AnnouncementDTO dto) {
         if (dto == null) {
             return null;
@@ -966,6 +1037,12 @@ public class AdminController {
         return s;
     }
 
+    /**
+     * 构建专栏快照。
+     *
+     * @param dto 专栏 DTO
+     * @return 快照数据
+     */
     private Map<String, Object> toColumnSnapshot(ColumnDTO dto) {
         if (dto == null) {
             return null;
@@ -978,6 +1055,12 @@ public class AdminController {
         return s;
     }
 
+    /**
+     * 构建专题快照。
+     *
+     * @param dto 专题 DTO
+     * @return 快照数据
+     */
     private Map<String, Object> toTopicSnapshot(TopicDTO dto) {
         if (dto == null) {
             return null;
@@ -990,6 +1073,13 @@ public class AdminController {
         return s;
     }
 
+    /**
+     * 将请求参数转为 Long，转换失败时返回默认値。
+     *
+     * @param value    原始参数值
+     * @param fallback 默认値
+     * @return Long 类型结果
+     */
     private Long parseLong(Object value, Long fallback) {
         if (value instanceof Number) {
             return ((Number) value).longValue();
@@ -1088,6 +1178,12 @@ public class AdminController {
         return snapshot;
     }
 
+    /**
+     * 构建分类快照。
+     *
+     * @param categoryDTO 分类 DTO
+     * @return 快照数据
+     */
     private Map<String, Object> toCategorySnapshot(CategoryDTO categoryDTO) {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", categoryDTO.getId());
@@ -1098,6 +1194,12 @@ public class AdminController {
         return snapshot;
     }
 
+    /**
+     * 构建标签快照。
+     *
+     * @param tagDTO 标签 DTO
+     * @return 快照数据
+     */
     private Map<String, Object> toTagSnapshot(TagDTO tagDTO) {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", tagDTO.getId());
@@ -1107,6 +1209,13 @@ public class AdminController {
         return snapshot;
     }
 
+    /**
+     * 将请求参数转为 Integer，转换失败时返回默认値。
+     *
+     * @param value    原始参数值
+     * @param fallback 默认値
+     * @return Integer 类型结果
+     */
     private Integer parseInteger(Object value, Integer fallback) {
         if (value instanceof Number) {
             return Integer.valueOf(((Number) value).intValue());
@@ -1117,6 +1226,13 @@ public class AdminController {
         return fallback;
     }
 
+    /**
+     * 将请求参数转为 Boolean，转换失败时返回默认値。
+     *
+     * @param value    原始参数值
+     * @param fallback 默认値
+     * @return Boolean 类型结果
+     */
     private Boolean parseBoolean(Object value, Boolean fallback) {
         if (value instanceof Boolean) {
             return (Boolean) value;

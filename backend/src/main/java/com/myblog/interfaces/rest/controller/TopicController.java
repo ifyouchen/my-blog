@@ -36,6 +36,13 @@ public class TopicController {
         this.restDtoMapper = restDtoMapper;
     }
 
+    /**
+     * 分页查询专题列表。
+     *
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 专题分页结果
+     */
     @GetMapping
     public Result<PageResult<TopicResponse>> pageTopics(@RequestParam(defaultValue = "1") int page,
                                                          @RequestParam(defaultValue = "10") int pageSize) {
@@ -52,11 +59,24 @@ public class TopicController {
         ));
     }
 
+    /**
+     * 获取专题详情。
+     *
+     * @param id 专题 ID
+     * @return 专题详情
+     */
     @GetMapping("/{id}")
     public Result<TopicResponse> getTopicDetail(@PathVariable Long id) {
         return Result.success(toResponse(topicAppService.getTopicDetail(id, AuthContext.getCurrentUserId())));
     }
 
+    /**
+     * 获取专题内文章的上一篇和下一篇。
+     *
+     * @param id        专题 ID
+     * @param articleId 当前文章 ID
+     * @return 包含 prev 和 next 的文章对
+     */
     @GetMapping("/{id}/articles/{articleId}/neighbors")
     public Result<java.util.Map<String, ArticleResponse>> getTopicArticleNeighbors(
             @PathVariable Long id,
@@ -69,6 +89,14 @@ public class TopicController {
         return Result.success(resp);
     }
 
+    /**
+     * 分页查询专题内文章列表。
+     *
+     * @param id       专题 ID
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 文章分页结果
+     */
     @GetMapping("/{id}/articles")
     public Result<PageResult<ArticleResponse>> pageTopicArticles(@PathVariable Long id,
                                                                   @RequestParam(defaultValue = "1") int page,
@@ -86,6 +114,12 @@ public class TopicController {
         ));
     }
 
+    /**
+     * 将专题 DTO 转换为响应对象。
+     *
+     * @param dto 专题 DTO
+     * @return 专题响应
+     */
     private TopicResponse toResponse(TopicDTO dto) {
         TopicResponse response = new TopicResponse();
         response.setId(dto.getId());

@@ -19,15 +19,33 @@ public class MyBatisLearningProgressRepository implements LearningProgressReposi
 
     private final LearningProgressMapper learningProgressMapper;
 
+    /**
+     * 创建学习进度 MyBatis 仓储。
+     *
+     * @param learningProgressMapper 学习进度 Mapper
+     */
     public MyBatisLearningProgressRepository(LearningProgressMapper learningProgressMapper) {
         this.learningProgressMapper = learningProgressMapper;
     }
 
+    /**
+     * 根据用户和资产查询学习进度。
+     *
+     * @param userId    用户 ID
+     * @param assetType 资产类型（如 TOPIC、COLUMN）
+     * @param assetId   资产 ID
+     * @return 学习进度数据对象
+     */
     @Override
     public LearningProgressDO findByUserAndAsset(Long userId, String assetType, Long assetId) {
         return learningProgressMapper.selectByUserAndAsset(userId, assetType, assetId);
     }
 
+    /**
+     * 保存学习进度（新记录插入，已有记录更新）。
+     *
+     * @param progress 学习进度数据对象
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void save(LearningProgressDO progress) {
@@ -47,6 +65,11 @@ public class MyBatisLearningProgressRepository implements LearningProgressReposi
         learningProgressMapper.update(progress);
     }
 
+    /**
+     * 生成下一个学习进度记录 ID。
+     *
+     * @return 学习进度记录 ID
+     */
     @Override
     public Long nextId() {
         return learningProgressMapper.selectNextId();

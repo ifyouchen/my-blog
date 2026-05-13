@@ -4,8 +4,20 @@ import com.myblog.domain.model.aggregate.Tag;
 import com.myblog.domain.model.valueobject.TagId;
 import com.myblog.infrastructure.repository.persistence.entity.TagDO;
 
+/**
+ * 标签持久化转换器。
+ *
+ * @author Codex
+ * @since 1.0.0
+ */
 public class TagPersistenceConverter {
 
+    /**
+     * 将标签数据对象转换为领域对象。
+     *
+     * @param tagDO 标签数据对象
+     * @return 标签领域对象，若 tagDO 为 null 则返回 null
+     */
     public static Tag toDomain(TagDO tagDO) {
         if (tagDO == null) {
             return null;
@@ -22,6 +34,12 @@ public class TagPersistenceConverter {
         );
     }
 
+    /**
+     * 将标签领域对象转换为数据对象。
+     *
+     * @param tag 标签领域对象
+     * @return 标签数据对象，若 tag 为 null 则返回 null
+     */
     public static TagDO toData(Tag tag) {
         if (tag == null) {
             return null;

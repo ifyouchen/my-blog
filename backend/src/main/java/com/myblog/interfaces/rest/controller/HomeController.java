@@ -56,11 +56,22 @@ public class HomeController {
         return Result.success(homeStatsAppService.getStats());
     }
 
+    /**
+     * 获取首页引导数据，包括推荐专栏、热门标签、作者排行、精选文章等。
+     *
+     * @return 首页引导数据
+     */
     @GetMapping("/bootstrap")
     public Result<HomeBootstrapResponse> getBootstrap() {
         return Result.success(toResponse(homeBootstrapAppService.getBootstrap()));
     }
 
+    /**
+     * 将首页引导 DTO 转换为响应对象。
+     *
+     * @param dto 首页引导 DTO
+     * @return 首页引导响应
+     */
     private HomeBootstrapResponse toResponse(HomeBootstrapDTO dto) {
         HomeBootstrapResponse response = new HomeBootstrapResponse();
         response.setStats(dto.getStats());
@@ -77,6 +88,12 @@ public class HomeController {
         return response;
     }
 
+    /**
+     * 将专栏 DTO 列表转换为响应对象列表。
+     *
+     * @param items 专栏 DTO 列表
+     * @return 专栏响应列表
+     */
     private List<ColumnResponse> toColumnResponses(List<ColumnDTO> items) {
         List<ColumnResponse> responses = new ArrayList<ColumnResponse>();
         if (items == null) {
@@ -88,6 +105,12 @@ public class HomeController {
         return responses;
     }
 
+    /**
+     * 将作者排行 DTO 列表转换为响应对象列表。
+     *
+     * @param items 作者排行 DTO 列表
+     * @return 作者排行响应列表
+     */
     private List<AuthorRankingResponse> toAuthorRankingResponses(List<AuthorRankingDTO> items) {
         List<AuthorRankingResponse> responses = new ArrayList<AuthorRankingResponse>();
         if (items == null) {
@@ -99,6 +122,12 @@ public class HomeController {
         return responses;
     }
 
+    /**
+     * 将文章 DTO 列表转换为响应对象列表。
+     *
+     * @param items 文章 DTO 列表
+     * @return 文章响应列表
+     */
     private List<ArticleResponse> toArticleResponses(List<ArticleDTO> items) {
         List<ArticleResponse> responses = new ArrayList<ArticleResponse>();
         if (items == null) {

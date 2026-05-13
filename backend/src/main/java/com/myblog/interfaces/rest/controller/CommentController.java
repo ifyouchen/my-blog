@@ -227,6 +227,12 @@ public class CommentController {
         return Result.success(result);
     }
 
+    /**
+     * 将评论 DTO 分页结果转换为响应对象分页结果。
+     *
+     * @param result 评论 DTO 分页结果
+     * @return 评论响应分页结果
+     */
     private PageResult<CommentResponse> toPageResponse(PageResult<CommentDTO> result) {
         List<CommentResponse> items = new ArrayList<CommentResponse>(result.getItems().size());
         for (CommentDTO item : result.getItems()) {

@@ -14,6 +14,12 @@ public final class ConversationPersistenceConverter {
     private ConversationPersistenceConverter() {
     }
 
+    /**
+     * 将会话数据对象转换为领域对象。
+     *
+     * @param conversationDO 会话数据对象
+     * @return 会话领域对象，若 conversationDO 为 null 则返回 null
+     */
     public static Conversation toDomain(ConversationDO conversationDO) {
         if (conversationDO == null) {
             return null;
@@ -33,6 +39,12 @@ public final class ConversationPersistenceConverter {
         );
     }
 
+    /**
+     * 将会话领域对象转换为数据对象。
+     *
+     * @param conversation 会话领域对象
+     * @return 会话数据对象
+     */
     public static ConversationDO toData(Conversation conversation) {
         ConversationDO conversationDO = new ConversationDO();
         conversationDO.setId(conversation.getId().getValue());

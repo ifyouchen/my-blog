@@ -148,6 +148,12 @@ public class RestDtoMapper {
         return response;
     }
 
+    /**
+     * 将用户 DTO 转换为基础用户响应（不包含敏感字段）。
+     *
+     * @param dto 用户 DTO
+     * @return 基础用户响应
+     */
     private UserResponse toBaseUserResponse(UserDTO dto) {
         UserResponse response = new UserResponse();
         response.setId(dto.getId());
@@ -188,6 +194,13 @@ public class RestDtoMapper {
         return toUserProfileResponse(dto, true);
     }
 
+    /**
+     * 将用户主页 DTO 转换为响应对象。
+     *
+     * @param dto        用户主页 DTO
+     * @param publicUser 是否公开视图
+     * @return 用户主页响应
+     */
     private UserProfileResponse toUserProfileResponse(UserProfileDTO dto, boolean publicUser) {
         UserProfileResponse response = new UserProfileResponse();
         response.setUser(publicUser ? toPublicResponse(dto.getUser()) : toResponse(dto.getUser()));
@@ -220,6 +233,13 @@ public class RestDtoMapper {
         return toColumnResponse(dto, true);
     }
 
+    /**
+     * 将专栏 DTO 转换为响应对象。
+     *
+     * @param dto        专栏 DTO
+     * @param publicUser 是否公开视图
+     * @return 专栏响应
+     */
     private ColumnResponse toColumnResponse(ColumnDTO dto, boolean publicUser) {
         ColumnResponse response = new ColumnResponse();
         response.setId(dto.getId());
@@ -265,6 +285,13 @@ public class RestDtoMapper {
         return toAuthorRankingResponse(dto, true);
     }
 
+    /**
+     * 将作者排行 DTO 转换为响应对象。
+     *
+     * @param dto        作者排行 DTO
+     * @param publicUser 是否公开视图
+     * @return 作者排行响应
+     */
     private AuthorRankingResponse toAuthorRankingResponse(AuthorRankingDTO dto, boolean publicUser) {
         AuthorRankingResponse response = new AuthorRankingResponse();
         response.setRank(dto.getRank());
@@ -278,6 +305,12 @@ public class RestDtoMapper {
         return response;
     }
 
+    /**
+     * 将文章摘要 DTO 转换为响应对象。
+     *
+     * @param dto 文章摘要 DTO，可为 null
+     * @return 文章摘要响应，输入为 null 时返回 null
+     */
     private ArticleSummaryResponse toArticleSummaryResponse(ArticleSummaryDTO dto) {
         if (dto == null) {
             return null;
@@ -309,6 +342,13 @@ public class RestDtoMapper {
         return toArticleResponse(dto, true);
     }
 
+    /**
+     * 将文章 DTO 转换为响应对象。
+     *
+     * @param dto        文章 DTO
+     * @param publicUser 是否公开视图
+     * @return 文章响应
+     */
     private ArticleResponse toArticleResponse(ArticleDTO dto, boolean publicUser) {
         ArticleResponse response = new ArticleResponse();
         response.setId(dto.getId());
@@ -364,6 +404,13 @@ public class RestDtoMapper {
         return toCommentResponse(dto, true);
     }
 
+    /**
+     * 将评论 DTO 转换为响应对象。
+     *
+     * @param dto        评论 DTO
+     * @param publicUser 是否公开视图
+     * @return 评论响应
+     */
     private CommentResponse toCommentResponse(CommentDTO dto, boolean publicUser) {
         CommentResponse response = new CommentResponse();
         response.setId(dto.getId());

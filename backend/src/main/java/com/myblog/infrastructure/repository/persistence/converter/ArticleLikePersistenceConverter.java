@@ -16,6 +16,12 @@ public final class ArticleLikePersistenceConverter {
     private ArticleLikePersistenceConverter() {
     }
 
+    /**
+     * 将文章点赞数据对象转换为领域对象。
+     *
+     * @param articleLikeDO 文章点赞数据对象
+     * @return 文章点赞领域对象，若 articleLikeDO 为 null 则返回 null
+     */
     public static ArticleLike toDomain(ArticleLikeDO articleLikeDO) {
         if (articleLikeDO == null) {
             return null;
@@ -31,6 +37,12 @@ public final class ArticleLikePersistenceConverter {
         );
     }
 
+    /**
+     * 将文章点赞领域对象转换为数据对象。
+     *
+     * @param articleLike 文章点赞领域对象
+     * @return 文章点赞数据对象
+     */
     public static ArticleLikeDO toData(ArticleLike articleLike) {
         ArticleLikeDO articleLikeDO = new ArticleLikeDO();
         articleLikeDO.setId(articleLike.getId().getValue());

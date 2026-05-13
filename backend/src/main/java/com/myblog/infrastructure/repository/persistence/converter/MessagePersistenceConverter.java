@@ -14,6 +14,12 @@ public final class MessagePersistenceConverter {
     private MessagePersistenceConverter() {
     }
 
+    /**
+     * 将消息数据对象转换为领域对象。
+     *
+     * @param messageDO 消息数据对象
+     * @return 消息领域对象，若 messageDO 为 null 则返回 null
+     */
     public static Message toDomain(MessageDO messageDO) {
         if (messageDO == null) {
             return null;
@@ -34,6 +40,12 @@ public final class MessagePersistenceConverter {
         );
     }
 
+    /**
+     * 将消息领域对象转换为数据对象。
+     *
+     * @param message 消息领域对象
+     * @return 消息数据对象
+     */
     public static MessageDO toData(Message message) {
         MessageDO messageDO = new MessageDO();
         messageDO.setId(message.getId().getValue());

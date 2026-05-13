@@ -134,6 +134,11 @@ public class DashboardColumnController {
         return Result.success();
     }
 
+    /**
+     * 获取当前登录用户 ID，未登录时抛出未授权异常。
+     *
+     * @return 当前用户 ID
+     */
     private Long requiredUserId() {
         Long userId = AuthContext.getRequiredUserId();
         if (userId == null) {

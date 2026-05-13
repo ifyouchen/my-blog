@@ -56,6 +56,12 @@ public class UserFollowCountDO {
         this.cnt = cnt;
     }
 
+    /**
+     * 判断两个对象是否相等（以 userId 为准）。
+     *
+     * @param o 待比较对象
+     * @return 若相等则返回 {@code true}
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -64,6 +70,11 @@ public class UserFollowCountDO {
         return Objects.equals(userId, that.userId);
     }
 
+    /**
+     * 计算哈希值（以 userId 为准）。
+     *
+     * @return 哈希值
+     */
     @Override
     public int hashCode() {
         return Objects.hash(userId);

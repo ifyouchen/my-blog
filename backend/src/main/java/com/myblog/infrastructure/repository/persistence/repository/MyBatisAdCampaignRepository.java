@@ -24,10 +24,21 @@ public class MyBatisAdCampaignRepository implements AdCampaignRepository {
 
     private final AdCampaignMapper adCampaignMapper;
 
+    /**
+     * 创建广告投放 MyBatis 仓储。
+     *
+     * @param adCampaignMapper 广告投放 Mapper
+     */
     public MyBatisAdCampaignRepository(AdCampaignMapper adCampaignMapper) {
         this.adCampaignMapper = adCampaignMapper;
     }
 
+    /**
+     * 保存广告投放记录（ID 为 null 则插入，否则更新）。
+     *
+     * @param campaign 广告投放聚合根
+     * @return 保存后的广告投放聚合根
+     */
     @Override
     public AdCampaign save(AdCampaign campaign) {
         AdCampaignDO dO = AdCampaignPersistenceConverter.toDO(campaign);
@@ -39,12 +50,25 @@ public class MyBatisAdCampaignRepository implements AdCampaignRepository {
         return campaign;
     }
 
+    /**
+     * 根据 ID 查询广告投放。
+     *
+     * @param id 广告投放 ID
+     * @return 广告投放 Optional
+     */
     @Override
     public Optional<AdCampaign> findById(Long id) {
         AdCampaignDO dO = adCampaignMapper.selectById(id);
         return Optional.ofNullable(AdCampaignPersistenceConverter.toDomain(dO));
     }
 
+    /**
+     * 查询指定广告位在指定时间点有效的广告列表。
+     *
+     * @param slotCode 广告位编码
+     * @param time     查询时间点
+     * @return 有效广告列表
+     */
     @Override
     public List<AdCampaign> findActiveBySlot(String slotCode, LocalDateTime time) {
         List<AdCampaignDO> rows = adCampaignMapper.selectActiveBySlot(slotCode, time);
@@ -55,6 +79,15 @@ public class MyBatisAdCampaignRepository implements AdCampaignRepository {
         return result;
     }
 
+    /**
+     * 分页查询所有广告投放列表。
+     *
+     * @param page     页码
+     * @param pageSize 每页大小
+     * @param slotCode 广告位编码（可为 null）
+     * @param enabled  是否启用（可为 null）
+     * @return 广告投放列表
+     */
     @Override
     public List<AdCampaign> findAll(int page, int pageSize, String slotCode, Boolean enabled) {
         int offset = (page - 1) * pageSize;
@@ -66,27 +99,61 @@ public class MyBatisAdCampaignRepository implements AdCampaignRepository {
         return result;
     }
 
+    /**
+     * 统计广告投放数量。
+     *
+     * @param slotCode 广告位编码（可为 null）
+     * @param enabled  是否启用（可为 null）
+     * @return 广告投放数量
+     */
     @Override
     public long count(String slotCode, Boolean enabled) {
         return adCampaignMapper.countAll(slotCode, enabled);
     }
 
+    /**
+     * 记录广告事件（曝光或点击）。
+     *
+     * @param campaignId 广告投放 ID
+     * @param eventType  事件类型
+     * @param userId     用户 ID
+     * @param ipAddress  客户端 IP
+     * @param userAgent  客户端 UA
+     */
     @Override
     public void recordEvent(Long campaignId, String eventType, Long userId,
                              String ipAddress, String userAgent) {
         adCampaignMapper.insertEvent(campaignId, eventType, userId, ipAddress, userAgent);
     }
 
+    /**
+     * 统计广告事件数量。
+     *
+     * @param campaignId 广告投放 ID
+     * @param eventType  事件类型
+     * @return 事件数量
+     */
     @Override
     public long countEvents(Long campaignId, String eventType) {
         return adCampaignMapper.countEvents(campaignId, eventType);
     }
 
+    /**
+     * 统计全部广告事件总次数。
+     *
+     * @param eventType 事件类型
+     * @return 事件总次数
+     */
     @Override
     public long countTotalEvents(String eventType) {
         return adCampaignMapper.countTotalEvents(eventType);
     }
 
+    /**
+     * 按广告位聚合统计广告数、曝光数和点击数。
+     *
+     * @return 广告位统计列表
+     */
     @Override
     public List<AdCampaignRepository.SlotStat> findSlotStats() {
         List<AdSlotStatDO> rows = adCampaignMapper.selectSlotStats();

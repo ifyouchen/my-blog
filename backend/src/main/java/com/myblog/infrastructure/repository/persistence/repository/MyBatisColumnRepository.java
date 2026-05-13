@@ -26,16 +26,35 @@ import java.util.Optional;
 public class MyBatisColumnRepository implements ColumnRepository {
 
     private final ColumnMapper columnMapper;
+
+    /**
+     * 创建专栏 MyBatis 仓储。
+     *
+     * @param columnMapper 专栏 Mapper
+     */
     public MyBatisColumnRepository(ColumnMapper columnMapper) {
         this.columnMapper = columnMapper;
     }
 
+    /**
+     * 根据专栏 ID 查询专栏。
+     *
+     * @param columnId 专栏 ID
+     * @return 专栏 Optional
+     */
     @Override
     public Optional<Column> findById(ColumnId columnId) {
         ColumnDO columnDO = columnMapper.selectById(columnId.getValue());
         return columnDO == null ? Optional.<Column>empty() : Optional.of(toDomain(columnDO));
     }
 
+    /**
+     * 分页查询已发布专栏。
+     *
+     * @param page     页码
+     * @param pageSize 每页大小
+     * @return 专栏列表
+     */
     @Override
     public List<Column> findPublished(int page, int pageSize) {
         int currentPage = Math.max(page, 1);
@@ -48,11 +67,22 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return columns;
     }
 
+    /**
+     * 统计已发布专栏数量。
+     *
+     * @return 已发布专栏数量
+     */
     @Override
     public long countPublished() {
         return columnMapper.countPublished();
     }
 
+    /**
+     * 查询推荐专栏列表。
+     *
+     * @param limit 返回数量限制
+     * @return 推荐专栏列表
+     */
     @Override
     public List<Column> findRecommended(int limit) {
         List<ColumnDO> columnDOList = columnMapper.selectRecommended(limit);
@@ -63,6 +93,12 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return columns;
     }
 
+    /**
+     * 保存专栏。
+     *
+     * @param column 专栏聚合根
+     * @return 保存后的专栏
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Column save(Column column) {
@@ -71,16 +107,33 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return column;
     }
 
+    /**
+     * 生成下一个专栏 ID。
+     *
+     * @return 专栏 ID
+     */
     @Override
     public Long nextId() {
         return columnMapper.selectNextId();
     }
 
+    /**
+     * 查询专栏下的文章 ID 列表。
+     *
+     * @param columnId 专栏 ID
+     * @return 文章 ID 列表
+     */
     @Override
     public List<Long> findArticleIds(ColumnId columnId) {
         return columnMapper.selectArticleIds(columnId.getValue());
     }
 
+    /**
+     * 查询专栏下文章关联关系（含学习路径信息）。
+     *
+     * @param columnId 专栏 ID
+     * @return 学习路径文章列表
+     */
     @Override
     public List<LearningPathArticle> findArticleRelations(ColumnId columnId) {
         List<LearningPathArticleDO> list = columnMapper.selectArticleRelations(columnId.getValue());
@@ -91,6 +144,13 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return result;
     }
 
+    /**
+     * 绑定文章到专栏（已存在时恢复）。
+     *
+     * @param columnId  专栏 ID
+     * @param articleId 文章 ID
+     * @param sortOrder 排序
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void bindArticle(ColumnId columnId, Long articleId, int sortOrder) {
@@ -103,6 +163,12 @@ public class MyBatisColumnRepository implements ColumnRepository {
         }
     }
 
+    /**
+     * 从专栏解绑文章。
+     *
+     * @param columnId  专栏 ID
+     * @param articleId 文章 ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void unbindArticle(ColumnId columnId, Long articleId) {
@@ -110,6 +176,15 @@ public class MyBatisColumnRepository implements ColumnRepository {
         columnMapper.decrementArticleCount(columnId.getValue());
     }
 
+    /**
+     * 搜索已发布专栏。
+     *
+     * @param keyword  关键字
+     * @param sort     排序方式
+     * @param page     页码
+     * @param pageSize 每页大小
+     * @return 专栏列表
+     */
     @Override
     public List<Column> searchPublished(String keyword, String sort, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
@@ -123,11 +198,25 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return columns;
     }
 
+    /**
+     * 统计已发布专栏搜索数量。
+     *
+     * @param keyword 关键字
+     * @return 专栏数量
+     */
     @Override
     public long countSearchPublished(String keyword) {
         return columnMapper.countSearchPublished(keyword);
     }
 
+    /**
+     * 后台管理分页查询所有专栏。
+     *
+     * @param keyword  关键字
+     * @param page     页码
+     * @param pageSize 每页大小
+     * @return 专栏列表
+     */
     @Override
     public List<Column> findAll(String keyword, int page, int pageSize) {
         int p = Math.max(page, 1);
@@ -138,17 +227,34 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return cols;
     }
 
+    /**
+     * 统计所有专栏数量。
+     *
+     * @param keyword 关键字
+     * @return 专栏数量
+     */
     @Override
     public long countAll(String keyword) {
         return columnMapper.countAll(keyword);
     }
 
+    /**
+     * 软删除专栏。
+     *
+     * @param columnId 专栏 ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void softDelete(ColumnId columnId) {
         columnMapper.softDelete(columnId.getValue());
     }
 
+    /**
+     * 查询指定作者的专栏列表。
+     *
+     * @param authorId 作者 ID
+     * @return 专栏列表
+     */
     @Override
     public List<Column> findByAuthorId(Long authorId) {
         List<ColumnDO> list = columnMapper.selectByAuthorId(authorId);
@@ -159,11 +265,23 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return result;
     }
 
+    /**
+     * 统计指定作者的专栏数量。
+     *
+     * @param authorId 作者 ID
+     * @return 专栏数量
+     */
     @Override
     public int countByAuthorId(Long authorId) {
         return columnMapper.countByAuthorId(authorId);
     }
 
+    /**
+     * 将 DO 转换为领域对象。
+     *
+     * @param columnDO 专栏数据对象
+     * @return 专栏聚合根
+     */
     private Column toDomain(ColumnDO columnDO) {
         return Column.restore(
             columnDO.getId(),
@@ -189,6 +307,12 @@ public class MyBatisColumnRepository implements ColumnRepository {
         );
     }
 
+    /**
+     * 将领域对象转换为 DO。
+     *
+     * @param column 专栏聚合根
+     * @return 专栏数据对象
+     */
     private ColumnDO toData(Column column) {
         ColumnDO columnDO = new ColumnDO();
         columnDO.setId(column.getId().getValue());
@@ -214,6 +338,12 @@ public class MyBatisColumnRepository implements ColumnRepository {
         return columnDO;
     }
 
+    /**
+     * 将学习路径文章 DO 转换为领域值对象。
+     *
+     * @param item 学习路径文章数据对象
+     * @return 学习路径文章值对象
+     */
     private LearningPathArticle toPathArticle(LearningPathArticleDO item) {
         return new LearningPathArticle(
             item.getArticleId(),

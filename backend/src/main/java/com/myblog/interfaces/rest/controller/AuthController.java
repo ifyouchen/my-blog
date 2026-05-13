@@ -144,6 +144,12 @@ public class AuthController {
         return Result.success(restDtoMapper.toResponse(authAppService.getUser(AuthContext.getRequiredUserId())));
     }
 
+    /**
+     * 解析客户端真实 IP 地址，优先从 X-Forwarded-For 、X-Real-IP 头取。
+     *
+     * @param request HTTP 请求
+     * @return 客户端 IP 地址字符串
+     */
     private String resolveClientIp(HttpServletRequest request) {
         String forwardedFor = request.getHeader("X-Forwarded-For");
         if (forwardedFor != null && !forwardedFor.trim().isEmpty()) {

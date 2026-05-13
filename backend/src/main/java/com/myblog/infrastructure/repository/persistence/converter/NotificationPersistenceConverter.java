@@ -15,6 +15,12 @@ public final class NotificationPersistenceConverter {
     private NotificationPersistenceConverter() {
     }
 
+    /**
+     * 将通知数据对象转换为领域对象。
+     *
+     * @param notificationDO 通知数据对象
+     * @return 通知领域对象，若 notificationDO 为 null 则返回 null
+     */
     public static Notification toDomain(NotificationDO notificationDO) {
         if (notificationDO == null) {
             return null;
@@ -35,6 +41,12 @@ public final class NotificationPersistenceConverter {
         );
     }
 
+    /**
+     * 将通知领域对象转换为数据对象。
+     *
+     * @param notification 通知领域对象
+     * @return 通知数据对象
+     */
     public static NotificationDO toData(Notification notification) {
         NotificationDO notificationDO = new NotificationDO();
         notificationDO.setId(notification.getId().getValue());

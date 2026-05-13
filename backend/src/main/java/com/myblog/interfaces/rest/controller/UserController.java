@@ -340,6 +340,13 @@ public class UserController {
         ));
     }
 
+    /**
+     * 将文章 DTO 分页结果转换为响应对象分页结果。
+     *
+     * @param pageResult 文章 DTO 分页结果
+     * @param publicUser 是否使用公开视图转换（公开为 true，自身为 false）
+     * @return 文章响应分页结果
+     */
     private PageResult<ArticleResponse> toArticlePage(PageResult<ArticleDTO> pageResult, boolean publicUser) {
         List<ArticleResponse> items = new ArrayList<ArticleResponse>();
         for (ArticleDTO articleDTO : pageResult.getItems()) {
@@ -355,6 +362,14 @@ public class UserController {
         );
     }
 
+    /**
+     * 导出当前用户的文章列表为 CSV 文件。
+     *
+     * @param status   文章状态过滤
+     * @param keyword  关键字过滤
+     * @param response HTTP 响应
+     * @throws IOException IO 异常
+     */
     @GetMapping("/me/export/articles")
     public void exportMyArticles(@RequestParam(required = false) String status,
                                  @RequestParam(required = false) String keyword,

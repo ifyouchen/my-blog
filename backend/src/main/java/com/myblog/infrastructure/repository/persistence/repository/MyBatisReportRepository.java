@@ -30,15 +30,36 @@ public class MyBatisReportRepository implements ReportRepository {
 
     private final ReportMapper reportMapper;
 
+    /**
+     * 创建举报 MyBatis 仓储。
+     *
+     * @param reportMapper 举报 Mapper
+     */
     public MyBatisReportRepository(ReportMapper reportMapper) {
         this.reportMapper = reportMapper;
     }
 
+    /**
+     * 根据举报 ID 查询举报记录。
+     *
+     * @param reportId 举报 ID
+     * @return 举报 Optional
+     */
     @Override
     public Optional<Report> findById(ReportId reportId) {
         return Optional.ofNullable(ReportPersistenceConverter.toDomain(reportMapper.selectById(reportId.getValue())));
     }
 
+    /**
+     * 后台管理分页查询举报列表。
+     *
+     * @param status     举报状态
+     * @param targetType 举报目标类型
+     * @param reasonType 举报原因类型
+     * @param page       页码
+     * @param pageSize   每页大小
+     * @return 举报列表
+     */
     @Override
     public List<Report> findAdminPage(ReportStatus status, ReportTargetType targetType, ReportReasonType reasonType,
                                       int page, int pageSize) {
@@ -59,6 +80,14 @@ public class MyBatisReportRepository implements ReportRepository {
         return reports;
     }
 
+    /**
+     * 统计后台管理举报数量。
+     *
+     * @param status     举报状态
+     * @param targetType 举报目标类型
+     * @param reasonType 举报原因类型
+     * @return 举报数量
+     */
     @Override
     public long countAdminPage(ReportStatus status, ReportTargetType targetType, ReportReasonType reasonType) {
         return reportMapper.countAdminPage(
@@ -68,6 +97,14 @@ public class MyBatisReportRepository implements ReportRepository {
         );
     }
 
+    /**
+     * 判断举报人是否已对同一目标提交待处理举报。
+     *
+     * @param reporterUserId 举报人用户 ID
+     * @param targetType     举报目标类型
+     * @param targetId       举报目标 ID
+     * @return 是否已存在待处理举报
+     */
     @Override
     public boolean existsPendingByReporterAndTarget(UserId reporterUserId, ReportTargetType targetType, Long targetId) {
         return reportMapper.countPendingByReporterAndTarget(
@@ -77,6 +114,12 @@ public class MyBatisReportRepository implements ReportRepository {
         ) > 0;
     }
 
+    /**
+     * 保存举报记录。
+     *
+     * @param report 举报聚合根
+     * @return 保存后的举报
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Report save(Report report) {
@@ -84,6 +127,11 @@ public class MyBatisReportRepository implements ReportRepository {
         return report;
     }
 
+    /**
+     * 生成下一个举报 ID。
+     *
+     * @return 举报 ID
+     */
     @Override
     public Long nextId() {
         return reportMapper.selectNextId();

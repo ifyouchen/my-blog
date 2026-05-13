@@ -28,7 +28,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
-    /** userId -> list of active emitters */
+    /**
+     * 用户 ID 到活跃 SSE Emitter 列表的映射表。
+     * key = userId, value = 该用户所有当前连接的 SseEmitter 列表。
+     */
     private static final ConcurrentHashMap<Long, CopyOnWriteArrayList<SseEmitter>> USER_EMITTERS =
         new ConcurrentHashMap<>();
 
@@ -105,6 +108,14 @@ public class NotificationController {
         emitters.removeAll(toRemove);
     }
 
+    /**
+     * 分页查询通知列表。
+     *
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @param filter   过滤条件（all/unread/read）
+     * @return 通知分页结果
+     */
     @GetMapping
     public Result<PageResult<NotificationDTO>> pageNotifications(
             @RequestParam(defaultValue = "1") int page,
@@ -123,6 +134,11 @@ public class NotificationController {
         return Result.success(result);
     }
 
+    /**
+     * 获取当前用户未读通知数量。
+     *
+     * @return 未读通知数量
+     */
     @GetMapping("/unread-count")
     public Result<Map<String, Long>> getUnreadCount() {
         Long userId = AuthContext.getRequiredUserId();
@@ -138,6 +154,13 @@ public class NotificationController {
         return Result.success(result);
     }
 
+    /**
+     * 获取最近通知列表。
+     *
+     * @param limit  返回数量，默认 5，最多 20
+     * @param filter 过滤条件（all/unread）
+     * @return 通知列表
+     */
     @GetMapping("/recent")
     public Result<List<NotificationDTO>> listRecentNotifications(
             @RequestParam(defaultValue = "5") int limit,
@@ -159,6 +182,12 @@ public class NotificationController {
         return Result.success(notifications);
     }
 
+    /**
+     * 将指定通知标记为已读。
+     *
+     * @param id 通知 ID
+     * @return 操作结果
+     */
     @PostMapping("/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
         Long userId = AuthContext.getRequiredUserId();
@@ -170,6 +199,11 @@ public class NotificationController {
         return Result.success();
     }
 
+    /**
+     * 将当前用户的所有通知标记为已读。
+     *
+     * @return 操作结果
+     */
     @PostMapping("/read-all")
     public Result<Void> markAllRead() {
         Long userId = AuthContext.getRequiredUserId();

@@ -33,7 +33,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @RequestMapping("/api/messages")
 public class MessageController {
 
-    /** userId -> list of active SSE emitters for message events */
+    /**
+     * 用户 ID 到活跃 SSE Emitter 列表的映射表（私信消息事件）。
+     * key = userId, value = 该用户所有当前连接的 SseEmitter 列表。
+     */
     private static final ConcurrentHashMap<Long, CopyOnWriteArrayList<SseEmitter>> MESSAGE_EMITTERS =
         new ConcurrentHashMap<>();
 
@@ -145,6 +148,12 @@ public class MessageController {
         emitters.removeAll(toRemove);
     }
 
+    /**
+     * 转义 JSON 字符串中的特殊字符。
+     *
+     * @param s 原始字符串
+     * @return 转义后的字符串
+     */
     private static String escapeJson(String s) {
         return s.replace("\\", "\\\\")
                 .replace("\"", "\\\"")

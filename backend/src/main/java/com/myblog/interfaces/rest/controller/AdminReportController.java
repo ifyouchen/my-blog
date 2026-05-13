@@ -45,6 +45,16 @@ public class AdminReportController {
         this.adminLogAppService = adminLogAppService;
     }
 
+    /**
+     * 分页查询举报列表。
+     *
+     * @param page       页码
+     * @param pageSize   每页数量
+     * @param status     举报状态过滤
+     * @param targetType 举报目标类型过滤
+     * @param reasonType 举报原因类型过滤
+     * @return 举报分页结果
+     */
     @GetMapping
     public Result<PageResult<ReportDTO>> pageReports(@RequestParam(defaultValue = "1") int page,
                                                      @RequestParam(defaultValue = "10") int pageSize,
@@ -55,12 +65,26 @@ public class AdminReportController {
         return Result.success(reportAppService.pageReports(status, targetType, reasonType, page, pageSize));
     }
 
+    /**
+     * 获取举报详情。
+     *
+     * @param id 举报 ID
+     * @return 举报详情
+     */
     @GetMapping("/{id}")
     public Result<ReportDTO> getReport(@PathVariable Long id) {
         ensureAdmin();
         return Result.success(reportAppService.getReportDetail(id));
     }
 
+    /**
+     * 处理举报。
+     *
+     * @param id                 举报 ID
+     * @param request            处理请求
+     * @param httpServletRequest HTTP 请求
+     * @return 处理后的举报信息
+     */
     @PostMapping("/{id}/resolve")
     public Result<ReportDTO> resolveReport(@PathVariable Long id,
                                            @RequestBody @Valid ResolveReportRequest request,
@@ -85,6 +109,9 @@ public class AdminReportController {
         return Result.success(after);
     }
 
+    /**
+     * 校验管理员权限，非管理员时抛出异常。
+     */
     private void ensureAdmin() {
         AuthContext.getRequiredUserId();
         if (!"ADMIN".equals(AuthContext.getRole())) {
@@ -92,6 +119,12 @@ public class AdminReportController {
         }
     }
 
+    /**
+     * 构建举报快照。
+     *
+     * @param dto 举报 DTO
+     * @return 快照数据
+     */
     private Map<String, Object> toReportSnapshot(ReportDTO dto) {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", dto.getId());
@@ -104,6 +137,18 @@ public class AdminReportController {
         return snapshot;
     }
 
+    /**
+     * 构建管理员日志命令。
+     *
+     * @param operation      操作类型
+     * @param targetType     目标类型
+     * @param targetId       目标 ID
+     * @param detail         操作详情
+     * @param beforeSnapshot 变更前快照
+     * @param afterSnapshot  变更后快照
+     * @param request        HTTP 请求
+     * @return 日志命令
+     */
     private RecordAdminLogCommand buildLogCommand(String operation, String targetType, Long targetId,
                                                   String detail, Object beforeSnapshot, Object afterSnapshot,
                                                   @Nullable HttpServletRequest request) {
@@ -124,6 +169,12 @@ public class AdminReportController {
         return command;
     }
 
+    /**
+     * 解析请求 IP。
+     *
+     * @param request HTTP 请求
+     * @return 请求 IP
+     */
     private String resolveIpAddress(@Nullable HttpServletRequest request) {
         if (request == null) {
             return null;

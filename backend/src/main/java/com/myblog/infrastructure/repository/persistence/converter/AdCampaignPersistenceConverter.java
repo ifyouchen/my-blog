@@ -14,6 +14,12 @@ public final class AdCampaignPersistenceConverter {
     private AdCampaignPersistenceConverter() {
     }
 
+    /**
+     * 将广告投放领域对象转换为数据对象。
+     *
+     * @param campaign 广告投放领域对象
+     * @return 广告投放数据对象，若 campaign 为 null 则返回 null
+     */
     public static AdCampaignDO toDO(AdCampaign campaign) {
         if (campaign == null) {
             return null;
@@ -36,6 +42,12 @@ public final class AdCampaignPersistenceConverter {
         return dO;
     }
 
+    /**
+     * 将广告投放数据对象转换为领域对象。
+     *
+     * @param dO 广告投放数据对象
+     * @return 广告投放领域对象，若 dO 为 null 则返回 null
+     */
     public static AdCampaign toDomain(AdCampaignDO dO) {
         if (dO == null) {
             return null;
