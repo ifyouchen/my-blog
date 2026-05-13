@@ -1,8 +1,18 @@
 import {request} from './http';
 import {normalizeArticle, normalizeTopic} from './transformers';
 
-export const getTopicsApi = async ({ page = 1, pageSize = 10 } = {}) => {
-    const data = await request(`/topics?page=${page}&pageSize=${pageSize}`);
+export const getTopicsApi = async ({ page = 1, pageSize = 10, keyword = '', difficulty = '' } = {}) => {
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize)
+    });
+    if (keyword && keyword.trim()) {
+        params.set('keyword', keyword.trim());
+    }
+    if (difficulty && difficulty.trim()) {
+        params.set('difficulty', difficulty.trim());
+    }
+    const data = await request(`/topics?${params.toString()}`);
     return {
         ...data,
         items: (data.items || []).map(normalizeTopic)

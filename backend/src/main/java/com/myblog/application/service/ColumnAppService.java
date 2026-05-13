@@ -84,6 +84,34 @@ public class ColumnAppService {
     }
 
     /**
+     * 分页查询某位作者的公开专栏。
+     *
+     * @param authorId 作者 ID
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param currentUserId 当前用户 ID
+     * @return 作者公开专栏分页
+     */
+    public PageResult<ColumnDTO> pagePublishedColumnsByAuthor(Long authorId, int page, int pageSize,
+                                                              Long currentUserId) {
+        userRepository.findById(new UserId(authorId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = Math.max(pageSize, 1);
+        List<Column> columns = columnRepository.findPublishedByAuthorId(authorId, currentPage, currentPageSize);
+        List<ColumnDTO> items = new ArrayList<ColumnDTO>(columns.size());
+        for (Column column : columns) {
+            items.add(toDTO(column, currentUserId));
+        }
+        return new PageResult<ColumnDTO>(
+            items,
+            currentPage,
+            currentPageSize,
+            columnRepository.countPublishedByAuthorId(authorId)
+        );
+    }
+
+    /**
      * 查询推荐专栏。
      *
      * @param limit 限制数量

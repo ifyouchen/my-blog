@@ -154,6 +154,7 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || path.matches("^/api/tags/\\d+$")
             || path.matches("^/api/tags/\\d+/articles$")
             || path.matches("^/api/columns/\\d+$")
+            || path.matches("^/api/columns/users/\\d+$")
             || path.matches("^/api/columns/\\d+/articles$")
             || path.matches("^/api/columns/\\d+/articles/\\d+/neighbors$")
             || path.matches("^/api/topics/\\d+$")

@@ -83,6 +83,30 @@ test.describe('guest smoke', () => {
         await expect(page).toHaveURL(/\/columns\/\d+/);
     });
 
+    test('user profile switches between latest posts and columns', async ({ page }) => {
+        await page.goto('/users/2');
+        await expect(page.getByTestId('profile-content-tabs')).toBeVisible();
+        await expect(page.getByTestId('profile-posts-tab')).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByTestId('profile-article-toolbar')).toBeVisible();
+
+        const columnsResponsePromise = page.waitForResponse((response) => (
+            response.url().includes('/api/columns/users/2')
+            && response.request().method() === 'GET'
+        )).catch(() => null);
+        await page.getByTestId('profile-columns-tab').click();
+        await expect(page.getByTestId('profile-columns-tab')).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByTestId('profile-article-toolbar')).toHaveCount(0);
+        await expect(page.getByTestId('profile-columns-section')).toBeVisible();
+
+        const columnsResponse = await columnsResponsePromise;
+        expect(columnsResponse).not.toBeNull();
+        expect(columnsResponse.ok()).toBeTruthy();
+
+        await page.getByTestId('profile-posts-tab').click();
+        await expect(page.getByTestId('profile-posts-tab')).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByTestId('profile-article-toolbar')).toBeVisible();
+    });
+
     test('ranking page renders article and author boards', async ({ page }) => {
         const categoriesResponsePromise = page.waitForResponse((response) => (
             response.url().includes('/api/categories') && response.ok()

@@ -359,6 +359,7 @@ const setPortalArticlesOnce = (items = []) => {
 };
 
 const setPortalFallbackArticles = (items = [], { tab, sort, category } = {}) => {
+    const nextItems = (items || []).filter(Boolean).slice(0, 5);
     if (
         featuredArticles.value.length
         || portalFallbackArticles.value.length
@@ -368,7 +369,10 @@ const setPortalFallbackArticles = (items = [], { tab, sort, category } = {}) => 
     ) {
         return;
     }
-    portalFallbackArticles.value = (items || []).filter(Boolean).slice(0, 5);
+    portalFallbackArticles.value = nextItems;
+    if (!bootstrapLoaded.value) {
+        return;
+    }
     setPortalArticlesOnce(portalFallbackArticles.value);
 };
 

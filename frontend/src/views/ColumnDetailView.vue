@@ -38,24 +38,24 @@ const {
     resetStableRequest
 } = useStableListRequest();
 
+const COLUMN_ARTICLE_CACHE_VERSION = 'column-articles-v2';
 const buildFeedCacheKey = () => `column:${String(route.params.id || '')}`;
 
 const fetchColumn = async ({ reset = false } = {}) => {
     let restored = false;
+    const cacheOptions = { cacheVersion: COLUMN_ARTICLE_CACHE_VERSION };
     if (reset) {
         resetStableRequest();
         resetFeed();
         column.value = null;
-        restored = restoreFeedCache(buildFeedCacheKey());
+        restored = restoreFeedCache(buildFeedCacheKey(), cacheOptions);
     }
 
     const columnId = String(route.params.id || '');
     const { result } = await runStableRequest(
         () => Promise.all([
             getColumnDetailApi(columnId),
-            restored
-                ? Promise.resolve({ items: articles.value, page: currentPage.value, total: total.value })
-                : getColumnArticlesApi(columnId, { page: 1, pageSize })
+            getColumnArticlesApi(columnId, { page: 1, pageSize })
         ]),
         {
             silent: restored || hasLoadedOnce.value,
@@ -70,20 +70,19 @@ const fetchColumn = async ({ reset = false } = {}) => {
 
     const [columnDetail, articlePage] = result;
     column.value = columnDetail;
-    if (!restored) {
-        applyPageResult(articlePage);
-        saveFeedCache(buildFeedCacheKey());
-    }
+    applyPageResult(articlePage);
+    saveFeedCache(buildFeedCacheKey(), cacheOptions);
 };
 
 const loadMoreArticles = async () => {
+    const cacheOptions = { cacheVersion: COLUMN_ARTICLE_CACHE_VERSION };
     const columnId = String(route.params.id || '');
     const response = await loadMore(
         (page) => getColumnArticlesApi(columnId, { page, pageSize }),
         { errorMessage: '专栏文章加载失败，请稍后重试' }
     );
     if (response?.result) {
-        saveFeedCache(buildFeedCacheKey());
+        saveFeedCache(buildFeedCacheKey(), cacheOptions);
     }
 };
 
@@ -132,7 +131,7 @@ watch(() => route.params.id, async () => {
 }, { immediate: true });
 
 onBeforeRouteLeave(() => {
-    saveFeedCache(buildFeedCacheKey());
+    saveFeedCache(buildFeedCacheKey(), { cacheVersion: COLUMN_ARTICLE_CACHE_VERSION });
 });
 </script>
 

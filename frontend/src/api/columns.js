@@ -41,8 +41,15 @@ export const removeMyColumnArticleApi = async (columnId, articleId) => {
 
 // ========== 公共专栏 API ==========
 
-export const getColumnsApi = async ({ page = 1, pageSize = 9 } = {}) => {
-    const data = await request(`/columns?page=${page}&pageSize=${pageSize}`);
+export const getColumnsApi = async ({ page = 1, pageSize = 9, keyword = '' } = {}) => {
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize)
+    });
+    if (keyword && keyword.trim()) {
+        params.set('keyword', keyword.trim());
+    }
+    const data = await request(`/columns?${params.toString()}`);
     return {
         ...data,
         items: (data.items || []).map(normalizeColumn)
@@ -52,6 +59,18 @@ export const getColumnsApi = async ({ page = 1, pageSize = 9 } = {}) => {
 export const getRecommendedColumnsApi = async (limit = 3) => {
     const data = await request(`/columns/recommended?limit=${limit}`);
     return (data || []).map(normalizeColumn);
+};
+
+export const getUserColumnsApi = async (userId, { page = 1, pageSize = 12 } = {}) => {
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize)
+    });
+    const data = await request(`/columns/users/${userId}?${params.toString()}`);
+    return {
+        ...data,
+        items: (data.items || []).map(normalizeColumn)
+    };
 };
 
 export const getColumnDetailApi = async (columnId) => normalizeColumn(await request(`/columns/${columnId}`));

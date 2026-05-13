@@ -319,6 +319,14 @@ function Invoke-UploadWithProgress {
 
 Protect-PrivateKeyFile
 
+# SQL 初始化提示（默认不初始化）
+$InitSql = $false
+$initChoice = Read-Host "是否初始化 SQL 数据？(输入 yes 确认，直接回车跳过)"
+if ($initChoice -and $initChoice.Trim().ToLower() -eq "yes") {
+    $InitSql = $true
+    Write-Host "SQL 初始化已开启"
+}
+
 Invoke-NativeCommand "Build frontend" {
     Push-Location $FrontendDir
     try {
@@ -352,7 +360,7 @@ if (-not (Test-Path $BackendJar)) {
 $SshArgs = New-SshArgs
 $CanProbeUploadProgress = Test-UploadProgressProbe
 $RemotePrepareCommand = "set -e; mkdir -p '$RemoteFrontendParent'; rm -rf '$RemoteFrontendDist'; rm -f '$RemoteJar'"
-$RemoteRestartCommand = "set -e; cd '$RemoteRoot'; chmod +x './restart.sh'; ./restart.sh"
+$RemoteRestartCommand = "set -e; cd '$RemoteRoot'; chmod +x './restart.sh'; ./restart.sh$(if ($InitSql) { ' init' })"
 
 Invoke-NativeCommand "Prepare remote directories" {
     ssh @SshArgs $RemotePrepareCommand

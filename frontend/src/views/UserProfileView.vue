@@ -1,14 +1,17 @@
-<script setup>import {computed, inject, ref, watch} from 'vue';
+<script setup>
+import {computed, inject, onBeforeUnmount, ref, watch} from 'vue';
 import {onBeforeRouteLeave, RouterLink, useRoute, useRouter} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
+import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
+import {getUserColumnsApi} from '@/api/columns';
 import {createConversationApi} from '@/api/messages';
 import {getFollowStatusApi, getUserFollowersApi, getUserFollowingListApi} from '@/api/following';
 import {useInfiniteArticleFeed} from '@/composables/useInfiniteArticleFeed';
@@ -28,7 +31,18 @@ const followDialogType = ref('followers');
 const followDialogList = ref([]);
 const followDialogLoading = ref(false);
 const followStatus = ref({ followed: false, followedBack: false, mutual: false });
+const contentTab = ref('posts');
 const articleTab = ref('latest');
+const columnItems = ref([]);
+const columnPage = ref(1);
+const columnTotal = ref(0);
+const columnLoadedOnce = ref(false);
+const columnInitialLoading = ref(false);
+const columnLoadingMore = ref(false);
+const columnError = ref('');
+const columnLoadTrigger = ref(null);
+const columnLoadTriggerVisible = ref(false);
+let columnLoadObserver = null;
 
 useHead({
     title: computed(() => {
@@ -39,6 +53,7 @@ useHead({
     })
 });
 const pageSize = 10;
+const columnPageSize = 12;
 const {
     articles,
     currentPage,
@@ -77,7 +92,34 @@ const summarySubtitle = computed(() => (
 ));
 const isMutualFollow = computed(() => !!(followStatus.value && followStatus.value.mutual));
 const articleFeedTitle = computed(() => (articleTab.value === 'hot' ? '热门文章' : '最新发布'));
-const buildFeedCacheKey = () => `user:${userId.value}:latest`;
+const hasMoreColumns = computed(() => columnItems.value.length < columnTotal.value);
+const buildFeedCacheKey = (targetUserId = userId.value) => `user:${String(targetUserId || '')}:latest`;
+
+const mergeColumns = (currentItems, nextItems) => {
+    const seen = new Set(currentItems.map((item) => String(item.id)));
+    return [
+        ...currentItems,
+        ...nextItems.filter((item) => {
+            const key = String(item.id);
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        })
+    ];
+};
+
+const resetColumns = () => {
+    columnItems.value = [];
+    columnPage.value = 1;
+    columnTotal.value = 0;
+    columnLoadedOnce.value = false;
+    columnInitialLoading.value = false;
+    columnLoadingMore.value = false;
+    columnError.value = '';
+    columnLoadTriggerVisible.value = false;
+};
 
 const loadProfile = async ({ reset = false } = {}) => {
     let restored = false;
@@ -85,6 +127,7 @@ const loadProfile = async ({ reset = false } = {}) => {
         resetStableRequest();
         resetFeed();
         profile.value = null;
+        resetColumns();
         followStatus.value = { followed: false, followedBack: false, mutual: false };
         if (articleTab.value === 'latest') {
             restored = restoreFeedCache(buildFeedCacheKey());
@@ -129,6 +172,63 @@ const loadProfile = async ({ reset = false } = {}) => {
     }
 };
 
+const loadColumns = async ({ reset = false } = {}) => {
+    if (columnInitialLoading.value || columnLoadingMore.value) {
+        return;
+    }
+    if (!reset && (!columnLoadedOnce.value || !hasMoreColumns.value)) {
+        return;
+    }
+
+    const requestUserId = userId.value;
+    const nextPage = reset ? 1 : columnPage.value + 1;
+    columnError.value = '';
+    if (reset) {
+        columnInitialLoading.value = true;
+    } else {
+        columnLoadingMore.value = true;
+    }
+    try {
+        const pageResult = await getUserColumnsApi(userId.value, {
+            page: nextPage,
+            pageSize: columnPageSize
+        });
+        if (requestUserId !== userId.value) {
+            return;
+        }
+        columnItems.value = reset
+            ? (pageResult.items || [])
+            : mergeColumns(columnItems.value, pageResult.items || []);
+        columnPage.value = pageResult.page || nextPage;
+        columnTotal.value = pageResult.total || 0;
+        columnLoadedOnce.value = true;
+    } catch (error) {
+        if (requestUserId !== userId.value) {
+            return;
+        }
+        columnError.value = error?.message || '专栏加载失败，请稍后重试';
+    } finally {
+        if (requestUserId === userId.value) {
+            columnInitialLoading.value = false;
+            columnLoadingMore.value = false;
+        }
+    }
+};
+
+const loadMoreColumns = async () => {
+    await loadColumns();
+};
+
+const switchContentTab = async (nextTab) => {
+    if (contentTab.value === nextTab) {
+        return;
+    }
+    contentTab.value = nextTab;
+    if (nextTab === 'columns' && !columnLoadedOnce.value && !columnInitialLoading.value) {
+        await loadColumns({ reset: true });
+    }
+};
+
 const loadMoreArticles = async () => {
     if (articleTab.value === 'hot') {
         return;
@@ -167,6 +267,58 @@ const handleFollowChange = (followed, error) => {
     if (state.user) {
         getFollowStatusApi(userId.value).then(function(s) { followStatus.value = s; }).catch(function() {});
     }
+};
+
+const requestMoreColumnsIfVisible = () => {
+    if (
+        contentTab.value !== 'columns'
+        || !columnLoadTriggerVisible.value
+        || columnError.value
+        || columnInitialLoading.value
+        || columnLoadingMore.value
+        || !hasMoreColumns.value
+    ) {
+        return;
+    }
+    loadMoreColumns();
+};
+
+const teardownColumnObserver = () => {
+    if (columnLoadObserver) {
+        columnLoadObserver.disconnect();
+        columnLoadObserver = null;
+    }
+};
+
+const setupColumnObserver = () => {
+    teardownColumnObserver();
+    columnLoadTriggerVisible.value = false;
+    if (contentTab.value !== 'columns' || typeof IntersectionObserver === 'undefined' || !columnLoadTrigger.value) {
+        return;
+    }
+    columnLoadObserver = new IntersectionObserver((entries) => {
+        columnLoadTriggerVisible.value = entries.some((entry) => entry.isIntersecting);
+        requestMoreColumnsIfVisible();
+    }, {
+        rootMargin: '320px 0px',
+        threshold: 0
+    });
+    columnLoadObserver.observe(columnLoadTrigger.value);
+};
+
+const updateColumnSubscribedState = (column, subscribed) => {
+    column.subscribed = subscribed;
+    column.subscriberCount = Math.max(0, (column.subscriberCount || 0) + (subscribed ? 1 : -1));
+};
+
+const getDifficultyLabel = (difficulty) => {
+    if (difficulty === 'ADVANCED') {
+        return '深入';
+    }
+    if (difficulty === 'BEGINNER') {
+        return '入门';
+    }
+    return '进阶';
 };
 
 const openReportUser = () => {
@@ -216,10 +368,28 @@ const openFollowDialog = async (type) => {
 const closeFollowDialog = () => { followDialogVisible.value = false; };
 const goToUserProfile = (uid) => { closeFollowDialog(); router.push('/users/' + uid); };
 
-watch(() => route.params.id, () => {
-    if (articleTab.value === 'latest') {
-        saveFeedCache(buildFeedCacheKey());
+watch(() => [contentTab.value, columnLoadTrigger.value], setupColumnObserver, { flush: 'post' });
+
+watch(
+    () => [
+        contentTab.value,
+        columnItems.value.length,
+        hasMoreColumns.value,
+        columnInitialLoading.value,
+        columnLoadingMore.value,
+        columnError.value,
+        columnLoadTriggerVisible.value
+    ],
+    requestMoreColumnsIfVisible,
+    { flush: 'post' }
+);
+
+watch(() => route.params.id, (nextId, previousId) => {
+    if (previousId && articleTab.value === 'latest') {
+        saveFeedCache(buildFeedCacheKey(previousId));
     }
+    teardownColumnObserver();
+    contentTab.value = 'posts';
     articleTab.value = 'latest';
     loadProfile({ reset: true });
 }, { immediate: true });
@@ -229,6 +399,8 @@ onBeforeRouteLeave(() => {
         saveFeedCache(buildFeedCacheKey());
     }
 });
+
+onBeforeUnmount(teardownColumnObserver);
 </script>
 
 <template>
@@ -328,7 +500,43 @@ onBeforeRouteLeave(() => {
             tone="error"
         />
 
-        <section v-if="profile" class="profile-article-toolbar" aria-label="作者文章筛选">
+        <section
+            v-if="profile"
+            class="profile-content-tabs"
+            role="tablist"
+            aria-label="作者内容"
+            data-testid="profile-content-tabs"
+        >
+            <button
+                type="button"
+                role="tab"
+                :aria-selected="contentTab === 'posts'"
+                :class="{ active: contentTab === 'posts' }"
+                data-testid="profile-posts-tab"
+                @click="switchContentTab('posts')"
+            >
+                最新发布
+                <span v-if="total">{{ total }}</span>
+            </button>
+            <button
+                type="button"
+                role="tab"
+                :aria-selected="contentTab === 'columns'"
+                :class="{ active: contentTab === 'columns' }"
+                data-testid="profile-columns-tab"
+                @click="switchContentTab('columns')"
+            >
+                专栏
+                <span v-if="columnLoadedOnce">{{ columnTotal }}</span>
+            </button>
+        </section>
+
+        <section
+            v-if="profile && contentTab === 'posts'"
+            class="profile-article-toolbar"
+            aria-label="作者文章筛选"
+            data-testid="profile-article-toolbar"
+        >
             <div class="profile-article-tabs" role="tablist" aria-label="作者文章排序">
                 <button
                     type="button"
@@ -353,7 +561,111 @@ onBeforeRouteLeave(() => {
             </div>
         </section>
 
+        <section
+            v-if="profile && contentTab === 'columns'"
+            class="profile-columns-section"
+            aria-labelledby="profile-columns-title"
+            data-testid="profile-columns-section"
+        >
+            <div class="profile-columns-heading">
+                <div>
+                    <p class="eyebrow">专栏</p>
+                    <h2 id="profile-columns-title">作者专栏</h2>
+                </div>
+                <span v-if="columnLoadedOnce">共 {{ columnTotal }} 个公开专栏</span>
+            </div>
+
+            <div v-if="columnInitialLoading" class="profile-columns-state" aria-live="polite">
+                正在加载专栏...
+            </div>
+            <div
+                v-else-if="columnError && !columnItems.length"
+                class="profile-columns-state error"
+                aria-live="polite"
+            >
+                <p>{{ columnError }}</p>
+                <button type="button" class="profile-columns-more error" @click="loadColumns({ reset: true })">
+                    重新加载
+                </button>
+            </div>
+            <div v-else-if="columnLoadedOnce && !columnItems.length" class="profile-columns-state">
+                这位作者还没有公开专栏
+            </div>
+
+            <div v-if="columnItems.length" class="profile-columns-grid" data-testid="profile-columns-grid">
+                <article
+                    v-for="column in columnItems"
+                    :key="column.id"
+                    class="profile-column-card"
+                    data-testid="profile-column-card"
+                    role="link"
+                    tabindex="0"
+                    @click="router.push(`/columns/${column.id}`)"
+                    @keydown.enter="router.push(`/columns/${column.id}`)"
+                    @keydown.space.prevent="router.push(`/columns/${column.id}`)"
+                >
+                    <div class="profile-column-cover">
+                        <img :src="column.coverUrl" :alt="`${column.title} 封面`" loading="lazy" decoding="async">
+                    </div>
+                    <div class="profile-column-body">
+                        <div class="profile-column-meta">
+                            <span>{{ column.articleCount }} 篇文章</span>
+                            <span>{{ column.subscriberCount }} 人订阅</span>
+                        </div>
+                        <h3>{{ column.title }}</h3>
+                        <p>{{ column.summary }}</p>
+                        <div class="profile-column-footer">
+                            <span>{{ getDifficultyLabel(column.difficulty) }}</span>
+                            <ColumnSubscribeButton
+                                v-if="!isOwnProfile"
+                                :column-id="column.id"
+                                :subscribed="column.subscribed"
+                                compact
+                                @click.stop
+                                @keydown.enter.stop
+                                @keydown.space.stop
+                                @change="(subscribed) => updateColumnSubscribedState(column, subscribed)"
+                            />
+                            <RouterLink
+                                v-else
+                                class="profile-column-manage"
+                                to="/dashboard/columns"
+                                @click.stop
+                                @keydown.enter.stop
+                                @keydown.space.stop
+                            >
+                                管理
+                            </RouterLink>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <div v-if="columnItems.length" class="profile-columns-footer" aria-live="polite">
+                <span ref="columnLoadTrigger" class="profile-columns-trigger" aria-hidden="true"></span>
+                <p v-if="columnLoadingMore">继续加载专栏...</p>
+                <button
+                    v-else-if="columnError"
+                    type="button"
+                    class="profile-columns-more error"
+                    @click="loadMoreColumns"
+                >
+                    {{ columnError }}，点击重试
+                </button>
+                <button
+                    v-else-if="hasMoreColumns"
+                    type="button"
+                    class="profile-columns-more"
+                    @click="loadMoreColumns"
+                >
+                    加载更多专栏
+                </button>
+                <p v-else-if="columnLoadedOnce">已显示全部 {{ columnTotal }} 个专栏</p>
+            </div>
+        </section>
+
         <ArticleFeed
+            v-if="profile && contentTab === 'posts'"
             :articles="articles"
             :page="currentPage"
             :page-size="pageSize"
@@ -490,6 +802,268 @@ onBeforeRouteLeave(() => {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
+}
+
+.profile-content-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.profile-content-tabs button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background 0.12s;
+}
+
+.profile-content-tabs button:hover,
+.profile-content-tabs button:focus-visible {
+    color: var(--text-strong);
+    background: var(--surface-soft);
+}
+
+.profile-content-tabs button.active {
+    color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.profile-content-tabs button span {
+    min-width: 22px;
+    padding: 1px 7px;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.5;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 999px;
+}
+
+.profile-columns-section {
+    display: grid;
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.profile-columns-heading {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+    justify-content: space-between;
+}
+
+.profile-columns-heading h2,
+.profile-columns-heading p {
+    margin: 0;
+}
+
+.profile-columns-heading h2 {
+    color: var(--text-strong);
+    font-size: 18px;
+}
+
+.profile-columns-heading > span {
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.profile-columns-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.profile-columns-state {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    padding: 42px 20px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    background: var(--surface-soft);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.profile-columns-state p {
+    margin: 0;
+}
+
+.profile-columns-state.error {
+    color: var(--error);
+}
+
+.profile-column-card {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    min-width: 0;
+    height: 100%;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.profile-column-card:hover,
+.profile-column-card:focus-visible {
+    background: var(--surface-soft);
+    border-color: var(--line-strong);
+}
+
+.profile-column-card:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.profile-column-cover {
+    overflow: hidden;
+    background: var(--surface-soft);
+}
+
+.profile-column-cover img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    transition: transform 0.18s ease;
+}
+
+.profile-column-card:hover .profile-column-cover img,
+.profile-column-card:focus-visible .profile-column-cover img {
+    transform: scale(1.03);
+}
+
+.profile-column-body {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px;
+}
+
+.profile-column-meta,
+.profile-column-footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.profile-column-meta {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.profile-column-card h3,
+.profile-column-card p {
+    margin: 0;
+}
+
+.profile-column-card h3 {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--text-strong);
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.profile-column-card p {
+    display: -webkit-box;
+    overflow: hidden;
+    min-height: calc(1.7em * 2);
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.profile-column-footer > span {
+    flex: none;
+    color: var(--brand);
+    font-weight: 700;
+}
+
+.profile-column-manage,
+.profile-columns-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+}
+
+.profile-column-manage:hover,
+.profile-column-manage:focus-visible,
+.profile-columns-more:hover:not(:disabled),
+.profile-columns-more:focus-visible {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+}
+
+.profile-columns-footer {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+}
+
+.profile-columns-footer p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.profile-columns-more {
+    min-height: 38px;
+    padding: 0 16px;
+}
+
+.profile-columns-more:disabled {
+    cursor: not-allowed;
+    opacity: 0.56;
+}
+
+.profile-columns-more.error {
+    color: var(--error);
+    border-color: rgba(220, 38, 38, 0.35);
+}
+
+.profile-columns-trigger {
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
 }
 
 .profile-article-toolbar {
@@ -736,5 +1310,35 @@ onBeforeRouteLeave(() => {
 @keyframes dot-bounce {
     0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
     40% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 1080px) {
+    .profile-columns-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .profile-content-tabs {
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+
+    .profile-content-tabs button {
+        flex: none;
+    }
+
+    .profile-columns-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .profile-columns-heading > span {
+        white-space: normal;
+    }
+
+    .profile-columns-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

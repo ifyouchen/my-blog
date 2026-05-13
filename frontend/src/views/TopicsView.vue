@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getTopicsApi} from '@/api/topic';
@@ -9,7 +9,22 @@ const router = useRouter();
 const topics = ref([]);
 const currentPage = ref(1);
 const total = ref(0);
-const pageSize = 9;
+const searchInput = ref('');
+const activeKeyword = ref('');
+const activeDifficulty = ref('');
+const pageSize = 12;
+const loadingMore = ref(false);
+const loadMoreError = ref('');
+const loadMoreTrigger = ref(null);
+const loadMoreTriggerVisible = ref(false);
+let loadMoreObserver = null;
+let loadMoreSeq = 0;
+const difficultyOptions = [
+    { value: '', label: '全部' },
+    { value: 'BEGINNER', label: '入门' },
+    { value: 'INTERMEDIATE', label: '进阶' },
+    { value: 'ADVANCED', label: '深入' }
+];
 const {
     initialLoading,
     refreshing,
@@ -20,9 +35,33 @@ const {
     runStableRequest
 } = useStableListRequest();
 
+const hasMore = computed(() => topics.value.length < total.value);
+
+const mergeUniqueItems = (currentItems, nextItems) => {
+    const seen = new Set(currentItems.map((item) => String(item.id)));
+    return [
+        ...currentItems,
+        ...nextItems.filter((item) => {
+            const key = String(item.id);
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        })
+    ];
+};
+
 const fetchTopics = async () => {
+    loadMoreSeq += 1;
+    loadMoreError.value = '';
     const response = await runStableRequest(
-        () => getTopicsApi({ page: currentPage.value, pageSize }),
+        () => getTopicsApi({
+            page: 1,
+            pageSize,
+            keyword: activeKeyword.value,
+            difficulty: activeDifficulty.value
+        }),
         {
             silent: hasLoadedOnce.value,
             initialErrorMessage: '专题加载失败',
@@ -35,20 +74,116 @@ const fetchTopics = async () => {
     const pageResult = response.result || {};
     topics.value = pageResult.items || [];
     total.value = pageResult.total || 0;
-    currentPage.value = pageResult.page || currentPage.value;
+    currentPage.value = pageResult.page || 1;
 };
 
-const totalPages = () => Math.max(1, Math.ceil(total.value / pageSize));
-
-const changePage = async (page) => {
-    if (page < 1 || page > totalPages() || page === currentPage.value || loading.value) {
-        return;
+const resultText = computed(() => {
+    if (activeKeyword.value || activeDifficulty.value) {
+        return `匹配到 ${total.value} 个专题`;
     }
-    currentPage.value = page;
+    return `共 ${total.value} 个专题`;
+});
+
+const submitSearch = async () => {
+    activeKeyword.value = searchInput.value.trim();
+    currentPage.value = 1;
     await fetchTopics();
 };
 
+const setDifficulty = async (difficulty) => {
+    if (difficulty === activeDifficulty.value || loading.value) {
+        return;
+    }
+    activeDifficulty.value = difficulty;
+    currentPage.value = 1;
+    await fetchTopics();
+};
+
+const clearSearch = async () => {
+    if (!searchInput.value && !activeKeyword.value && !activeDifficulty.value) {
+        return;
+    }
+    searchInput.value = '';
+    activeKeyword.value = '';
+    activeDifficulty.value = '';
+    currentPage.value = 1;
+    await fetchTopics();
+};
+
+const loadMoreTopics = async () => {
+    if (loading.value || loadingMore.value || !hasMore.value) {
+        return;
+    }
+    const nextPage = currentPage.value + 1;
+    const seq = loadMoreSeq + 1;
+    loadMoreSeq = seq;
+    loadingMore.value = true;
+    loadMoreError.value = '';
+
+    try {
+        const pageResult = await getTopicsApi({
+            page: nextPage,
+            pageSize,
+            keyword: activeKeyword.value,
+            difficulty: activeDifficulty.value
+        });
+        if (seq !== loadMoreSeq) {
+            return;
+        }
+        topics.value = mergeUniqueItems(topics.value, pageResult.items || []);
+        total.value = pageResult.total || total.value;
+        currentPage.value = pageResult.page || nextPage;
+    } catch (error) {
+        if (seq !== loadMoreSeq) {
+            return;
+        }
+        loadMoreError.value = error?.message || '专题加载失败，请稍后重试';
+    } finally {
+        if (seq === loadMoreSeq) {
+            loadingMore.value = false;
+        }
+    }
+};
+
+const requestLoadMoreIfVisible = () => {
+    if (!loadMoreTriggerVisible.value || loadMoreError.value) {
+        return;
+    }
+    loadMoreTopics();
+};
+
+const teardownLoadMoreObserver = () => {
+    if (loadMoreObserver) {
+        loadMoreObserver.disconnect();
+        loadMoreObserver = null;
+    }
+};
+
+const setupLoadMoreObserver = () => {
+    teardownLoadMoreObserver();
+    loadMoreTriggerVisible.value = false;
+    if (typeof IntersectionObserver === 'undefined' || !loadMoreTrigger.value) {
+        return;
+    }
+    loadMoreObserver = new IntersectionObserver((entries) => {
+        loadMoreTriggerVisible.value = entries.some((entry) => entry.isIntersecting);
+        requestLoadMoreIfVisible();
+    }, {
+        rootMargin: '320px 0px',
+        threshold: 0
+    });
+    loadMoreObserver.observe(loadMoreTrigger.value);
+};
+
+watch(() => loadMoreTrigger.value, setupLoadMoreObserver, { flush: 'post' });
+watch(
+    () => [topics.value.length, hasMore.value, loading.value, loadingMore.value, loadMoreError.value],
+    requestLoadMoreIfVisible,
+    { flush: 'post' }
+);
+
 onMounted(fetchTopics);
+onBeforeUnmount(teardownLoadMoreObserver);
 </script>
 
 <template>
@@ -60,12 +195,53 @@ onMounted(fetchTopics);
             <p>每个专题将精选出的多篇文章组织在一起，帮助你深入理解一个领域。</p>
         </section>
 
+        <section class="topics-search-panel" aria-label="专题检索">
+            <form class="topics-search-form" @submit.prevent="submitSearch">
+                <label class="topics-search-field">
+                    <span>搜索专题</span>
+                    <input
+                        v-model="searchInput"
+                        type="search"
+                        placeholder="标题、导读、来源"
+                    >
+                </label>
+                <div class="topics-search-actions">
+                    <button type="submit" :disabled="loading">搜索</button>
+                    <button
+                        type="button"
+                        :disabled="loading || (!searchInput && !activeKeyword && !activeDifficulty)"
+                        @click="clearSearch"
+                    >
+                        清除
+                    </button>
+                </div>
+            </form>
+            <div class="topics-filter-row" aria-label="难度筛选">
+                <button
+                    v-for="option in difficultyOptions"
+                    :key="option.value || 'all'"
+                    type="button"
+                    :class="{ active: activeDifficulty === option.value }"
+                    :disabled="loading"
+                    @click="setDifficulty(option.value)"
+                >
+                    {{ option.label }}
+                </button>
+            </div>
+            <p class="topics-result-meta">
+                {{ resultText }}
+                <span v-if="activeKeyword">「{{ activeKeyword }}」</span>
+            </p>
+        </section>
+
         <section class="topics-grid-panel">
             <div v-if="refreshing && topics.length" class="topics-state refreshing">正在更新专题...</div>
             <div v-if="inlineError" class="topics-state error">{{ inlineError }}</div>
             <div v-if="initialLoading && !topics.length" class="topics-state">专题加载中...</div>
             <div v-else-if="errorMessage && !topics.length" class="topics-state error">{{ errorMessage }}</div>
-            <div v-else-if="!refreshing && hasLoadedOnce && !topics.length" class="topics-state">暂时还没有可浏览的专题。</div>
+            <div v-else-if="!refreshing && hasLoadedOnce && !topics.length" class="topics-state">
+                {{ activeKeyword || activeDifficulty ? '没有匹配的专题。' : '暂时还没有可浏览的专题。' }}
+            </div>
             <div v-else class="topics-grid" data-testid="topics-grid">
                 <article
                     v-for="topic in topics"
@@ -96,25 +272,28 @@ onMounted(fetchTopics);
             </div>
         </section>
 
-        <nav v-if="totalPages() > 1" class="pagination-bar" aria-label="专题分页">
-            <p>第 {{ currentPage }} / {{ totalPages() }} 页，共 {{ total }} 个专题</p>
-            <div class="pagination-actions">
-                <button
-                    type="button"
-                    :disabled="currentPage <= 1 || loading"
-                    @click="changePage(currentPage - 1)"
-                >
-                    上一页
-                </button>
-                <button
-                    type="button"
-                    :disabled="currentPage >= totalPages() || loading"
-                    @click="changePage(currentPage + 1)"
-                >
-                    下一页
-                </button>
-            </div>
-        </nav>
+        <div v-if="topics.length" class="infinite-list-footer" aria-live="polite">
+            <span ref="loadMoreTrigger" class="infinite-load-trigger" aria-hidden="true"></span>
+            <p v-if="loadingMore" class="infinite-load-status">继续加载专题...</p>
+            <button
+                v-else-if="loadMoreError"
+                type="button"
+                class="load-more-button error"
+                @click="loadMoreTopics"
+            >
+                {{ loadMoreError }}，点击重试
+            </button>
+            <button
+                v-else-if="hasMore"
+                type="button"
+                class="load-more-button"
+                :disabled="loading"
+                @click="loadMoreTopics"
+            >
+                加载更多专题
+            </button>
+            <p v-else class="infinite-load-status">已显示全部 {{ total }} 个专题</p>
+        </div>
     </main>
 </template>
 
@@ -131,6 +310,84 @@ onMounted(fetchTopics);
 
 .topics-grid-panel {
     margin-top: 24px;
+}
+
+.topics-search-panel {
+    display: grid;
+    gap: 10px;
+    margin-top: 22px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.topics-search-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.topics-search-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.topics-search-field input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    color: var(--text);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+.topics-search-field input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.topics-search-actions,
+.topics-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.topics-search-actions button,
+.topics-filter-row button {
+    height: 42px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface-soft);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.topics-search-actions button[type="submit"],
+.topics-filter-row button.active {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+
+.topics-search-actions button:disabled,
+.topics-filter-row button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.topics-result-meta {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
 }
 
 .topics-grid {
@@ -268,6 +525,50 @@ onMounted(fetchTopics);
     color: var(--error);
 }
 
+.infinite-list-footer {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.infinite-load-trigger {
+    width: 1px;
+    height: 1px;
+}
+
+.infinite-load-status {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.load-more-button {
+    min-height: 38px;
+    padding: 0 16px;
+    color: var(--text);
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.load-more-button:hover:not(:disabled),
+.load-more-button:focus-visible {
+    color: var(--brand-strong);
+    border-color: var(--brand);
+}
+
+.load-more-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.load-more-button.error {
+    color: var(--error);
+    border-color: rgba(220, 38, 38, 0.35);
+}
+
 @media (max-width: 1080px) {
     .topics-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -275,6 +576,15 @@ onMounted(fetchTopics);
 }
 
 @media (max-width: 720px) {
+    .topics-search-form {
+        grid-template-columns: 1fr;
+    }
+
+    .topics-search-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
     .topics-grid {
         grid-template-columns: 1fr;
     }
