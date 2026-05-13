@@ -25,6 +25,7 @@ let previewDragStart = null;
 const PREVIEW_MIN_SCALE = 0.5;
 const PREVIEW_MAX_SCALE = 4;
 const PREVIEW_SCALE_STEP = 0.25;
+const PREVIEW_MIN_VISIBLE_EDGE = 56;
 
 const activePreviewImage = computed(() => previewImages.value[previewIndex.value] || null);
 const canDragPreviewImage = computed(() => Boolean(activePreviewImage.value));
@@ -67,8 +68,10 @@ const clampPreviewOffset = (offset) => {
     const stageRect = stage.getBoundingClientRect();
     const scaledWidth = image.offsetWidth * previewScale.value;
     const scaledHeight = image.offsetHeight * previewScale.value;
-    const maxX = Math.max(0, (scaledWidth - stageRect.width) / 2);
-    const maxY = Math.max(0, (scaledHeight - stageRect.height) / 2);
+    const visibleWidth = Math.min(PREVIEW_MIN_VISIBLE_EDGE, scaledWidth / 2);
+    const visibleHeight = Math.min(PREVIEW_MIN_VISIBLE_EDGE, scaledHeight / 2);
+    const maxX = Math.max(0, (scaledWidth + stageRect.width) / 2 - visibleWidth);
+    const maxY = Math.max(0, (scaledHeight + stageRect.height) / 2 - visibleHeight);
     return {
         x: Math.min(maxX, Math.max(-maxX, offset.x)),
         y: Math.min(maxY, Math.max(-maxY, offset.y))
@@ -547,8 +550,9 @@ onUnmounted(() => {
 }
 
 .markdown-image-preview-full {
-    max-width: min(92vw, 1120px);
-    max-height: 88vh;
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: none;
     object-fit: contain;
     background: var(--surface);
     border-radius: 10px;
@@ -682,8 +686,8 @@ onUnmounted(() => {
     }
 
     .markdown-image-preview-full {
-        max-width: 96vw;
-        max-height: 86vh;
+        max-width: none;
+        max-height: none;
         border-radius: 8px;
     }
 

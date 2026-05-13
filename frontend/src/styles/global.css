@@ -4065,6 +4065,36 @@ button:disabled {
         font-size: 20px;
     }
 
+    .article-body .markdown-preview table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+        scrollbar-width: thin;
+        scrollbar-color: var(--line-strong) var(--surface-soft);
+    }
+
+    .article-body .markdown-preview th,
+    .article-body .markdown-preview td {
+        white-space: nowrap;
+    }
+
+    .article-body .markdown-preview table::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .article-body .markdown-preview table::-webkit-scrollbar-track {
+        background: var(--surface-soft);
+        border-radius: 999px;
+    }
+
+    .article-body .markdown-preview table::-webkit-scrollbar-thumb {
+        background: var(--line-strong);
+        border-radius: 999px;
+    }
+
     .profile-head {
         grid-template-columns: 1fr;
     }

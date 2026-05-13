@@ -30,6 +30,13 @@ const emit = defineEmits(['navigate']);
 const activeId = ref('');
 const tocNavRef = ref(null);
 const observer = ref(null);
+const tocTooltip = ref({
+    visible: false,
+    text: '',
+    x: 0,
+    y: 0,
+    side: 'left'
+});
 let observerInitToken = 0;
 
 const TOC_COLLAPSE_THRESHOLD = 10;
@@ -144,6 +151,27 @@ const scrollToHeading = (item, index) => {
     emit('navigate', { item, index });
 };
 
+const showTocTooltip = (event, text) => {
+    if (props.mobileVisible || !text) {
+        tocTooltip.value.visible = false;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const tooltipMaxWidth = Math.min(480, window.innerWidth - 48);
+    const showOnLeft = rect.left > tooltipMaxWidth + 24;
+    tocTooltip.value = {
+        visible: true,
+        text,
+        x: showOnLeft ? rect.left - 12 : rect.right + 12,
+        y: Math.min(Math.max(rect.top + (rect.height / 2), 56), window.innerHeight - 56),
+        side: showOnLeft ? 'left' : 'right'
+    };
+};
+
+const hideTocTooltip = () => {
+    tocTooltip.value.visible = false;
+};
+
 watch(toc, async (nextToc, previousToc) => {
     const nextSignature = nextToc.map((item) => `${item.id}:${item.level}:${item.text}`).join('|');
     const previousSignature = (previousToc || []).map((item) => `${item.id}:${item.level}:${item.text}`).join('|');
@@ -203,9 +231,14 @@ onUnmounted(() => {
                 :class="['toc-item', `level-${item.level}`, { active: activeId === item.id }]"
                 :data-toc-id="item.id"
                 :title="item.text"
+                :aria-label="item.text"
+                @mouseenter="showTocTooltip($event, item.text)"
+                @mouseleave="hideTocTooltip"
+                @focus="showTocTooltip($event, item.text)"
+                @blur="hideTocTooltip"
                 @click.prevent="scrollToHeading(item, toc.indexOf(item))"
             >
-                {{ item.text }}
+                <span class="toc-item-text">{{ item.text }}</span>
             </a>
             <button
                 v-if="deepCollapsed && hasDeepItems"
@@ -217,10 +250,23 @@ onUnmounted(() => {
             </button>
         </nav>
     </aside>
+    <Teleport to="body">
+        <div
+            v-if="tocTooltip.visible"
+            :class="['toc-title-tooltip', `toc-title-tooltip--${tocTooltip.side}`]"
+            :style="{ left: `${tocTooltip.x}px`, top: `${tocTooltip.y}px` }"
+            role="tooltip"
+        >
+            {{ tocTooltip.text }}
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
 .article-toc {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     margin: 16px 0 0;
     padding: 14px 0 14px 14px;
     background: var(--surface);
@@ -298,7 +344,9 @@ onUnmounted(() => {
 .toc-nav {
     position: relative;
     display: grid;
+    flex: 1 1 auto;
     gap: 2px;
+    min-height: 0;
     max-height: calc(100vh - 260px);
     padding: 2px 10px 2px 0;
     overflow-y: auto;
@@ -333,16 +381,24 @@ onUnmounted(() => {
     position: relative;
     display: flex;
     align-items: center;
+    min-width: 0;
     min-height: 30px;
     padding: 5px 8px 5px 13px;
     overflow: hidden;
     color: var(--muted);
     font-size: 13px;
     line-height: 1.4;
-    text-overflow: ellipsis;
     white-space: nowrap;
     border-radius: var(--radius-sm);
     transition: color 0.2s, background 0.2s;
+}
+
+.toc-item-text {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .toc-item::before {
@@ -389,6 +445,49 @@ onUnmounted(() => {
     padding-left: 61px;
     color: #7a8783;
     font-size: 12px;
+}
+
+.toc-title-tooltip {
+    position: fixed;
+    z-index: 1300;
+    max-width: min(480px, calc(100vw - 48px));
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: normal;
+    pointer-events: none;
+    background: rgba(17, 24, 39, 0.96);
+    border-radius: 10px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
+}
+
+.toc-title-tooltip::before {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    content: "";
+    background: rgba(17, 24, 39, 0.96);
+    transform: translateY(-50%) rotate(45deg);
+}
+
+.toc-title-tooltip--left {
+    transform: translate(-100%, -50%);
+}
+
+.toc-title-tooltip--left::before {
+    right: -5px;
+}
+
+.toc-title-tooltip--right {
+    transform: translateY(-50%);
+}
+
+.toc-title-tooltip--right::before {
+    left: -5px;
 }
 
 @media (max-width: 980px) {

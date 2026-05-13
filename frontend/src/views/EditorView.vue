@@ -27,6 +27,39 @@ import {useConfirmDialog} from '@/composables/useConfirmDialog';
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
 const AUTO_SAVE_DELAY_MS = 15000;
+const CATEGORY_GROUP_RULES = [
+    {
+        name: '数据库',
+        keywords: ['数据库', 'database', 'mysql', 'redis', 'nosql', 'mongodb', 'mongo', 'sql', 'postgres',
+            'postgresql', 'oracle', 'elasticsearch', 'elastic', 'jdbc']
+    },
+    {
+        name: '后端开发',
+        keywords: ['后端', 'java', 'spring', 'springboot', 'mybatis', 'jpa', 'jvm', 'go', 'python', 'api', '服务端']
+    },
+    {
+        name: '前端开发',
+        keywords: ['前端', 'vue', 'react', 'javascript', 'typescript', 'html', 'css', 'node', 'vite']
+    },
+    {
+        name: 'AI 与数据',
+        keywords: ['ai', 'agent', '人工智能', '机器学习', '深度学习', 'llm', '大模型', '数据分析']
+    },
+    {
+        name: '架构与工程',
+        keywords: ['架构', '系统设计', '分布式', '微服务', '设计模式', '工程', '中间件']
+    },
+    {
+        name: '计算机基础',
+        keywords: ['算法', '数据结构', '网络', '操作系统', '计算机基础', '线性表', '链表', '矩阵']
+    },
+    {
+        name: '运维云原生',
+        keywords: ['运维', 'devops', 'docker', 'kubernetes', 'k8s', 'linux', '云原生', 'nginx', '部署']
+    }
+];
+const CATEGORY_GROUP_ORDER = [...CATEGORY_GROUP_RULES.map((group) => group.name), '其他'];
+const DEFAULT_EXPANDED_CATEGORY_GROUPS = ['数据库', '后端开发'];
 
 const defaultDraft = {
     title: '',
@@ -72,14 +105,71 @@ const categoryOptions = ref(topics.slice(1));
 const tagOptions = ref([]);
 const customCategoryInput = ref('');
 const showCustomCategory = ref(false);
+const categorySearchKeyword = ref('');
+const expandedCategoryGroups = ref(new Set(DEFAULT_EXPANDED_CATEGORY_GROUPS));
 const isCustomCategory = computed(() =>
     draft.category !== '' && !categoryOptions.value.includes(draft.category)
 );
+
+const normalizeCategoryText = (value) => String(value || '').trim().toLowerCase();
+
+const resolveCategoryGroupName = (categoryName) => {
+    const normalized = normalizeCategoryText(categoryName);
+    if (!normalized) {
+        return '其他';
+    }
+    const matchedGroup = CATEGORY_GROUP_RULES.find((group) =>
+        group.keywords.some((keyword) => normalized.includes(normalizeCategoryText(keyword)))
+    );
+    return matchedGroup?.name || '其他';
+};
+
+const selectedCategoryGroupName = computed(() => (
+    draft.category && categoryOptions.value.includes(draft.category)
+        ? resolveCategoryGroupName(draft.category)
+        : ''
+));
+
+const groupedCategoryOptions = computed(() => {
+    const keyword = normalizeCategoryText(categorySearchKeyword.value);
+    const groupedMap = new Map(CATEGORY_GROUP_ORDER.map((name) => [name, []]));
+    categoryOptions.value.forEach((category) => {
+        if (keyword && !normalizeCategoryText(category).includes(keyword)) {
+            return;
+        }
+        const groupName = resolveCategoryGroupName(category);
+        if (!groupedMap.has(groupName)) {
+            groupedMap.set(groupName, []);
+        }
+        groupedMap.get(groupName).push(category);
+    });
+    return CATEGORY_GROUP_ORDER
+        .map((name) => ({ name, items: groupedMap.get(name) || [] }))
+        .filter((group) => group.items.length > 0);
+});
+
+const isCategoryGroupOpen = (groupName) => (
+    Boolean(categorySearchKeyword.value.trim())
+    || expandedCategoryGroups.value.has(groupName)
+    || selectedCategoryGroupName.value === groupName
+);
+
+const toggleCategoryGroup = (groupName) => {
+    const next = new Set(expandedCategoryGroups.value);
+    if (next.has(groupName)) {
+        next.delete(groupName);
+    } else {
+        next.add(groupName);
+    }
+    expandedCategoryGroups.value = next;
+};
 
 const selectPresetCategory = (topic) => {
     draft.category = topic;
     customCategoryInput.value = '';
     showCustomCategory.value = false;
+    const groupName = resolveCategoryGroupName(topic);
+    expandedCategoryGroups.value = new Set([...expandedCategoryGroups.value, groupName]);
 };
 
 const selectOther = () => {
@@ -436,6 +526,12 @@ function applyDraft(source = {}) {
     } else {
         customCategoryInput.value = '';
         showCustomCategory.value = false;
+    }
+    if (sourceCategory && categoryOptions.value.includes(sourceCategory)) {
+        expandedCategoryGroups.value = new Set([
+            ...expandedCategoryGroups.value,
+            resolveCategoryGroupName(sourceCategory)
+        ]);
     }
     draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
     draft.coverUrl = source.coverUrl || '';
@@ -1209,25 +1305,63 @@ onUnmounted(() => {
                 @navigate="handleTocNavigate"
             />
             <section class="editor-category-section">
-                <p class="eyebrow">分类</p>
-                <div class="editor-category-pills">
-                    <button
-                        v-for="topic in categoryOptions"
-                        :key="topic"
-                        type="button"
-                        :class="['editor-category-pill', { active: draft.category === topic }]"
-                        @click="selectPresetCategory(topic)"
-                    >
-                        {{ topic }}
-                    </button>
-                    <button
-                        type="button"
-                        :class="['editor-category-pill', 'editor-category-pill--other', { active: showCustomCategory }]"
-                        @click="selectOther"
-                    >
-                        其他
-                    </button>
+                <div class="editor-category-head">
+                    <div>
+                        <p class="eyebrow">分类</p>
+                        <strong class="editor-category-title">选择文章分类</strong>
+                    </div>
+                    <span :class="['editor-category-value', { empty: !draft.category }]">
+                        {{ draft.category || '未选择' }}
+                    </span>
                 </div>
+                <label class="editor-category-search">
+                    <span class="sr-only">搜索分类</span>
+                    <input
+                        v-model.trim="categorySearchKeyword"
+                        type="search"
+                        maxlength="50"
+                        placeholder="搜索分类，例如 MySQL、Redis、AI"
+                    >
+                </label>
+                <div class="editor-category-groups">
+                    <section
+                        v-for="group in groupedCategoryOptions"
+                        :key="group.name"
+                        class="editor-category-group"
+                    >
+                        <button
+                            type="button"
+                            class="editor-category-group-toggle"
+                            :aria-expanded="isCategoryGroupOpen(group.name)"
+                            @click="toggleCategoryGroup(group.name)"
+                        >
+                            <span>{{ group.name }}</span>
+                            <em>{{ group.items.length }}</em>
+                            <i aria-hidden="true"></i>
+                        </button>
+                        <div v-show="isCategoryGroupOpen(group.name)" class="editor-category-pills">
+                            <button
+                                v-for="topic in group.items"
+                                :key="topic"
+                                type="button"
+                                :class="['editor-category-pill', { active: draft.category === topic }]"
+                                @click="selectPresetCategory(topic)"
+                            >
+                                {{ topic }}
+                            </button>
+                        </div>
+                    </section>
+                    <p v-if="!groupedCategoryOptions.length" class="editor-category-empty">
+                        没有匹配的分类，可以使用自定义分类。
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    :class="['editor-category-pill', 'editor-category-pill--other', { active: showCustomCategory }]"
+                    @click="selectOther"
+                >
+                    自定义分类
+                </button>
                 <div v-if="showCustomCategory" class="editor-category-custom">
                     <input
                         :value="customCategoryInput"
@@ -1728,6 +1862,30 @@ onUnmounted(() => {
 .editor-side {
     display: grid;
     gap: 14px;
+    align-content: start;
+    max-height: calc(100vh - 88px);
+    padding-right: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+}
+
+.editor-side::-webkit-scrollbar {
+    width: 8px;
+}
+
+.editor-side::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.editor-side::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
 }
 
 .editor-side-block {
@@ -1738,7 +1896,8 @@ onUnmounted(() => {
 /* 分类选择 pill */
 .editor-category-section {
     display: grid;
-    gap: 10px;
+    gap: 12px;
+    overflow: visible;
 }
 
 .editor-category-pills {
@@ -1771,6 +1930,108 @@ onUnmounted(() => {
     background: var(--brand-soft);
     border-color: var(--brand);
     font-weight: 700;
+}
+
+.editor-category-title {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-strong);
+    font-size: 14px;
+}
+
+.editor-category-value.empty {
+    color: var(--muted);
+    background: var(--surface-soft);
+    border-color: var(--line);
+}
+
+.editor-category-search input {
+    width: 100%;
+    height: 36px;
+    padding: 0 10px;
+    color: var(--text);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.editor-category-search input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.editor-category-groups {
+    display: grid;
+    gap: 8px;
+}
+
+.editor-category-group {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.editor-category-group-toggle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    min-height: 34px;
+    padding: 0 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.editor-category-group-toggle em {
+    min-width: 22px;
+    height: 22px;
+    color: var(--muted);
+    font-style: normal;
+    font-size: 12px;
+    line-height: 22px;
+    text-align: center;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+}
+
+.editor-category-group-toggle i {
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.14s;
+}
+
+.editor-category-group-toggle[aria-expanded="true"] i {
+    transform: translateY(2px) rotate(225deg);
+}
+
+.editor-category-group .editor-category-pills {
+    max-height: 132px;
+    padding: 0 10px 10px;
+    overflow: auto;
+}
+
+.editor-category-empty {
+    margin: 0;
+    padding: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
 }
 
 .editor-category-hint {
@@ -2119,6 +2380,16 @@ onUnmounted(() => {
     border-radius: 50%;
     background: currentColor;
     opacity: 0.85;
+}
+
+@media (max-width: 980px) {
+    .editor-side {
+        max-height: none;
+        padding-right: 0;
+        overflow: visible;
+        overscroll-behavior: auto;
+        scrollbar-gutter: auto;
+    }
 }
 
 @media (max-width: 760px) {

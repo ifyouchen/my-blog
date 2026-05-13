@@ -136,6 +136,68 @@ let shareHoverTimer = null;
 const SHARE_HOVER_DELAY = 280;
 const RECENT_READING_KEY = 'my-blog:recent-reading';
 const RECENT_READING_LIMIT = 20;
+const ARTICLE_LAYOUT_PREF_KEY = 'my-blog:article-detail-layout';
+const leftSidebarCollapsed = ref(false);
+const rightSidebarCollapsed = ref(false);
+const sidebarTooltip = ref({
+    visible: false,
+    text: '',
+    x: 0,
+    y: 0,
+    side: 'left'
+});
+const hasLeftSidebar = computed(() => isInContext.value || showRelatedSidebar.value);
+const detailLayoutClasses = computed(() => [
+    'page-shell',
+    'detail-layout',
+    {
+        'detail-layout--context': isInContext.value,
+        'detail-layout--related-left': showRelatedSidebar.value,
+        'detail-layout--left-collapsed': hasLeftSidebar.value && leftSidebarCollapsed.value,
+        'detail-layout--right-collapsed': rightSidebarCollapsed.value
+    }
+]);
+
+const readArticleLayoutPreferences = () => {
+    try {
+        const stored = JSON.parse(localStorage.getItem(ARTICLE_LAYOUT_PREF_KEY) || '{}');
+        leftSidebarCollapsed.value = Boolean(stored.leftCollapsed);
+        rightSidebarCollapsed.value = Boolean(stored.rightCollapsed);
+    } catch {
+        localStorage.removeItem(ARTICLE_LAYOUT_PREF_KEY);
+    }
+};
+
+const saveArticleLayoutPreferences = () => {
+    try {
+        localStorage.setItem(ARTICLE_LAYOUT_PREF_KEY, JSON.stringify({
+            leftCollapsed: leftSidebarCollapsed.value,
+            rightCollapsed: rightSidebarCollapsed.value
+        }));
+    } catch {
+        // Ignore storage failures; layout controls should still work for the current session.
+    }
+};
+
+const showSidebarTooltip = (event, text, side = 'left') => {
+    if (!text) {
+        sidebarTooltip.value.visible = false;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const gap = 12;
+    sidebarTooltip.value = {
+        visible: true,
+        text,
+        x: side === 'right' ? rect.left - gap : rect.right + gap,
+        y: Math.min(Math.max(rect.top + (rect.height / 2), 56), window.innerHeight - 56),
+        side
+    };
+};
+
+const hideSidebarTooltip = () => {
+    sidebarTooltip.value.visible = false;
+};
 
 const saveRecentArticle = (source) => {
     if (!source?.id) {
@@ -498,7 +560,10 @@ watch(
     }
 );
 
+watch([leftSidebarCollapsed, rightSidebarCollapsed], saveArticleLayoutPreferences);
+
 onMounted(() => {
+    readArticleLayoutPreferences();
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('keydown', handleImmersiveKeydown);
 });
@@ -573,94 +638,140 @@ watch(tocDrawerOpen, (open) => {
     ></div>
     <main
         v-if="article"
-        :class="[
-            'page-shell',
-            'detail-layout',
-            {
-                'detail-layout--context': isInContext,
-                'detail-layout--related-left': showRelatedSidebar
-            }
-        ]"
+        :class="detailLayoutClasses"
         data-testid="article-detail-page"
     >
-        <!-- 左侧：专栏/专题文章列表（仅从专栏/专题进入时显示） -->
-        <aside v-if="isInContext" class="detail-context-side" aria-label="专栏文章列表">
-            <div class="context-side-inner">
-                <div class="context-side-header">
-                    <RouterLink :to="contextBackTo" class="context-side-title-link">
-                        <span class="context-side-type">{{ contextType }}</span>
-                        <span class="context-side-name">{{ contextLabel }}</span>
-                    </RouterLink>
-                </div>
-                <div v-if="contextArticlesLoading && contextArticles.length === 0" class="context-side-loading">
-                    加载中...
-                </div>
-                <nav v-else class="context-side-list" :aria-label="`${contextType}文章列表`">
-                    <RouterLink
-                        v-for="(item, index) in contextArticles"
-                        :key="item.id"
-                        :to="{ path: `/articles/${item.id}`, query: neighborQuery }"
-                        :class="['context-side-item', { 'context-side-item--active': String(item.id) === String(articleId) }]"
-                    >
-                        <span class="context-side-index">{{ index + 1 }}</span>
-                        <span class="context-side-item-title" :title="item.title">{{ item.title }}</span>
-                    </RouterLink>
-                </nav>
-                <button
-                    v-if="!contextArticlesExpanded && contextArticles.length === 50"
-                    type="button"
-                    class="context-side-more"
-                    :disabled="contextArticlesLoading"
-                    @click="expandAllContextArticles"
+        <!-- 左侧：专栏/专题文章列表或相关推荐 -->
+        <aside
+            v-if="hasLeftSidebar"
+            :class="[
+                'detail-left-drawer',
+                {
+                    'detail-left-drawer--collapsed': leftSidebarCollapsed,
+                    'detail-left-drawer--context': isInContext,
+                    'detail-left-drawer--related': showRelatedSidebar
+                }
+            ]"
+            :aria-label="isInContext ? '专栏文章列表' : '相关推荐'"
+        >
+            <button
+                type="button"
+                class="detail-sidebar-handle detail-sidebar-handle--left"
+                :aria-pressed="leftSidebarCollapsed"
+                :aria-label="leftSidebarCollapsed ? '展开左侧栏' : '隐藏左侧栏'"
+                :title="leftSidebarCollapsed ? '展开左侧栏' : '隐藏左侧栏'"
+                @click="leftSidebarCollapsed = !leftSidebarCollapsed"
+            >
+                <svg
+                    v-if="leftSidebarCollapsed"
+                    class="detail-sidebar-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
                 >
-                    {{ contextArticlesLoading ? '加载中...' : '查看全部文章 ↓' }}
-                </button>
-            </div>
-        </aside>
+                    <path d="M5 7h14M5 12h14M5 17h14"></path>
+                </svg>
+                <svg v-else class="detail-sidebar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6"></path>
+                    <path d="M20 6l-6 6 6 6"></path>
+                </svg>
+            </button>
 
-        <aside v-else-if="showRelatedSidebar" class="detail-related-side" aria-label="相关推荐">
-            <section class="side-related" data-testid="article-related-section">
-                <h2 class="side-related-title">相关推荐</h2>
-                <div
-                    v-if="relatedLoading && recommendationSections.length === 0"
-                    class="side-related-loading"
-                >
-                    加载中...
-                </div>
-                <div v-else class="side-related-sections">
-                    <section
-                        v-for="section in recommendationSections"
-                        :key="section.key"
-                        class="side-related-group"
-                    >
-                        <h3>{{ section.title }}</h3>
-                        <div class="side-related-list">
-                            <RouterLink
-                                v-for="rel in section.items.slice(0, 5)"
-                                :key="rel.id"
-                                class="side-related-item article-related-item"
-                                :to="`/articles/${rel.id}`"
-                            >
-                                <img
-                                    v-if="rel.cover"
-                                    class="side-related-thumb"
-                                    :src="rel.cover"
-                                    :alt="rel.title"
-                                    loading="lazy"
-                                    decoding="async"
-                                >
-                                <div class="side-related-info">
-                                    <p class="side-related-item-title">{{ rel.title }}</p>
-                                    <div class="side-related-stats">
-                                        <span v-if="rel.category">{{ rel.category }}</span>
-                                        <span>{{ rel.viewCount }} 阅读</span>
-                                    </div>
-                                </div>
+            <div
+                :class="[
+                    'detail-sidebar-panel',
+                    isInContext ? 'detail-context-side' : 'detail-related-side'
+                ]"
+                :aria-hidden="leftSidebarCollapsed"
+                :inert="leftSidebarCollapsed ? '' : null"
+            >
+                <template v-if="isInContext">
+                    <div class="context-side-inner">
+                        <div class="context-side-header">
+                            <RouterLink :to="contextBackTo" class="context-side-title-link">
+                                <span class="context-side-type">{{ contextType }}</span>
+                                <span class="context-side-name">{{ contextLabel }}</span>
                             </RouterLink>
                         </div>
-                    </section>
-                </div>
-            </section>
+                        <div v-if="contextArticlesLoading && contextArticles.length === 0" class="context-side-loading">
+                            加载中...
+                        </div>
+                        <nav v-else class="context-side-list" :aria-label="`${contextType}文章列表`">
+                            <RouterLink
+                                v-for="(item, index) in contextArticles"
+                                :key="item.id"
+                                :to="{ path: `/articles/${item.id}`, query: neighborQuery }"
+                                :class="[
+                                    'context-side-item',
+                                    { 'context-side-item--active': String(item.id) === String(articleId) }
+                                ]"
+                                @mouseenter="showSidebarTooltip($event, item.title, 'left')"
+                                @mouseleave="hideSidebarTooltip"
+                                @focus="showSidebarTooltip($event, item.title, 'left')"
+                                @blur="hideSidebarTooltip"
+                            >
+                                <span class="context-side-index">{{ index + 1 }}</span>
+                                <span class="context-side-item-title">{{ item.title }}</span>
+                            </RouterLink>
+                        </nav>
+                        <button
+                            v-if="!contextArticlesExpanded && contextArticles.length === 50"
+                            type="button"
+                            class="context-side-more"
+                            :disabled="contextArticlesLoading"
+                            @click="expandAllContextArticles"
+                        >
+                            {{ contextArticlesLoading ? '加载中...' : '查看全部文章 ↓' }}
+                        </button>
+                    </div>
+                </template>
+
+                <section v-else class="side-related" data-testid="article-related-section">
+                    <h2 class="side-related-title">相关推荐</h2>
+                    <div
+                        v-if="relatedLoading && recommendationSections.length === 0"
+                        class="side-related-loading"
+                    >
+                        加载中...
+                    </div>
+                    <div v-else class="side-related-sections">
+                        <section
+                            v-for="section in recommendationSections"
+                            :key="section.key"
+                            class="side-related-group"
+                        >
+                            <h3>{{ section.title }}</h3>
+                            <div class="side-related-list">
+                                <RouterLink
+                                    v-for="rel in section.items.slice(0, 5)"
+                                    :key="rel.id"
+                                    class="side-related-item article-related-item"
+                                    :to="`/articles/${rel.id}`"
+                                    @mouseenter="showSidebarTooltip($event, rel.title, 'left')"
+                                    @mouseleave="hideSidebarTooltip"
+                                    @focus="showSidebarTooltip($event, rel.title, 'left')"
+                                    @blur="hideSidebarTooltip"
+                                >
+                                    <img
+                                        v-if="rel.cover"
+                                        class="side-related-thumb"
+                                        :src="rel.cover"
+                                        :alt="rel.title"
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
+                                    <div class="side-related-info">
+                                        <p class="side-related-item-title">{{ rel.title }}</p>
+                                        <div class="side-related-stats">
+                                            <span v-if="rel.category">{{ rel.category }}</span>
+                                            <span>{{ rel.viewCount }} 阅读</span>
+                                        </div>
+                                    </div>
+                                </RouterLink>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            </div>
         </aside>
 
         <article :class="['article-main', { 'article-main--loading': isLoading && remoteArticle }]" data-testid="article-detail-main">
@@ -819,14 +930,46 @@ watch(tocDrawerOpen, (open) => {
             </div>
         </article>
 
-        <aside class="detail-side">
-            <ArticleToc
-                v-if="remoteArticle"
-                :content="articleMarkdown"
-                class="detail-toc"
-            />
+        <aside :class="['detail-side', 'detail-right-drawer', { 'detail-right-drawer--collapsed': rightSidebarCollapsed }]">
+            <div class="detail-right-shell">
+                <div class="detail-sidebar-control-row detail-sidebar-control-row--right">
+                    <button
+                        type="button"
+                        class="detail-sidebar-handle detail-sidebar-handle--right"
+                        :aria-pressed="rightSidebarCollapsed"
+                        :aria-label="rightSidebarCollapsed ? '展开目录侧栏' : '隐藏目录侧栏'"
+                        :title="rightSidebarCollapsed ? '展开目录侧栏' : '隐藏目录侧栏'"
+                        @click="rightSidebarCollapsed = !rightSidebarCollapsed"
+                    >
+                        <svg
+                            v-if="rightSidebarCollapsed"
+                            class="detail-sidebar-icon"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <path d="M5 7h14M5 12h14M5 17h14"></path>
+                        </svg>
+                        <svg v-else class="detail-sidebar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M9 6l6 6-6 6"></path>
+                            <path d="M4 6l6 6-6 6"></path>
+                        </svg>
+                    </button>
+                </div>
 
-            <AdBanner v-if="!isInContext" class="article-sidebar-ad" :slot-code="'article_sidebar'" />
+                <div
+                    class="detail-right-panel"
+                    :aria-hidden="rightSidebarCollapsed"
+                    :inert="rightSidebarCollapsed ? '' : null"
+                >
+                    <ArticleToc
+                        v-if="remoteArticle"
+                        :content="articleMarkdown"
+                        class="detail-toc"
+                    />
+
+                    <AdBanner v-if="!isInContext" class="article-sidebar-ad" :slot-code="'article_sidebar'" />
+                </div>
+            </div>
         </aside>
     </main>
     <!-- 加载骨架屏 -->
@@ -916,35 +1059,266 @@ watch(tocDrawerOpen, (open) => {
         @close="reportDialogVisible = false"
         @success="handleReportSuccess"
     />
+    <div
+        v-if="sidebarTooltip.visible"
+        :class="['sidebar-title-tooltip', `sidebar-title-tooltip--${sidebarTooltip.side}`]"
+        :style="{ left: `${sidebarTooltip.x}px`, top: `${sidebarTooltip.y}px` }"
+        role="tooltip"
+    >
+        {{ sidebarTooltip.text }}
+    </div>
 </template>
 
 <style scoped>
 .detail-layout {
     max-width: var(--layout-article-max-width);
-    grid-template-columns: minmax(0, 996px) minmax(300px, 1fr);
+    grid-template-columns: minmax(0, 1040px) 260px;
+    position: relative;
+    transition: grid-template-columns 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ===== 三列布局：从专栏/专题进入时，左=文章列表 / 中=正文 / 右=目录 ===== */
 .detail-layout--context {
-    grid-template-columns: minmax(220px, 1fr) minmax(0, 1016px) minmax(260px, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr) 260px;
 }
 
 /* ===== 三列布局：普通入口，左=相关推荐 / 中=正文 / 右=目录 ===== */
 .detail-layout--related-left {
-    grid-template-columns: minmax(240px, 1fr) minmax(0, 996px) minmax(260px, 1fr);
+    grid-template-columns: 280px minmax(0, 1fr) 260px;
 }
 
-.detail-toc {
+.detail-layout--left-collapsed:not(.detail-layout--right-collapsed) {
+    grid-template-columns: 44px minmax(0, 1fr) 260px;
+}
+
+.detail-layout--right-collapsed {
+    grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.detail-layout--context.detail-layout--right-collapsed {
+    grid-template-columns: 260px minmax(0, 1fr) 44px;
+}
+
+.detail-layout--related-left.detail-layout--right-collapsed {
+    grid-template-columns: 280px minmax(0, 1fr) 44px;
+}
+
+.detail-layout--left-collapsed.detail-layout--right-collapsed {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+}
+
+.detail-layout--left-collapsed .article-main,
+.detail-layout--right-collapsed .article-main {
+    width: 100%;
+    max-width: 1120px;
+    justify-self: center;
+}
+
+.detail-left-drawer,
+.detail-right-drawer {
+    position: sticky;
+    top: 72px;
+    height: calc(100vh - 88px);
+    min-width: 0;
+    min-height: 56px;
+    overflow: hidden;
+    transition: opacity 0.24s ease, transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-left-drawer--collapsed,
+.detail-right-drawer--collapsed {
+    opacity: 0.96;
+}
+
+.detail-sidebar-panel {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    transform-origin: center;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    transition: opacity 0.28s ease, transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-left-drawer--collapsed .detail-sidebar-panel {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.98);
+    pointer-events: none;
+}
+
+.detail-right-drawer--collapsed .detail-right-panel {
+    opacity: 0;
+    transform: translateX(12px) scale(0.98);
+    pointer-events: none;
+}
+
+.detail-right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    opacity: 1;
+    overflow: hidden;
+    transform: translateX(0) scale(1);
+    transition: opacity 0.28s ease, transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-right-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 56px;
+}
+
+.detail-sidebar-control-row {
+    position: relative;
+    z-index: 13;
+    display: flex;
+    flex: 0 0 44px;
+    align-items: center;
+    min-height: 44px;
+    padding: 6px;
+}
+
+.detail-sidebar-control-row--right {
+    justify-content: flex-end;
+}
+
+.detail-sidebar-handle {
+    position: absolute;
+    top: 10px;
+    z-index: 12;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--muted);
+    cursor: pointer;
+    isolation: isolate;
+    background: var(--surface);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    box-shadow: none;
+    transition: color 0.16s ease, background 0.16s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-sidebar-handle:hover,
+.detail-sidebar-handle:focus-visible,
+.detail-sidebar-handle[aria-pressed="true"] {
+    color: var(--text);
+    background: rgba(148, 163, 184, 0.12);
+    border-color: transparent;
+}
+
+.detail-sidebar-handle:focus-visible {
+    outline: 2px solid rgba(37, 99, 235, 0.2);
+    outline-offset: 2px;
+}
+
+.detail-sidebar-handle--left {
+    left: 8px;
+}
+
+.detail-sidebar-handle--right {
+    right: 8px;
+}
+
+.detail-sidebar-control-row .detail-sidebar-handle {
+    position: static;
+    top: auto;
+    right: auto;
+    left: auto;
+}
+
+.detail-left-drawer--collapsed .detail-sidebar-handle--left {
+    left: 8px;
+}
+
+.detail-right-drawer--collapsed .detail-sidebar-handle--right {
+    right: 8px;
+}
+
+.detail-sidebar-icon {
+    width: 21px;
+    height: 21px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    shape-rendering: geometricPrecision;
+}
+
+.detail-context-side .context-side-header {
+    min-height: 52px;
+    padding-left: 48px;
+}
+
+.detail-left-drawer--related .side-related {
+    padding-top: 48px;
+}
+
+.detail-right-panel .detail-toc {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
     margin-top: 0;
-    padding-top: 28px;
+}
+
+.detail-right-panel .article-sidebar-ad {
+    flex: 0 0 auto;
+}
+
+.sidebar-title-tooltip {
+    position: fixed;
+    z-index: 1300;
+    max-width: min(480px, calc(100vw - 48px));
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: normal;
+    pointer-events: none;
+    background: rgba(17, 24, 39, 0.96);
+    border-radius: 10px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
+    transform: translateY(-50%);
+}
+
+.sidebar-title-tooltip::before {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    content: "";
+    background: rgba(17, 24, 39, 0.96);
+    transform: translateY(-50%) rotate(45deg);
+}
+
+.sidebar-title-tooltip--left::before {
+    left: -5px;
+}
+
+.sidebar-title-tooltip--right {
+    transform: translate(-100%, -50%);
+}
+
+.sidebar-title-tooltip--right::before {
+    right: -5px;
 }
 
 /* 左侧文章列表面板 */
 .detail-context-side {
-    position: sticky;
-    top: 72px;
     min-width: 0;
-    max-height: calc(100vh - 88px);
+    height: 100%;
+    max-height: none;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -963,11 +1337,10 @@ watch(tocDrawerOpen, (open) => {
 }
 
 .detail-related-side {
-    position: sticky;
-    top: 72px;
     min-width: 0;
-    max-height: calc(100vh - 88px);
-    overflow-y: auto;
+    height: 100%;
+    max-height: none;
+    overflow: hidden;
     scrollbar-width: thin;
 }
 
@@ -1391,29 +1764,31 @@ watch(tocDrawerOpen, (open) => {
 }
 
 @media (max-width: 980px) {
+    .detail-sidebar-handle,
+    .detail-left-drawer,
+    .detail-right-drawer {
+        display: none;
+    }
+
     .mobile-toc-trigger {
         display: inline-flex;
     }
 
-    .detail-layout {
-        grid-template-columns: minmax(0, 1fr) 260px;
+    .detail-layout,
+    .detail-layout--context,
+    .detail-layout--related-left,
+    .detail-layout--left-collapsed,
+    .detail-layout--right-collapsed,
+    .detail-layout--left-collapsed.detail-layout--right-collapsed {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .article-sidebar-ad {
         display: none;
     }
 
-    .detail-layout--related-left {
-        grid-template-columns: minmax(0, 1fr) 260px;
-    }
-
     .detail-related-side {
         display: none;
-    }
-
-    /* 三列→两列：隐藏左侧文章列表，改用移动端底部抽屉触发 */
-    .detail-layout--context {
-        grid-template-columns: minmax(0, 1fr) 260px;
     }
 
     .detail-context-side {
@@ -1778,9 +2153,14 @@ watch(tocDrawerOpen, (open) => {
 }
 
 .side-related {
-    display: grid;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
     gap: 12px;
+    height: 100%;
+    min-height: 0;
     padding: 16px;
+    overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
@@ -1803,6 +2183,18 @@ watch(tocDrawerOpen, (open) => {
 .side-related-sections {
     display: grid;
     gap: 18px;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.side-related-sections::-webkit-scrollbar {
+    width: 4px;
+}
+
+.side-related-sections::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
 }
 
 .side-related-group {
