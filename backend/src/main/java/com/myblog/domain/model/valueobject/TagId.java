@@ -3,7 +3,7 @@ package com.myblog.domain.model.valueobject;
 /**
  * 标签 ID 値对象。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class TagId {

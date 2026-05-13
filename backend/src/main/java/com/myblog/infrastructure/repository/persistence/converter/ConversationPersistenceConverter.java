@@ -11,6 +11,9 @@ import com.myblog.infrastructure.repository.persistence.entity.ConversationDO;
  */
 public final class ConversationPersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private ConversationPersistenceConverter() {
     }
 

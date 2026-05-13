@@ -13,6 +13,9 @@ import com.myblog.infrastructure.repository.persistence.entity.ArticleLikeDO;
  */
 public final class ArticleLikePersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private ArticleLikePersistenceConverter() {
     }
 

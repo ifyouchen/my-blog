@@ -12,7 +12,7 @@ import java.util.Optional;
 /**
  * 用户仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface UserRepository {

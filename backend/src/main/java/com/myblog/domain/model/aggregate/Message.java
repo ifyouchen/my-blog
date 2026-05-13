@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 消息聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class Message {

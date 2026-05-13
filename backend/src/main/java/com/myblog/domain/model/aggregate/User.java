@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * 用户聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class User {

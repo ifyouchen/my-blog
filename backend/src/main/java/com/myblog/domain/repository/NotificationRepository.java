@@ -8,7 +8,7 @@ import java.util.Optional;
 /**
  * 通知仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface NotificationRepository {

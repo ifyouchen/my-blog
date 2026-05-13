@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 /**
  * 广告投放聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class AdCampaign {

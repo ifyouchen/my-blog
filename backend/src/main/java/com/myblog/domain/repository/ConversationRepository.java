@@ -9,7 +9,7 @@ import java.util.Optional;
 /**
  * 会话仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface ConversationRepository {

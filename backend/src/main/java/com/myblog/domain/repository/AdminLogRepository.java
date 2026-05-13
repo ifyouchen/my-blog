@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * 管理员操作日志仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface AdminLogRepository {

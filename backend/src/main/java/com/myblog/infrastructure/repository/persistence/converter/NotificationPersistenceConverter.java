@@ -12,6 +12,9 @@ import com.myblog.shared.enums.NotificationType;
  */
 public final class NotificationPersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private NotificationPersistenceConverter() {
     }
 

@@ -5,7 +5,7 @@ import java.util.Objects;
 /**
  * 评论 ID 值对象。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public final class CommentId {

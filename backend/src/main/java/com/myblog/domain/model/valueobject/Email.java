@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 /**
  * 邮箱值对象。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class Email {

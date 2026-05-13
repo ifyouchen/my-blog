@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 /**
  * 密码领域服务。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 @Service

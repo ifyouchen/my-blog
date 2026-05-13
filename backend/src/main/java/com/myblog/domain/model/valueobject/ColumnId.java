@@ -5,7 +5,7 @@ import java.util.Objects;
 /**
  * 专栏 ID。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public final class ColumnId {

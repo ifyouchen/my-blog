@@ -11,6 +11,9 @@ import com.myblog.infrastructure.repository.persistence.entity.MessageDO;
  */
 public final class MessagePersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private MessagePersistenceConverter() {
     }
 

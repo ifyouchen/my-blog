@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 专栏聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class Column {

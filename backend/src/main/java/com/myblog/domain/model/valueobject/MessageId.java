@@ -6,7 +6,7 @@ import java.util.Objects;
 /**
  * 消息 ID 值对象。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class MessageId implements Serializable {

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 文章点赞聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class ArticleLike {

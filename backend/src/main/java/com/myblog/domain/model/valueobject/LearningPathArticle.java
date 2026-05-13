@@ -3,7 +3,7 @@ package com.myblog.domain.model.valueobject;
 /**
  * 专题/专栏中的路径文章编排信息。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class LearningPathArticle {

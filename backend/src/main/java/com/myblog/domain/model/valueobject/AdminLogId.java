@@ -3,7 +3,7 @@ package com.myblog.domain.model.valueobject;
 /**
  * 管理员操作日志 ID 值对象。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class AdminLogId {

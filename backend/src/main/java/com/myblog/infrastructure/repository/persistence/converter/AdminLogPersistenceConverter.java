@@ -12,6 +12,9 @@ import com.myblog.infrastructure.repository.persistence.entity.AdminLogDO;
  */
 public final class AdminLogPersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private AdminLogPersistenceConverter() {
     }
 

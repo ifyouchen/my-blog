@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * 会话聚合根。
  * 两个用户之间只有一个会话，参与者按 ID 大小排序。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class Conversation {

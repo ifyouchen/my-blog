@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 评论聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class Comment {

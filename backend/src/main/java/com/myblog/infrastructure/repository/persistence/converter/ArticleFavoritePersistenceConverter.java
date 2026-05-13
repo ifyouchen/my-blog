@@ -13,6 +13,9 @@ import com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO
  */
 public final class ArticleFavoritePersistenceConverter {
 
+    /**
+     * 私有构造函数，防止实例化。
+     */
     private ArticleFavoritePersistenceConverter() {
     }
 

@@ -10,7 +10,7 @@ import java.util.Optional;
 /**
  * 专题仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface TopicRepository {

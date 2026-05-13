@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * 文章收藏仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface ArticleFavoriteRepository {

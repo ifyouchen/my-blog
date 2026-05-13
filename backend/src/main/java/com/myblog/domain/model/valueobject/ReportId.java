@@ -6,7 +6,7 @@ import java.util.Objects;
 /**
  * 举报 ID 值对象。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class ReportId implements Serializable {
