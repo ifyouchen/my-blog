@@ -68,6 +68,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
             .maxAge(3600);
     }
 
+    /**
+     * 注册静态资源处理器，将上传文件目录映射为可访问的 URL 路径。
+     *
+     * @param registry 资源处理器注册器
+     */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String location = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();

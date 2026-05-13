@@ -12,7 +12,7 @@ import java.util.Optional;
 /**
  * 评论仓储接口。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public interface CommentRepository {
@@ -191,9 +191,17 @@ public interface CommentRepository {
      */
     Long nextId();
 
-    /** 原子递增评论点赞数。 */
+    /**
+     * 原子递增评论点赞数。
+     *
+     * @param commentId 评论 ID
+     */
     void incrementLikeCount(Long commentId);
 
-    /** 原子递减评论点赞数。 */
+    /**
+     * 原子递减评论点赞数。
+     *
+     * @param commentId 评论 ID
+     */
     void decrementLikeCount(Long commentId);
 }

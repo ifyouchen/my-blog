@@ -345,42 +345,105 @@ public interface ArticleRepository {
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(int limit);
 
+    /**
+     * 查询作者文章统计聚合（带分类和时间筛选）。
+     *
+     * @param limit         返回数量限制
+     * @param category      分类筛选
+     * @param publishedAfter 发布时间下限
+     * @return 作者文章统计列表
+     */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(
             int limit,
             String category,
             LocalDateTime publishedAfter);
 
+    /**
+     * 根据作者 ID 列表查询文章统计聚合。
+     *
+     * @param authorIds 作者 ID 列表
+     * @return 作者文章统计列表
+     */
     List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds);
 
+    /**
+     * 根据作者 ID 列表查询排行榜文章。
+     *
+     * @param authorIds      作者 ID 列表
+     * @param category       分类筛选
+     * @param publishedAfter 发布时间下限
+     * @return 排行榜文章列表
+     */
     List<Article> findTopRankingArticlesByAuthorIds(List<Long> authorIds,
                                                     String category,
                                                     LocalDateTime publishedAfter);
 
-    /** 原子递增文章点赞数。 */
+    /**
+     * 原子递增文章点赞数。
+     *
+     * @param articleId 文章 ID
+     */
     void incrementLikeCount(Long articleId);
 
-    /** 原子递减文章点赞数。 */
+    /**
+     * 原子递减文章点赞数。
+     *
+     * @param articleId 文章 ID
+     */
     void decrementLikeCount(Long articleId);
 
-    /** 原子递增文章收藏数。 */
+    /**
+     * 原子递增文章收藏数。
+     *
+     * @param articleId 文章 ID
+     */
     void incrementFavoriteCount(Long articleId);
 
-    /** 原子递减文章收藏数。 */
+    /**
+     * 原子递减文章收藏数。
+     *
+     * @param articleId 文章 ID
+     */
     void decrementFavoriteCount(Long articleId);
 
-    /** 原子递增文章评论数。 */
+    /**
+     * 原子递增文章评论数。
+     *
+     * @param articleId 文章 ID
+     */
     void incrementCommentCount(Long articleId);
 
-    /** 原子递减文章评论数（支持批量）。 */
+    /**
+     * 原子递减文章评论数（支持批量）。
+     *
+     * @param articleId 文章 ID
+     * @param decrement 递减数量
+     */
     void decrementCommentCount(Long articleId, int decrement);
 
-    /** 原子递增文章阅读数。 */
+    /**
+     * 原子递增文章阅读数。
+     *
+     * @param articleId 文章 ID
+     */
     void incrementViewCount(Long articleId);
 
-    /** 查询精选文章。 */
+    /**
+     * 查询精选文章。
+     *
+     * @param page     页码
+     * @param pageSize 每页大小
+     * @return 精选文章列表
+     */
     List<Article> findFeatured(int page, int pageSize);
 
-    /** 查询本周必读算法文章。 */
+    /**
+     * 查询本周必读算法文章。
+     *
+     * @param excludeArticleIds 排除的文章 ID 列表
+     * @param limit             返回数量限制
+     * @return 本周必读文章列表
+     */
     List<Article> findWeeklyPicks(List<Long> excludeArticleIds, int limit);
 
     /**
@@ -391,7 +454,11 @@ public interface ArticleRepository {
      */
     Optional<Article> findBySlug(String slug);
 
-    /** 统计精选文章数量。 */
+    /**
+     * 统计精选文章数量。
+     *
+     * @return 精选文章数量
+     */
     long countFeatured();
 
     /**
@@ -471,6 +538,11 @@ public interface ArticleRepository {
      */
     List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> findCategoryStats(int limit);
 
+    /**
+     * 统计命中敏感词警告的文章数量。
+     *
+     * @return 命中警告标记的文章数量
+     */
     long countByWarnFlag();
     /**
      * 查询上一篇已发布文章（ID 小于给定值的最大项）。

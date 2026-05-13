@@ -86,6 +86,14 @@ public interface ArticleMapper {
                                     @Param("limit") Integer limit,
                                     @Param("offset") Integer offset);
 
+    /**
+     * 查询排行文章（按分类和发布时间筛选）。
+     *
+     * @param category      分类
+     * @param publishedAfter 发布时间下限
+     * @param limit          返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectRankingArticles(@Param("category") String category,
                                           @Param("publishedAfter") LocalDateTime publishedAfter,
                                           @Param("limit") int limit);
@@ -111,12 +119,30 @@ public interface ArticleMapper {
      */
     List<ArticleDO> selectByAuthorId(@Param("authorId") Long authorId);
 
+    /**
+     * 根据作者 ID、状态和关键字分页查询文章列表。
+     *
+     * @param authorId 作者 ID
+     * @param status   文章状态
+     * @param keyword  关键字
+     * @param offset   偏移量
+     * @param limit    限制数量
+     * @return 文章列表
+     */
     List<ArticleDO> selectByAuthorIdWithStatus(@Param("authorId") Long authorId,
                                                @Param("status") String status,
                                                @Param("keyword") String keyword,
                                                @Param("offset") int offset,
                                                @Param("limit") int limit);
 
+    /**
+     * 根据作者 ID、状态和关键字统计文章数量。
+     *
+     * @param authorId 作者 ID
+     * @param status   文章状态
+     * @param keyword  关键字
+     * @return 文章数量
+     */
     long countByAuthorIdWithStatus(@Param("authorId") Long authorId,
                                    @Param("status") String status,
                                    @Param("keyword") String keyword);
@@ -129,8 +155,21 @@ public interface ArticleMapper {
      */
     List<ArticleDO> selectPublishedByAuthorId(@Param("authorId") Long authorId);
 
+    /**
+     * 查询作者最新发布的一篇文章。
+     *
+     * @param authorId 作者 ID
+     * @return 文章数据对象
+     */
     ArticleDO selectLatestByAuthorId(@Param("authorId") Long authorId);
 
+    /**
+     * 查询作者文章指标聚合数据。
+     *
+     * @param authorId 作者 ID
+     * @param status   文章状态
+     * @return 作者文章指标数据对象
+     */
     AuthorArticleMetricsDO selectAuthorMetrics(@Param("authorId") Long authorId, @Param("status") String status);
 
     /**
@@ -143,22 +182,69 @@ public interface ArticleMapper {
     List<ArticleDO> selectHotPublishedByAuthorId(@Param("authorId") Long authorId,
                                                  @Param("limit") int limit);
 
+    /**
+     * 查询作者文章表现排行。
+     *
+     * @param authorId 作者 ID
+     * @param sort     排序方式
+     * @param limit    返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectAuthorPerformance(@Param("authorId") Long authorId,
                                             @Param("sort") String sort,
                                             @Param("limit") int limit);
 
+    /**
+     * 查询作者文章趋势数据。
+     *
+     * @param authorId  作者 ID
+     * @param startDate 起始日期
+     * @param endDate   结束日期
+     * @return 趋势数据列表
+     */
     List<DashboardTrendPointDO> selectAuthorTrendPoints(@Param("authorId") Long authorId,
                                                         @Param("startDate") LocalDate startDate,
                                                         @Param("endDate") LocalDate endDate);
 
+    /**
+     * 根据多个作者 ID 查询已发布文章列表。
+     *
+     * @param authorIds 作者 ID 列表
+     * @param sort      排序方式
+     * @param offset    偏移量
+     * @param limit     限制数量
+     * @return 文章列表
+     */
     List<ArticleDO> selectPublishedByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                                @Param("sort") String sort,
                                                @Param("offset") int offset,
                                                @Param("limit") int limit);
 
+    /**
+     * 根据多个作者 ID 统计已发布文章数量。
+     *
+     * @param authorIds 作者 ID 列表
+     * @param sort      排序方式
+     * @return 文章数量
+     */
     long countPublishedByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                    @Param("sort") String sort);
 
+    /**
+     * 增强版已发布文章查询（支持作者关键字、日期范围和全文检索）。
+     *
+     * @param keyword       关键字
+     * @param category      分类
+     * @param tag           标签
+     * @param sort          排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom      起始日期
+     * @param dateTo        结束日期
+     * @param limit         返回数量限制
+     * @param offset        偏移量
+     * @param useFulltext   是否使用全文检索
+     * @return 文章列表
+     */
     List<ArticleDO> selectPublishedEnhanced(@Param("keyword") String keyword,
                                             @Param("category") String category,
                                             @Param("tag") String tag,
@@ -170,6 +256,19 @@ public interface ArticleMapper {
                                             @Param("offset") Integer offset,
                                             @Param("useFulltext") boolean useFulltext);
 
+    /**
+     * 增强版已发布文章数量统计。
+     *
+     * @param keyword       关键字
+     * @param category      分类
+     * @param tag           标签
+     * @param sort          排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom      起始日期
+     * @param dateTo        结束日期
+     * @param useFulltext   是否使用全文检索
+     * @return 文章数量
+     */
     long countPublishedEnhanced(@Param("keyword") String keyword,
                                 @Param("category") String category,
                                 @Param("tag") String tag,
@@ -179,6 +278,21 @@ public interface ArticleMapper {
                                 @Param("dateTo") String dateTo,
                                 @Param("useFulltext") boolean useFulltext);
 
+    /**
+     * 根据多个作者 ID 增强版查询已发布文章列表。
+     *
+     * @param authorIds     作者 ID 列表
+     * @param keyword       关键字
+     * @param category      分类
+     * @param tag           标签
+     * @param sort          排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom      起始日期
+     * @param dateTo        结束日期
+     * @param offset        偏移量
+     * @param limit         返回数量限制
+     * @return 文章列表
+     */
     List<ArticleDO> selectPublishedEnhancedByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                                        @Param("keyword") String keyword,
                                                        @Param("category") String category,
@@ -190,6 +304,19 @@ public interface ArticleMapper {
                                                        @Param("offset") Integer offset,
                                                        @Param("limit") Integer limit);
 
+    /**
+     * 根据多个作者 ID 增强版统计已发布文章数量。
+     *
+     * @param authorIds     作者 ID 列表
+     * @param keyword       关键字
+     * @param category      分类
+     * @param tag           标签
+     * @param sort          排序方式
+     * @param authorKeyword 作者关键字
+     * @param dateFrom      起始日期
+     * @param dateTo        结束日期
+     * @return 文章数量
+     */
     long countPublishedEnhancedByAuthorIds(@Param("authorIds") List<Long> authorIds,
                                            @Param("keyword") String keyword,
                                            @Param("category") String category,
@@ -246,6 +373,12 @@ public interface ArticleMapper {
      */
     List<String> selectTagNamesByArticleId(@Param("articleId") Long articleId);
 
+    /**
+     * 批量查询多篇文章的标签关联行。
+     *
+     * @param articleIds 文章 ID 列表
+     * @return 文章标签关联行列表
+     */
     List<ArticleTagRowDO> selectTagRowsByArticleIds(@Param("articleIds") List<Long> articleIds);
 
     /**
@@ -290,12 +423,35 @@ public interface ArticleMapper {
      */
     long countPublished();
 
+    /**
+     * 统计可见文章数量（非草稿且未删除）。
+     *
+     * @return 可见文章数量
+     */
     long countVisible();
 
+    /**
+     * 根据状态统计文章数量。
+     *
+     * @param status 文章状态
+     * @return 文章数量
+     */
     long countByStatus(@Param("status") String status);
 
+    /**
+     * 统计指定日期创建的文章数量。
+     *
+     * @param date 日期
+     * @return 文章数量
+     */
     long countCreatedOn(@Param("date") LocalDate date);
 
+    /**
+     * 统计指定日期及以后创建的文章数量。
+     *
+     * @param date 起始日期
+     * @return 文章数量
+     */
     long countCreatedSince(@Param("date") LocalDate date);
 
     /**

@@ -38,10 +38,24 @@ public interface ColumnMapper {
      */
     long countPublished();
 
+    /**
+     * 根据作者 ID 分页查询已发布专栏。
+     *
+     * @param authorId 作者 ID
+     * @param offset   偏移量
+     * @param pageSize 每页大小
+     * @return 专栏列表
+     */
     List<ColumnDO> selectPublishedByAuthorId(@Param("authorId") Long authorId,
                                              @Param("offset") int offset,
                                              @Param("pageSize") int pageSize);
 
+    /**
+     * 统计作者已发布专栏数量。
+     *
+     * @param authorId 作者 ID
+     * @return 专栏数量
+     */
     long countPublishedByAuthorId(@Param("authorId") Long authorId);
 
     /**

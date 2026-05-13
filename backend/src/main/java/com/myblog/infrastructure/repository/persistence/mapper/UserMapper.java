@@ -61,12 +61,35 @@ public interface UserMapper {
      */
     List<UserDO> selectByIds(@Param("userIds") List<Long> userIds);
 
+    /**
+     * 统计用户总数。
+     *
+     * @return 用户总数
+     */
     long countAll();
 
+    /**
+     * 根据状态统计用户数量。
+     *
+     * @param status 用户状态
+     * @return 用户数量
+     */
     long countByStatus(@Param("status") String status);
 
+    /**
+     * 统计指定日期创建的用户数量。
+     *
+     * @param date 日期
+     * @return 用户数量
+     */
     long countCreatedOn(@Param("date") LocalDate date);
 
+    /**
+     * 统计指定日期及以后创建的用户数量。
+     *
+     * @param date 起始日期
+     * @return 用户数量
+     */
     long countCreatedSince(@Param("date") LocalDate date);
 
     /**
@@ -131,6 +154,12 @@ public interface UserMapper {
      * @return 影响行数
      */
     int insert(UserDO user);
+    /**
+     * 插入或更新用户（INSERT ... ON DUPLICATE KEY UPDATE）。
+     *
+     * @param userDO 用户数据对象
+     * @return 影响行数
+     */
     int insertOrUpdate(UserDO userDO);
 
 

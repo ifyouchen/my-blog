@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 文章聚合根。
  *
- * @author Codex
+ * @author my-blog
  * @since 1.0.0
  */
 public class Article {
@@ -537,12 +537,6 @@ public class Article {
     public int getCommentCount() {
         return commentCount;
     }
-
-    /**
-     * 是否精选。
-     *
-     * @return 是否精选
-     */
 
     /**
      * 获取敏感词警告标记。
