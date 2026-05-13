@@ -62,7 +62,7 @@ public class CommentResponse {
     /** 当前用户是否已点赞. */
     private Boolean liked;
 
-    * 是否置顶. */
+    /** 是否置顶.* */
     private Boolean pinned;
 
     /** 当前用户是否可删除该评论. */
