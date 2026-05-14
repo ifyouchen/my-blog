@@ -107,11 +107,142 @@ const createMarkdownRenderer = ({ copyableCode = false } = {}) => {
 const previewMarkdown = createMarkdownRenderer({ copyableCode: true });
 const editorMarkdown = createMarkdownRenderer({ copyableCode: false });
 
-const sanitize = (html) => DOMPurify.sanitize(html, {
-    ADD_ATTR: ['target', 'rel', 'data-language'],
+const SAFE_FONT_SIZES = new Set(['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px']);
+const SAFE_LINE_HEIGHTS = new Set(['1.4', '1.6', '1.8', '2', '2.0', '2.4']);
+const SAFE_FONT_FAMILIES = [
+    { value: "'Microsoft YaHei', 'PingFang SC', sans-serif", keys: ['microsoft yahei', 'pingfang sc'] },
+    { value: "'SimSun', 'Songti SC', serif", keys: ['simsun', 'songti sc', '宋体'] },
+    { value: "'SimHei', 'Heiti SC', sans-serif", keys: ['simhei', 'heiti sc', '黑体'] },
+    { value: 'Arial, Helvetica, sans-serif', keys: ['arial', 'helvetica'] },
+    { value: 'Georgia, serif', keys: ['georgia'] },
+    { value: "'Courier New', Consolas, monospace", keys: ['courier new', 'consolas'] }
+];
+
+const normalizeStyleString = (value = '') => String(value)
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/;$/g, '');
+
+const hasUnsafeCssToken = (value = '') => {
+    return /url\s*\(|expression\s*\(|javascript:|data:/i.test(String(value));
+};
+
+const normalizeTextColor = (value = '') => {
+    const color = normalizeStyleString(value);
+    if (!color || hasUnsafeCssToken(color)) return '';
+    if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color)) return color.toLowerCase();
+    if (/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i.test(color)) {
+        return color;
+    }
+    if (/^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i.test(color)) {
+        return color;
+    }
+    return '';
+};
+
+const normalizeFontSize = (value = '') => {
+    const fontSize = normalizeStyleString(value).toLowerCase();
+    return SAFE_FONT_SIZES.has(fontSize) ? fontSize : '';
+};
+
+const normalizeLineHeight = (value = '') => {
+    const lineHeight = normalizeStyleString(value);
+    return SAFE_LINE_HEIGHTS.has(lineHeight) ? lineHeight : '';
+};
+
+const normalizeFontFamily = (value = '') => {
+    const fontFamily = normalizeStyleString(value)
+        .replace(/["']/g, '')
+        .toLowerCase();
+    const matched = SAFE_FONT_FAMILIES.find((item) => item.keys.some((key) => fontFamily.includes(key)));
+    return matched?.value || '';
+};
+
+const normalizeSizeValue = (value = '') => {
+    const size = normalizeStyleString(value).toLowerCase();
+    if (/^\d{1,4}(\.\d{1,2})?px$/.test(size)) return size;
+    if (/^\d{1,3}(\.\d{1,2})?%$/.test(size)) return size;
+    if (size === 'auto') return size;
+    return '';
+};
+
+const normalizeTextAlign = (value = '') => {
+    const align = normalizeStyleString(value).toLowerCase();
+    return ['left', 'center', 'right'].includes(align) ? align : '';
+};
+
+const normalizeStyleValue = (property = '', value = '') => {
+    if (hasUnsafeCssToken(value)) return '';
+    switch (property.trim().toLowerCase()) {
+        case 'color':
+            return normalizeTextColor(value);
+        case 'font-size':
+            return normalizeFontSize(value);
+        case 'font-family':
+            return normalizeFontFamily(value);
+        case 'line-height':
+            return normalizeLineHeight(value);
+        case 'width':
+        case 'max-width':
+        case 'height':
+            return normalizeSizeValue(value);
+        case 'text-align':
+            return normalizeTextAlign(value);
+        default:
+            return '';
+    }
+};
+
+const buildStyleAttribute = (styles = []) => {
+    return styles
+        .map(([property, value]) => {
+            const normalized = normalizeStyleValue(property, value);
+            return normalized ? `${property}:${normalized}` : '';
+        })
+        .filter(Boolean)
+        .join(';');
+};
+
+const sanitizeInlineStyle = (style = '') => {
+    return String(style)
+        .split(';')
+        .map((declaration) => declaration.trim())
+        .filter(Boolean)
+        .map((declaration) => {
+            const separatorIndex = declaration.indexOf(':');
+            if (separatorIndex <= 0) return '';
+            const property = declaration.slice(0, separatorIndex).trim().toLowerCase();
+            const value = declaration.slice(separatorIndex + 1).trim();
+            const normalized = normalizeStyleValue(property, value);
+            return normalized ? `${property}:${normalized}` : '';
+        })
+        .filter(Boolean)
+        .join(';');
+};
+
+const sanitizeHtmlStyles = (html = '') => {
+    if (typeof document === 'undefined') {
+        return html;
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    template.content.querySelectorAll('[style]').forEach((element) => {
+        const cleanStyle = sanitizeInlineStyle(element.getAttribute('style') || '');
+        if (cleanStyle) {
+            element.setAttribute('style', cleanStyle);
+        } else {
+            element.removeAttribute('style');
+        }
+    });
+    return template.innerHTML;
+};
+
+const sanitize = (html) => sanitizeHtmlStyles(DOMPurify.sanitize(html, {
+    ADD_ATTR: ['target', 'rel', 'data-language', 'style'],
     ADD_TAGS: ['u'],
     WHOLE_DOCUMENT: false
-});
+}));
 
 export const renderMarkdown = (markdown = '') => {
     return sanitize(previewMarkdown.render(markdown || ''));
@@ -215,6 +346,17 @@ export const editorJsonToMarkdown = (json) => {
         return trimmed ? `${trimmed}\n\n` : '';
     };
 
+    const getBlockStyle = (attrs = {}) => buildStyleAttribute([
+        ['text-align', attrs.textAlign && attrs.textAlign !== 'left' ? attrs.textAlign : ''],
+        ['line-height', attrs.lineHeight]
+    ]);
+
+    const getTextStyle = (attrs = {}) => buildStyleAttribute([
+        ['color', attrs.color],
+        ['font-size', attrs.fontSize],
+        ['font-family', attrs.fontFamily]
+    ]);
+
     const indentLines = (content = '', depth = 0) => {
         const indent = '  '.repeat(depth);
         return String(content)
@@ -279,23 +421,29 @@ export const editorJsonToMarkdown = (json) => {
         }
         if (node.type === 'paragraph') {
             const align = node.attrs?.textAlign;
+            const lineHeight = node.attrs?.lineHeight;
             const childContext = { ...context, textAlign: align };
             const text = (node.content || []).map(child => processNode(child, childContext)).join('');
             if (context.inline) {
                 return text;
             }
-            if (align && align !== 'left') {
+            const style = getBlockStyle({ textAlign: align, lineHeight });
+            if (style) {
                 const allImages = (node.content || []).every(c => c.type === 'imageResize' || c.type === 'image');
-                if (allImages) {
+                if (allImages && align && !lineHeight) {
                     return normalizeBlock(text);
                 }
-                return normalizeBlock(`<p style="text-align:${align}">${text}</p>`);
+                return normalizeBlock(`<p style="${style}">${text}</p>`);
             }
             return normalizeBlock(text);
         }
         if (node.type === 'heading') {
             const level = node.attrs.level || 1;
             const text = processInlineContent(node);
+            const style = getBlockStyle(node.attrs || {});
+            if (style) {
+                return normalizeBlock(`<h${level} style="${style}">${text}</h${level}>`);
+            }
             return normalizeBlock('#'.repeat(level) + ' ' + text);
         }
         if (node.type === 'blockquote') {
@@ -379,6 +527,7 @@ export const editorJsonToMarkdown = (json) => {
                 // CommonMark：当加粗/斜体文本首尾有标点时，**+34** 不会被识别为定界符
                 // 改用 HTML 标签 <strong>/<em> 避免此问题
                 const boundaryPunct = /^[\p{P}\p{S}]|[\p{P}\p{S}]$/u.test(text);
+                let textStyle = '';
                 for (const mark of node.marks) {
                     if (mark.type === 'bold') {
                         text = boundaryPunct ? `<strong>${text}</strong>` : `**${text}**`;
@@ -392,7 +541,12 @@ export const editorJsonToMarkdown = (json) => {
                         text = `~~${text}~~`;
                     } else if (mark.type === 'link') {
                         text = `[${text}](${mark.attrs.href})`;
+                    } else if (mark.type === 'textStyle') {
+                        textStyle = getTextStyle(mark.attrs || {});
                     }
+                }
+                if (textStyle && !node.marks.some((mark) => mark.type === 'code')) {
+                    text = `<span style="${textStyle}">${text}</span>`;
                 }
             }
             return text;

@@ -2,6 +2,7 @@
 import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
 import {useWindowSize} from '@/composables/useWindowSize';
 import {BubbleMenu, EditorContent, useEditor, VueNodeViewRenderer} from '@tiptap/vue-3';
+import {Extension} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Table from '@tiptap/extension-table';
@@ -13,6 +14,7 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import TextStyle from '@tiptap/extension-text-style';
 import ResizeImage from 'tiptap-extension-resize-image';
 import {createBlogLowlight} from '@/utils/codeLanguages';
 import {editorJsonToMarkdown, markdownToEditorHtml} from '@/utils/markdown';
@@ -39,6 +41,74 @@ const imageInputRef = ref(null);
 const imageUploading = ref(false);
 const uploadError = ref('');
 const dragOver = ref(false);
+
+const DEFAULT_TEXT_COLOR = '#2c3e50';
+const FONT_FAMILY_OPTIONS = [
+    { label: '默认字体', value: '' },
+    { label: '微软雅黑', value: "'Microsoft YaHei', 'PingFang SC', sans-serif" },
+    { label: '宋体', value: "'SimSun', 'Songti SC', serif" },
+    { label: '黑体', value: "'SimHei', 'Heiti SC', sans-serif" },
+    { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+    { label: 'Georgia', value: 'Georgia, serif' },
+    { label: '等宽', value: "'Courier New', Consolas, monospace" }
+];
+const FONT_SIZE_OPTIONS = [
+    { label: '默认字号', value: '' },
+    { label: '12px', value: '12px' },
+    { label: '14px', value: '14px' },
+    { label: '16px', value: '16px' },
+    { label: '18px', value: '18px' },
+    { label: '20px', value: '20px' },
+    { label: '24px', value: '24px' },
+    { label: '28px', value: '28px' },
+    { label: '32px', value: '32px' }
+];
+const LINE_HEIGHT_OPTIONS = [
+    { label: '默认行距', value: '' },
+    { label: '1.4', value: '1.4' },
+    { label: '1.6', value: '1.6' },
+    { label: '1.8', value: '1.8' },
+    { label: '2.0', value: '2' },
+    { label: '2.4', value: '2.4' }
+];
+const FONT_FAMILY_VALUES = new Set(FONT_FAMILY_OPTIONS.map(option => option.value).filter(Boolean));
+const FONT_SIZE_VALUES = new Set(FONT_SIZE_OPTIONS.map(option => option.value).filter(Boolean));
+const LINE_HEIGHT_VALUES = new Set(LINE_HEIGHT_OPTIONS.map(option => option.value).filter(Boolean));
+const FONT_FAMILY_MATCHERS = [
+    { value: "'Microsoft YaHei', 'PingFang SC', sans-serif", keys: ['microsoft yahei', 'pingfang sc'] },
+    { value: "'SimSun', 'Songti SC', serif", keys: ['simsun', 'songti sc', '宋体'] },
+    { value: "'SimHei', 'Heiti SC', sans-serif", keys: ['simhei', 'heiti sc', '黑体'] },
+    { value: 'Arial, Helvetica, sans-serif', keys: ['arial', 'helvetica'] },
+    { value: 'Georgia, serif', keys: ['georgia'] },
+    { value: "'Courier New', Consolas, monospace", keys: ['courier new', 'consolas'] }
+];
+
+const normalizeTextColor = (value = '') => {
+    const color = String(value).trim().toLowerCase();
+    if (/^#[0-9a-f]{6}$/.test(color)) {
+        return color;
+    }
+    const rgbMatched = color.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/);
+    if (!rgbMatched) {
+        return '';
+    }
+    const channels = rgbMatched.slice(1).map(Number);
+    if (channels.some(channel => channel < 0 || channel > 255)) {
+        return '';
+    }
+    return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
+};
+
+const normalizeFontFamily = (value = '') => {
+    if (FONT_FAMILY_VALUES.has(value)) {
+        return value;
+    }
+    const fontFamily = String(value).trim().replace(/["']/g, '').toLowerCase();
+    const matched = FONT_FAMILY_MATCHERS.find(item => item.keys.some(key => fontFamily.includes(key)));
+    return matched?.value || '';
+};
+const normalizeFontSize = (value = '') => FONT_SIZE_VALUES.has(value) ? value : '';
+const normalizeLineHeight = (value = '') => LINE_HEIGHT_VALUES.has(value) ? value : '';
 
 const tableMarkdownPattern = /^\s*\|.+\|\s*\n\s*\|[\s:|-]+\|\s*\n(?:\s*\|.*\|\s*\n?)+/m;
 const markdownBlockPattern = /(^|\n)\s*(#{1,6}\s|[-*]\s|>\s|\|.+\|\s*\n\s*\|[\s:|-]+\||```|---\s*$)/m;
@@ -154,6 +224,60 @@ const convertCurrentCodeFence = (editorInstance, view) => {
     editorInstance.commands.insertContentAt(from, markdownToEditorHtml(markdown));
     return true;
 };
+
+const richTextStyleExtension = TextStyle.extend({
+    addAttributes() {
+        return {
+            color: {
+                default: null,
+                parseHTML: element => normalizeTextColor(element.style.color),
+                renderHTML: attributes => {
+                    const color = normalizeTextColor(attributes.color);
+                    return color ? { style: `color:${color}` } : {};
+                }
+            },
+            fontSize: {
+                default: null,
+                parseHTML: element => normalizeFontSize(element.style.fontSize),
+                renderHTML: attributes => {
+                    const fontSize = normalizeFontSize(attributes.fontSize);
+                    return fontSize ? { style: `font-size:${fontSize}` } : {};
+                }
+            },
+            fontFamily: {
+                default: null,
+                parseHTML: element => normalizeFontFamily(element.style.fontFamily),
+                renderHTML: attributes => {
+                    const fontFamily = normalizeFontFamily(attributes.fontFamily);
+                    return fontFamily ? { style: `font-family:${fontFamily}` } : {};
+                }
+            }
+        };
+    }
+}).configure({
+    mergeNestedSpanStyles: true
+});
+
+const lineHeightExtension = Extension.create({
+    name: 'lineHeight',
+    addGlobalAttributes() {
+        return [
+            {
+                types: ['heading', 'paragraph'],
+                attributes: {
+                    lineHeight: {
+                        default: null,
+                        parseHTML: element => normalizeLineHeight(element.style.lineHeight),
+                        renderHTML: attributes => {
+                            const lineHeight = normalizeLineHeight(attributes.lineHeight);
+                            return lineHeight ? { style: `line-height:${lineHeight}` } : {};
+                        }
+                    }
+                }
+            }
+        ];
+    }
+});
 
 const codeBlockExtension = CodeBlockLowlight
     .extend({
@@ -472,6 +596,7 @@ const editor = useEditor({
         TableHeader,
         TableCell,
         codeBlockExtension,
+        richTextStyleExtension,
         Underline,
         TaskList.configure({
             HTMLAttributes: {
@@ -487,6 +612,7 @@ const editor = useEditor({
         TextAlign.configure({
             types: ['heading', 'paragraph', 'tableHeader', 'tableCell']
         }),
+        lineHeightExtension,
         ResizeImage.configure({
             inline: false,
             allowBase64: true,
@@ -888,6 +1014,95 @@ const splitCell = () => runEditorCommand((chain) => chain.splitCell());
 const mergeOrSplit = () => runEditorCommand((chain) => chain.mergeOrSplit());
 const deleteTable = () => runEditorCommand((chain) => chain.deleteTable());
 const setTextAlign = (align) => runEditorCommand((chain) => chain.setTextAlign(align));
+
+const getTextStyleAttributes = () => editor.value?.getAttributes('textStyle') || {};
+
+const isRichStyleAvailable = computed(() => {
+    editorStateVersion.value;
+    return Boolean(editor.value && !editor.value.isActive('codeBlock'));
+});
+
+const activeFontFamily = computed(() => {
+    editorStateVersion.value;
+    return normalizeFontFamily(getTextStyleAttributes().fontFamily || '');
+});
+
+const activeFontSize = computed(() => {
+    editorStateVersion.value;
+    return normalizeFontSize(getTextStyleAttributes().fontSize || '');
+});
+
+const activeTextColor = computed(() => {
+    editorStateVersion.value;
+    return normalizeTextColor(getTextStyleAttributes().color || '');
+});
+
+const activeLineHeight = computed(() => {
+    editorStateVersion.value;
+    const paragraphLineHeight = editor.value?.getAttributes('paragraph')?.lineHeight || '';
+    const headingLineHeight = editor.value?.getAttributes('heading')?.lineHeight || '';
+    return normalizeLineHeight(paragraphLineHeight || headingLineHeight);
+});
+
+const applyTextStyleAttributes = (attrs = {}) => {
+    if (!editor.value || editor.value.isActive('codeBlock')) {
+        return;
+    }
+    const current = getTextStyleAttributes();
+    const next = {
+        color: normalizeTextColor(current.color || ''),
+        fontSize: normalizeFontSize(current.fontSize || ''),
+        fontFamily: normalizeFontFamily(current.fontFamily || ''),
+        ...attrs
+    };
+    Object.keys(next).forEach((key) => {
+        if (!next[key]) {
+            delete next[key];
+        }
+    });
+
+    const chain = editor.value.chain().focus();
+    if (!Object.keys(next).length) {
+        chain.unsetMark('textStyle').run();
+    } else {
+        chain.setMark('textStyle', next).removeEmptyTextStyle().run();
+    }
+    refreshEditorState();
+};
+
+const applyFontFamily = (value) => {
+    applyTextStyleAttributes({ fontFamily: normalizeFontFamily(value) });
+};
+
+const applyFontSize = (value) => {
+    applyTextStyleAttributes({ fontSize: normalizeFontSize(value) });
+};
+
+const applyTextColor = (value) => {
+    applyTextStyleAttributes({ color: normalizeTextColor(value) });
+};
+
+const clearTextColor = () => {
+    applyTextStyleAttributes({ color: '' });
+};
+
+const clearTextStyle = () => {
+    if (!editor.value || editor.value.isActive('codeBlock')) {
+        return;
+    }
+    editor.value.chain().focus().unsetMark('textStyle').run();
+    refreshEditorState();
+};
+
+const applyLineHeight = (value) => {
+    if (!editor.value || editor.value.isActive('codeBlock')) {
+        return;
+    }
+    const lineHeight = normalizeLineHeight(value) || null;
+    const nodeType = editor.value.isActive('heading') ? 'heading' : 'paragraph';
+    editor.value.chain().focus().updateAttributes(nodeType, { lineHeight }).run();
+    refreshEditorState();
+};
 
 const isInTable = computed(() => {
     return editorStateVersion.value >= 0 && Boolean(editor.value?.isActive('table'));
@@ -1349,6 +1564,107 @@ const handleGlobalScroll = (event) => {
                 :data-editor-state="editorStateVersion"
             >
                 <div
+                    class="editor-toolbar-group editor-style-controls"
+                    aria-label="文字外观"
+                >
+                    <select
+                        class="editor-style-select editor-style-select--font"
+                        data-testid="editor-font-family-select"
+                        :value="activeFontFamily"
+                        :disabled="!isRichStyleAvailable"
+                        title="字体"
+                        aria-label="字体"
+                        @mousedown.stop
+                        @change="applyFontFamily($event.target.value)"
+                    >
+                        <option
+                            v-for="option in FONT_FAMILY_OPTIONS"
+                            :key="option.label"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </option>
+                    </select>
+                    <select
+                        class="editor-style-select editor-style-select--size"
+                        data-testid="editor-font-size-select"
+                        :value="activeFontSize"
+                        :disabled="!isRichStyleAvailable"
+                        title="字号"
+                        aria-label="字号"
+                        @mousedown.stop
+                        @change="applyFontSize($event.target.value)"
+                    >
+                        <option
+                            v-for="option in FONT_SIZE_OPTIONS"
+                            :key="option.label"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </option>
+                    </select>
+                    <select
+                        class="editor-style-select editor-style-select--line"
+                        data-testid="editor-line-height-select"
+                        :value="activeLineHeight"
+                        :disabled="!isRichStyleAvailable"
+                        title="行距"
+                        aria-label="行距"
+                        @mousedown.stop
+                        @change="applyLineHeight($event.target.value)"
+                    >
+                        <option
+                            v-for="option in LINE_HEIGHT_OPTIONS"
+                            :key="option.label"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </option>
+                    </select>
+                    <label
+                        class="editor-color-control"
+                        title="文字颜色"
+                        aria-label="文字颜色"
+                    >
+                        <span
+                            class="editor-color-swatch"
+                            :style="{ backgroundColor: activeTextColor || DEFAULT_TEXT_COLOR }"
+                        ></span>
+                        <input
+                            type="color"
+                            data-testid="editor-text-color-input"
+                            :value="activeTextColor || DEFAULT_TEXT_COLOR"
+                            :disabled="!isRichStyleAvailable"
+                            @mousedown.stop
+                            @input="applyTextColor($event.target.value)"
+                        >
+                    </label>
+                    <button
+                        type="button"
+                        class="editor-style-clear"
+                        data-testid="editor-text-color-clear"
+                        title="清除文字颜色"
+                        aria-label="清除文字颜色"
+                        :disabled="!activeTextColor || !isRichStyleAvailable"
+                        @mousedown.prevent="keepEditorFocus"
+                        @click="clearTextColor"
+                    >
+                        A
+                    </button>
+                    <button
+                        type="button"
+                        class="editor-style-clear"
+                        data-testid="editor-text-style-clear"
+                        title="清除文字样式"
+                        aria-label="清除文字样式"
+                        :disabled="!isRichStyleAvailable"
+                        @mousedown.prevent="keepEditorFocus"
+                        @click="clearTextStyle"
+                    >
+                        Tx
+                    </button>
+                </div>
+                <div
                     v-for="group in visibleToolbarGroups"
                     :key="group.id"
                     class="editor-toolbar-group"
@@ -1475,6 +1791,23 @@ const handleGlobalScroll = (event) => {
                     @click="toggleCode"
                 ><span v-html="itemIconsHtml('code')"></span></button>
                 <span class="bubble-menu-sep"></span>
+                <label
+                    class="bubble-color-control"
+                    title="文字颜色"
+                    aria-label="文字颜色"
+                >
+                    <span
+                        class="bubble-color-swatch"
+                        :style="{ backgroundColor: activeTextColor || DEFAULT_TEXT_COLOR }"
+                    ></span>
+                    <input
+                        type="color"
+                        :value="activeTextColor || DEFAULT_TEXT_COLOR"
+                        :disabled="!isRichStyleAvailable"
+                        @mousedown.stop
+                        @input="applyTextColor($event.target.value)"
+                    >
+                </label>
                 <button
                     type="button"
                     class="bubble-menu-btn"
