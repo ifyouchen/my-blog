@@ -121,6 +121,10 @@ export const markdownToEditorHtml = (markdown = '') => {
     return sanitize(editorMarkdown.render(markdown || ''));
 };
 
+export const renderMarkdownForExport = (markdown = '') => {
+    return sanitize(editorMarkdown.render(markdown || ''));
+};
+
 const escapeTableCell = (text = '') => {
     return String(text)
         .replace(/\|/g, '\\|')

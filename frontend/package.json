@@ -27,6 +27,7 @@
     "@unhead/vue": "^1.11.20",
     "dompurify": "^3.2.4",
     "highlight.js": "^11.11.1",
+    "jszip": "^3.10.1",
     "lowlight": "^3.3.0",
     "markdown-it": "^14.1.0",
     "nprogress": "^0.2.0",

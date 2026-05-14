@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs/promises';
+import JSZip from 'jszip';
 
 const USER_ACCOUNT = process.env.E2E_USER_ACCOUNT || 'u92mpnsm4';
 const USER_PASSWORD = process.env.E2E_USER_PASSWORD || '123456';
@@ -12,6 +14,88 @@ async function login(page, account, password) {
     await page.getByTestId('login-password-input').fill(password);
     await page.getByTestId('login-submit').click();
     await page.waitForURL('**/dashboard/articles');
+}
+
+async function mockArticleExportFixture(page, { articleId = 123, withImage = true } = {}) {
+    const articleContent = [
+        '## Only Body Heading',
+        '',
+        'Visible body paragraph for export checks.',
+        '',
+        ...(withImage ? [
+            '![Export image](/api/uploads/files/export-test.svg)',
+            ''
+        ] : []),
+        ...Array.from(
+            {length: 18},
+            (_, index) => `Extra export paragraph ${index + 1} keeps the PDF body long enough to render.`
+        ),
+        '',
+        '```js',
+        'console.log("export body only");',
+        '```'
+    ].join('\n');
+
+    await page.route(`**/api/articles/${articleId}`, async (route) => {
+        await route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({
+                code: 0,
+                data: {
+                    id: articleId,
+                    title: 'Export Metadata Title',
+                    summary: 'Metadata summary must not be exported.',
+                    category: '测试',
+                    status: 'PUBLISHED',
+                    content: articleContent,
+                    coverUrl: '',
+                    author: {
+                        id: 2,
+                        username: 'export-author',
+                        nickname: 'Export Author',
+                        avatar: ''
+                    },
+                    tags: ['export'],
+                    viewCount: 7,
+                    likeCount: 3,
+                    favoriteCount: 1,
+                    commentCount: 4,
+                    publishedAt: '2026-05-14 10:00:00',
+                    updatedAt: '2026-05-14 11:00:00',
+                    slug: withImage ? 'export-test' : 'export-no-image-test'
+                }
+            })
+        });
+    });
+    await page.route(`**/api/articles/${articleId}/recommendations?*`, async (route) => {
+        await route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 0, data: { sections: [] } })
+        });
+    });
+    await page.route(`**/api/articles/${articleId}/neighbors`, async (route) => {
+        await route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 0, data: { prev: null, next: null } })
+        });
+    });
+    await page.route(`**/api/articles/${articleId}/comments?*`, async (route) => {
+        await route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 0, data: { items: [], total: 0 } })
+        });
+    });
+    await page.route('**/api/uploads/files/export-test.svg', async (route) => {
+        const svg = [
+            '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40">',
+            '<rect width="80" height="40" fill="#2563eb"/>',
+            '</svg>'
+        ].join('');
+        await route.fulfill({
+            contentType: 'image/svg+xml',
+            body: svg
+        });
+    });
 }
 
 test.describe('guest smoke', () => {
@@ -224,6 +308,114 @@ test.describe('guest smoke', () => {
 
         await page.getByTestId('comment-composer-input').first().click();
         await expect(page.getByTestId('login-modal')).toBeVisible();
+    });
+
+    test('article detail exports only body as markdown html and pdf', async ({ page }) => {
+        await mockArticleExportFixture(page);
+        await page.addInitScript(() => {
+            window.__articlePdfPrintCount = 0;
+            window.addEventListener('message', (event) => {
+                if (event.data?.type === 'article-export-test-print') {
+                    window.__articlePdfPrintCount += 1;
+                }
+            });
+            window.print = () => {
+                window.parent?.postMessage({type: 'article-export-test-print'}, '*');
+            };
+        });
+        await page.goto('/articles/123-export-test');
+        await expect(page.getByTestId('article-detail-page')).toBeVisible();
+        await expect(page.getByTestId('article-export-button')).toBeVisible();
+
+        await page.getByTestId('article-export-button').click();
+        await expect(page.getByTestId('article-export-menu')).toBeVisible();
+        const markdownDownloadPromise = page.waitForEvent('download');
+        await page.getByTestId('article-export-md').click();
+        const markdownDownload = await markdownDownloadPromise;
+        expect(markdownDownload.suggestedFilename()).toMatch(/\.zip$/);
+        const markdownPath = await markdownDownload.path();
+        const markdownZip = await JSZip.loadAsync(await fs.readFile(markdownPath));
+        const markdownEntry = markdownZip.file('article.md');
+        expect(markdownEntry).not.toBeNull();
+        expect(markdownZip.file('assets/image-001.svg')).not.toBeNull();
+        const markdownText = await markdownEntry.async('string');
+        expect(markdownText).toContain('Visible body paragraph for export checks.');
+        expect(markdownText).toContain('![Export image](assets/image-001.svg)');
+        expect(markdownText).not.toContain('/api/uploads/files/export-test.svg');
+        expect(markdownText).not.toContain('Export Metadata Title');
+        expect(markdownText).not.toContain('Export Author');
+        expect(markdownText).not.toContain('Metadata summary must not be exported.');
+
+        await page.getByTestId('article-export-button').click();
+        const htmlDownloadPromise = page.waitForEvent('download');
+        await page.getByTestId('article-export-html').click();
+        const htmlDownload = await htmlDownloadPromise;
+        expect(htmlDownload.suggestedFilename()).toMatch(/\.html$/);
+        const htmlPath = await htmlDownload.path();
+        const htmlText = await fs.readFile(htmlPath, 'utf8');
+        expect(htmlText).toContain('Visible body paragraph for export checks.');
+        expect(htmlText).toContain('data:image/svg+xml;base64,');
+        expect(htmlText).not.toContain('Export Metadata Title');
+        expect(htmlText).not.toContain('文章正文导出');
+        expect(htmlText).not.toContain('/articles/123-export-test');
+        expect(htmlText).not.toContain('Export Author');
+        expect(htmlText).not.toContain('Metadata summary must not be exported.');
+        expect(htmlText).not.toContain('code-copy-button');
+        expect(htmlText).toContain('@page');
+        expect(htmlText).toContain('margin: 14mm 16mm;');
+        expect(htmlText).toContain('@top-left');
+        expect(htmlText).toContain('@top-center');
+        expect(htmlText).toContain('@bottom-center');
+        expect(htmlText).toMatch(/@top-center\s*{\s*content:\s*"";/);
+        expect(htmlText).toMatch(/@bottom-center\s*{[\s\S]*content:\s*counter\(page\)\s*"\/"\s*counter\(pages\);/);
+        expect(htmlText).toContain('@bottom-right');
+
+        await page.getByTestId('article-export-button').click();
+        await expect(page.getByTestId('article-export-menu')).toBeVisible();
+        await page.evaluate(() => window.scrollTo(0, 320));
+        const scrollYBeforePdfExport = await page.evaluate(() => window.scrollY);
+        const pdfPrintPromise = page.evaluate(() => new Promise((resolve) => {
+            window.addEventListener('article-export:pdf-print-requested', () => {
+                resolve(window.scrollY);
+            }, {once: true});
+        }));
+        await page.evaluate(() => {
+            const pdfOption = document.querySelector('[data-testid="article-export-pdf"]');
+            if (!pdfOption) {
+                throw new Error('PDF export option missing');
+            }
+            pdfOption.click();
+        });
+        const scrollYWhenPdfPrintStarted = await pdfPrintPromise;
+        expect(Math.abs(scrollYWhenPdfPrintStarted - scrollYBeforePdfExport)).toBeLessThanOrEqual(2);
+        await page.waitForFunction(() => window.__articlePdfPrintCount === 1);
+        await expect(page.locator('.toast-message', { hasText: 'PDF 打印窗口已打开' })).toBeVisible();
+        await expect(page.locator('.toast-message', { hasText: 'PDF 导出已完成' })).toHaveCount(0);
+        const printFrame = page.getByTestId('article-pdf-print-frame');
+        await expect(printFrame).toHaveCount(1);
+        await expect(printFrame).toHaveAttribute('aria-hidden', 'true');
+        const printFrameBody = page.frameLocator('[data-testid="article-pdf-print-frame"]')
+            .locator('.article-export-body');
+        await expect(page.frameLocator('[data-testid="article-pdf-print-frame"]').locator('title')).toHaveText('');
+        await expect(printFrameBody).toContainText('Visible body paragraph for export checks.');
+        await expect(printFrameBody).not.toContainText('文章正文导出');
+        await expect(printFrameBody).not.toContainText('/articles/123-export-test');
+        await expect(printFrameBody.locator('img')).toHaveAttribute('src', /data:image\/svg\+xml;base64,/);
+        await expect(printFrameBody.locator('canvas')).toHaveCount(0);
+
+        await mockArticleExportFixture(page, { articleId: 124, withImage: false });
+        await page.goto('/articles/124-export-no-image-test');
+        await expect(page.getByTestId('article-detail-page')).toBeVisible();
+        await page.getByTestId('article-export-button').click();
+        const markdownWithoutImageDownloadPromise = page.waitForEvent('download');
+        await page.getByTestId('article-export-md').click();
+        const markdownWithoutImageDownload = await markdownWithoutImageDownloadPromise;
+        expect(markdownWithoutImageDownload.suggestedFilename()).toMatch(/\.md$/);
+        const markdownWithoutImagePath = await markdownWithoutImageDownload.path();
+        const markdownWithoutImageText = await fs.readFile(markdownWithoutImagePath, 'utf8');
+        expect(markdownWithoutImageText).toContain('Visible body paragraph for export checks.');
+        expect(markdownWithoutImageText).not.toContain('Export Metadata Title');
+        expect(markdownWithoutImageText).not.toContain('Export Author');
     });
 
     test('guest write action still opens login modal', async ({ page }) => {

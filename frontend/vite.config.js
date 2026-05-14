@@ -29,6 +29,9 @@ export default defineConfig({
             }
         }
     },
+    optimizeDeps: {
+        include: ['jszip']
+    },
     server: {
         port: 5173,
         proxy: {

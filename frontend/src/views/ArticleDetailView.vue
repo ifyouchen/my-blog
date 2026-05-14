@@ -15,6 +15,11 @@ import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import AdBanner from '@/components/AdBanner.vue';
 import {useSession} from '@/stores/session';
+import {
+    exportArticleAsHtml,
+    exportArticleAsMarkdown,
+    exportArticleAsPdf
+} from '@/utils/articleExport';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
@@ -130,9 +135,12 @@ const favoriteSubmitting = ref(false);
 const reportDialogVisible = ref(false);
 const showShareMenu = ref(false);
 const shareCopied = ref(false);
+const showExportMenu = ref(false);
+const exportingFormat = ref('');
 const tocDrawerOpen = ref(false);
 const mobileTocCloseButtonRef = ref(null);
 let shareHoverTimer = null;
+let exportHoverTimer = null;
 const SHARE_HOVER_DELAY = 280;
 const RECENT_READING_KEY = 'my-blog:recent-reading';
 const RECENT_READING_LIMIT = 20;
@@ -228,6 +236,7 @@ const saveRecentArticle = (source) => {
 
 const openShareMenu = () => {
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
+    showExportMenu.value = false;
     shareHoverTimer = window.setTimeout(() => {
         showShareMenu.value = true;
     }, SHARE_HOVER_DELAY);
@@ -238,6 +247,81 @@ const closeShareMenu = () => {
     shareHoverTimer = window.setTimeout(() => {
         showShareMenu.value = false;
     }, SHARE_HOVER_DELAY);
+};
+
+const openExportMenu = () => {
+    if (exportHoverTimer) clearTimeout(exportHoverTimer);
+    showShareMenu.value = false;
+    exportHoverTimer = window.setTimeout(() => {
+        showExportMenu.value = true;
+    }, SHARE_HOVER_DELAY);
+};
+
+const closeExportMenu = () => {
+    if (exportHoverTimer) clearTimeout(exportHoverTimer);
+    exportHoverTimer = window.setTimeout(() => {
+        showExportMenu.value = false;
+    }, SHARE_HOVER_DELAY);
+};
+
+const toggleExportMenu = () => {
+    if (exportHoverTimer) clearTimeout(exportHoverTimer);
+    showShareMenu.value = false;
+    showExportMenu.value = !showExportMenu.value;
+};
+
+const EXPORT_FORMAT_LABELS = {
+    md: 'Markdown',
+    html: 'HTML',
+    pdf: 'PDF'
+};
+
+const handleExportArticle = async (format) => {
+    if (exportingFormat.value) {
+        return;
+    }
+    const markdown = articleMarkdown.value;
+    if (!markdown.trim()) {
+        toast.error('正文为空，无法导出');
+        return;
+    }
+
+    exportingFormat.value = format;
+    showExportMenu.value = false;
+
+    try {
+        let result;
+        const payload = {
+            markdown,
+            title: article.value?.title || `article-${articleId.value}`
+        };
+        if (format === 'md') {
+            result = await exportArticleAsMarkdown(payload);
+        } else if (format === 'html') {
+            result = await exportArticleAsHtml(payload);
+        } else {
+            result = await exportArticleAsPdf(payload);
+        }
+
+        const label = EXPORT_FORMAT_LABELS[format] || '文件';
+        const failedImageCount = result?.failedImageCount || 0;
+        if (format === 'pdf' && result?.printRequested) {
+            if (failedImageCount > 0) {
+                toast.success(`PDF 打印窗口已打开，${failedImageCount} 张图片未能内联，已保留原链接`);
+            } else {
+                toast.success('PDF 打印窗口已打开，请选择“另存为 PDF”保存');
+            }
+        } else if (failedImageCount > 0) {
+            const imageAction = format === 'md' ? '打包' : '内联';
+            toast.success(`${label} 导出已完成，${failedImageCount} 张图片未能${imageAction}，已保留原链接`);
+        } else {
+            toast.success(`${label} 导出已完成`);
+        }
+    } catch (error) {
+        toast.error(error.message || '导出失败，请稍后再试');
+    } finally {
+        exportingFormat.value = '';
+    }
 };
 const currentUserId = computed(() => state.user?.id || null);
 const showAuthorFollow = computed(() => {
@@ -572,6 +656,7 @@ onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('keydown', handleImmersiveKeydown);
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
+    if (exportHoverTimer) clearTimeout(exportHoverTimer);
     document.body.classList.remove('mobile-toc-open');
 });
 
@@ -853,6 +938,105 @@ watch(tocDrawerOpen, (open) => {
                             >
                                 <span class="article-quick-label">举报</span>
                             </button>
+                            <div
+                                class="article-export-wrap"
+                                @mouseenter="openExportMenu"
+                                @mouseleave="closeExportMenu"
+                            >
+                                <button
+                                    type="button"
+                                    class="article-quick-button"
+                                    data-testid="article-export-button"
+                                    :disabled="Boolean(exportingFormat) || !articleMarkdown"
+                                    :aria-expanded="showExportMenu ? 'true' : 'false'"
+                                    title="导出正文"
+                                    @click="toggleExportMenu"
+                                >
+                                    <span class="article-quick-label">
+                                        {{ exportingFormat ? '导出中' : '导出' }}
+                                    </span>
+                                </button>
+                                <div
+                                    v-if="showExportMenu"
+                                    class="article-share-card article-export-card"
+                                    data-testid="article-export-menu"
+                                >
+                                    <div class="share-card-arrow"></div>
+                                    <div class="share-card-body">
+                                        <button
+                                            type="button"
+                                            class="share-option export-option"
+                                            data-testid="article-export-md"
+                                            :disabled="Boolean(exportingFormat)"
+                                            @click="handleExportArticle('md')"
+                                        >
+                                            <svg
+                                                class="share-icon"
+                                                viewBox="0 0 24 24"
+                                                width="20"
+                                                height="20"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                <path d="M14 2v6h6"/>
+                                                <path d="M8 13h8M8 17h5"/>
+                                            </svg>
+                                            <span>Markdown</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="share-option export-option"
+                                            data-testid="article-export-html"
+                                            :disabled="Boolean(exportingFormat)"
+                                            @click="handleExportArticle('html')"
+                                        >
+                                            <svg
+                                                class="share-icon"
+                                                viewBox="0 0 24 24"
+                                                width="20"
+                                                height="20"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <path d="M16 18l6-6-6-6"/>
+                                                <path d="M8 6l-6 6 6 6"/>
+                                            </svg>
+                                            <span>HTML</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="share-option export-option"
+                                            data-testid="article-export-pdf"
+                                            :disabled="Boolean(exportingFormat)"
+                                            @click="handleExportArticle('pdf')"
+                                        >
+                                            <svg
+                                                class="share-icon"
+                                                viewBox="0 0 24 24"
+                                                width="20"
+                                                height="20"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                <path d="M14 2v6h6"/>
+                                                <path d="M9 15h6"/>
+                                            </svg>
+                                            <span>PDF</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                             <!-- 分享 -->
                             <div
                                 class="article-share-wrap"
@@ -2304,12 +2488,14 @@ watch(tocDrawerOpen, (open) => {
 }
 
 /* 分享卡片（B 站风格） */
+.article-export-wrap,
 .article-share-wrap {
     position: relative;
     flex: none;
     width: 88px;
 }
 
+.article-export-wrap .article-quick-button,
 .article-share-wrap .article-quick-button {
     width: 100%;
     min-width: 100%;
@@ -2326,6 +2512,10 @@ watch(tocDrawerOpen, (open) => {
     border-radius: 10px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
     animation: share-card-in 0.2s ease;
+}
+
+.article-export-card {
+    min-width: 168px;
 }
 
 @keyframes share-card-in {
@@ -2368,8 +2558,25 @@ watch(tocDrawerOpen, (open) => {
     white-space: nowrap;
 }
 
+button.share-option {
+    width: 100%;
+    font-family: inherit;
+    text-align: left;
+    background: transparent;
+    border: 0;
+}
+
+.share-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
 .share-option:hover {
     background: var(--surface-soft);
+}
+
+.share-option:disabled:hover {
+    background: transparent;
 }
 
 .share-icon {
@@ -2378,7 +2585,7 @@ watch(tocDrawerOpen, (open) => {
 }
 
 @media (max-width: 768px) {
-    .article-quick-actions .article-quick-button:last-child {
+    .article-share-wrap {
         display: none;
     }
 }
