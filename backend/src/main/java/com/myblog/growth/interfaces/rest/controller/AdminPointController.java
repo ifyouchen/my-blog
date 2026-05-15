@@ -1,15 +1,19 @@
 package com.myblog.growth.interfaces.rest.controller;
 
 import com.myblog.growth.application.service.AdminPointAppService;
+import com.myblog.growth.domain.model.aggregate.PointAccount;
 import com.myblog.growth.interfaces.rest.dto.request.AdminPointAdjustRequest;
 import com.myblog.growth.interfaces.rest.dto.response.AdminAdjustResultVO;
+import com.myblog.growth.interfaces.rest.dto.response.PointAccountVO;
 import com.myblog.growth.shared.exception.GrowthBusinessException;
 import com.myblog.growth.shared.exception.GrowthErrorCode;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.result.Result;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**

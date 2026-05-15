@@ -44,6 +44,8 @@ const ExploreView = () => import('@/views/ExploreView.vue');
 const HistoryView = () => import('@/views/HistoryView.vue');
 const MessagesView = () => import('@/views/MessagesView.vue');
 const AccessDeniedView = () => import('@/views/AccessDeniedView.vue');
+const GrowthView = () => import('@/views/GrowthView.vue');
+const AdminGrowthView = () => import('@/views/admin/AdminGrowthView.vue');
 
 const routes = [
     {
@@ -271,6 +273,15 @@ const routes = [
         }
     },
     {
+        path: '/dashboard/growth',
+        name: 'dashboardGrowth',
+        component: GrowthView,
+        meta: {
+            title: '积分与成长',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/settings/profile',
         name: 'profileSettings',
         component: ProfileSettingsView,
@@ -424,6 +435,16 @@ const routes = [
                     title: '管理员日志',
                     adminTitle: '管理员日志',
                     adminDescription: '按操作类型、结果状态和时间范围追踪后台审计记录。'
+                }
+            },
+            {
+                path: 'growth',
+                name: 'adminGrowth',
+                component: AdminGrowthView,
+                meta: {
+                    title: '积分管理',
+                    adminTitle: '积分管理',
+                    adminDescription: '查询用户积分账户、手动调整积分（正数加分/负数扣分），所有操作均记录审计日志。'
                 }
             }
         ]

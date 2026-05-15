@@ -17,6 +17,10 @@ const navItems = [
     {
         label: '我的收藏',
         path: '/dashboard/favorites'
+    },
+    {
+        label: '积分与成长',
+        path: '/dashboard/growth'
     }
 ];
 </script>

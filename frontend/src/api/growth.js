@@ -1,9 +1,25 @@
 /**
  * 成长与积分模块 API
  *
- * 包含：积分账户、积分流水、签到、邀请、文章解锁、分账查询
+ * 包含：等级经验、积分账户、积分流水、签到、邀请、文章解锁、分账查询
  */
 import {request} from './http';
+
+// ─────────────────────── 等级 & 经验 ──────────────────────────────
+
+/**
+ * 查询我的成长账户（等级/经验/进度）.
+ * @returns {Promise<{userId, level, levelName, exp, expToNextLevel, progressPercent}>}
+ */
+export const getMyGrowthApi = () => request('/growth/my');
+
+/**
+ * 查询我的经验流水.
+ * @param {number} limit 最多返回条数（默认 20，最大 50）
+ * @returns {Promise<Array>}
+ */
+export const getMyExpJournalsApi = (limit = 20) =>
+    request(`/growth/my/journals?limit=${limit}`);
 
 // ─────────────────────── 积分账户 ────────────────────────────────
 
@@ -86,4 +102,22 @@ export const getMyRevenueApi = (params = {}) => {
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request(`/revenue/my${suffix}`);
 };
+
+// ─────────────────────── 管理员接口 ──────────────────────────────
+
+/**
+ * 管理员调整用户积分.
+ * @param {{ targetUserId: number, delta: number, reason: string, bizNo: string }} payload
+ * @returns {Promise<{targetUserId, balanceAfter}>}
+ */
+export const adminAdjustPointsApi = (payload) =>
+    request('/admin/points/adjust', {method: 'POST', body: JSON.stringify(payload)});
+
+/**
+ * 查询指定用户的积分账户（管理员视角）.
+ * @param {number} userId
+ * @returns {Promise<{userId, balance, totalEarned, totalSpent}>}
+ */
+export const adminGetPointAccountApi = (userId) =>
+    request(`/admin/points/account?userId=${userId}`);
 

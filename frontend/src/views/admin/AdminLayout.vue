@@ -19,7 +19,8 @@ const navItems = [
     { to: '/admin/ads', label: '广告', icon: '广告' },
     { to: '/admin/announcements', label: '公告', icon: '公告' },
     { to: '/admin/sensitive-words', label: '敏感词', icon: '敏感' },
-    { to: '/admin/logs', label: '日志', icon: '日志' }
+    { to: '/admin/logs', label: '日志', icon: '日志' },
+    { to: '/admin/growth', label: '积分管理', icon: '积分' }
 ];
 
 const currentTitle = computed(() => route.meta.adminTitle || '管理后台');

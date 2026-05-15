@@ -67,6 +67,17 @@ public class AdminPointAppService {
     }
 
     /**
+     * 查询指定用户的积分账户（管理员视角）.
+     *
+     * @param targetUserId 被查询用户 ID
+     * @return 积分账户，若未开户则返回空账户 VO（余额为 0）
+     */
+    public PointAccount getAccountByUserId(Long targetUserId) {
+        return pointAccountRepository.findByUserId(targetUserId)
+                .orElseGet(() -> PointAccount.create(targetUserId));
+    }
+
+    /**
      * 管理员调整积分（正负均可）.
      *
      * @param targetUserId     被调分用户 ID

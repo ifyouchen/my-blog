@@ -1,0 +1,825 @@
+<script setup>
+import {computed, onMounted, ref} from 'vue';
+import {useHead} from '@unhead/vue';
+import SiteHeader from '@/components/SiteHeader.vue';
+import CreatorSidebar from '@/components/CreatorSidebar.vue';
+import {
+  getMyExpJournalsApi,
+  getMyGrowthApi,
+  getMyRevenueApi,
+  getPointAccountApi,
+  getPointJournalsApi,
+  getSignInCalendarApi,
+  signInApi,
+} from '@/api/growth';
+import {useSession} from '@/stores/session';
+
+useHead({title: '积分与成长 - DevNotes'});
+
+const {state: session} = useSession();
+
+// ── 成长账户（等级 / 经验） ──────────────────────────────────────
+const growth = ref(null);
+const growthLoading = ref(false);
+const growthError = ref('');
+
+const loadGrowth = async () => {
+    growthLoading.value = true;
+    growthError.value = '';
+    try {
+        growth.value = await getMyGrowthApi();
+    } catch (e) {
+        growthError.value = e.message || '加载失败';
+    } finally {
+        growthLoading.value = false;
+    }
+};
+
+// ── 积分账户 ─────────────────────────────────────────────────────
+const pointAccount = ref(null);
+const accountLoading = ref(false);
+
+const loadAccount = async () => {
+    accountLoading.value = true;
+    try {
+        pointAccount.value = await getPointAccountApi();
+    } catch {
+        // ignore
+    } finally {
+        accountLoading.value = false;
+    }
+};
+
+// ── 签到 ─────────────────────────────────────────────────────────
+const signInResult = ref(null);
+const signingIn = ref(false);
+const signInError = ref('');
+const calendarMonth = ref(new Date().toISOString().slice(0, 7)); // yyyy-MM
+const calendarData = ref(null);
+const calendarLoading = ref(false);
+
+const signedDates = computed(() => {
+    if (!calendarData.value?.signedDates) return new Set();
+    return new Set(calendarData.value.signedDates);
+});
+
+const todayStr = computed(() => new Date().toISOString().slice(0, 10)); // yyyy-MM-dd
+const todaySigned = computed(() => signedDates.value.has(todayStr.value));
+
+const calendarDays = computed(() => {
+    const [year, month] = calendarMonth.value.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const days = [];
+    // 填充前置空白格
+    for (let i = 0; i < firstDay; i++) {
+        days.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${calendarMonth.value}-${String(d).padStart(2, '0')}`;
+        days.push({
+            date: d,
+            dateStr,
+            signed: signedDates.value.has(dateStr),
+            isToday: dateStr === todayStr.value,
+        });
+    }
+    return days;
+});
+
+const loadCalendar = async (month) => {
+    calendarLoading.value = true;
+    try {
+        calendarData.value = await getSignInCalendarApi(month);
+    } catch {
+        // ignore
+    } finally {
+        calendarLoading.value = false;
+    }
+};
+
+const prevMonth = () => {
+    const d = new Date(`${calendarMonth.value}-01`);
+    d.setMonth(d.getMonth() - 1);
+    calendarMonth.value = d.toISOString().slice(0, 7);
+    loadCalendar(calendarMonth.value);
+};
+
+const nextMonth = () => {
+    const d = new Date(`${calendarMonth.value}-01`);
+    d.setMonth(d.getMonth() + 1);
+    const now = new Date().toISOString().slice(0, 7);
+    if (d.toISOString().slice(0, 7) <= now) {
+        calendarMonth.value = d.toISOString().slice(0, 7);
+        loadCalendar(calendarMonth.value);
+    }
+};
+
+const isCurrentMonth = computed(() => calendarMonth.value === new Date().toISOString().slice(0, 7));
+
+const doSignIn = async () => {
+    if (signingIn.value || todaySigned.value) return;
+    signingIn.value = true;
+    signInError.value = '';
+    try {
+        signInResult.value = await signInApi();
+        await Promise.all([loadAccount(), loadCalendar(calendarMonth.value)]);
+    } catch (e) {
+        signInError.value = e.message || '签到失败，请稍后重试';
+    } finally {
+        signingIn.value = false;
+    }
+};
+
+// ── 积分流水 ─────────────────────────────────────────────────────
+const journalTab = ref('points'); // 'points' | 'exp' | 'revenue'
+const journals = ref([]);
+const journalTotal = ref(0);
+const journalPage = ref(1);
+const journalSize = 15;
+const journalLoading = ref(false);
+const journalError = ref('');
+
+const SOURCE_TYPE_LABELS = {
+    SIGN_IN: '每日签到',
+    RECHARGE: '积分充值',
+    INVITE_REWARD: '邀请奖励',
+    ARTICLE_UNLOCK: '文章解锁',
+    ADMIN_ADJUST: '管理员调整',
+    PUBLISH: '发布文章',
+    COMMENT: '发表评论',
+    LIKE_RECEIVED: '获得点赞',
+    FOLLOW_RECEIVED: '获得关注',
+};
+
+const sourceLabel = (type) => SOURCE_TYPE_LABELS[type] || type || '-';
+
+const loadJournals = async () => {
+    journalLoading.value = true;
+    journalError.value = '';
+    try {
+        if (journalTab.value === 'points') {
+            const result = await getPointJournalsApi({page: journalPage.value, size: journalSize});
+            journals.value = result.items || result.records || result || [];
+            journalTotal.value = result.total || journals.value.length;
+        } else if (journalTab.value === 'exp') {
+            const data = await getMyExpJournalsApi(50);
+            journals.value = Array.isArray(data) ? data : [];
+            journalTotal.value = journals.value.length;
+        } else if (journalTab.value === 'revenue') {
+            const result = await getMyRevenueApi({page: journalPage.value, size: journalSize});
+            journals.value = result.items || result.records || result || [];
+            journalTotal.value = result.total || journals.value.length;
+        }
+    } catch (e) {
+        journalError.value = e.message || '加载失败';
+        journals.value = [];
+    } finally {
+        journalLoading.value = false;
+    }
+};
+
+const switchTab = (tab) => {
+    journalTab.value = tab;
+    journalPage.value = 1;
+    loadJournals();
+};
+
+const journalTotalPages = computed(() => Math.ceil(journalTotal.value / journalSize) || 1);
+
+const prevPage = () => {
+    if (journalPage.value > 1) {
+        journalPage.value--;
+        loadJournals();
+    }
+};
+
+const nextPage = () => {
+    if (journalPage.value < journalTotalPages.value) {
+        journalPage.value++;
+        loadJournals();
+    }
+};
+
+// ── 格式化 ───────────────────────────────────────────────────────
+const fmtTime = (t) => {
+    if (!t) return '-';
+    const d = new Date(t);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+onMounted(async () => {
+    await Promise.all([loadGrowth(), loadAccount(), loadCalendar(calendarMonth.value)]);
+    loadJournals();
+});
+</script>
+
+<template>
+    <SiteHeader />
+
+    <div class="page-shell growth-page">
+        <CreatorSidebar />
+
+        <main class="growth-main">
+            <h1 class="growth-title">积分与成长</h1>
+
+            <!-- 顶部卡片区 -->
+            <div class="growth-cards">
+                <!-- 等级 & 经验卡片 -->
+                <div class="growth-card level-card">
+                    <div v-if="growthLoading" class="card-skeleton"></div>
+                    <template v-else-if="growth">
+                        <div class="level-badge">Lv.{{ growth.level }}</div>
+                        <div class="level-info">
+                            <p class="level-name">{{ growth.levelName || `${growth.level} 级` }}</p>
+                            <p class="level-exp">
+                                经验值 <strong>{{ growth.exp }}</strong>
+                                <span v-if="growth.expToNextLevel > 0">
+                                    / 距升级还需 <strong>{{ growth.expToNextLevel }}</strong> 经验
+                                </span>
+                                <span v-else class="max-level">（已达最高等级）</span>
+                            </p>
+                            <div class="exp-bar">
+                                <div
+                                    class="exp-fill"
+                                    :style="{ width: `${Math.min(growth.progressPercent || 0, 100)}%` }"
+                                ></div>
+                            </div>
+                            <p class="exp-percent">{{ growth.progressPercent || 0 }}%</p>
+                        </div>
+                    </template>
+                    <div v-else-if="growthError" class="card-error">{{ growthError }}</div>
+                    <div v-else class="card-empty">暂无成长数据</div>
+                </div>
+
+                <!-- 积分账户卡片 -->
+                <div class="growth-card point-card">
+                    <div v-if="accountLoading" class="card-skeleton"></div>
+                    <template v-else-if="pointAccount">
+                        <div class="point-balance">
+                            <span class="point-num">{{ pointAccount.balance }}</span>
+                            <span class="point-unit">积分</span>
+                        </div>
+                        <div class="point-stats">
+                            <div class="point-stat-item">
+                                <span class="stat-label">累计获得</span>
+                                <span class="stat-val">{{ pointAccount.totalEarned }}</span>
+                            </div>
+                            <div class="point-stat-item">
+                                <span class="stat-label">累计消耗</span>
+                                <span class="stat-val">{{ pointAccount.totalSpent }}</span>
+                            </div>
+                        </div>
+                    </template>
+                    <div v-else class="card-empty">暂无积分信息</div>
+                </div>
+
+                <!-- 签到卡片 -->
+                <div class="growth-card signin-card">
+                    <div class="signin-header">
+                        <h3>每日签到</h3>
+                        <div v-if="signInResult && !signInError" class="signin-reward">
+                            🎉 +{{ signInResult.pointsEarned }} 积分（连续 {{ signInResult.continuousDays }} 天）
+                        </div>
+                        <div v-if="signInError" class="signin-error">{{ signInError }}</div>
+                    </div>
+
+                    <!-- 日历月份导航 -->
+                    <div class="calendar-nav">
+                        <button type="button" class="cal-nav-btn" @click="prevMonth">‹</button>
+                        <span class="cal-month">{{ calendarMonth }}</span>
+                        <button type="button" class="cal-nav-btn" :disabled="isCurrentMonth" @click="nextMonth">›</button>
+                    </div>
+
+                    <!-- 日历格子 -->
+                    <div class="calendar-grid">
+                        <div v-for="w in WEEKDAYS" :key="w" class="cal-weekday">{{ w }}</div>
+                        <template v-if="calendarLoading">
+                            <div v-for="i in 35" :key="i" class="cal-day cal-day--skeleton"></div>
+                        </template>
+                        <template v-else>
+                            <div
+                                v-for="(day, idx) in calendarDays"
+                                :key="idx"
+                                :class="['cal-day', {
+                                    'cal-day--empty': !day,
+                                    'cal-day--signed': day && day.signed,
+                                    'cal-day--today': day && day.isToday,
+                                }]"
+                            >
+                                <span v-if="day">{{ day.date }}</span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- 签到按钮 -->
+                    <button
+                        type="button"
+                        :class="['signin-btn', { 'signed': todaySigned }]"
+                        :disabled="signingIn || todaySigned"
+                        @click="doSignIn"
+                    >
+                        <template v-if="signingIn">签到中...</template>
+                        <template v-else-if="todaySigned">今日已签到 ✓</template>
+                        <template v-else>立即签到</template>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 流水记录区 -->
+            <section class="journal-section">
+                <div class="journal-tabs">
+                    <button
+                        type="button"
+                        :class="['tab-btn', {active: journalTab === 'points'}]"
+                        @click="switchTab('points')"
+                    >积分流水</button>
+                    <button
+                        type="button"
+                        :class="['tab-btn', {active: journalTab === 'exp'}]"
+                        @click="switchTab('exp')"
+                    >经验流水</button>
+                    <button
+                        type="button"
+                        :class="['tab-btn', {active: journalTab === 'revenue'}]"
+                        @click="switchTab('revenue')"
+                    >分账收益</button>
+                </div>
+
+                <div v-if="journalLoading" class="journal-loading">加载中...</div>
+                <div v-else-if="journalError" class="journal-error">{{ journalError }}</div>
+                <template v-else-if="journals.length > 0">
+                    <table class="journal-table">
+                        <thead>
+                            <tr>
+                                <th>类型</th>
+                                <th v-if="journalTab === 'points'">变动</th>
+                                <th v-if="journalTab === 'points'">余额</th>
+                                <th v-if="journalTab === 'exp'">经验值</th>
+                                <th v-if="journalTab === 'revenue'">总积分</th>
+                                <th v-if="journalTab === 'revenue'">作者分成</th>
+                                <th>说明</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 积分流水 -->
+                            <template v-if="journalTab === 'points'">
+                                <tr v-for="item in journals" :key="item.id || item.bizNo">
+                                    <td><span class="tag-chip">{{ sourceLabel(item.sourceType) }}</span></td>
+                                    <td :class="['delta', item.delta > 0 ? 'plus' : 'minus']">
+                                        {{ item.delta > 0 ? '+' : '' }}{{ item.delta }}
+                                    </td>
+                                    <td>{{ item.balanceAfter ?? '-' }}</td>
+                                    <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
+                                    <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                                </tr>
+                            </template>
+                            <!-- 经验流水 -->
+                            <template v-if="journalTab === 'exp'">
+                                <tr v-for="item in journals" :key="item.id">
+                                    <td><span class="tag-chip">{{ sourceLabel(item.eventType) }}</span></td>
+                                    <td :class="['delta', 'plus']">+{{ item.expAmount }}</td>
+                                    <td class="desc-cell">{{ item.description || item.remark || '-' }}</td>
+                                    <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                                </tr>
+                            </template>
+                            <!-- 分账收益 -->
+                            <template v-if="journalTab === 'revenue'">
+                                <tr v-for="item in journals" :key="item.id || item.orderNo">
+                                    <td><span class="tag-chip">文章解锁分成</span></td>
+                                    <td>{{ item.totalPoints }}</td>
+                                    <td :class="['delta', 'plus']">+{{ item.authorPoints }}</td>
+                                    <td class="desc-cell">订单：{{ item.orderNo || '-' }}</td>
+                                    <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <!-- 分页 -->
+                    <div v-if="journalTab !== 'exp'" class="journal-pagination">
+                        <button type="button" :disabled="journalPage <= 1" @click="prevPage">上一页</button>
+                        <span>第 {{ journalPage }} / {{ journalTotalPages }} 页</span>
+                        <button type="button" :disabled="journalPage >= journalTotalPages" @click="nextPage">下一页</button>
+                    </div>
+                </template>
+                <div v-else class="journal-empty">暂无记录</div>
+            </section>
+        </main>
+    </div>
+</template>
+
+<style scoped>
+.growth-page {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 32px;
+    align-items: start;
+    padding: 32px 0;
+}
+
+.growth-main {
+    min-width: 0;
+}
+
+.growth-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text-strong);
+}
+
+/* ── 卡片区 ─────────────────────────────────── */
+.growth-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.4fr;
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.growth-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    min-height: 180px;
+}
+
+.card-skeleton {
+    height: 100%;
+    min-height: 120px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--surface-soft) 25%, var(--line) 50%, var(--surface-soft) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.card-error { color: #dc2626; font-size: 14px; }
+.card-empty { color: var(--text-muted); font-size: 14px; }
+
+/* ── 等级卡片 ───────────────────────────────── */
+.level-card {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.level-badge {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent, #6c63ff), #a78bfa);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.level-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.level-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0 0 6px;
+}
+
+.level-exp {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+}
+
+.level-exp strong { color: var(--text-strong); }
+
+.max-level { color: var(--accent); }
+
+.exp-bar {
+    height: 8px;
+    background: var(--surface-soft);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.exp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent, #6c63ff), #a78bfa);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.exp-percent {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    margin: 0;
+}
+
+/* ── 积分卡片 ───────────────────────────────── */
+.point-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+}
+
+.point-balance {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.point-num {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent, #6c63ff);
+    line-height: 1;
+}
+
+.point-unit {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.point-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.point-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.stat-val {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+/* ── 签到卡片 ───────────────────────────────── */
+.signin-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.signin-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: var(--text-strong);
+}
+
+.signin-reward {
+    font-size: 13px;
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.signin-error {
+    font-size: 13px;
+    color: #dc2626;
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cal-nav-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    padding: 0;
+}
+
+.cal-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cal-month {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+    flex: 1;
+    text-align: center;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.cal-weekday {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2px 0;
+}
+
+.cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface-soft);
+    transition: background 0.15s;
+}
+
+.cal-day--empty { background: transparent; }
+.cal-day--skeleton { background: var(--line); animation: shimmer 1.5s infinite; }
+.cal-day--signed { background: var(--accent, #6c63ff); color: #fff; font-weight: 600; }
+.cal-day--today:not(.cal-day--signed) { border: 2px solid var(--accent, #6c63ff); font-weight: 600; color: var(--accent, #6c63ff); }
+
+.signin-btn {
+    margin-top: 4px;
+    padding: 10px;
+    background: var(--accent, #6c63ff);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    width: 100%;
+}
+
+.signin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.signin-btn.signed { background: #16a34a; }
+.signin-btn:not(:disabled):not(.signed):hover { opacity: 0.88; }
+
+/* ── 流水区 ─────────────────────────────────── */
+.journal-section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.journal-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 8px 18px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn.active {
+    color: var(--accent, #6c63ff);
+    border-bottom-color: var(--accent, #6c63ff);
+}
+
+.tab-btn:not(.active):hover { color: var(--text); }
+
+.journal-loading,
+.journal-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.journal-error {
+    text-align: center;
+    padding: 40px;
+    color: #dc2626;
+    font-size: 14px;
+}
+
+.journal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.journal-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--line);
+}
+
+.journal-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    vertical-align: middle;
+}
+
+.journal-table tr:last-child td { border-bottom: none; }
+.journal-table tr:hover td { background: var(--surface-soft); }
+
+.tag-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: var(--surface-soft);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.delta { font-weight: 700; }
+.delta.plus { color: #16a34a; }
+.delta.minus { color: #dc2626; }
+
+.desc-cell { max-width: 240px; color: var(--text-muted); font-size: 13px; }
+.time-cell { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+
+.journal-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.journal-pagination button {
+    padding: 6px 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    transition: background 0.15s;
+}
+
+.journal-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.journal-pagination button:not(:disabled):hover { background: var(--surface-soft); }
+
+/* ── 响应式 ─────────────────────────────────── */
+@media (max-width: 1024px) {
+    .growth-cards {
+        grid-template-columns: 1fr 1fr;
+    }
+    .signin-card {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .growth-page {
+        grid-template-columns: 1fr;
+        padding: 16px 0;
+    }
+    .growth-cards {
+        grid-template-columns: 1fr;
+    }
+    .signin-card {
+        grid-column: auto;
+    }
+}
+</style>
+
