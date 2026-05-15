@@ -20,6 +20,14 @@ public interface UserPointAccountMapper {
     UserPointAccountDO selectByUserId(@Param("userId") Long userId);
 
     /**
+     * 根据用户 ID 查询并锁定积分账户（FOR UPDATE）.
+     *
+     * @param userId 用户 ID
+     * @return 积分账户 DO，不存在时返回 null
+     */
+    UserPointAccountDO selectByUserIdForUpdate(@Param("userId") Long userId);
+
+    /**
      * 插入新积分账户，回填自增主键.
      *
      * @param account 积分账户 DO
