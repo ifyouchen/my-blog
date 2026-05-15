@@ -7,7 +7,13 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {getMyColumnsApi} from '@/api/columns';
-import {deleteArticleApi, exportMyArticlesApi, getMyArticlesApi, updateArticleStatusApi} from '@/api/articles';
+import {
+    deleteArticleApi,
+    exportMyArticlesApi,
+    getMyArticlesApi,
+    updateArticleStatusApi,
+    updateArticleUnlockRuleApi
+} from '@/api/articles';
 import {
   getArticleStatsApi,
   getDashboardArticlePerformanceApi,
@@ -87,6 +93,14 @@ const feedback = ref('');
 const feedbackType = ref('success');
 const actionLoadingId = ref(null);
 const jumpPage = ref(String(currentPage.value));
+const unlockDialogVisible = ref(false);
+const unlockDialogArticle = ref(null);
+const unlockForm = ref({
+    needUnlock: false,
+    unlockPointPrice: 0
+});
+const unlockSaving = ref(false);
+const unlockError = ref('');
 let scheduledArticleRefreshTimer = null;
 
 // 文章统计抽屉
@@ -434,8 +448,80 @@ const clearFavoriteKeyword = () => {
     resetFavoriteSearch();
 };
 
-const editArticle = (articleId) => {
-    router.push(`/editor/${articleId}`);
+const editArticle = (articleId, hash = '') => {
+    router.push({ path: `/editor/${articleId}`, hash });
+};
+
+const openUnlockDialog = (article) => {
+    if (!article || article.status === 'DELETED') {
+        return;
+    }
+    unlockDialogArticle.value = article;
+    unlockForm.value = {
+        needUnlock: Boolean(article.needUnlock),
+        unlockPointPrice: Number(article.unlockPointPrice || 0)
+    };
+    unlockError.value = '';
+    unlockDialogVisible.value = true;
+};
+
+const closeUnlockDialog = () => {
+    if (unlockSaving.value) {
+        return;
+    }
+    unlockDialogVisible.value = false;
+    unlockDialogArticle.value = null;
+    unlockError.value = '';
+};
+
+const normalizeUnlockPointPrice = () => {
+    const price = Number.parseInt(unlockForm.value.unlockPointPrice, 10);
+    return Number.isNaN(price) ? 0 : price;
+};
+
+const validateUnlockForm = () => {
+    if (!unlockForm.value.needUnlock) {
+        return '';
+    }
+    const price = normalizeUnlockPointPrice();
+    if (price <= 0) {
+        return '开启积分解锁后，请设置大于 0 的积分。';
+    }
+    if (price > 1000000) {
+        return '解锁积分不能超过 1000000。';
+    }
+    return '';
+};
+
+const saveUnlockRule = async () => {
+    if (!unlockDialogArticle.value || unlockSaving.value) {
+        return;
+    }
+    const validationMessage = validateUnlockForm();
+    if (validationMessage) {
+        unlockError.value = validationMessage;
+        return;
+    }
+    const price = unlockForm.value.needUnlock ? normalizeUnlockPointPrice() : 0;
+    unlockSaving.value = true;
+    unlockError.value = '';
+    try {
+        const updated = await updateArticleUnlockRuleApi(unlockDialogArticle.value.id, {
+            needUnlock: unlockForm.value.needUnlock,
+            unlockPointPrice: price
+        });
+        articles.value = articles.value.map((article) => (
+            String(article.id) === String(updated.id) ? { ...article, ...updated } : article
+        ));
+        feedback.value = `已更新《${updated.title || unlockDialogArticle.value.title}》阅读权限`;
+        feedbackType.value = 'success';
+        unlockDialogVisible.value = false;
+        unlockDialogArticle.value = null;
+    } catch (error) {
+        unlockError.value = error.message || '阅读权限保存失败，请稍后重试。';
+    } finally {
+        unlockSaving.value = false;
+    }
 };
 
 const publishOrOfflineArticle = async (article, nextStatus) => {
@@ -603,6 +689,15 @@ const getArticleStatusClass = (status) => ({
     scheduled: status === 'SCHEDULED',
     offline: status === 'OFFLINE',
     deleted: status === 'DELETED'
+});
+
+const getArticleUnlockLabel = (article) => (
+    article?.needUnlock ? `${Number(article.unlockPointPrice || 0)} 积分解锁` : '免费阅读'
+);
+
+const getArticleUnlockClass = (article) => ({
+    paid: Boolean(article?.needUnlock),
+    free: !article?.needUnlock
 });
 
 const getUpdatedTimeParts = (text) => {
@@ -1122,6 +1217,7 @@ onUnmounted(() => {
                         <tr>
                             <th>标题</th>
                             <th>状态</th>
+                            <th>阅读权限</th>
                             <th>阅读</th>
                             <th>点赞</th>
                             <th>收藏</th>
@@ -1141,6 +1237,21 @@ onUnmounted(() => {
                                 <span class="status-pill" :class="getArticleStatusClass(article.status)">
                                     {{ getArticleStatusLabel(article.status) }}
                                 </span>
+                            </td>
+                            <td class="article-unlock-cell">
+                                <div class="article-unlock-rule">
+                                    <span :class="['unlock-rule-pill', getArticleUnlockClass(article)]">
+                                        {{ getArticleUnlockLabel(article) }}
+                                    </span>
+                                    <button
+                                        v-if="article.status !== 'DELETED'"
+                                        type="button"
+                                        class="article-unlock-link"
+                                        @click="openUnlockDialog(article)"
+                                    >
+                                        设置
+                                    </button>
+                                </div>
                             </td>
                             <td class="article-metric-cell">{{ article.viewCount }}</td>
                             <td class="article-metric-cell">{{ article.likeCount }}</td>
@@ -1222,6 +1333,9 @@ onUnmounted(() => {
                             <span class="status-pill" :class="getArticleStatusClass(article.status)">
                                 {{ getArticleStatusLabel(article.status) }}
                             </span>
+                            <span :class="['unlock-rule-pill', getArticleUnlockClass(article)]">
+                                {{ getArticleUnlockLabel(article) }}
+                            </span>
                             <span class="article-card-time">{{ getUpdatedTimeParts(article.updatedText).date }}</span>
                         </div>
                         <div class="article-card-title">{{ article.title }}</div>
@@ -1264,6 +1378,14 @@ onUnmounted(() => {
                                 @click="editArticle(article.id)"
                             >
                                 {{ article.status === 'DRAFT' ? '继续写作' : '编辑' }}
+                            </button>
+                            <button
+                                v-if="article.status !== 'DELETED'"
+                                type="button"
+                                class="action-link action-link-secondary"
+                                @click="openUnlockDialog(article)"
+                            >
+                                权限
                             </button>
                             <button
                                 v-if="article.status !== 'DELETED'"
@@ -1338,6 +1460,90 @@ onUnmounted(() => {
             />
         </section>
     </main>
+
+    <Teleport to="body">
+        <div v-if="unlockDialogVisible" class="unlock-rule-modal-overlay" @click.self="closeUnlockDialog">
+            <section
+                class="unlock-rule-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="unlock-rule-title"
+            >
+                <header class="unlock-rule-modal-header">
+                    <div>
+                        <p class="eyebrow">阅读权限</p>
+                        <h2 id="unlock-rule-title" class="unlock-rule-modal-title">
+                            {{ unlockDialogArticle?.title || '文章权限设置' }}
+                        </h2>
+                    </div>
+                    <button
+                        type="button"
+                        class="unlock-rule-modal-close"
+                        aria-label="关闭"
+                        :disabled="unlockSaving"
+                        @click="closeUnlockDialog"
+                    >
+                        ×
+                    </button>
+                </header>
+                <div class="unlock-rule-modal-body">
+                    <div class="unlock-option-grid" role="radiogroup" aria-label="阅读权限">
+                        <label :class="['unlock-option-card', { active: !unlockForm.needUnlock }]">
+                            <input
+                                v-model="unlockForm.needUnlock"
+                                type="radio"
+                                :value="false"
+                                :disabled="unlockSaving"
+                            >
+                            <span>
+                                <strong>免费阅读</strong>
+                                <small>公开阅读全文</small>
+                            </span>
+                        </label>
+                        <label :class="['unlock-option-card', { active: unlockForm.needUnlock }]">
+                            <input
+                                v-model="unlockForm.needUnlock"
+                                type="radio"
+                                :value="true"
+                                :disabled="unlockSaving"
+                            >
+                            <span>
+                                <strong>积分解锁</strong>
+                                <small>读者消耗积分后阅读全文</small>
+                            </span>
+                        </label>
+                    </div>
+                    <label class="unlock-point-field" for="unlock-point-price">
+                        <span>解锁积分</span>
+                        <input
+                            id="unlock-point-price"
+                            v-model.number="unlockForm.unlockPointPrice"
+                            type="number"
+                            min="1"
+                            max="1000000"
+                            step="1"
+                            inputmode="numeric"
+                            :disabled="!unlockForm.needUnlock || unlockSaving"
+                        >
+                    </label>
+                    <p v-if="unlockError" class="unlock-rule-error">{{ unlockError }}</p>
+                </div>
+                <footer class="unlock-rule-modal-actions">
+                    <button type="button" class="action-link action-link-secondary" @click="closeUnlockDialog">
+                        取消
+                    </button>
+                    <button
+                        type="button"
+                        class="action-link action-link-primary"
+                        :disabled="unlockSaving"
+                        @click="saveUnlockRule"
+                    >
+                        {{ unlockSaving ? '保存中...' : '保存设置' }}
+                    </button>
+                </footer>
+            </section>
+        </div>
+    </Teleport>
 
     <!-- 文章统计趋势抽屉 -->
     <Teleport to="body">
@@ -2009,6 +2215,10 @@ onUnmounted(() => {
     background: var(--surface-soft);
 }
 
+.table-panel table {
+    min-width: 1060px;
+}
+
 .article-action-cell {
     width: 1%;
     min-width: 156px;
@@ -2032,6 +2242,52 @@ onUnmounted(() => {
 .article-status-cell {
     width: 1%;
     white-space: nowrap;
+}
+
+.article-unlock-cell {
+    min-width: 132px;
+}
+
+.article-unlock-rule {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.unlock-rule-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    background: var(--surface-soft);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.unlock-rule-pill.paid {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: rgba(37, 99, 235, 0.22);
+}
+
+.article-unlock-link {
+    min-height: 24px;
+    padding: 0;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 700;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.article-unlock-link:hover {
+    color: var(--brand-strong);
 }
 
 .article-metric-cell {
@@ -2482,6 +2738,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .article-card-time {
@@ -2537,6 +2794,183 @@ onUnmounted(() => {
     .creator-overview-grid,
     .creator-overview-grid.secondary {
         grid-template-columns: 1fr;
+    }
+}
+
+.unlock-rule-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.46);
+}
+
+.unlock-rule-modal {
+    width: min(460px, 100%);
+    max-height: calc(100vh - 36px);
+    overflow: auto;
+    background: var(--surface, #fff);
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18);
+}
+
+.unlock-rule-modal-header,
+.unlock-rule-modal-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px 20px;
+}
+
+.unlock-rule-modal-header {
+    border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.unlock-rule-modal-title {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.unlock-rule-modal-close {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    color: var(--muted);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.unlock-rule-modal-close:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.unlock-rule-modal-body {
+    display: grid;
+    gap: 16px;
+    padding: 18px 20px 6px;
+}
+
+.unlock-option-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.unlock-option-card {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    min-height: 78px;
+    padding: 13px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.unlock-option-card.active {
+    border-color: rgba(37, 99, 235, 0.45);
+    background: var(--brand-soft);
+}
+
+.unlock-option-card input {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    accent-color: var(--brand);
+}
+
+.unlock-option-card span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.unlock-option-card strong {
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.unlock-option-card small {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.unlock-point-field {
+    display: grid;
+    gap: 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.unlock-point-field input {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+.unlock-point-field input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.unlock-point-field input:disabled {
+    color: var(--muted);
+    background: var(--surface-soft);
+}
+
+.unlock-rule-error {
+    margin: 0;
+    padding: 10px 12px;
+    color: var(--danger, #dc2626);
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.18);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.unlock-rule-modal-actions {
+    justify-content: flex-end;
+    border-top: 1px solid var(--line, #e5e7eb);
+}
+
+@media (max-width: 520px) {
+    .unlock-rule-modal-overlay {
+        align-items: flex-end;
+        padding: 12px;
+    }
+
+    .unlock-option-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .unlock-rule-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .unlock-rule-modal-actions .action-link {
+        width: 100%;
     }
 }
 

@@ -79,6 +79,16 @@ export const updateArticleStatusApi = async (articleId, status) => {
     }));
 };
 
+export const updateArticleUnlockRuleApi = async (articleId, { needUnlock, unlockPointPrice } = {}) => {
+    return normalizeArticle(await request(`/articles/${articleId}/unlock-rule`, {
+        method: 'PUT',
+        body: {
+            needUnlock: Boolean(needUnlock),
+            unlockPointPrice: Boolean(needUnlock) ? Number(unlockPointPrice || 0) : 0
+        }
+    }));
+};
+
 export const deleteArticleApi = async (articleId) => {
     return await request(`/articles/${articleId}`, {
         method: 'DELETE'

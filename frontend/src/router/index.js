@@ -442,9 +442,9 @@ const routes = [
                 name: 'adminGrowth',
                 component: AdminGrowthView,
                 meta: {
-                    title: '积分管理',
-                    adminTitle: '积分管理',
-                    adminDescription: '查询用户积分账户、手动调分，并处理文章解锁分账的异步结算与重试。'
+                    title: '经验与积分管理',
+                    adminTitle: '经验与积分管理',
+                    adminDescription: '配置经验规则和等级阈值，管理用户积分账户，并处理文章解锁分账结算。'
                 }
             }
         ]
@@ -457,6 +457,13 @@ const router = createRouter({
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
             return savedPosition;
+        }
+        if (to.hash) {
+            return {
+                el: to.hash,
+                top: 88,
+                behavior: 'smooth'
+            };
         }
         const samePathNoScroll = [
             '/',

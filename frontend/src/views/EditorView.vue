@@ -1335,7 +1335,7 @@ onUnmounted(() => {
         </section>
 
         <aside class="editor-side">
-            <section class="editor-side-block editor-unlock-section">
+            <section id="article-permission" class="editor-side-block editor-unlock-section">
                 <div class="editor-unlock-head">
                     <div>
                         <p class="eyebrow">文章权限</p>
@@ -2174,6 +2174,7 @@ onUnmounted(() => {
 }
 
 .editor-unlock-section {
+    scroll-margin-top: 96px;
     padding: 14px 16px;
     background: var(--brand-soft);
     border: 1px solid rgba(37, 99, 235, 0.18);

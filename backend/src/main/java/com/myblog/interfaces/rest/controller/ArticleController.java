@@ -11,6 +11,7 @@ import com.myblog.application.service.RecommendationAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.CreateArticleRequest;
 import com.myblog.interfaces.rest.dto.request.UpdateArticleStatusRequest;
+import com.myblog.interfaces.rest.dto.request.UpdateArticleUnlockRuleRequest;
 import com.myblog.interfaces.rest.dto.response.ArticleRecommendationSectionResponse;
 import com.myblog.interfaces.rest.dto.response.ArticleRecommendationsResponse;
 import com.myblog.interfaces.rest.dto.response.ArticleResponse;
@@ -229,6 +230,30 @@ public class ArticleController {
             articleAppService.updateArticleStatus(
                 id,
                 request.getStatus(),
+                AuthContext.getRequiredUserId(),
+                AuthContext.getRole()
+            )
+        ));
+    }
+
+    /**
+     * 更新文章阅读权限与积分解锁规则。
+     *
+     * @param id 文章 ID
+     * @param request 解锁规则更新请求
+     * @return 更新后的文章详情
+     */
+    @PutMapping("/{id}/unlock-rule")
+    public Result<ArticleResponse> updateArticleUnlockRule(@PathVariable Long id,
+                                                           @RequestBody @Valid
+                                                           UpdateArticleUnlockRuleRequest request) {
+        boolean needUnlock = Boolean.TRUE.equals(request.getNeedUnlock());
+        int unlockPointPrice = request.getUnlockPointPrice() == null ? 0 : request.getUnlockPointPrice();
+        return Result.success(restDtoMapper.toResponse(
+            articleAppService.updateArticleUnlockRule(
+                id,
+                needUnlock,
+                unlockPointPrice,
                 AuthContext.getRequiredUserId(),
                 AuthContext.getRole()
             )

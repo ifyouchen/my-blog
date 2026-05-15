@@ -157,6 +157,7 @@ const journalPage = ref(1);
 const journalSize = 15;
 const journalLoading = ref(false);
 const journalError = ref('');
+const journalCache = ref({});
 
 const SOURCE_TYPE_LABELS = {
     SIGN_IN: '每日签到',
@@ -202,28 +203,59 @@ const revenueDesc = (item) => {
     return `订单：${item.orderNo || '-'}`;
 };
 
-const loadJournals = async () => {
+const getJournalCacheKey = (tab = journalTab.value, page = journalPage.value) => `${tab}:${page}`;
+
+const applyJournalData = (items, total) => {
+    journals.value = items;
+    journalTotal.value = total;
+};
+
+const loadJournals = async (options = {}) => {
+    const { force = false } = options;
+    const requestedTab = journalTab.value;
+    const requestedPage = journalPage.value;
+    const cacheKey = getJournalCacheKey(requestedTab, requestedPage);
+    if (!force && journalCache.value[cacheKey]) {
+        const cached = journalCache.value[cacheKey];
+        applyJournalData(cached.items, cached.total);
+        journalError.value = '';
+        journalLoading.value = false;
+        return;
+    }
     journalLoading.value = true;
     journalError.value = '';
     try {
-        if (journalTab.value === 'points') {
-            const result = await getPointJournalsApi({page: journalPage.value, size: journalSize});
-            journals.value = result.items || result.records || result || [];
-            journalTotal.value = result.total || journals.value.length;
-        } else if (journalTab.value === 'exp') {
+        let nextItems = [];
+        let nextTotal = 0;
+        if (requestedTab === 'points') {
+            const result = await getPointJournalsApi({page: requestedPage, size: journalSize});
+            nextItems = result.items || result.records || result || [];
+            nextTotal = result.total || nextItems.length;
+        } else if (requestedTab === 'exp') {
             const data = await getMyExpJournalsApi(50);
-            journals.value = Array.isArray(data) ? data : [];
-            journalTotal.value = journals.value.length;
-        } else if (journalTab.value === 'revenue') {
-            const result = await getMyRevenueApi({page: journalPage.value, size: journalSize});
-            journals.value = result.items || result.records || result || [];
-            journalTotal.value = result.total || journals.value.length;
+            nextItems = Array.isArray(data) ? data : [];
+            nextTotal = nextItems.length;
+        } else if (requestedTab === 'revenue') {
+            const result = await getMyRevenueApi({page: requestedPage, size: journalSize});
+            nextItems = result.items || result.records || result || [];
+            nextTotal = result.total || nextItems.length;
+        }
+        journalCache.value = {
+            ...journalCache.value,
+            [cacheKey]: {items: nextItems, total: nextTotal}
+        };
+        if (journalTab.value === requestedTab && journalPage.value === requestedPage) {
+            applyJournalData(nextItems, nextTotal);
         }
     } catch (e) {
-        journalError.value = e.message || '加载失败';
-        journals.value = [];
+        if (journalTab.value === requestedTab && journalPage.value === requestedPage) {
+            journalError.value = e.message || '加载失败';
+            applyJournalData([], 0);
+        }
     } finally {
-        journalLoading.value = false;
+        if (journalTab.value === requestedTab && journalPage.value === requestedPage) {
+            journalLoading.value = false;
+        }
     }
 };
 
@@ -410,71 +442,73 @@ onMounted(async () => {
                     >分账收益</button>
                 </div>
 
-                <div v-if="journalLoading" class="journal-loading">加载中...</div>
-                <div v-else-if="journalError" class="journal-error">{{ journalError }}</div>
-                <template v-else-if="journals.length > 0">
-                    <table class="journal-table">
-                        <thead>
-                            <tr>
-                                <th>类型</th>
-                                <th v-if="journalTab === 'points'">变动</th>
-                                <th v-if="journalTab === 'points'">余额</th>
-                                <th v-if="journalTab === 'exp'">经验值</th>
-                                <th v-if="journalTab === 'revenue'">总积分</th>
-                                <th v-if="journalTab === 'revenue'">作者分成</th>
-                                <th v-if="journalTab === 'revenue'">结算状态</th>
-                                <th>说明</th>
-                                <th>时间</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- 积分流水 -->
-                            <template v-if="journalTab === 'points'">
-                                <tr v-for="item in journals" :key="item.id || item.bizNo">
-                                    <td><span class="tag-chip">{{ sourceLabel(item.sourceType) }}</span></td>
-                                    <td :class="['delta', item.delta > 0 ? 'plus' : 'minus']">
-                                        {{ item.delta > 0 ? '+' : '' }}{{ item.delta }}
-                                    </td>
-                                    <td>{{ item.balanceAfter ?? '-' }}</td>
-                                    <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
-                                    <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                <div class="journal-content" :aria-busy="journalLoading">
+                    <div v-if="journalLoading" class="journal-loading">加载中...</div>
+                    <div v-else-if="journalError" class="journal-error">{{ journalError }}</div>
+                    <template v-else-if="journals.length > 0">
+                        <table class="journal-table">
+                            <thead>
+                                <tr>
+                                    <th>类型</th>
+                                    <th v-if="journalTab === 'points'">变动</th>
+                                    <th v-if="journalTab === 'points'">余额</th>
+                                    <th v-if="journalTab === 'exp'">经验值</th>
+                                    <th v-if="journalTab === 'revenue'">总积分</th>
+                                    <th v-if="journalTab === 'revenue'">作者分成</th>
+                                    <th v-if="journalTab === 'revenue'">结算状态</th>
+                                    <th>说明</th>
+                                    <th>时间</th>
                                 </tr>
-                            </template>
-                            <!-- 经验流水 -->
-                            <template v-if="journalTab === 'exp'">
-                                <tr v-for="item in journals" :key="item.id">
-                                    <td><span class="tag-chip">{{ sourceLabel(item.eventType) }}</span></td>
-                                    <td :class="['delta', 'plus']">+{{ item.delta ?? item.expAmount ?? 0 }}</td>
-                                    <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
-                                    <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
-                                </tr>
-                            </template>
-                            <!-- 分账收益 -->
-                            <template v-if="journalTab === 'revenue'">
-                                <tr v-for="item in journals" :key="item.id || item.orderNo">
-                                    <td><span class="tag-chip">文章解锁分成</span></td>
-                                    <td>{{ item.totalPoints }}</td>
-                                    <td :class="['delta', 'plus']">+{{ item.authorPoints }}</td>
-                                    <td>
-                                        <span :class="['status-chip', revenueStatusMeta(item.settlementStatus).className]">
-                                            {{ revenueStatusMeta(item.settlementStatus).label }}
-                                        </span>
-                                    </td>
-                                    <td class="desc-cell">{{ revenueDesc(item) }}</td>
-                                    <td class="time-cell">{{ fmtTime(item.settledAt || item.createdAt) }}</td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <!-- 积分流水 -->
+                                <template v-if="journalTab === 'points'">
+                                    <tr v-for="item in journals" :key="item.id || item.bizNo">
+                                        <td><span class="tag-chip">{{ sourceLabel(item.sourceType) }}</span></td>
+                                        <td :class="['delta', item.delta > 0 ? 'plus' : 'minus']">
+                                            {{ item.delta > 0 ? '+' : '' }}{{ item.delta }}
+                                        </td>
+                                        <td>{{ item.balanceAfter ?? '-' }}</td>
+                                        <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
+                                        <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                                    </tr>
+                                </template>
+                                <!-- 经验流水 -->
+                                <template v-if="journalTab === 'exp'">
+                                    <tr v-for="item in journals" :key="item.id">
+                                        <td><span class="tag-chip">{{ sourceLabel(item.eventType) }}</span></td>
+                                        <td :class="['delta', 'plus']">+{{ item.delta ?? item.expAmount ?? 0 }}</td>
+                                        <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
+                                        <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                                    </tr>
+                                </template>
+                                <!-- 分账收益 -->
+                                <template v-if="journalTab === 'revenue'">
+                                    <tr v-for="item in journals" :key="item.id || item.orderNo">
+                                        <td><span class="tag-chip">文章解锁分成</span></td>
+                                        <td>{{ item.totalPoints }}</td>
+                                        <td :class="['delta', 'plus']">+{{ item.authorPoints }}</td>
+                                        <td>
+                                            <span :class="['status-chip', revenueStatusMeta(item.settlementStatus).className]">
+                                                {{ revenueStatusMeta(item.settlementStatus).label }}
+                                            </span>
+                                        </td>
+                                        <td class="desc-cell">{{ revenueDesc(item) }}</td>
+                                        <td class="time-cell">{{ fmtTime(item.settledAt || item.createdAt) }}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
 
-                    <!-- 分页 -->
-                    <div v-if="journalTab !== 'exp'" class="journal-pagination">
-                        <button type="button" :disabled="journalPage <= 1" @click="prevPage">上一页</button>
-                        <span>第 {{ journalPage }} / {{ journalTotalPages }} 页</span>
-                        <button type="button" :disabled="journalPage >= journalTotalPages" @click="nextPage">下一页</button>
-                    </div>
-                </template>
-                <div v-else class="journal-empty">暂无记录</div>
+                        <!-- 分页 -->
+                        <div v-if="journalTab !== 'exp'" class="journal-pagination">
+                            <button type="button" :disabled="journalPage <= 1" @click="prevPage">上一页</button>
+                            <span>第 {{ journalPage }} / {{ journalTotalPages }} 页</span>
+                            <button type="button" :disabled="journalPage >= journalTotalPages" @click="nextPage">下一页</button>
+                        </div>
+                    </template>
+                    <div v-else class="journal-empty">暂无记录</div>
+                </div>
             </section>
         </section>
     </main>
@@ -750,8 +784,9 @@ onMounted(async () => {
 .journal-section {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     padding: 24px;
+    box-shadow: var(--shadow);
 }
 
 .journal-tabs {
@@ -782,23 +817,33 @@ onMounted(async () => {
 
 .tab-btn:not(.active):hover { color: var(--text); }
 
+.journal-content {
+    min-height: 360px;
+    overflow-x: auto;
+}
+
 .journal-loading,
 .journal-empty {
-    text-align: center;
-    padding: 40px;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-muted);
     font-size: 14px;
 }
 
 .journal-error {
-    text-align: center;
-    padding: 40px;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #dc2626;
     font-size: 14px;
 }
 
 .journal-table {
     width: 100%;
+    min-width: 720px;
     border-collapse: collapse;
     font-size: 14px;
 }

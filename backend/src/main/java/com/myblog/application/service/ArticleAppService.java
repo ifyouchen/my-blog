@@ -606,6 +606,49 @@ public class ArticleAppService {
     }
 
     /**
+     * 更新文章阅读权限与积分解锁规则。
+     *
+     * @param articleId 文章 ID
+     * @param needUnlock 是否需要积分解锁
+     * @param unlockPointPrice 解锁所需积分
+     * @param userId 当前用户 ID
+     * @param currentUserRole 当前用户角色
+     * @return 更新后的文章
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ArticleDTO updateArticleUnlockRule(Long articleId,
+                                              boolean needUnlock,
+                                              int unlockPointPrice,
+                                              Long userId,
+                                              String currentUserRole) {
+        long _start = System.currentTimeMillis();
+        Article article = articleRepository.findById(new ArticleId(articleId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        ensureCanManage(article, userId, currentUserRole);
+        ArticleStatus oldStatus = article.getStatus();
+        article.updateUnlockRule(needUnlock, unlockPointPrice);
+        articleRepository.save(article);
+        evictArticlePortalCaches(article, oldStatus);
+        ArticleDTO result = buildDetailDto(article, userRepository.findById(article.getAuthorId())
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), userId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "更新文章阅读权限",
+            BizLogHelper.params(
+                "articleId",
+                articleId,
+                "needUnlock",
+                needUnlock,
+                "unlockPointPrice",
+                unlockPointPrice
+            ),
+            BizLogHelper.result(needUnlock ? "需要积分解锁" : "免费阅读"),
+            BizLogHelper.elapsed(_start));
+        return result;
+    }
+
+    /**
      * 删除文章。
      *
      * @param articleId 文章 ID

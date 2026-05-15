@@ -4,12 +4,243 @@ import {useToast} from '@/composables/useToast';
 import {
     adminAdjustPointsApi,
     adminGetPointAccountApi,
+    createAdminGrowthRuleApi,
+    getAdminGrowthRulesApi,
+    getAdminLevelThresholdsApi,
     getAdminRevenueSharesApi,
     retryRevenueShareSettlementApi,
+    saveAdminLevelThresholdsApi,
+    updateAdminGrowthRuleApi,
 } from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
 
 const toast = useToast();
+
+const toLocalDateTimeInput = (value) => {
+    if (!value) return '';
+    return String(value).replace(' ', 'T').slice(0, 16);
+};
+
+const RULE_EVENT_OPTIONS = [
+    {value: 'PUBLISH', label: '发布文章'},
+    {value: 'COMMENT', label: '发表评论'},
+    {value: 'READ', label: '阅读文章'},
+    {value: 'FAVORITE', label: '收藏文章'},
+    {value: 'SHARE', label: '分享文章'},
+    {value: 'FOLLOW', label: '关注用户'},
+    {value: 'LIKE', label: '点赞文章'},
+    {value: 'LEVEL_UP', label: '等级升级'},
+];
+
+const RULE_ROLE_OPTIONS = [
+    {value: 'ACTOR', label: '操作者'},
+    {value: 'AUTHOR', label: '作者'},
+];
+
+const LIMIT_STRATEGY_OPTIONS = [
+    {value: 'SKIP', label: '达上限跳过'},
+    {value: 'PARTIAL', label: '发放剩余额度'},
+];
+
+const ruleEventLabel = (eventType) =>
+    RULE_EVENT_OPTIONS.find((item) => item.value === eventType)?.label || eventType || '-';
+const ruleRoleLabel = (role) =>
+    RULE_ROLE_OPTIONS.find((item) => item.value === role)?.label || role || '-';
+const limitStrategyLabel = (strategy) =>
+    LIMIT_STRATEGY_OPTIONS.find((item) => item.value === strategy)?.label || strategy || '-';
+
+// ── 经验规则配置 ─────────────────────────────────────────────────
+const growthRules = ref([]);
+const growthRulesLoading = ref(false);
+const growthRulesError = ref('');
+const growthRuleSaving = ref(false);
+const growthRuleForm = reactive({
+    id: null,
+    eventType: 'PUBLISH',
+    role: 'AUTHOR',
+    expAmount: 20,
+    dailyLimit: 0,
+    dailyLimitStrategy: 'SKIP',
+    enabled: true,
+    effectiveAt: '',
+    reason: '',
+    version: null,
+});
+
+const resetGrowthRuleForm = () => {
+    growthRuleForm.id = null;
+    growthRuleForm.eventType = 'PUBLISH';
+    growthRuleForm.role = 'AUTHOR';
+    growthRuleForm.expAmount = 20;
+    growthRuleForm.dailyLimit = 0;
+    growthRuleForm.dailyLimitStrategy = 'SKIP';
+    growthRuleForm.enabled = true;
+    growthRuleForm.effectiveAt = '';
+    growthRuleForm.reason = '';
+    growthRuleForm.version = null;
+};
+
+const loadGrowthRules = async () => {
+    growthRulesLoading.value = true;
+    growthRulesError.value = '';
+    try {
+        growthRules.value = await getAdminGrowthRulesApi();
+    } catch (e) {
+        growthRulesError.value = e.message || '经验规则加载失败';
+        growthRules.value = [];
+    } finally {
+        growthRulesLoading.value = false;
+    }
+};
+
+const editGrowthRule = (row) => {
+    growthRuleForm.id = row.id;
+    growthRuleForm.eventType = row.eventType || 'PUBLISH';
+    growthRuleForm.role = row.role || 'AUTHOR';
+    growthRuleForm.expAmount = Number(row.expAmount || 0);
+    growthRuleForm.dailyLimit = Number(row.dailyLimit || 0);
+    growthRuleForm.dailyLimitStrategy = row.dailyLimitStrategy || 'SKIP';
+    growthRuleForm.enabled = Boolean(row.enabled);
+    growthRuleForm.effectiveAt = toLocalDateTimeInput(row.effectiveAt);
+    growthRuleForm.reason = row.reason || '';
+    growthRuleForm.version = row.version ?? 0;
+};
+
+const buildGrowthRulePayload = () => ({
+    id: growthRuleForm.id,
+    eventType: growthRuleForm.eventType,
+    role: growthRuleForm.role,
+    expAmount: Number(growthRuleForm.expAmount || 0),
+    dailyLimit: Number(growthRuleForm.dailyLimit || 0),
+    dailyLimitStrategy: growthRuleForm.dailyLimitStrategy,
+    enabled: Boolean(growthRuleForm.enabled),
+    effectiveAt: growthRuleForm.effectiveAt || null,
+    reason: String(growthRuleForm.reason || '').trim(),
+    version: growthRuleForm.version,
+});
+
+const validateGrowthRule = () => {
+    const payload = buildGrowthRulePayload();
+    if (!payload.eventType) return '请选择行为类型';
+    if (!payload.role) return '请选择作用角色';
+    if (!payload.expAmount || payload.expAmount <= 0) return '经验值必须大于 0';
+    if (payload.dailyLimit < 0) return '每日上限不能小于 0';
+    return '';
+};
+
+const saveGrowthRule = async () => {
+    const error = validateGrowthRule();
+    if (error) {
+        growthRulesError.value = error;
+        return;
+    }
+    growthRuleSaving.value = true;
+    growthRulesError.value = '';
+    try {
+        const payload = buildGrowthRulePayload();
+        if (payload.id) {
+            await updateAdminGrowthRuleApi(payload);
+            toast.success('经验规则已更新');
+        } else {
+            await createAdminGrowthRuleApi(payload);
+            toast.success('经验规则已新增');
+        }
+        resetGrowthRuleForm();
+        await loadGrowthRules();
+    } catch (e) {
+        growthRulesError.value = e.message || '经验规则保存失败';
+        toast.error(growthRulesError.value);
+    } finally {
+        growthRuleSaving.value = false;
+    }
+};
+
+// ── 等级阈值配置 ─────────────────────────────────────────────────
+const levelThresholds = ref([]);
+const thresholdLoading = ref(false);
+const thresholdSaving = ref(false);
+const thresholdError = ref('');
+
+const normalizeThresholdRow = (row = {}, index = 0) => ({
+    level: Number(row.level || index + 1),
+    minExp: Number(row.minExp || 0),
+    levelName: row.levelName || `LV${Number(row.level || index + 1)}`,
+    description: row.description || '',
+    version: row.version ?? 0,
+});
+
+const loadLevelThresholds = async () => {
+    thresholdLoading.value = true;
+    thresholdError.value = '';
+    try {
+        const result = await getAdminLevelThresholdsApi();
+        levelThresholds.value = (result || []).map(normalizeThresholdRow);
+    } catch (e) {
+        thresholdError.value = e.message || '等级阈值加载失败';
+        levelThresholds.value = [];
+    } finally {
+        thresholdLoading.value = false;
+    }
+};
+
+const addThresholdRow = () => {
+    const nextLevel = levelThresholds.value.length
+        ? Math.max(...levelThresholds.value.map((item) => Number(item.level || 0))) + 1
+        : 1;
+    const prevMinExp = levelThresholds.value.length
+        ? Number(levelThresholds.value[levelThresholds.value.length - 1].minExp || 0)
+        : 0;
+    levelThresholds.value.push({
+        level: nextLevel,
+        minExp: nextLevel === 1 ? 0 : prevMinExp + 100,
+        levelName: `LV${nextLevel}`,
+        description: '',
+        version: 0,
+    });
+};
+
+const validateThresholds = () => {
+    if (!levelThresholds.value.length) return '至少保留一个等级阈值';
+    const rows = [...levelThresholds.value].sort((a, b) => Number(a.level) - Number(b.level));
+    let lastMinExp = -1;
+    for (const row of rows) {
+        if (!row.level || Number(row.level) <= 0) return '等级必须大于 0';
+        if (Number(row.minExp) < 0) return '最低经验不能小于 0';
+        if (!String(row.levelName || '').trim()) return '等级名称不能为空';
+        if (Number(row.minExp) < lastMinExp) return '最低经验需要随等级递增';
+        lastMinExp = Number(row.minExp);
+    }
+    return '';
+};
+
+const saveLevelThresholds = async () => {
+    const error = validateThresholds();
+    if (error) {
+        thresholdError.value = error;
+        return;
+    }
+    thresholdSaving.value = true;
+    thresholdError.value = '';
+    try {
+        const payload = [...levelThresholds.value]
+            .sort((a, b) => Number(a.level) - Number(b.level))
+            .map((row) => ({
+                level: Number(row.level),
+                minExp: Number(row.minExp),
+                levelName: String(row.levelName || '').trim(),
+                description: String(row.description || '').trim(),
+                version: Number(row.version || 0),
+            }));
+        await saveAdminLevelThresholdsApi(payload);
+        toast.success('等级阈值已保存');
+        await loadLevelThresholds();
+    } catch (e) {
+        thresholdError.value = e.message || '等级阈值保存失败';
+        toast.error(thresholdError.value);
+    } finally {
+        thresholdSaving.value = false;
+    }
+};
 
 // ── 查询用户积分 ─────────────────────────────────────────────────
 const queryUserId = ref('');
@@ -185,12 +416,172 @@ const retryRevenueShare = async (row) => {
 };
 
 onMounted(() => {
+    loadGrowthRules();
+    loadLevelThresholds();
     loadRevenueShares();
 });
 </script>
 
 <template>
     <div class="admin-growth">
+        <!-- 经验规则配置 -->
+        <section class="ag-section">
+            <div class="ag-section-head">
+                <h2 class="ag-section-title">经验规则配置</h2>
+                <span class="ag-section-subtitle">行为事件触发后按规则发放经验</span>
+            </div>
+
+            <div class="rule-config-grid">
+                <div class="ag-form rule-form">
+                    <div class="form-row">
+                        <label class="form-label">行为类型</label>
+                        <select v-model="growthRuleForm.eventType" class="ag-input">
+                            <option v-for="option in RULE_EVENT_OPTIONS" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">作用角色</label>
+                        <select v-model="growthRuleForm.role" class="ag-input">
+                            <option v-for="option in RULE_ROLE_OPTIONS" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-row compact-row">
+                        <label class="form-label">单次经验</label>
+                        <input v-model.number="growthRuleForm.expAmount" type="number" min="1" class="ag-input" />
+                    </div>
+                    <div class="form-row compact-row">
+                        <label class="form-label">每日上限</label>
+                        <input v-model.number="growthRuleForm.dailyLimit" type="number" min="0" class="ag-input" />
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">超限策略</label>
+                        <select v-model="growthRuleForm.dailyLimitStrategy" class="ag-input">
+                            <option v-for="option in LIMIT_STRATEGY_OPTIONS" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                            </option>
+                        </select>
+                    </div>
+                    <label class="ag-toggle">
+                        <input v-model="growthRuleForm.enabled" type="checkbox" />
+                        <span>启用规则</span>
+                    </label>
+                    <div class="form-row">
+                        <label class="form-label">生效时间</label>
+                        <input v-model="growthRuleForm.effectiveAt" type="datetime-local" class="ag-input" />
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">变更原因</label>
+                        <input v-model="growthRuleForm.reason" type="text" maxlength="500" class="ag-input" />
+                    </div>
+                    <div v-if="growthRulesError" class="ag-error">{{ growthRulesError }}</div>
+                    <div class="ag-action-row">
+                        <button
+                            type="button"
+                            class="ag-btn primary"
+                            :disabled="growthRuleSaving"
+                            @click="saveGrowthRule"
+                        >
+                            {{ growthRuleSaving ? '保存中...' : (growthRuleForm.id ? '保存规则' : '新增规则') }}
+                        </button>
+                        <button type="button" class="ag-btn secondary" @click="resetGrowthRuleForm">
+                            清空
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ag-table-wrap">
+                    <div v-if="growthRulesLoading" class="ag-table-empty">规则加载中...</div>
+                    <div v-else-if="!growthRules.length" class="ag-table-empty">暂无经验规则</div>
+                    <table v-else class="ag-table rules-table">
+                        <thead>
+                            <tr>
+                                <th>行为</th>
+                                <th>角色</th>
+                                <th>经验</th>
+                                <th>上限</th>
+                                <th>策略</th>
+                                <th>生效</th>
+                                <th>版本</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="rule in growthRules" :key="rule.id">
+                                <td>
+                                    <strong>{{ ruleEventLabel(rule.eventType) }}</strong>
+                                    <small>{{ rule.eventType }}</small>
+                                </td>
+                                <td>{{ ruleRoleLabel(rule.role) }}</td>
+                                <td class="delta plus">+{{ rule.expAmount }}</td>
+                                <td>{{ rule.dailyLimit || '不限' }}</td>
+                                <td>{{ limitStrategyLabel(rule.dailyLimitStrategy) }}</td>
+                                <td>
+                                    <span :class="['status-chip', rule.enabled ? 'settled' : 'failed']">
+                                        {{ rule.enabled ? '启用' : '停用' }}
+                                    </span>
+                                    <small v-if="rule.effectiveAt">{{ formatAdminDateTime(rule.effectiveAt) }}</small>
+                                </td>
+                                <td>v{{ rule.version }}</td>
+                                <td>
+                                    <button type="button" class="ag-btn secondary small" @click="editGrowthRule(rule)">
+                                        编辑
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 等级阈值配置 -->
+        <section class="ag-section">
+            <div class="ag-section-head">
+                <h2 class="ag-section-title">等级阈值配置</h2>
+                <span class="ag-section-subtitle">最低经验值决定用户等级展示</span>
+            </div>
+
+            <div v-if="thresholdError" class="ag-error">{{ thresholdError }}</div>
+            <div v-if="thresholdLoading" class="ag-table-empty">等级阈值加载中...</div>
+            <div v-else class="ag-table-wrap">
+                <table class="ag-table threshold-table">
+                    <thead>
+                        <tr>
+                            <th>等级</th>
+                            <th>最低经验</th>
+                            <th>等级名称</th>
+                            <th>描述</th>
+                            <th>版本</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="row in levelThresholds" :key="row.level">
+                            <td><input v-model.number="row.level" type="number" min="1" class="ag-input cell-input" /></td>
+                            <td><input v-model.number="row.minExp" type="number" min="0" class="ag-input cell-input" /></td>
+                            <td><input v-model.trim="row.levelName" type="text" class="ag-input cell-input" /></td>
+                            <td><input v-model.trim="row.description" type="text" class="ag-input cell-input wide" /></td>
+                            <td>v{{ row.version || 0 }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="ag-action-row threshold-actions">
+                <button type="button" class="ag-btn secondary" @click="addThresholdRow">新增等级</button>
+                <button
+                    type="button"
+                    class="ag-btn primary"
+                    :disabled="thresholdSaving || thresholdLoading"
+                    @click="saveLevelThresholds"
+                >
+                    {{ thresholdSaving ? '保存中...' : '保存等级阈值' }}
+                </button>
+            </div>
+        </section>
+
         <!-- 查询用户积分 -->
         <section class="ag-section">
             <h2 class="ag-section-title">查询用户积分</h2>
@@ -455,6 +846,75 @@ onMounted(() => {
     line-height: 1.6;
 }
 
+.rule-config-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.rule-form {
+    max-width: none;
+    padding: 16px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.compact-row {
+    max-width: 180px;
+}
+
+.ag-toggle {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    width: fit-content;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ag-toggle input {
+    width: 16px;
+    height: 16px;
+    accent-color: #6366f1;
+}
+
+.ag-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.rules-table td strong {
+    display: block;
+    color: #111827;
+    font-size: 13px;
+}
+
+.rules-table td small {
+    display: block;
+    margin-top: 3px;
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.threshold-actions {
+    margin-top: 14px;
+}
+
+.cell-input {
+    width: 110px;
+    min-width: 0;
+}
+
+.cell-input.wide {
+    width: min(280px, 32vw);
+}
+
 /* 查询行 */
 .ag-query-row {
     display: flex;
@@ -704,6 +1164,16 @@ onMounted(() => {
     margin-top: 16px;
     color: #6b7280;
     font-size: 13px;
+}
+
+@media (max-width: 980px) {
+    .rule-config-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .compact-row {
+        max-width: none;
+    }
 }
 </style>
 

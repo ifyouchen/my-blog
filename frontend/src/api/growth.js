@@ -106,6 +106,64 @@ export const getMyRevenueApi = (params = {}) => {
 // ─────────────────────── 管理员接口 ──────────────────────────────
 
 /**
+ * 管理员查询经验规则配置.
+ * @returns {Promise<Array>}
+ */
+export const getAdminGrowthRulesApi = () =>
+    request('/admin/growth/rules');
+
+/**
+ * 管理员新增经验规则.
+ * @param {{eventType: string, role: string, expAmount: number, dailyLimit: number,
+ * dailyLimitStrategy: string, enabled: boolean, effectiveAt?: string, reason?: string}} payload
+ * @returns {Promise<number>}
+ */
+export const createAdminGrowthRuleApi = (payload) =>
+    request('/admin/growth/rules', {
+        method: 'POST',
+        body: JSON.stringify({
+            ...payload,
+            operator: payload.operator || 'ADMIN_UI'
+        })
+    });
+
+/**
+ * 管理员更新经验规则.
+ * @param {{id: number, version: number, eventType: string, role: string, expAmount: number,
+ * dailyLimit: number, dailyLimitStrategy: string, enabled: boolean, effectiveAt?: string, reason?: string}} payload
+ * @returns {Promise<void>}
+ */
+export const updateAdminGrowthRuleApi = (payload) =>
+    request('/admin/growth/rules', {
+        method: 'PUT',
+        body: JSON.stringify({
+            ...payload,
+            operator: payload.operator || 'ADMIN_UI'
+        })
+    });
+
+/**
+ * 管理员查询等级阈值.
+ * @returns {Promise<Array>}
+ */
+export const getAdminLevelThresholdsApi = () =>
+    request('/admin/growth/thresholds');
+
+/**
+ * 管理员批量保存等级阈值.
+ * @param {Array<{level: number, minExp: number, levelName: string, description?: string, version?: number}>} thresholds
+ * @returns {Promise<void>}
+ */
+export const saveAdminLevelThresholdsApi = (thresholds) =>
+    request('/admin/growth/thresholds', {
+        method: 'PUT',
+        body: JSON.stringify({
+            operator: 'ADMIN_UI',
+            thresholds
+        })
+    });
+
+/**
  * 管理员调整用户积分.
  * @param {{ targetUserId: number, delta: number, reason: string, bizNo: string }} payload
  * @returns {Promise<{targetUserId, balanceAfter}>}
