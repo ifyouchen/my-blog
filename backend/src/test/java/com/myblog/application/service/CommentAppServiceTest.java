@@ -54,6 +54,9 @@ class CommentAppServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private UserLevelAppService userLevelAppService;
+
     private CommentAppService service;
 
     @BeforeEach
@@ -64,7 +67,8 @@ class CommentAppServiceTest {
             articleRepository,
             userRepository,
             sensitiveWordAppService,
-            eventPublisher
+            eventPublisher,
+            userLevelAppService
         );
     }
 

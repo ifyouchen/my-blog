@@ -40,6 +40,9 @@ class UserAppServicePasswordTest {
     @Mock
     private PasswordDomainService passwordDomainService;
 
+    @Mock
+    private UserLevelAppService userLevelAppService;
+
     private EmailQueueAppService emailQueueAppService;
 
     @Test
@@ -127,6 +130,7 @@ class UserAppServicePasswordTest {
             articleAssembler,
             passwordDomainService,
             emailQueueAppService,
+            userLevelAppService,
             "http://localhost:5173/"
         );
     }

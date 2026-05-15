@@ -47,6 +47,9 @@ class RankingAppServiceTest {
     @Mock
     private UserFollowRepository userFollowRepository;
 
+    @Mock
+    private UserLevelAppService userLevelAppService;
+
     private Cache<String, List<ArticleDTO>> articleRankingsCache;
     private Cache<String, List<AuthorRankingDTO>> authorRankingsCache;
     private RankingAppService service;
@@ -60,6 +63,7 @@ class RankingAppServiceTest {
             userRepository,
             userFollowRepository,
             new ArticleAssembler(""),
+            userLevelAppService,
             Runnable::run,
             articleRankingsCache,
             authorRankingsCache

@@ -585,6 +585,7 @@ function goReplyPage(step) {
     grid-template-columns: 40px minmax(0, 1fr);
     gap: 12px;
     align-items: start;
+    overflow: visible;
 }
 
 :deep(.comment-root-avatar),
@@ -603,6 +604,7 @@ function goReplyPage(step) {
     min-width: 0;
     padding-bottom: 18px;
     border-bottom: 1px solid rgba(219, 227, 223, 0.84);
+    overflow: visible;
 }
 
 .comment-root-header,
@@ -696,17 +698,20 @@ color: var(--brand-strong);
     background: var(--surface-soft);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
+    overflow: visible;
 }
 
 .comment-reply-items {
     display: grid;
     gap: 14px;
+    overflow: visible;
 }
 
 .comment-reply-item {
     display: grid;
     grid-template-columns: 32px minmax(0, 1fr);
     gap: 10px;
+    overflow: visible;
 }
 
 :deep(.comment-reply-avatar) {

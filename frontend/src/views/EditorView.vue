@@ -255,11 +255,27 @@ function canServerAutoSave() {
     return !isEditMode.value || currentArticleStatus.value === 'DRAFT';
 }
 
+function isUnlockConfigValid() {
+    return !draft.needUnlock || Number(draft.unlockPointPrice || 0) > 0;
+}
+
+function ensureUnlockConfigValid() {
+    if (isUnlockConfigValid()) {
+        return true;
+    }
+    statusMessage.value = '开启积分解锁后，请设置大于 0 的解锁积分';
+    feedbackType.value = 'warning';
+    return false;
+}
+
 async function runAutoSaveDraft() {
     if (publishLoading.value || pageLoading.value || recoveryInfo.value || autoSaveInFlight) {
         return;
     }
     if (!canServerAutoSave() || !hasUnsavedChanges.value || !hasAutoSaveableContent() || !getToken()) {
+        return;
+    }
+    if (!isUnlockConfigValid()) {
         return;
     }
     const sensitiveHits = await findArticleWarnSensitiveWords(draft);
@@ -810,6 +826,9 @@ async function persistArticle(status, options = {}) {
     if (status === 'SCHEDULED' && !ensureScheduledTimeValid()) {
         return null;
     }
+    if (!ensureUnlockConfigValid()) {
+        return null;
+    }
     if (status === 'PUBLISHED' || status === 'SCHEDULED') {
         const canPublish = await ensurePublishValidationPassed();
         if (!canPublish) {
@@ -1241,6 +1260,9 @@ onUnmounted(() => {
                         <span>{{ draft.category || '未选择分类' }}</span>
                         <span>{{ previewPublishedText }}</span>
                         <span>{{ wordCount }} 字</span>
+                        <span :class="['editor-preview-unlock', { active: draft.needUnlock }]">
+                            {{ draft.needUnlock ? `${Number(draft.unlockPointPrice || 0)} 积分解锁` : '免费阅读' }}
+                        </span>
                     </div>
                 </div>
                 <section class="editor-seo-preview-section" aria-label="SEO 预览">
@@ -1313,6 +1335,30 @@ onUnmounted(() => {
         </section>
 
         <aside class="editor-side">
+            <section class="editor-side-block editor-unlock-section">
+                <div class="editor-unlock-head">
+                    <div>
+                        <p class="eyebrow">文章权限</p>
+                        <strong>{{ draft.needUnlock ? '积分解锁' : '免费阅读' }}</strong>
+                    </div>
+                    <label class="editor-unlock-switch">
+                        <input v-model="draft.needUnlock" type="checkbox" data-testid="editor-need-unlock-toggle">
+                        <span>{{ draft.needUnlock ? '已开启' : '关闭' }}</span>
+                    </label>
+                </div>
+                <label class="editor-unlock-price" :class="{ disabled: !draft.needUnlock }">
+                    <span>解锁积分</span>
+                    <input
+                        v-model.number="draft.unlockPointPrice"
+                        type="number"
+                        min="0"
+                        max="1000000"
+                        step="1"
+                        :disabled="!draft.needUnlock"
+                        data-testid="editor-unlock-price-input"
+                    >
+                </label>
+            </section>
             <ArticleToc
                 :content="draft.content"
                 :target-selector="previewVisible ? '.editor-preview-panel .markdown-preview' : '.rich-markdown-editor .ProseMirror'"
@@ -1417,30 +1463,6 @@ onUnmounted(() => {
                 <p v-if="unconfiguredDraftTags.length" class="editor-tag-warning">
                     未收录标签「{{ unconfiguredDraftTags.join('、') }}」不会出现在搜索页标签筛选项里。
                 </p>
-            </section>
-            <section class="editor-side-block editor-unlock-section">
-                <div class="editor-unlock-head">
-                    <div>
-                        <p class="eyebrow">阅读权益</p>
-                        <strong>积分解锁</strong>
-                    </div>
-                    <label class="editor-unlock-switch">
-                        <input v-model="draft.needUnlock" type="checkbox" data-testid="editor-need-unlock-toggle">
-                        <span>{{ draft.needUnlock ? '已开启' : '免费阅读' }}</span>
-                    </label>
-                </div>
-                <label class="editor-unlock-price" :class="{ disabled: !draft.needUnlock }">
-                    <span>解锁积分</span>
-                    <input
-                        v-model.number="draft.unlockPointPrice"
-                        type="number"
-                        min="0"
-                        max="1000000"
-                        step="1"
-                        :disabled="!draft.needUnlock"
-                        data-testid="editor-unlock-price-input"
-                    >
-                </label>
             </section>
             <section class="editor-side-block editor-schedule-section">
                 <div>
@@ -1870,6 +1892,13 @@ onUnmounted(() => {
     font-size: 13px;
 }
 
+.editor-preview-meta span.editor-preview-unlock.active {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: rgba(37, 99, 235, 0.22);
+    font-weight: 700;
+}
+
 .editor-preview-summary {
     color: var(--muted);
     line-height: 1.8;
@@ -2146,8 +2175,8 @@ onUnmounted(() => {
 
 .editor-unlock-section {
     padding: 14px 16px;
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.18);
     border-radius: var(--radius-sm);
 }
 

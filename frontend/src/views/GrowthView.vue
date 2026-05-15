@@ -68,18 +68,20 @@ const shiftMonth = (monthValue, delta) => {
     return formatLocalMonth(date);
 };
 const calendarMonth = ref(formatLocalMonth(new Date())); // yyyy-MM
-const calendarData = ref(null);
+const calendarData = ref({});
 const calendarLoading = ref(false);
+const calendarInitialLoading = computed(() => calendarLoading.value && !calendarData.value[calendarMonth.value]);
 
 const signedDates = computed(() => {
-    if (!calendarData.value?.signedDates) return new Set();
-    return new Set(calendarData.value.signedDates);
+    const currentCalendar = calendarData.value[calendarMonth.value];
+    if (!currentCalendar?.signedDates) return new Set();
+    return new Set(currentCalendar.signedDates);
 });
 
 const todayStr = computed(() => formatLocalDate(new Date())); // yyyy-MM-dd
 const todaySigned = computed(() => signedDates.value.has(todayStr.value));
 const isCurrentMonth = computed(() => calendarMonth.value === formatLocalMonth(new Date()));
-const canSignInToday = computed(() => isCurrentMonth.value && !todaySigned.value);
+const canSignInToday = computed(() => isCurrentMonth.value && !calendarLoading.value && !todaySigned.value);
 
 const calendarDays = computed(() => {
     const [year, month] = calendarMonth.value.split('-').map(Number);
@@ -99,13 +101,20 @@ const calendarDays = computed(() => {
             isToday: dateStr === todayStr.value,
         });
     }
+    while (days.length < 42) {
+        days.push(null);
+    }
     return days;
 });
 
 const loadCalendar = async (month) => {
     calendarLoading.value = true;
     try {
-        calendarData.value = await getSignInCalendarApi(month);
+        const result = await getSignInCalendarApi(month);
+        calendarData.value = {
+            ...calendarData.value,
+            [month]: result
+        };
     } catch {
         // ignore
     } finally {
@@ -263,11 +272,16 @@ onMounted(async () => {
 <template>
     <SiteHeader />
 
-    <div class="page-shell growth-page">
+    <main class="page-shell dashboard-layout growth-page">
         <CreatorSidebar />
 
-        <main class="growth-main">
-            <h1 class="growth-title">积分与成长</h1>
+        <section class="dashboard-main growth-main">
+            <div class="section-heading growth-heading">
+                <div>
+                    <p class="eyebrow">个人账户</p>
+                    <h1>积分与成长</h1>
+                </div>
+            </div>
 
             <!-- 顶部卡片区 -->
             <div class="growth-cards">
@@ -338,10 +352,13 @@ onMounted(async () => {
                     </div>
 
                     <!-- 日历格子 -->
-                    <div class="calendar-grid">
+                    <div
+                        class="calendar-grid"
+                        :class="{ 'calendar-grid--loading': calendarLoading && !calendarInitialLoading }"
+                    >
                         <div v-for="w in WEEKDAYS" :key="w" class="cal-weekday">{{ w }}</div>
-                        <template v-if="calendarLoading">
-                            <div v-for="i in 35" :key="i" class="cal-day cal-day--skeleton"></div>
+                        <template v-if="calendarInitialLoading">
+                            <div v-for="i in 42" :key="i" class="cal-day cal-day--skeleton"></div>
                         </template>
                         <template v-else>
                             <div
@@ -459,27 +476,18 @@ onMounted(async () => {
                 </template>
                 <div v-else class="journal-empty">暂无记录</div>
             </section>
-        </main>
-    </div>
+        </section>
+    </main>
 </template>
 
 <style scoped>
-.growth-page {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 32px;
-    align-items: start;
-    padding: 32px 0;
-}
-
 .growth-main {
     min-width: 0;
 }
 
-.growth-title {
-    font-size: 22px;
+.growth-heading h1 {
     font-weight: 700;
-    margin: 0 0 24px;
+    margin: 0;
     color: var(--text-strong);
 }
 
@@ -494,9 +502,10 @@ onMounted(async () => {
 .growth-card {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     padding: 24px;
     min-height: 180px;
+    box-shadow: var(--shadow);
 }
 
 .card-skeleton {
@@ -689,6 +698,10 @@ onMounted(async () => {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 3px;
+}
+
+.calendar-grid--loading .cal-day {
+    opacity: 0.62;
 }
 
 .cal-weekday {
@@ -886,10 +899,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-    .growth-page {
-        grid-template-columns: 1fr;
-        padding: 16px 0;
-    }
     .growth-cards {
         grid-template-columns: 1fr;
     }

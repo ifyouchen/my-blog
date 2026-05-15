@@ -337,6 +337,7 @@ watch(() => props.articleId, () => {
 .comment-panel {
     display: grid;
     gap: 18px;
+    overflow: visible;
 }
 
 .comment-panel-header,
@@ -396,6 +397,7 @@ watch(() => props.articleId, () => {
 .comment-panel-list {
     display: grid;
     gap: 20px;
+    overflow: visible;
 }
 
 .comment-panel-state {
