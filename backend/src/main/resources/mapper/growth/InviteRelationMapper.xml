@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.InviteRelationMapper">
+
+    <sql id="Base_Column_List">
+        id, inviter_user_id, invitee_user_id, reward_status,
+        reward_granted_at, trigger_biz_no, skip_reason,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <!-- 检查受邀人是否已存在邀请记录 -->
+    <select id="countByInviteeUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM invite_relation
+        WHERE invitee_user_id = #{inviteeUserId}
+          AND deleted_at IS NULL
+    </select>
+
+    <!-- INSERT IGNORE：uk_invitee 冲突时静默忽略 -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO invite_relation
+            (inviter_user_id, invitee_user_id, reward_status)
+        VALUES
+            (#{inviterUserId}, #{inviteeUserId}, 'PENDING')
+    </insert>
+
+    <!-- 将指定受邀人的邀请奖励状态更新为 GRANTED -->
+    <update id="markGranted">
+        UPDATE invite_relation
+        SET reward_status     = 'GRANTED',
+            reward_granted_at = NOW(),
+            trigger_biz_no    = #{triggerBizNo},
+            updated_at        = NOW()
+        WHERE invitee_user_id = #{inviteeUserId}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 统计邀请人累计成功奖励次数 -->
+    <select id="countGrantedByInviterId" resultType="int">
+        SELECT COUNT(*)
+        FROM invite_relation
+        WHERE inviter_user_id = #{inviterUserId}
+          AND reward_status   = 'GRANTED'
+          AND deleted_at IS NULL
+    </select>
+
+    <!-- 统计邀请人今日已触发奖励次数 -->
+    <select id="countGrantedTodayByInviterId" resultType="int">
+        SELECT COUNT(*)
+        FROM invite_relation
+        WHERE inviter_user_id  = #{inviterUserId}
+          AND reward_status    = 'GRANTED'
+          AND DATE(reward_granted_at) = CURDATE()
+          AND deleted_at IS NULL
+    </select>
+
+</mapper>
+

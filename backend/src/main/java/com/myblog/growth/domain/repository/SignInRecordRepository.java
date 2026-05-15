@@ -1,6 +1,7 @@
 package com.myblog.growth.domain.repository;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 签到记录 Repository 接口.
@@ -41,5 +42,15 @@ public interface SignInRecordRepository {
      * @return 连续签到天数，无记录时返回 0
      */
     int findContinuousDays(Long userId);
+
+    /**
+     * 查询用户指定月份已签到的日期列表.
+     *
+     * @param userId     用户 ID
+     * @param monthStart 月份起始日期（如 2026-05-01）
+     * @param monthEnd   月份结束日期（如 2026-05-31）
+     * @return 已签到日期列表
+     */
+    List<LocalDate> findSignDatesByMonth(Long userId, LocalDate monthStart, LocalDate monthEnd);
 }
 

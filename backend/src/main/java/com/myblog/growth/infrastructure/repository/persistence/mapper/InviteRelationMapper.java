@@ -31,10 +31,26 @@ public interface InviteRelationMapper {
     /**
      * 将指定受邀人的邀请奖励状态更新为 GRANTED.
      *
-     * @param inviteeUserId   受邀人用户 ID
-     * @param triggerBizNo    触发奖励的业务单号
+     * @param inviteeUserId 受邀人用户 ID
+     * @param triggerBizNo  触发奖励的业务单号
      */
     void markGranted(@Param("inviteeUserId") Long inviteeUserId,
                      @Param("triggerBizNo") String triggerBizNo);
+
+    /**
+     * 统计邀请人累计获得奖励次数.
+     *
+     * @param inviterUserId 邀请人用户 ID
+     * @return 获得奖励次数
+     */
+    int countGrantedByInviterId(@Param("inviterUserId") Long inviterUserId);
+
+    /**
+     * 统计邀请人今日已获得奖励次数（用于每日频次风控）.
+     *
+     * @param inviterUserId 邀请人用户 ID
+     * @return 今日获得奖励次数
+     */
+    int countGrantedTodayByInviterId(@Param("inviterUserId") Long inviterUserId);
 }
 

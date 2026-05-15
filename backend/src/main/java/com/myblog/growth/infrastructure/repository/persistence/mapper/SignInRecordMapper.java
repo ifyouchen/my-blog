@@ -52,5 +52,17 @@ public interface SignInRecordMapper {
      * @return 连续签到天数，无记录时返回 null
      */
     Integer selectLastConsecutiveDays(@Param("userId") Long userId);
+
+    /**
+     * 查询用户指定月份已签到的日期列表.
+     *
+     * @param userId      用户 ID
+     * @param monthStart  月份起始日期（如 2026-05-01）
+     * @param monthEnd    月份结束日期（如 2026-05-31）
+     * @return 已签到日期列表
+     */
+    List<LocalDate> selectSignDatesByMonth(@Param("userId") Long userId,
+                                           @Param("monthStart") LocalDate monthStart,
+                                           @Param("monthEnd") LocalDate monthEnd);
 }
 
