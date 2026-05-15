@@ -47,6 +47,9 @@ public class PointRule {
     /** 乐观锁版本号. */
     private int version;
 
+    /** 软删除时间（null = 未删除）. */
+    private LocalDateTime deletedAt;
+
     /** 禁止外部直接构造，使用工厂方法. */
     private PointRule() {
     }
@@ -55,7 +58,7 @@ public class PointRule {
      * 工厂方法：构建积分规则值对象.
      *
      * @param id                  主键 ID
-     * @param eventType           行为类型
+     * @param sourceType          行为类型
      * @param pointAmount         单次奖励积分量
      * @param dailyLimit          每日上限（0=无上限）
      * @param dailyLimitStrategy  限额策略
@@ -64,11 +67,13 @@ public class PointRule {
      * @param operator            最后操作人
      * @param reason              变更原因
      * @param version             乐观锁版本号
+     * @param deletedAt           软删除时间
      * @return 积分规则值对象
      */
     public static PointRule of(Long id, String sourceType, int pointAmount,
                                int dailyLimit, String dailyLimitStrategy, boolean enabled,
-                               LocalDateTime effectiveAt, String operator, String reason, int version) {
+                               LocalDateTime effectiveAt, String operator, String reason, int version,
+                               LocalDateTime deletedAt) {
         PointRule rule = new PointRule();
         rule.id = id;
         rule.sourceType = sourceType;
@@ -80,7 +85,17 @@ public class PointRule {
         rule.operator = operator;
         rule.reason = reason;
         rule.version = version;
+        rule.deletedAt = deletedAt;
         return rule;
+    }
+
+    /**
+     * 判断是否已软删除.
+     *
+     * @return {@code true} 表示已删除
+     */
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     /**
@@ -119,5 +134,7 @@ public class PointRule {
     public String getReason() { return reason; }
     /** 获取版本号. */
     public int getVersion() { return version; }
+    /** 获取软删除时间. */
+    public LocalDateTime getDeletedAt() { return deletedAt; }
 }
 

@@ -384,6 +384,8 @@ public class RestDtoMapper {
         response.setSeoDescription(dto.getSeoDescription());
         response.setNeedUnlock(dto.isNeedUnlock());
         response.setUnlockPointPrice(dto.getUnlockPointPrice());
+        response.setContentLocked(dto.isContentLocked());
+        response.setUnlockReason(dto.getUnlockReason());
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setOfflineReason(dto.getOfflineReason());
         response.setWarnFlag(dto.isWarnFlag());

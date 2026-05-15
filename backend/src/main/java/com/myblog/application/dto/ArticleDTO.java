@@ -36,6 +36,10 @@ public class ArticleDTO {
     private String seoDescription;
     private boolean needUnlock;
     private int unlockPointPrice;
+    /** 内容是否被锁定（付费文章且用户无权查看全文时=true）. */
+    private boolean contentLocked;
+    /** 解锁原因/状态标识：AUTHOR_SELF / ADMIN_BYPASS / UNLOCKED / CONTENT_LOCKED / null. */
+    private String unlockReason;
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
@@ -508,6 +512,12 @@ public class ArticleDTO {
     public void setUnlockPointPrice(int unlockPointPrice) {
         this.unlockPointPrice = unlockPointPrice;
     }
+
+    public boolean isContentLocked() { return contentLocked; }
+    public void setContentLocked(boolean contentLocked) { this.contentLocked = contentLocked; }
+
+    public String getUnlockReason() { return unlockReason; }
+    public void setUnlockReason(String unlockReason) { this.unlockReason = unlockReason; }
 
     /**
      * 获取定时发布时间。

@@ -202,3 +202,51 @@ export const getAdminRevenueSharesApi = (params = {}) => {
 export const retryRevenueShareSettlementApi = (orderNo) =>
     request(`/admin/revenue-shares/${encodeURIComponent(orderNo)}/retry`, {method: 'POST'});
 
+// ─────────────────────── 管理员接口：积分规则 ─────────────────────
+
+/**
+ * 管理员查询积分规则配置.
+ * @returns {Promise<Array>}
+ */
+export const getAdminPointRulesApi = () =>
+    request('/admin/growth/point-rules');
+
+/**
+ * 管理员新增积分规则.
+ * @param {{sourceType: string, pointAmount: number, dailyLimit: number, enabled: boolean, reason?: string}} payload
+ * @returns {Promise<number>}
+ */
+export const createAdminPointRuleApi = (payload) =>
+    request('/admin/growth/point-rules', {
+        method: 'POST',
+        body: JSON.stringify({
+            ...payload,
+            operator: payload.operator || 'ADMIN_UI'
+        })
+    });
+
+/**
+ * 管理员更新积分规则.
+ * @param {{id: number, version: number, sourceType: string, pointAmount: number, dailyLimit: number, enabled: boolean, reason?: string}} payload
+ * @returns {Promise<void>}
+ */
+export const updateAdminPointRuleApi = (payload) =>
+    request(`/admin/growth/point-rules/${payload.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            ...payload,
+            operator: payload.operator || 'ADMIN_UI'
+        })
+    });
+
+/**
+ * 管理员软删除积分规则.
+ * @param {number} id 规则 ID
+ * @param {number} version 当前版本号（乐观锁）
+ * @returns {Promise<void>}
+ */
+export const deleteAdminPointRuleApi = (id, version) =>
+    request(`/admin/growth/point-rules/${id}?version=${version}`, {
+        method: 'DELETE'
+    });
+

@@ -298,8 +298,28 @@ public final class GrowthConverter {
                 null,
                 do_.getOperator(),
                 do_.getReason(),
-                do_.getVersion()
+                do_.getVersion(),
+                do_.getDeletedAt()
         );
+    }
+
+    /**
+     * 将值对象 {@link PointRule} 转换为 {@link PointRuleConfigDO}（用于 INSERT / UPDATE）.
+     *
+     * @param rule 积分规则值对象，不能为 null
+     * @return 数据库实体
+     */
+    public static PointRuleConfigDO toPointRuleDO(PointRule rule) {
+        PointRuleConfigDO do_ = new PointRuleConfigDO();
+        do_.setId(rule.getId());
+        do_.setSourceType(rule.getSourceType());
+        do_.setPointAmount(rule.getPointAmount());
+        do_.setDailyLimit(rule.getDailyLimit());
+        do_.setEnabled(rule.isEnabled());
+        do_.setOperator(rule.getOperator());
+        do_.setReason(rule.getReason());
+        do_.setVersion(rule.getVersion());
+        return do_;
     }
 }
 

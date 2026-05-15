@@ -4,13 +4,16 @@ import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
 import com.myblog.growth.domain.model.valueobject.GrowthRule;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
+import com.myblog.growth.domain.model.valueobject.PointRule;
 import com.myblog.growth.domain.service.LevelPolicyService;
 import com.myblog.growth.interfaces.rest.dto.request.BatchSaveThresholdRequest;
+import com.myblog.growth.interfaces.rest.dto.request.SavePointRuleRequest;
 import com.myblog.growth.interfaces.rest.dto.request.SaveRuleRequest;
 import com.myblog.growth.interfaces.rest.dto.response.ExpJournalVO;
 import com.myblog.growth.interfaces.rest.dto.response.GrowthAccountVO;
 import com.myblog.growth.interfaces.rest.dto.response.GrowthRuleVO;
 import com.myblog.growth.interfaces.rest.dto.response.LevelThresholdVO;
+import com.myblog.growth.interfaces.rest.dto.response.PointRuleVO;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -149,6 +152,71 @@ public class GrowthAssembler {
                 req.getOperator(),
                 req.getReason(),
                 req.getVersion() == null ? 0 : req.getVersion()
+        );
+    }
+
+    // ─────────────────── PointRule ↔ VO ───────────────────
+
+    /**
+     * 将积分规则值对象转换为 {@link PointRuleVO}.
+     *
+     * @param rule 积分规则值对象
+     * @return 积分规则 VO
+     */
+    public PointRuleVO toPointRuleVO(PointRule rule) {
+        PointRuleVO vo = new PointRuleVO();
+        vo.setId(rule.getId());
+        vo.setSourceType(rule.getSourceType());
+        vo.setPointAmount(rule.getPointAmount());
+        vo.setDailyLimit(rule.getDailyLimit());
+        vo.setEnabled(rule.isEnabled());
+        vo.setEnabledLabel(rule.isEnabled() ? "启用" : "停用");
+        vo.setDeleted(rule.isDeleted());
+        vo.setDeletedAt(rule.getDeletedAt());
+        if (rule.isDeleted()) {
+            vo.setStatusLabel("已删除");
+        } else {
+            vo.setStatusLabel(rule.isEnabled() ? "正常" : "停用");
+        }
+        vo.setOperator(rule.getOperator());
+        vo.setReason(rule.getReason());
+        vo.setVersion(rule.getVersion());
+        return vo;
+    }
+
+    /**
+     * 批量转换积分规则列表.
+     *
+     * @param rules 积分规则列表
+     * @return VO 列表
+     */
+    public List<PointRuleVO> toPointRuleVOList(List<PointRule> rules) {
+        List<PointRuleVO> voList = new ArrayList<>(rules.size());
+        for (PointRule r : rules) {
+            voList.add(toPointRuleVO(r));
+        }
+        return voList;
+    }
+
+    /**
+     * 将 {@link SavePointRuleRequest} 转换为领域值对象 {@link PointRule}.
+     *
+     * @param req 请求体
+     * @return 积分规则值对象
+     */
+    public PointRule toPointRuleDomain(SavePointRuleRequest req) {
+        return PointRule.of(
+                req.getId(),
+                req.getSourceType(),
+                req.getPointAmount() == null ? 0 : req.getPointAmount(),
+                req.getDailyLimit(),
+                null,
+                req.isEnabled(),
+                null,
+                req.getOperator(),
+                req.getReason(),
+                req.getVersion() == null ? 0 : req.getVersion(),
+                null
         );
     }
 

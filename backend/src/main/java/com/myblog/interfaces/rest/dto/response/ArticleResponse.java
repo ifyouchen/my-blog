@@ -40,6 +40,8 @@ public class ArticleResponse {
     private String seoDescription;
     private boolean needUnlock;
     private int unlockPointPrice;
+    private boolean contentLocked;
+    private String unlockReason;
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
@@ -412,6 +414,12 @@ public class ArticleResponse {
     public void setUnlockPointPrice(int unlockPointPrice) {
         this.unlockPointPrice = unlockPointPrice;
     }
+
+    public boolean isContentLocked() { return contentLocked; }
+    public void setContentLocked(boolean contentLocked) { this.contentLocked = contentLocked; }
+
+    public String getUnlockReason() { return unlockReason; }
+    public void setUnlockReason(String unlockReason) { this.unlockReason = unlockReason; }
 
     public String getScheduledPublishAt() {
         return scheduledPublishAt;

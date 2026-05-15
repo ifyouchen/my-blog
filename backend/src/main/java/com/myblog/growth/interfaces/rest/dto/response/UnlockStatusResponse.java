@@ -6,22 +6,13 @@ package com.myblog.growth.interfaces.rest.dto.response;
  */
 public class UnlockStatusResponse {
 
-    /** 文章 ID. */
     private Long articleId;
-
-    /** 是否需要解锁（false=免费文章）. */
     private boolean needUnlock;
-
-    /** 解锁所需积分数. */
     private int unlockPointPrice;
-
-    /** 当前用户是否已解锁. */
     private boolean unlocked;
-
-    /** 当前用户积分余额. */
     private int currentBalance;
+    private String reason;
 
-    /** 默认构造. */
     public UnlockStatusResponse() {
     }
 
@@ -39,5 +30,7 @@ public class UnlockStatusResponse {
 
     public int getCurrentBalance() { return currentBalance; }
     public void setCurrentBalance(int currentBalance) { this.currentBalance = currentBalance; }
-}
 
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
+}

@@ -2,6 +2,7 @@ package com.myblog.application.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.assembler.ArticleAssembler;
+import com.myblog.growth.application.service.ArticleContentAccessService;
 import com.myblog.application.command.CreateArticleCommand;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
@@ -81,6 +82,7 @@ public class ArticleAppService {
     private final String defaultArticleCoverUrl;
     private final Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache;
     private final Set<RecommendArticleCacheKey> recommendedArticleCacheKeys = ConcurrentHashMap.newKeySet();
+    private final ArticleContentAccessService articleContentAccessService;
 
     public ArticleAppService(ArticleRepository articleRepository,
                              ArticleLikeRepository articleLikeRepository,
@@ -94,7 +96,8 @@ public class ArticleAppService {
                              HomePortalCacheInvalidator homePortalCacheInvalidator,
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl,
                              @Qualifier("recommendedArticleFeedCache")
-                             Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache) {
+                             Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache,
+                             ArticleContentAccessService articleContentAccessService) {
         this.articleRepository = articleRepository;
         this.articleLikeRepository = articleLikeRepository;
         this.articleFavoriteRepository = articleFavoriteRepository;
@@ -108,6 +111,7 @@ public class ArticleAppService {
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
         this.recommendedArticleFeedCache = recommendedArticleFeedCache;
+        this.articleContentAccessService = articleContentAccessService;
     }
 
     /**
@@ -408,8 +412,20 @@ public class ArticleAppService {
         if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             eventPublisher.publishEvent(new ArticleViewedEvent(articleId));
         }
-        return buildDetailDto(article, userRepository.findById(article.getAuthorId())
+        ArticleDTO dto = buildDetailDto(article, userRepository.findById(article.getAuthorId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在")), currentUserId);
+
+        // 付费内容访问控制
+        ArticleContentAccessService.AccessResult access = articleContentAccessService.checkAccess(
+                articleId, article.getAuthorId().getValue(), article.isNeedUnlock(),
+                currentUserId, currentUserRole);
+        if (!access.isCanReadFullContent()) {
+            dto.setContent("");
+            dto.setContentLocked(true);
+        }
+        dto.setUnlockReason(access.getReason());
+
+        return dto;
     }
 
     /**

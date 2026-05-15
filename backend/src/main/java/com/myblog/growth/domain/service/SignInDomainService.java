@@ -6,47 +6,44 @@ import org.springframework.stereotype.Service;
  * 签到领域服务.
  * <p>
  * 负责计算连续签到奖励积分（阶梯奖励），不依赖任何 Repository，纯业务逻辑。
+ * 基础积分从 {@code point_rule_config.SIGN_IN} 读取（由应用服务负责），
+ * 本服务只计算连续签到奖励部分。
  * </p>
  *
- * <p>阶梯奖励规则（可配置化，当前版本为常量）：</p>
+ * <p>连续签到奖励规则：</p>
  * <pre>
- * 连续天数      基础积分  附加奖励  总计
- * 1~2 天           10       0     10
- * 3~4 天           10       5     15
- * 5~6 天           10       8     18
- * 7~13 天          10      10     20
- * 14~29 天         10      20     30
- * 30+ 天           10      50     60
+ * 连续天数     奖励
+ * 1~2 天       0
+ * 3~4 天       5
+ * 5~6 天       8
+ * 7~13 天     10
+ * 14~29 天    20
+ * 30+ 天      50
  * </pre>
  */
 @Service
 public class SignInDomainService {
 
-    /** 基础签到积分. */
-    private static final int BASE_POINTS = 10;
-
     /**
-     * 根据连续签到天数计算本次应发积分.
+     * 根据连续签到天数计算附加奖励（不含基础积分）.
      *
      * @param consecutiveDays 连续签到天数（含今日，必须 &gt;= 1）
-     * @return 本次应发积分总量
+     * @return 附加奖励积分
      */
-    public int calcReward(int consecutiveDays) {
-        int bonus;
+    public int calcBonus(int consecutiveDays) {
         if (consecutiveDays >= 30) {
-            bonus = 50;
+            return 50;
         } else if (consecutiveDays >= 14) {
-            bonus = 20;
+            return 20;
         } else if (consecutiveDays >= 7) {
-            bonus = 10;
+            return 10;
         } else if (consecutiveDays >= 5) {
-            bonus = 8;
+            return 8;
         } else if (consecutiveDays >= 3) {
-            bonus = 5;
+            return 5;
         } else {
-            bonus = 0;
+            return 0;
         }
-        return BASE_POINTS + bonus;
     }
 
     /**
@@ -90,4 +87,3 @@ public class SignInDomainService {
         }
     }
 }
-

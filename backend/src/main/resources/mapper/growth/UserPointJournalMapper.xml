@@ -77,5 +77,15 @@
           </if>
     </select>
 
+    <!-- 统计今日某来源类型的积分流水数 -->
+    <select id="countTodayByUserIdAndSourceType" resultType="int">
+        SELECT COUNT(*)
+        FROM user_point_journal
+        WHERE user_id     = #{userId}
+          AND source_type = #{sourceType}
+          AND deleted_at  IS NULL
+          AND created_at  &gt;= CURDATE()
+    </select>
+
 </mapper>
 

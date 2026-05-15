@@ -45,7 +45,8 @@ public class ArticleUnlockController {
     @PostMapping("/{id}/unlock")
     public Result<Map<String, Object>> unlock(@PathVariable Long id) {
         Long userId = AuthContext.getRequiredUserId();
-        ArticleUnlockAppService.UnlockResult result = articleUnlockAppService.unlock(userId, id);
+        String role = AuthContext.getRole();
+        ArticleUnlockAppService.UnlockResult result = articleUnlockAppService.unlock(userId, id, role);
 
         Map<String, Object> data = new HashMap<>();
         data.put("articleId", result.getArticleId());
@@ -70,8 +71,9 @@ public class ArticleUnlockController {
     @GetMapping("/{id}/unlock-status")
     public Result<UnlockStatusResponse> getUnlockStatus(@PathVariable Long id) {
         Long userId = AuthContext.getRequiredUserId();
+        String role = AuthContext.getRole();
         ArticleUnlockAppService.UnlockStatusResult result =
-                articleUnlockAppService.getUnlockStatus(userId, id);
+                articleUnlockAppService.getUnlockStatus(userId, id, role);
 
         UnlockStatusResponse resp = new UnlockStatusResponse();
         resp.setArticleId(result.getArticleId());
@@ -79,6 +81,7 @@ public class ArticleUnlockController {
         resp.setUnlockPointPrice(result.getUnlockPointPrice());
         resp.setUnlocked(result.isUnlocked());
         resp.setCurrentBalance(result.getCurrentBalance());
+        resp.setReason(result.getReason());
         return Result.success(resp);
     }
 }

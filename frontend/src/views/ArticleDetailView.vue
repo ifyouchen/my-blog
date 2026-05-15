@@ -1121,10 +1121,20 @@ watch(tocDrawerOpen, (open) => {
                 </section>
 
                 <!-- 已解锁 or 无需解锁：正常显示正文 -->
-                <MarkdownPreview
+                <div
                     v-if="articleMarkdown && (!unlockStatus || !unlockStatus.needUnlock || unlockStatus.unlocked)"
-                    :content="articleMarkdown"
-                />
+                    class="article-unlocked-content"
+                >
+                    <!-- 作者本人查看文章 -->
+                    <div v-if="unlockStatus && unlockStatus.reason === 'AUTHOR_SELF'" class="article-author-self-notice">
+                        作者本人可直接阅读
+                    </div>
+                    <!-- 管理员免积分查看 -->
+                    <div v-if="unlockStatus && unlockStatus.reason === 'ADMIN_BYPASS'" class="article-admin-bypass-notice">
+                        管理员可直接查看
+                    </div>
+                    <MarkdownPreview :content="articleMarkdown" />
+                </div>
                 <!-- 需要解锁且未解锁：显示遮罩 -->
                 <div v-else-if="unlockStatus && unlockStatus.needUnlock && !unlockStatus.unlocked" class="article-lock-wall">
                     <div class="article-lock-wall-preview" aria-hidden="true">
@@ -1350,6 +1360,28 @@ watch(tocDrawerOpen, (open) => {
 .article-lock-badge {
     margin: 8px 0 16px;
     display: inline-flex;
+}
+
+.article-unlocked-content {
+    margin: 24px 0;
+}
+
+.article-author-self-notice,
+.article-admin-bypass-notice {
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    color: #0369a1;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.article-admin-bypass-notice {
+    background: #f5f3ff;
+    border-color: #c4b5fd;
+    color: #6d28d9;
 }
 
 .article-lock-wall {

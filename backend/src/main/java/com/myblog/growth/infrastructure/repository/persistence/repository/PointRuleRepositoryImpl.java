@@ -21,39 +21,71 @@ import java.util.stream.Collectors;
 @Repository
 public class PointRuleRepositoryImpl implements PointRuleRepository {
 
-    /** 积分规则配置 MyBatis Mapper. */
     private final PointRuleConfigMapper mapper;
 
-    /**
-     * 构造注入 Mapper.
-     *
-     * @param mapper 积分规则配置 Mapper
-     */
     public PointRuleRepositoryImpl(PointRuleConfigMapper mapper) {
         this.mapper = mapper;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Optional<PointRule> findBySourceType(String sourceType) {
         PointRuleConfigDO do_ = mapper.selectBySourceType(sourceType);
-        if (do_ == null) {
-            return Optional.empty();
-        }
-        return Optional.of(GrowthConverter.toPointRuleDomain(do_));
+        return do_ == null ? Optional.empty() : Optional.of(GrowthConverter.toPointRuleDomain(do_));
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<PointRule> findAllEnabled() {
-        List<PointRuleConfigDO> doList = mapper.selectAllEnabled();
-        return doList.stream()
+        return mapper.selectAllEnabled().stream()
                 .map(GrowthConverter::toPointRuleDomain)
                 .collect(Collectors.toList());
     }
-}
 
+    @Override
+    public List<PointRule> findAllForAdmin() {
+        return mapper.selectAllForAdmin().stream()
+                .map(GrowthConverter::toPointRuleDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<PointRule> findById(Long id) {
+        PointRuleConfigDO do_ = mapper.selectById(id);
+        return do_ == null ? Optional.empty() : Optional.of(GrowthConverter.toPointRuleDomain(do_));
+    }
+
+    @Override
+    public Optional<PointRule> findBySourceTypeIncludingDeleted(String sourceType) {
+        PointRuleConfigDO do_ = mapper.selectBySourceTypeIncludingDeleted(sourceType);
+        return do_ == null ? Optional.empty() : Optional.of(GrowthConverter.toPointRuleDomain(do_));
+    }
+
+    @Override
+    public Optional<PointRule> findDeletedBySourceType(String sourceType) {
+        PointRuleConfigDO do_ = mapper.selectDeletedBySourceType(sourceType);
+        return do_ == null ? Optional.empty() : Optional.of(GrowthConverter.toPointRuleDomain(do_));
+    }
+
+    @Override
+    public Long save(PointRule rule) {
+        PointRuleConfigDO do_ = GrowthConverter.toPointRuleDO(rule);
+        mapper.insert(do_);
+        return do_.getId();
+    }
+
+    @Override
+    public boolean update(PointRule rule) {
+        PointRuleConfigDO do_ = GrowthConverter.toPointRuleDO(rule);
+        return mapper.updateCAS(do_) > 0;
+    }
+
+    @Override
+    public boolean softDelete(Long id, int version, String operator, String reason) {
+        return mapper.softDeleteCAS(id, version, operator, reason) > 0;
+    }
+
+    @Override
+    public boolean restore(PointRule rule) {
+        PointRuleConfigDO do_ = GrowthConverter.toPointRuleDO(rule);
+        return mapper.restoreCAS(do_) > 0;
+    }
+}

@@ -79,7 +79,9 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); a=d.get\\('data',{}\\).get\\('author',{}\\); print\\('followerCount:', a.get\\('followerCount'\\)\\); print\\('All keys:', list\\(a.keys\\(\\)\\)\\)\")",
       "Bash(sed 's/.java//')",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(ls F:\\\\\\\\software\\\\\\\\IdeaProject\\\\\\\\my-blog\\\\\\\\docs\\\\\\\\经验与积分 *)",
+      "Bash(npx vue-tsc *)"
     ]
   }
 }

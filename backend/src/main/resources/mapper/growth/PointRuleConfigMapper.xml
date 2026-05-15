@@ -42,5 +42,94 @@
         ORDER BY id ASC
     </select>
 
+    <!-- 管理端：查询全部规则（含已软删） -->
+    <select id="selectAllForAdmin" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM point_rule_config
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据主键查询（不排除软删除） -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM point_rule_config
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <!-- 根据来源类型查询（含已软删） -->
+    <select id="selectBySourceTypeIncludingDeleted" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM point_rule_config
+        WHERE source_type = #{sourceType}
+        LIMIT 1
+    </select>
+
+    <!-- 查询已软删的规则（用于新增时恢复） -->
+    <select id="selectDeletedBySourceType" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM point_rule_config
+        WHERE source_type = #{sourceType}
+          AND deleted_at IS NOT NULL
+        LIMIT 1
+    </select>
+
+    <!-- 新增规则 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO point_rule_config (source_type, point_amount, daily_limit, enabled,
+                                       operator, reason, created_at, updated_at, version)
+        VALUES (#{sourceType}, #{pointAmount}, #{dailyLimit}, #{enabled},
+                #{operator}, #{reason}, NOW(), NOW(), 1)
+    </insert>
+
+    <!-- 乐观锁更新规则（仅对未软删记录生效） -->
+    <update id="updateCAS">
+        UPDATE point_rule_config
+        SET point_amount = #{pointAmount},
+            daily_limit  = #{dailyLimit},
+            enabled      = #{enabled},
+            operator     = #{operator},
+            reason       = #{reason},
+            updated_at   = NOW(),
+            version      = version + 1
+        WHERE id      = #{id}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 软删除（乐观锁，仅对未软删记录生效） -->
+    <update id="softDeleteCAS">
+        UPDATE point_rule_config
+        SET deleted_at = NOW(),
+            operator   = #{operator},
+            reason     = #{reason},
+            updated_at = NOW(),
+            version    = version + 1
+        WHERE id      = #{id}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 恢复软删并更新字段（乐观锁，仅对已软删记录生效） -->
+    <update id="restoreCAS">
+        UPDATE point_rule_config
+        SET deleted_at   = NULL,
+            source_type  = #{sourceType},
+            point_amount = #{pointAmount},
+            daily_limit  = #{dailyLimit},
+            enabled      = #{enabled},
+            operator     = #{operator},
+            reason       = #{reason},
+            updated_at   = NOW(),
+            version      = version + 1
+        WHERE id            = #{id}
+          AND version       = #{version}
+          AND deleted_at IS NOT NULL
+    </update>
+
 </mapper>
 

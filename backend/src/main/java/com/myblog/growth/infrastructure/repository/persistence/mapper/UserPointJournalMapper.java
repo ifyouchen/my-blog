@@ -64,5 +64,16 @@ public interface UserPointJournalMapper {
     long countByUserIdAndSourceType(
             @Param("userId") Long userId,
             @Param("sourceType") String sourceType);
+
+    /**
+     * 统计今日某来源类型的积分流水数（用于 dailyLimit 校验）.
+     *
+     * @param userId     用户 ID
+     * @param sourceType 来源类型
+     * @return 今日已发次数
+     */
+    int countTodayByUserIdAndSourceType(
+            @Param("userId") Long userId,
+            @Param("sourceType") String sourceType);
 }
 
