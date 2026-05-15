@@ -17,10 +17,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 管理员积分调整接口.
+ * 管理员积分管理接口.
  *
  * <pre>
- * POST /api/admin/points/adjust — 管理员调整用户积分（需 ADMIN 角色）
+ * GET  /api/admin/points/account — 查询指定用户积分账户（需 ADMIN 角色）
+ * POST /api/admin/points/adjust  — 管理员调整用户积分（需 ADMIN 角色）
  * </pre>
  */
 @RestController
@@ -36,6 +37,26 @@ public class AdminPointController {
      */
     public AdminPointController(AdminPointAppService adminPointAppService) {
         this.adminPointAppService = adminPointAppService;
+    }
+
+    /**
+     * 查询指定用户积分账户（管理员视角）.
+     *
+     * @param userId 目标用户 ID
+     * @return 积分账户 VO
+     */
+    @GetMapping("/account")
+    public Result<PointAccountVO> getAccount(@RequestParam Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "userId 不合法");
+        }
+        PointAccount account = adminPointAppService.getAccountByUserId(userId);
+        PointAccountVO vo = new PointAccountVO();
+        vo.setUserId(account.getUserId());
+        vo.setBalance(account.getBalance());
+        vo.setTotalEarned(account.getTotalEarned());
+        vo.setTotalSpent(account.getTotalSpent());
+        return Result.success(vo);
     }
 
     /**
