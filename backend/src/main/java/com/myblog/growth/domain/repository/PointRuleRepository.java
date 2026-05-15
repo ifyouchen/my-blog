@@ -11,12 +11,12 @@ import java.util.Optional;
 public interface PointRuleRepository {
 
     /**
-     * 根据行为类型查询积分规则.
+     * 根据来源类型查询积分规则.
      *
-     * @param eventType 行为类型
+     * @param sourceType 来源类型（对应 PointEventType 枚举值）
      * @return 积分规则（Optional），不存在时为 empty
      */
-    Optional<PointRule> findByEventType(String eventType);
+    Optional<PointRule> findBySourceType(String sourceType);
 
     /**
      * 查询所有已启用且生效的积分规则.

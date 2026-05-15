@@ -14,8 +14,10 @@ public class PointRule {
     /** 数据库主键 ID. */
     private Long id;
 
-    /** 行为类型（对应 PointEventType 枚举值）. */
-    private String eventType;
+    /**
+     * 来源类型（对应 PointEventType 枚举值），对应数据库字段 {@code source_type}.
+     */
+    private String sourceType;
 
     /** 单次奖励积分量（负数表示消耗）. */
     private int pointAmount;
@@ -64,12 +66,12 @@ public class PointRule {
      * @param version             乐观锁版本号
      * @return 积分规则值对象
      */
-    public static PointRule of(Long id, String eventType, int pointAmount,
+    public static PointRule of(Long id, String sourceType, int pointAmount,
                                int dailyLimit, String dailyLimitStrategy, boolean enabled,
                                LocalDateTime effectiveAt, String operator, String reason, int version) {
         PointRule rule = new PointRule();
         rule.id = id;
-        rule.eventType = eventType;
+        rule.sourceType = sourceType;
         rule.pointAmount = pointAmount;
         rule.dailyLimit = dailyLimit;
         rule.dailyLimitStrategy = dailyLimitStrategy;
@@ -99,8 +101,8 @@ public class PointRule {
 
     /** 获取主键 ID. */
     public Long getId() { return id; }
-    /** 获取行为类型. */
-    public String getEventType() { return eventType; }
+    /** 获取来源类型. */
+    public String getSourceType() { return sourceType; }
     /** 获取单次奖励积分量. */
     public int getPointAmount() { return pointAmount; }
     /** 获取每日上限. */
