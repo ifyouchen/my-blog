@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.RevenueShareJournalMapper">
+
+    <resultMap id="BaseResultMap"
+               type="com.myblog.growth.infrastructure.repository.persistence.entity.RevenueShareJournalDO">
+        <id     column="id"               property="id"/>
+        <result column="order_no"         property="orderNo"/>
+        <result column="article_id"       property="articleId"/>
+        <result column="author_id"        property="authorId"/>
+        <result column="total_points"     property="totalPoints"/>
+        <result column="platform_points"  property="platformPoints"/>
+        <result column="author_points"    property="authorPoints"/>
+        <result column="share_ratio"      property="shareRatio"/>
+        <result column="created_at"       property="createdAt"/>
+        <result column="deleted_at"       property="deletedAt"/>
+        <result column="version"          property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, order_no, article_id, author_id, total_points,
+        platform_points, author_points, share_ratio, created_at, deleted_at, version
+    </sql>
+
+    <!-- INSERT IGNORE：uk_order_no 冲突时静默忽略 -->
+    <insert id="insertIgnore" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO revenue_share_journal
+            (order_no, article_id, author_id, total_points, platform_points, author_points, share_ratio)
+        VALUES
+            (#{orderNo}, #{articleId}, #{authorId}, #{totalPoints},
+             #{platformPoints}, #{authorPoints}, #{shareRatio})
+    </insert>
+
+    <!-- 分页查询作者分账流水 -->
+    <select id="selectPageByAuthorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM revenue_share_journal
+        WHERE author_id  = #{authorId}
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计作者分账流水总数 -->
+    <select id="countByAuthorId" resultType="long">
+        SELECT COUNT(*)
+        FROM revenue_share_journal
+        WHERE author_id  = #{authorId}
+          AND deleted_at IS NULL
+    </select>
+
+</mapper>
+

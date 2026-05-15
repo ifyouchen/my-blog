@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockOrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.infrastructure.repository.persistence.entity.ArticleUnlockOrderDO">
+        <id     column="id"           property="id"/>
+        <result column="order_no"     property="orderNo"/>
+        <result column="user_id"      property="userId"/>
+        <result column="article_id"   property="articleId"/>
+        <result column="points_cost"  property="pointsCost"/>
+        <result column="status"       property="status"/>
+        <result column="fail_reason"  property="failReason"/>
+        <result column="created_at"   property="createdAt"/>
+        <result column="updated_at"   property="updatedAt"/>
+        <result column="deleted_at"   property="deletedAt"/>
+        <result column="version"      property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, order_no, user_id, article_id, points_cost, status,
+        fail_reason, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <!-- INSERT IGNORE：uk_order_no / uk_user_article 冲突时静默忽略 -->
+    <insert id="insertIgnore" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO article_unlock_order
+            (order_no, user_id, article_id, points_cost, status)
+        VALUES
+            (#{orderNo}, #{userId}, #{articleId}, #{pointsCost}, #{status})
+    </insert>
+
+    <!-- 根据订单号查询订单 -->
+    <select id="selectByOrderNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_unlock_order
+        WHERE order_no  = #{orderNo}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <!-- 根据用户 ID + 文章 ID 查询订单 -->
+    <select id="selectByUserIdAndArticleId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_unlock_order
+        WHERE user_id    = #{userId}
+          AND article_id = #{articleId}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <!-- 将订单状态更新为 SUCCESS -->
+    <update id="markSuccess">
+        UPDATE article_unlock_order
+        SET status     = 'SUCCESS',
+            updated_at = NOW()
+        WHERE order_no  = #{orderNo}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 将订单状态更新为 FAILED -->
+    <update id="markFailed">
+        UPDATE article_unlock_order
+        SET status      = 'FAILED',
+            fail_reason = #{failReason},
+            updated_at  = NOW()
+        WHERE order_no  = #{orderNo}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>
+

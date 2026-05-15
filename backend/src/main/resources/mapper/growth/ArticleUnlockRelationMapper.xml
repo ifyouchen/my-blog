@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockRelationMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, article_id, order_no, created_at, deleted_at, version
+    </sql>
+
+    <!-- 检查用户是否已解锁指定文章 -->
+    <select id="countByUserIdAndArticleId" resultType="int">
+        SELECT COUNT(*)
+        FROM article_unlock_relation
+        WHERE user_id    = #{userId}
+          AND article_id = #{articleId}
+          AND deleted_at IS NULL
+    </select>
+
+    <!-- INSERT IGNORE：uk_user_article 冲突时静默忽略 -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO article_unlock_relation
+            (user_id, article_id, order_no)
+        VALUES
+            (#{userId}, #{articleId}, #{orderNo})
+    </insert>
+
+</mapper>
+

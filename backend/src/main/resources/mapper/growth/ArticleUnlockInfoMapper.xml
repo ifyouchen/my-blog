@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockInfoMapper">
+
+    <resultMap id="UnlockInfoResultMap"
+               type="com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockInfoMapper$ArticleUnlockInfoVO">
+        <id     column="id"                  property="id"/>
+        <result column="need_unlock"         property="needUnlock"/>
+        <result column="unlock_point_price"  property="unlockPointPrice"/>
+        <result column="author_id"           property="authorId"/>
+        <result column="status"              property="status"/>
+    </resultMap>
+
+    <!-- 查询文章的解锁信息（只读博客核心表的解锁相关字段） -->
+    <select id="selectUnlockInfoById" resultMap="UnlockInfoResultMap">
+        SELECT id, need_unlock, unlock_point_price, author_id, status
+        FROM blog_article
+        WHERE id         = #{articleId}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+</mapper>
+
