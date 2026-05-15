@@ -1,0 +1,210 @@
+package com.myblog.growth.interfaces.rest.assembler;
+
+import com.myblog.growth.domain.model.aggregate.GrowthAccount;
+import com.myblog.growth.domain.model.valueobject.ExpJournal;
+import com.myblog.growth.domain.model.valueobject.GrowthRule;
+import com.myblog.growth.domain.model.valueobject.LevelThreshold;
+import com.myblog.growth.domain.service.LevelPolicyService;
+import com.myblog.growth.interfaces.rest.dto.request.BatchSaveThresholdRequest;
+import com.myblog.growth.interfaces.rest.dto.request.SaveRuleRequest;
+import com.myblog.growth.interfaces.rest.dto.response.ExpJournalVO;
+import com.myblog.growth.interfaces.rest.dto.response.GrowthAccountVO;
+import com.myblog.growth.interfaces.rest.dto.response.GrowthRuleVO;
+import com.myblog.growth.interfaces.rest.dto.response.LevelThresholdVO;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 成长模块 Assembler.
+ * <p>
+ * 负责 Domain 对象 ↔ VO，以及 Request ↔ Domain 对象之间的转换。
+ * 不含任何业务逻辑。
+ * </p>
+ */
+@Component
+public class GrowthAssembler {
+
+    private final LevelPolicyService levelPolicyService;
+
+    /**
+     * 构造注入.
+     *
+     * @param levelPolicyService 等级策略领域服务（用于组装进度信息）
+     */
+    public GrowthAssembler(LevelPolicyService levelPolicyService) {
+        this.levelPolicyService = levelPolicyService;
+    }
+
+    // ─────────────────── GrowthAccount → VO ───────────────────
+
+    /**
+     * 将成长账户聚合根和等级阈值列表组装为 {@link GrowthAccountVO}.
+     *
+     * @param account    成长账户聚合根
+     * @param thresholds 等级阈值列表（按 level ASC）
+     * @return 成长账户 VO
+     */
+    public GrowthAccountVO toVO(GrowthAccount account, List<LevelThreshold> thresholds) {
+        GrowthAccountVO vo = new GrowthAccountVO();
+        vo.setUserId(account.getUserId());
+        vo.setCurrentExp(account.getCurrentExp());
+        vo.setCurrentLevel(account.getCurrentLevel());
+        vo.setLevelName(levelPolicyService.getLevelName(account.getCurrentLevel(), thresholds));
+        vo.setProgressPercent(levelPolicyService.progressPercent(
+                account.getCurrentExp(), account.getCurrentLevel(), thresholds));
+        vo.setExpToNextLevel(levelPolicyService.expToNextLevel(
+                account.getCurrentExp(), account.getCurrentLevel(), thresholds));
+        return vo;
+    }
+
+    // ─────────────────── ExpJournal → VO ───────────────────
+
+    /**
+     * 将经验流水值对象转换为 {@link ExpJournalVO}.
+     *
+     * @param journal 经验流水值对象
+     * @return 经验流水 VO
+     */
+    public ExpJournalVO toVO(ExpJournal journal) {
+        ExpJournalVO vo = new ExpJournalVO();
+        vo.setId(journal.getId());
+        vo.setDelta(journal.getDelta());
+        vo.setBalanceAfter(journal.getBalanceAfter());
+        vo.setEventType(journal.getEventType());
+        vo.setRemark(journal.getRemark());
+        vo.setCreatedAt(journal.getCreatedAt());
+        return vo;
+    }
+
+    /**
+     * 批量转换经验流水列表.
+     *
+     * @param journals 经验流水列表
+     * @return VO 列表
+     */
+    public List<ExpJournalVO> toJournalVOList(List<ExpJournal> journals) {
+        List<ExpJournalVO> voList = new ArrayList<>(journals.size());
+        for (ExpJournal j : journals) {
+            voList.add(toVO(j));
+        }
+        return voList;
+    }
+
+    // ─────────────────── GrowthRule ↔ VO ───────────────────
+
+    /**
+     * 将经验规则值对象转换为 {@link GrowthRuleVO}.
+     *
+     * @param rule 经验规则值对象
+     * @return 规则 VO
+     */
+    public GrowthRuleVO toVO(GrowthRule rule) {
+        GrowthRuleVO vo = new GrowthRuleVO();
+        vo.setId(rule.getId());
+        vo.setEventType(rule.getEventType());
+        vo.setRole(rule.getRole());
+        vo.setExpAmount(rule.getExpAmount());
+        vo.setDailyLimit(rule.getDailyLimit());
+        vo.setDailyLimitStrategy(rule.getDailyLimitStrategy());
+        vo.setEnabled(rule.isEnabled());
+        vo.setEffectiveAt(rule.getEffectiveAt());
+        vo.setOperator(rule.getOperator());
+        vo.setReason(rule.getReason());
+        vo.setVersion(rule.getVersion());
+        return vo;
+    }
+
+    /**
+     * 批量转换规则列表.
+     *
+     * @param rules 规则列表
+     * @return VO 列表
+     */
+    public List<GrowthRuleVO> toRuleVOList(List<GrowthRule> rules) {
+        List<GrowthRuleVO> voList = new ArrayList<>(rules.size());
+        for (GrowthRule r : rules) {
+            voList.add(toVO(r));
+        }
+        return voList;
+    }
+
+    /**
+     * 将 {@link SaveRuleRequest} 转换为领域值对象 {@link GrowthRule}.
+     *
+     * @param req 请求体
+     * @return 规则值对象（id / version 取自请求体，可为 null）
+     */
+    public GrowthRule toDomain(SaveRuleRequest req) {
+        return GrowthRule.of(
+                req.getId(),
+                req.getEventType(),
+                req.getRole(),
+                req.getExpAmount() == null ? 0 : req.getExpAmount(),
+                req.getDailyLimit(),
+                req.getDailyLimitStrategy(),
+                req.isEnabled(),
+                req.getEffectiveAt(),
+                req.getOperator(),
+                req.getReason(),
+                req.getVersion() == null ? 0 : req.getVersion()
+        );
+    }
+
+    // ─────────────────── LevelThreshold ↔ VO ───────────────────
+
+    /**
+     * 将等级阈值值对象转换为 {@link LevelThresholdVO}.
+     *
+     * @param threshold 等级阈值值对象
+     * @return 等级阈值 VO
+     */
+    public LevelThresholdVO toVO(LevelThreshold threshold) {
+        LevelThresholdVO vo = new LevelThresholdVO();
+        vo.setLevel(threshold.getLevel());
+        vo.setMinExp(threshold.getMinExp());
+        vo.setLevelName(threshold.getLevelName());
+        vo.setDescription(threshold.getDescription());
+        vo.setVersion(threshold.getVersion());
+        return vo;
+    }
+
+    /**
+     * 批量转换等级阈值列表.
+     *
+     * @param thresholds 等级阈值列表
+     * @return VO 列表
+     */
+    public List<LevelThresholdVO> toThresholdVOList(List<LevelThreshold> thresholds) {
+        List<LevelThresholdVO> voList = new ArrayList<>(thresholds.size());
+        for (LevelThreshold t : thresholds) {
+            voList.add(toVO(t));
+        }
+        return voList;
+    }
+
+    /**
+     * 将 {@link BatchSaveThresholdRequest} 的条目转换为领域值对象列表.
+     *
+     * @param req 批量保存请求体
+     * @return 等级阈值值对象列表
+     */
+    public List<LevelThreshold> toDomainList(BatchSaveThresholdRequest req) {
+        List<LevelThreshold> list = new ArrayList<>(req.getThresholds().size());
+        for (BatchSaveThresholdRequest.ThresholdItem item : req.getThresholds()) {
+            list.add(LevelThreshold.of(
+                    null,
+                    item.getLevel(),
+                    item.getMinExp(),
+                    item.getLevelName(),
+                    item.getDescription(),
+                    true,
+                    req.getOperator(),
+                    item.getVersion()
+            ));
+        }
+        return list;
+    }
+}
+
