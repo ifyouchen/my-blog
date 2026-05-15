@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.UserGrowthAccountMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.myblog.growth.infrastructure.repository.persistence.entity.UserGrowthAccountDO">
+        <id     column="id"            property="id"/>
+        <result column="user_id"       property="userId"/>
+        <result column="current_exp"   property="currentExp"/>
+        <result column="current_level" property="currentLevel"/>
+        <result column="created_at"    property="createdAt"/>
+        <result column="updated_at"    property="updatedAt"/>
+        <result column="deleted_at"    property="deletedAt"/>
+        <result column="version"       property="version"/>
+    </resultMap>
+
+    <!-- 基础查询列 -->
+    <sql id="Base_Column_List">
+        id, user_id, current_exp, current_level,
+        created_at, updated_at, deleted_at, version
+    </sql>
+
+    <!-- 根据用户 ID 查询（排除已软删除） -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_growth_account
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <!-- 插入新成长账户 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_growth_account
+            (user_id, current_exp, current_level, created_at, updated_at, version)
+        VALUES
+            (#{userId}, #{currentExp}, #{currentLevel}, #{createdAt}, #{updatedAt}, #{version})
+    </insert>
+
+    <!-- 乐观锁 CAS 更新经验值和等级 -->
+    <update id="updateExpAndLevelCAS">
+        UPDATE user_growth_account
+        SET current_exp   = #{currentExp},
+            current_level = #{currentLevel},
+            updated_at    = NOW(),
+            version       = version + 1
+        WHERE id         = #{id}
+          AND version    = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>
+

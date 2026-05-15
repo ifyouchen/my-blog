@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.LevelThresholdConfigMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.myblog.growth.infrastructure.repository.persistence.entity.LevelThresholdConfigDO">
+        <id     column="id"          property="id"/>
+        <result column="level"       property="level"/>
+        <result column="min_exp"     property="minExp"/>
+        <result column="level_name"  property="levelName"/>
+        <result column="description" property="description"/>
+        <result column="enabled"     property="enabled"/>
+        <result column="operator"    property="operator"/>
+        <result column="created_at"  property="createdAt"/>
+        <result column="updated_at"  property="updatedAt"/>
+        <result column="deleted_at"  property="deletedAt"/>
+        <result column="version"     property="version"/>
+    </resultMap>
+
+    <!-- 基础查询列 -->
+    <sql id="Base_Column_List">
+        id, level, min_exp, level_name, description,
+        enabled, operator, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <!-- 查询所有启用的等级阈值，按 level ASC -->
+    <select id="selectAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM level_threshold_config
+        WHERE enabled    = 1
+          AND deleted_at IS NULL
+        ORDER BY level ASC
+    </select>
+
+    <!-- 批量 UPSERT：以 level 为唯一键 -->
+    <insert id="batchUpsert">
+        INSERT INTO level_threshold_config
+            (level, min_exp, level_name, description, enabled, operator, version)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.level}, #{item.minExp}, #{item.levelName}, #{item.description},
+             #{item.enabled}, #{item.operator}, 0)
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            min_exp    = VALUES(min_exp),
+            level_name = VALUES(level_name),
+            description = VALUES(description),
+            operator   = VALUES(operator),
+            updated_at = NOW(),
+            version    = version + 1
+    </insert>
+
+</mapper>
+

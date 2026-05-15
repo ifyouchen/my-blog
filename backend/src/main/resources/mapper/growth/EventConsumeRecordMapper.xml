@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.EventConsumeRecordMapper">
+
+    <!--
+        INSERT IGNORE：利用唯一索引 uk_event_consumer(event_id, consumer_name)
+        保证同一事件不被重复消费。返回 0 表示已存在，1 表示首次插入。
+    -->
+    <insert id="insertIgnoreProcessing">
+        INSERT IGNORE INTO event_consume_record
+            (event_id, consumer_name, status, version)
+        VALUES
+            (#{eventId}, #{consumerName}, 'PROCESSING', 0)
+    </insert>
+
+    <!-- 标记为成功 -->
+    <update id="updateToSuccess">
+        UPDATE event_consume_record
+        SET status     = 'SUCCESS',
+            updated_at = NOW()
+        WHERE event_id      = #{eventId}
+          AND consumer_name = #{consumerName}
+    </update>
+
+    <!-- 标记为失败，同时记录错误信息 -->
+    <update id="updateToFailed">
+        UPDATE event_consume_record
+        SET status     = 'FAILED',
+            error_msg  = #{errorMsg},
+            updated_at = NOW()
+        WHERE event_id      = #{eventId}
+          AND consumer_name = #{consumerName}
+    </update>
+
+</mapper>
+

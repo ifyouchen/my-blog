@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.UserExpJournalMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.myblog.growth.infrastructure.repository.persistence.entity.UserExpJournalDO">
+        <id     column="id"             property="id"/>
+        <result column="user_id"        property="userId"/>
+        <result column="delta"          property="delta"/>
+        <result column="balance_after"  property="balanceAfter"/>
+        <result column="event_type"     property="eventType"/>
+        <result column="source_id"      property="sourceId"/>
+        <result column="remark"         property="remark"/>
+        <result column="idempotent_key" property="idempotentKey"/>
+        <result column="created_at"     property="createdAt"/>
+        <result column="deleted_at"     property="deletedAt"/>
+        <result column="version"        property="version"/>
+    </resultMap>
+
+    <!-- 基础查询列 -->
+    <sql id="Base_Column_List">
+        id, user_id, delta, balance_after, event_type,
+        source_id, remark, idempotent_key, created_at, deleted_at, version
+    </sql>
+
+    <!-- INSERT IGNORE，幂等键冲突时静默忽略 -->
+    <insert id="insertIgnore" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO user_exp_journal
+            (user_id, delta, balance_after, event_type, source_id,
+             remark, idempotent_key, created_at, version)
+        VALUES
+            (#{userId}, #{delta}, #{balanceAfter}, #{eventType}, #{sourceId},
+             #{remark}, #{idempotentKey}, #{createdAt}, #{version})
+    </insert>
+
+    <!-- 查询最近 N 条流水（按 created_at 倒序） -->
+    <select id="selectRecentByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_exp_journal
+        WHERE user_id    = #{userId}
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
+

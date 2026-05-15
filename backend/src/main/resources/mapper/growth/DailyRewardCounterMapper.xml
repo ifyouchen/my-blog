@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.DailyRewardCounterMapper">
+
+    <!-- 查询当日已发经验量 -->
+    <select id="selectGrantedExp" resultType="java.lang.Integer">
+        SELECT exp_granted
+        FROM daily_reward_counter
+        WHERE user_id     = #{userId}
+          AND reward_type = #{rewardType}
+          AND stat_date   = #{statDate}
+          AND deleted_at  IS NULL
+        LIMIT 1
+    </select>
+
+    <!--
+        原子递增计数器：
+        首次插入时 count=countDelta, exp_granted=expDelta；
+        重复时追加递增，version 随 updated_at 自动刷新。
+    -->
+    <insert id="upsertCounter">
+        INSERT INTO daily_reward_counter
+            (user_id, reward_type, stat_date, count, exp_granted, version)
+        VALUES
+            (#{userId}, #{rewardType}, #{statDate}, #{countDelta}, #{expDelta}, 0)
+        ON DUPLICATE KEY UPDATE
+            count       = count + #{countDelta},
+            exp_granted = exp_granted + #{expDelta},
+            updated_at  = NOW()
+    </insert>
+
+</mapper>
+
