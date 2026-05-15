@@ -2,6 +2,8 @@ package com.myblog.growth.domain.repository;
 
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -16,6 +18,14 @@ public interface GrowthAccountRepository {
      * @return 成长账户（Optional）
      */
     Optional<GrowthAccount> findByUserId(Long userId);
+
+    /**
+     * 批量查询用户成长账户.
+     *
+     * @param userIds 用户 ID 列表
+     * @return 用户 ID 到成长账户的映射
+     */
+    Map<Long, GrowthAccount> findByUserIds(List<Long> userIds);
 
     /**
      * 保存成长账户（新增）.

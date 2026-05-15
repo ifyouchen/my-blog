@@ -56,6 +56,8 @@ public final class ArticlePersistenceConverter {
             articleDO.getSlug(),
             articleDO.getSeoTitle(),
             articleDO.getSeoDescription(),
+            boolValue(articleDO.getNeedUnlock()),
+            intValue(articleDO.getUnlockPointPrice()),
             articleDO.getScheduledPublishAt(),
             articleDO.getPublishedAt(),
             articleDO.getCreatedAt(),
@@ -92,6 +94,8 @@ public final class ArticlePersistenceConverter {
         articleDO.setSlug(article.getSlug());
         articleDO.setSeoTitle(article.getSeoTitle());
         articleDO.setSeoDescription(article.getSeoDescription());
+        articleDO.setNeedUnlock(article.isNeedUnlock());
+        articleDO.setUnlockPointPrice(article.getUnlockPointPrice());
         articleDO.setScheduledPublishAt(article.getScheduledPublishAt());
         articleDO.setPublishedAt(article.getPublishedAt());
         articleDO.setCreatedAt(article.getCreatedAt());

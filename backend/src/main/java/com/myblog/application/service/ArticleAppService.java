@@ -468,6 +468,8 @@ public class ArticleAppService {
             command.getSlug(),
             command.getSeoTitle(),
             command.getSeoDescription(),
+            command.isNeedUnlock(),
+            command.getUnlockPointPrice(),
             scheduledPublishAt
         );
         applyWarnFlag(article, sanitizedContent);
@@ -543,6 +545,7 @@ public class ArticleAppService {
             command.getSeoTitle(),
             command.getSeoDescription()
         );
+        article.updateUnlockRule(command.isNeedUnlock(), command.getUnlockPointPrice());
         applyStatus(article, targetStatus, scheduledPublishAt);
         applyWarnFlag(article, sanitizedContent);
         articleRepository.save(article);
@@ -1218,6 +1221,8 @@ public class ArticleAppService {
         String category = normalizeValue(command.getCategory());
         List<String> tags = command.getTags() == null ? Collections.<String>emptyList() : command.getTags();
         String coverUrl = resolveCoverUrl(command.getCoverUrl());
+        boolean needUnlock = command.isNeedUnlock();
+        int unlockPointPrice = command.getUnlockPointPrice();
 
         appendCheck(
             checks,
@@ -1278,6 +1283,16 @@ public class ArticleAppService {
             "warning",
             "已设置自定义封面",
             "当前会使用系统默认封面，建议上传更贴合主题的封面图"
+        );
+        appendCheck(
+            checks,
+            errors,
+            "unlockPointPrice",
+            "积分解锁",
+            !needUnlock || unlockPointPrice > 0,
+            "error",
+            needUnlock ? "已设置解锁积分" : "文章免费阅读",
+            "开启积分解锁后请设置大于 0 的解锁积分"
         );
 
         // 敏感词检测

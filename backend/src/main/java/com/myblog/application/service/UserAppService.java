@@ -52,6 +52,7 @@ public class UserAppService {
     private final ArticleAssembler articleAssembler;
     private final PasswordDomainService passwordDomainService;
     private final EmailQueueAppService emailQueueAppService;
+    private final UserLevelAppService userLevelAppService;
     private final String frontendBaseUrl;
 
     public UserAppService(UserRepository userRepository,
@@ -60,6 +61,7 @@ public class UserAppService {
                           ArticleAssembler articleAssembler,
                           PasswordDomainService passwordDomainService,
                           EmailQueueAppService emailQueueAppService,
+                          UserLevelAppService userLevelAppService,
                           @Value("${my-blog.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
@@ -67,6 +69,7 @@ public class UserAppService {
         this.articleAssembler = articleAssembler;
         this.passwordDomainService = passwordDomainService;
         this.emailQueueAppService = emailQueueAppService;
+        this.userLevelAppService = userLevelAppService;
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
@@ -93,6 +96,7 @@ public class UserAppService {
         user.updateExtendedProfile(website, github, twitter, location);
         userRepository.save(user);
         UserDTO result = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(result);
         log.info("{} | {} 更新个人资料 | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(userId, nickname),
@@ -153,6 +157,7 @@ public class UserAppService {
         user.changeEmail(newEmail);
         userRepository.save(user);
         com.myblog.application.dto.UserDTO result = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(result);
         log.info("{} | {} 更换邮箱 | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(userId),
@@ -225,7 +230,9 @@ public class UserAppService {
     public UserDTO getSecurityInfo(Long userId) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
-        return UserAssembler.toDTO(user);
+        UserDTO dto = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(dto);
+        return dto;
     }
 
     /**
@@ -240,7 +247,9 @@ public class UserAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
         AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, ArticleStatus.PUBLISHED.name());
         UserProfileDTO profileDTO = new UserProfileDTO();
-        profileDTO.setUser(UserAssembler.toDTO(user));
+        UserDTO userDTO = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(userDTO);
+        profileDTO.setUser(userDTO);
         profileDTO.setArticleCount(safeInt(metrics != null ? metrics.getArticleCount() : null));
         profileDTO.setTotalViewCount(safeLong(metrics != null ? metrics.getTotalViews() : null));
         profileDTO.setTotalLikeCount(safeLong(metrics != null ? metrics.getTotalLikes() : null));

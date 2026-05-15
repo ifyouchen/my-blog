@@ -58,6 +58,7 @@ public class CommentAppService {
     private final UserRepository userRepository;
     private final SensitiveWordAppService sensitiveWordAppService;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserLevelAppService userLevelAppService;
 
     /**
      * 创建评论应用服务。
@@ -72,13 +73,15 @@ public class CommentAppService {
                              ArticleRepository articleRepository,
                              UserRepository userRepository,
                              SensitiveWordAppService sensitiveWordAppService,
-                             ApplicationEventPublisher eventPublisher) {
+                             ApplicationEventPublisher eventPublisher,
+                             UserLevelAppService userLevelAppService) {
         this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
         this.sensitiveWordAppService = sensitiveWordAppService;
         this.eventPublisher = eventPublisher;
+        this.userLevelAppService = userLevelAppService;
     }
 
     /**
@@ -131,6 +134,7 @@ public class CommentAppService {
                 currentUserRole
             ));
         }
+        fillCommentUserLevels(items);
         return new PageResult<CommentDTO>(items, currentPage, currentPageSize, total);
     }
 
@@ -176,6 +180,7 @@ public class CommentAppService {
                 currentUserRole
             ));
         }
+        fillCommentUserLevels(items);
         return new PageResult<CommentDTO>(items, currentPage, currentPageSize, total);
     }
 
@@ -254,6 +259,7 @@ public class CommentAppService {
                 dto.setReplyToUser(toUserDTO(replyToUser));
             }
         }
+        fillCommentUserLevels(dto);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(user.getId().getValue(), user.getNickname()),
@@ -294,7 +300,9 @@ public class CommentAppService {
         commentRepository.save(comment);
         User user = userRepository.findById(comment.getUserId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
-        return CommentAssembler.toDTO(comment, user);
+        CommentDTO dto = CommentAssembler.toDTO(comment, user);
+        fillCommentUserLevels(dto);
+        return dto;
     }
 
     /**
@@ -505,7 +513,9 @@ public class CommentAppService {
         commentRepository.save(comment);
         User user = userRepository.findById(comment.getUserId())
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
-        return CommentAssembler.toDTO(comment, user);
+        CommentDTO dto = CommentAssembler.toDTO(comment, user);
+        fillCommentUserLevels(dto);
+        return dto;
     }
 
     /**
@@ -864,5 +874,46 @@ public class CommentAppService {
      */
     private UserDTO toUserDTO(User user) {
         return user == null ? null : com.myblog.application.assembler.UserAssembler.toDTO(user);
+    }
+
+    /**
+     * 批量填充评论涉及用户的等级。
+     *
+     * @param comments 评论 DTO 列表
+     */
+    private void fillCommentUserLevels(List<CommentDTO> comments) {
+        List<UserDTO> users = new ArrayList<UserDTO>();
+        for (CommentDTO comment : comments) {
+            collectCommentUsers(comment, users);
+        }
+        userLevelAppService.fillLevels(users);
+    }
+
+    /**
+     * 填充单条评论涉及用户的等级。
+     *
+     * @param comment 评论 DTO
+     */
+    private void fillCommentUserLevels(CommentDTO comment) {
+        List<UserDTO> users = new ArrayList<UserDTO>();
+        collectCommentUsers(comment, users);
+        userLevelAppService.fillLevels(users);
+    }
+
+    private void collectCommentUsers(CommentDTO comment, List<UserDTO> users) {
+        if (comment == null) {
+            return;
+        }
+        if (comment.getUser() != null) {
+            users.add(comment.getUser());
+        }
+        if (comment.getReplyToUser() != null) {
+            users.add(comment.getReplyToUser());
+        }
+        if (comment.getReplyPreview() != null) {
+            for (CommentDTO reply : comment.getReplyPreview()) {
+                collectCommentUsers(reply, users);
+            }
+        }
     }
 }

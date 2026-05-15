@@ -40,6 +40,7 @@ public final class UserAssembler {
         dto.setLastLoginIp(user.getLastLoginIp());
         dto.setRole(user.getRole().name());
         dto.setStatus(user.getStatus().name());
+        dto.setCurrentLevel(1);
         return dto;
     }
 }

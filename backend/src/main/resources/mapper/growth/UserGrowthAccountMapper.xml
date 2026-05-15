@@ -31,6 +31,17 @@
         LIMIT 1
     </select>
 
+    <!-- 批量查询成长账户（排除已软删除） -->
+    <select id="selectByUserIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_growth_account
+        WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+          AND deleted_at IS NULL
+    </select>
+
     <!-- 插入新成长账户 -->
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user_growth_account

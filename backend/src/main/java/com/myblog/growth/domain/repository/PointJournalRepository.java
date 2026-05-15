@@ -3,6 +3,7 @@ package com.myblog.growth.domain.repository;
 import com.myblog.growth.domain.model.valueobject.PointJournal;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 积分流水 Repository 接口.
@@ -16,6 +17,14 @@ public interface PointJournalRepository {
      * @return 插入行数（1=成功，0=幂等键重复）
      */
     int insertIgnore(PointJournal journal);
+
+    /**
+     * 根据业务单号查询积分流水.
+     *
+     * @param bizNo 业务单号（幂等键）
+     * @return 积分流水，不存在时为空
+     */
+    Optional<PointJournal> findByBizNo(String bizNo);
 
     /**
      * 查询用户近期积分流水（按创建时间倒序）.

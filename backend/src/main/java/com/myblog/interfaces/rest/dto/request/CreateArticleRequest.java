@@ -1,5 +1,7 @@
 package com.myblog.interfaces.rest.dto.request;
 
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Size;
 import java.util.List;
 
@@ -49,6 +51,14 @@ public class CreateArticleRequest {
     /** SEO描述. */
     @Size(max = 500, message = "SEO描述长度不能超过{max}个字符")
     private String seoDescription;
+
+    /** 是否需要积分解锁. */
+    private Boolean needUnlock;
+
+    /** 解锁所需积分. */
+    @Min(value = 0, message = "解锁积分不能小于{value}")
+    @Max(value = 1000000, message = "解锁积分不能超过{value}")
+    private Integer unlockPointPrice;
 
     /** 定时发布时间（ISO格式），为空则立即发布. */
     private String scheduledPublishAt;
@@ -231,6 +241,42 @@ public class CreateArticleRequest {
      */
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    /**
+     * 获取是否需要积分解锁.
+     *
+     * @return 是否需要积分解锁
+     */
+    public Boolean getNeedUnlock() {
+        return needUnlock;
+    }
+
+    /**
+     * 设置是否需要积分解锁.
+     *
+     * @param needUnlock 是否需要积分解锁
+     */
+    public void setNeedUnlock(Boolean needUnlock) {
+        this.needUnlock = needUnlock;
+    }
+
+    /**
+     * 获取解锁所需积分.
+     *
+     * @return 解锁积分
+     */
+    public Integer getUnlockPointPrice() {
+        return unlockPointPrice;
+    }
+
+    /**
+     * 设置解锁所需积分.
+     *
+     * @param unlockPointPrice 解锁积分
+     */
+    public void setUnlockPointPrice(Integer unlockPointPrice) {
+        this.unlockPointPrice = unlockPointPrice;
     }
 
     /**

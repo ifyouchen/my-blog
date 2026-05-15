@@ -412,6 +412,7 @@ onBeforeUnmount(teardownColumnObserver);
             eyebrow="个人主页"
             :avatar-src="profile.user.avatar"
             :title="profile.user.nickname"
+            :badge-text="`LV${profile.user.currentLevel || 1}`"
             :subtitle="summarySubtitle"
             :bio="profile.user.bio"
             :stats="summaryStats"

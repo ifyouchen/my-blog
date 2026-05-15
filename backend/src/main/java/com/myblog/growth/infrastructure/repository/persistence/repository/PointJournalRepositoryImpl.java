@@ -8,6 +8,7 @@ import com.myblog.growth.infrastructure.repository.persistence.mapper.UserPointJ
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +41,18 @@ public class PointJournalRepositoryImpl implements PointJournalRepository {
     public int insertIgnore(PointJournal journal) {
         UserPointJournalDO do_ = GrowthConverter.toPointJournalDO(journal);
         return mapper.insertIgnore(do_);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<PointJournal> findByBizNo(String bizNo) {
+        UserPointJournalDO do_ = mapper.selectByBizNo(bizNo);
+        if (do_ == null) {
+            return Optional.empty();
+        }
+        return Optional.of(GrowthConverter.toPointJournalDomain(do_));
     }
 
     /**

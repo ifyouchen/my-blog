@@ -73,6 +73,8 @@ const defaultDraft = {
     slug: '',
     seoTitle: '',
     seoDescription: '',
+    needUnlock: false,
+    unlockPointPrice: 0,
     scheduledPublishAt: ''
 };
 
@@ -243,6 +245,8 @@ function hasAutoSaveableContent() {
         || draft.slug.trim()
         || draft.seoTitle.trim()
         || draft.seoDescription.trim()
+        || draft.needUnlock
+        || Number(draft.unlockPointPrice || 0) > 0
         || draft.scheduledPublishAt.trim()
     );
 }
@@ -282,6 +286,8 @@ async function runAutoSaveDraft() {
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
             seoDescription: article.seoDescription || '',
+            needUnlock: Boolean(article.needUnlock),
+            unlockPointPrice: Number(article.unlockPointPrice || 0),
             scheduledPublishAt: normalizeDateTimeLocal(article.scheduledPublishAt || draft.scheduledPublishAt || '')
         });
         hydratingDraft.value = false;
@@ -466,6 +472,8 @@ function createDraftSnapshot(currentDraft) {
         slug: currentDraft.slug || '',
         seoTitle: currentDraft.seoTitle || '',
         seoDescription: currentDraft.seoDescription || '',
+        needUnlock: Boolean(currentDraft.needUnlock),
+        unlockPointPrice: Number(currentDraft.unlockPointPrice || 0),
         scheduledPublishAt: currentDraft.scheduledPublishAt || ''
     });
 }
@@ -539,6 +547,8 @@ function applyDraft(source = {}) {
     draft.slug = source.slug || '';
     draft.seoTitle = source.seoTitle || '';
     draft.seoDescription = source.seoDescription || '';
+    draft.needUnlock = Boolean(source.needUnlock);
+    draft.unlockPointPrice = Number(source.unlockPointPrice || 0);
     draft.scheduledPublishAt = normalizeDateTimeLocal(source.scheduledPublishAt || '');
 }
 
@@ -704,6 +714,8 @@ async function fetchArticle() {
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
             seoDescription: article.seoDescription || '',
+            needUnlock: Boolean(article.needUnlock),
+            unlockPointPrice: Number(article.unlockPointPrice || 0),
             scheduledPublishAt: article.scheduledPublishAt || ''
         };
         const storedDraft = readStoredDraft(storageKey.value);
@@ -848,6 +860,8 @@ async function persistArticle(status, options = {}) {
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
             seoDescription: article.seoDescription || '',
+            needUnlock: Boolean(article.needUnlock),
+            unlockPointPrice: Number(article.unlockPointPrice || 0),
             scheduledPublishAt: article.scheduledPublishAt || ''
         });
         hydratingDraft.value = false;
@@ -1028,6 +1042,8 @@ async function doRestoreVersion(versionNo) {
             slug: article.slug || '',
             seoTitle: article.seoTitle || '',
             seoDescription: article.seoDescription || '',
+            needUnlock: Boolean(article.needUnlock),
+            unlockPointPrice: Number(article.unlockPointPrice || 0),
             scheduledPublishAt: article.scheduledPublishAt || ''
         });
         hydratingDraft.value = false;
@@ -1401,6 +1417,30 @@ onUnmounted(() => {
                 <p v-if="unconfiguredDraftTags.length" class="editor-tag-warning">
                     未收录标签「{{ unconfiguredDraftTags.join('、') }}」不会出现在搜索页标签筛选项里。
                 </p>
+            </section>
+            <section class="editor-side-block editor-unlock-section">
+                <div class="editor-unlock-head">
+                    <div>
+                        <p class="eyebrow">阅读权益</p>
+                        <strong>积分解锁</strong>
+                    </div>
+                    <label class="editor-unlock-switch">
+                        <input v-model="draft.needUnlock" type="checkbox" data-testid="editor-need-unlock-toggle">
+                        <span>{{ draft.needUnlock ? '已开启' : '免费阅读' }}</span>
+                    </label>
+                </div>
+                <label class="editor-unlock-price" :class="{ disabled: !draft.needUnlock }">
+                    <span>解锁积分</span>
+                    <input
+                        v-model.number="draft.unlockPointPrice"
+                        type="number"
+                        min="0"
+                        max="1000000"
+                        step="1"
+                        :disabled="!draft.needUnlock"
+                        data-testid="editor-unlock-price-input"
+                    >
+                </label>
             </section>
             <section class="editor-side-block editor-schedule-section">
                 <div>
@@ -2102,6 +2142,63 @@ onUnmounted(() => {
     color: var(--warning);
     font-size: 12px;
     line-height: 1.6;
+}
+
+.editor-unlock-section {
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.editor-unlock-head {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.editor-unlock-head strong {
+    display: block;
+    margin-top: 3px;
+    color: var(--text);
+    font-size: 15px;
+}
+
+.editor-unlock-switch {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 30px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.editor-unlock-switch input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--brand);
+}
+
+.editor-unlock-price {
+    display: grid;
+    gap: 8px;
+}
+
+.editor-unlock-price span {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.editor-unlock-price input {
+    width: 100%;
+}
+
+.editor-unlock-price.disabled {
+    opacity: 0.55;
 }
 
 .editor-schedule-section {

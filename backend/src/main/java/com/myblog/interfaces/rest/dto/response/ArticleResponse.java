@@ -38,6 +38,8 @@ public class ArticleResponse {
     private String slug;
     private String seoTitle;
     private String seoDescription;
+    private boolean needUnlock;
+    private int unlockPointPrice;
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
@@ -393,6 +395,22 @@ public class ArticleResponse {
 
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    public boolean isNeedUnlock() {
+        return needUnlock;
+    }
+
+    public void setNeedUnlock(boolean needUnlock) {
+        this.needUnlock = needUnlock;
+    }
+
+    public int getUnlockPointPrice() {
+        return unlockPointPrice;
+    }
+
+    public void setUnlockPointPrice(int unlockPointPrice) {
+        this.unlockPointPrice = unlockPointPrice;
     }
 
     public String getScheduledPublishAt() {

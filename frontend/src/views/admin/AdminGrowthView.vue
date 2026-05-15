@@ -1,7 +1,12 @@
 <script setup>
-import {reactive, ref} from 'vue';
+import {computed, onMounted, reactive, ref} from 'vue';
 import {useToast} from '@/composables/useToast';
-import {adminAdjustPointsApi, adminGetPointAccountApi} from '@/api/growth';
+import {
+    adminAdjustPointsApi,
+    adminGetPointAccountApi,
+    getAdminRevenueSharesApi,
+    retryRevenueShareSettlementApi,
+} from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
 
 const toast = useToast();
@@ -90,6 +95,98 @@ const doAdjust = async () => {
         adjusting.value = false;
     }
 };
+
+// ── 分账结算管理 ─────────────────────────────────────────────────
+const revenueFilters = reactive({
+    authorId: '',
+    settlementStatus: '',
+});
+const revenueState = reactive({
+    items: [],
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    loading: false,
+    error: '',
+});
+const retryingOrderNo = ref('');
+
+const REVENUE_STATUS_META = {
+    PENDING: {label: '待结算', className: 'pending'},
+    SETTLED: {label: '已入账', className: 'settled'},
+    FAILED: {label: '失败待处理', className: 'failed'},
+};
+
+const revenueStatusMeta = (status) => REVENUE_STATUS_META[status] || {
+    label: status || '未知',
+    className: 'pending',
+};
+
+const revenueTotalPages = computed(() => Math.max(1, Math.ceil(revenueState.total / revenueState.pageSize)));
+
+const canRetryRevenue = (row) => ['PENDING', 'FAILED'].includes(row?.settlementStatus);
+
+const loadRevenueShares = async () => {
+    revenueState.loading = true;
+    revenueState.error = '';
+    try {
+        const result = await getAdminRevenueSharesApi({
+            authorId: String(revenueFilters.authorId || '').trim(),
+            settlementStatus: revenueFilters.settlementStatus,
+            page: revenueState.page,
+            size: revenueState.pageSize,
+        });
+        revenueState.items = result.items || [];
+        revenueState.total = result.total || revenueState.items.length;
+    } catch (e) {
+        revenueState.error = e.message || '分账流水加载失败';
+        revenueState.items = [];
+        revenueState.total = 0;
+    } finally {
+        revenueState.loading = false;
+    }
+};
+
+const searchRevenueShares = () => {
+    revenueState.page = 1;
+    loadRevenueShares();
+};
+
+const resetRevenueFilters = () => {
+    revenueFilters.authorId = '';
+    revenueFilters.settlementStatus = '';
+    searchRevenueShares();
+};
+
+const prevRevenuePage = () => {
+    if (revenueState.page <= 1) return;
+    revenueState.page -= 1;
+    loadRevenueShares();
+};
+
+const nextRevenuePage = () => {
+    if (revenueState.page >= revenueTotalPages.value) return;
+    revenueState.page += 1;
+    loadRevenueShares();
+};
+
+const retryRevenueShare = async (row) => {
+    if (!row?.orderNo || retryingOrderNo.value) return;
+    retryingOrderNo.value = row.orderNo;
+    try {
+        const result = await retryRevenueShareSettlementApi(row.orderNo);
+        toast.success(result?.message || '已触发分账重试');
+        await loadRevenueShares();
+    } catch (e) {
+        toast.error(e.message || '分账重试失败');
+    } finally {
+        retryingOrderNo.value = '';
+    }
+};
+
+onMounted(() => {
+    loadRevenueShares();
+});
 </script>
 
 <template>
@@ -180,6 +277,109 @@ const doAdjust = async () => {
             </div>
         </section>
 
+        <!-- 分账结算 -->
+        <section class="ag-section">
+            <div class="ag-section-head">
+                <h2 class="ag-section-title">分账结算</h2>
+                <span class="ag-section-subtitle">异步入账，失败可人工重试</span>
+            </div>
+
+            <div class="revenue-toolbar">
+                <input
+                    v-model="revenueFilters.authorId"
+                    type="text"
+                    placeholder="作者用户 ID"
+                    class="ag-input revenue-author-input"
+                    @keydown.enter="searchRevenueShares"
+                />
+                <select v-model="revenueFilters.settlementStatus" class="ag-input revenue-status-select">
+                    <option value="">全部状态</option>
+                    <option value="PENDING">待结算</option>
+                    <option value="SETTLED">已入账</option>
+                    <option value="FAILED">失败待处理</option>
+                </select>
+                <button type="button" class="ag-btn primary" :disabled="revenueState.loading" @click="searchRevenueShares">
+                    {{ revenueState.loading ? '查询中...' : '查询' }}
+                </button>
+                <button type="button" class="ag-btn secondary" :disabled="revenueState.loading" @click="resetRevenueFilters">
+                    重置
+                </button>
+            </div>
+
+            <div v-if="revenueState.error" class="ag-error">{{ revenueState.error }}</div>
+            <div v-if="revenueState.loading" class="ag-table-empty">加载中...</div>
+            <div v-else-if="revenueState.items.length === 0" class="ag-table-empty">暂无分账记录</div>
+            <div v-else class="ag-table-wrap">
+                <table class="ag-table revenue-table">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>作者</th>
+                            <th>文章</th>
+                            <th>总积分</th>
+                            <th>平台</th>
+                            <th>作者分成</th>
+                            <th>状态</th>
+                            <th>作者流水号</th>
+                            <th>重试</th>
+                            <th>错误</th>
+                            <th>创建/结算时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="row in revenueState.items" :key="row.id || row.orderNo">
+                            <td class="biz-no" :title="row.orderNo">{{ row.orderNo }}</td>
+                            <td>{{ row.authorId }}</td>
+                            <td>{{ row.articleId }}</td>
+                            <td>{{ row.totalPoints }}</td>
+                            <td>{{ row.platformPoints }}</td>
+                            <td class="delta plus">+{{ row.authorPoints }}</td>
+                            <td>
+                                <span :class="['status-chip', revenueStatusMeta(row.settlementStatus).className]">
+                                    {{ revenueStatusMeta(row.settlementStatus).label }}
+                                </span>
+                            </td>
+                            <td class="biz-no" :title="row.pointJournalBizNo">
+                                {{ row.pointJournalBizNo || '-' }}
+                            </td>
+                            <td>{{ row.retryCount || 0 }}</td>
+                            <td class="error-cell" :title="row.lastError">{{ row.lastError || '-' }}</td>
+                            <td class="time-cell">
+                                <span>{{ formatAdminDateTime(row.createdAt) }}</span>
+                                <span v-if="row.settledAt">入账 {{ formatAdminDateTime(row.settledAt) }}</span>
+                            </td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="ag-btn secondary small"
+                                    :disabled="!canRetryRevenue(row) || retryingOrderNo === row.orderNo"
+                                    @click="retryRevenueShare(row)"
+                                >
+                                    {{ retryingOrderNo === row.orderNo ? '重试中' : '重试' }}
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div v-if="revenueState.total > revenueState.pageSize" class="ag-pagination">
+                <button type="button" class="ag-btn secondary small" :disabled="revenueState.page <= 1" @click="prevRevenuePage">
+                    上一页
+                </button>
+                <span>第 {{ revenueState.page }} / {{ revenueTotalPages }} 页，共 {{ revenueState.total }} 条</span>
+                <button
+                    type="button"
+                    class="ag-btn secondary small"
+                    :disabled="revenueState.page >= revenueTotalPages"
+                    @click="nextRevenuePage"
+                >
+                    下一页
+                </button>
+            </div>
+        </section>
+
         <!-- 本次操作历史 -->
         <section v-if="adjustHistory.length > 0" class="ag-section">
             <h2 class="ag-section-title">本页操作记录（会话内）</h2>
@@ -232,6 +432,22 @@ const doAdjust = async () => {
     margin: 0 0 16px;
 }
 
+.ag-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.ag-section-head .ag-section-title {
+    margin-bottom: 0;
+}
+
+.ag-section-subtitle {
+    font-size: 12px;
+    color: #6b7280;
+}
+
 .ag-hint {
     font-size: 13px;
     color: var(--admin-muted, #6b7280);
@@ -279,6 +495,22 @@ const doAdjust = async () => {
 .ag-btn.small { height: 32px; padding: 0 12px; font-size: 13px; }
 .ag-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .ag-btn:not(:disabled):hover { opacity: 0.88; }
+
+.revenue-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.revenue-author-input {
+    max-width: 180px;
+}
+
+.revenue-status-select {
+    max-width: 160px;
+}
 
 /* 结果卡 */
 .ag-result-card {
@@ -372,6 +604,11 @@ const doAdjust = async () => {
     font-size: 13px;
 }
 
+.ag-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
 .ag-table th {
     text-align: left;
     padding: 8px 10px;
@@ -391,9 +628,45 @@ const doAdjust = async () => {
 .ag-table tr:last-child td { border-bottom: none; }
 .ag-table tr:hover td { background: #f9fafb; }
 
+.ag-table-empty {
+    padding: 28px 12px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.revenue-table {
+    min-width: 1080px;
+}
+
 .delta { font-weight: 700; }
 .delta.plus { color: #16a34a; }
 .delta.minus { color: #dc2626; }
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-chip.pending {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.status-chip.settled {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.status-chip.failed {
+    background: #fef2f2;
+    color: #b91c1c;
+}
 
 .biz-no {
     font-family: monospace;
@@ -403,6 +676,34 @@ const doAdjust = async () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.error-cell {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #9ca3af;
+}
+
+.time-cell {
+    min-width: 140px;
+    color: #6b7280;
+}
+
+.time-cell span {
+    display: block;
+    white-space: nowrap;
+}
+
+.ag-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+    color: #6b7280;
+    font-size: 13px;
 }
 </style>
 

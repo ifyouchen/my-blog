@@ -121,3 +121,26 @@ export const adminAdjustPointsApi = (payload) =>
 export const adminGetPointAccountApi = (userId) =>
     request(`/admin/points/account?userId=${userId}`);
 
+/**
+ * 管理员分页查询分账流水.
+ * @param {{ authorId?: number|string, settlementStatus?: string, page?: number, size?: number }} params
+ * @returns {Promise<PageResult>}
+ */
+export const getAdminRevenueSharesApi = (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.authorId) query.set('authorId', params.authorId);
+    if (params.settlementStatus) query.set('settlementStatus', params.settlementStatus);
+    if (params.page) query.set('page', params.page);
+    if (params.size) query.set('size', params.size);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request(`/admin/revenue-shares${suffix}`);
+};
+
+/**
+ * 管理员手动重试分账结算.
+ * @param {string} orderNo 解锁订单号
+ * @returns {Promise<{orderNo, status, pointJournalBizNo, message}>}
+ */
+export const retryRevenueShareSettlementApi = (orderNo) =>
+    request(`/admin/revenue-shares/${encodeURIComponent(orderNo)}/retry`, {method: 'POST'});
+

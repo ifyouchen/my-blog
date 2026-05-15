@@ -444,7 +444,7 @@ const routes = [
                 meta: {
                     title: '积分管理',
                     adminTitle: '积分管理',
-                    adminDescription: '查询用户积分账户、手动调整积分（正数加分/负数扣分），所有操作均记录审计日志。'
+                    adminDescription: '查询用户积分账户、手动调分，并处理文章解锁分账的异步结算与重试。'
                 }
             }
         ]

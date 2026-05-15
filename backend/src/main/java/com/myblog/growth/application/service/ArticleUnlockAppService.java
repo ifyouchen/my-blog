@@ -1,5 +1,6 @@
 package com.myblog.growth.application.service;
 
+import com.myblog.growth.application.event.RevenueShareCreatedEvent;
 import com.myblog.growth.domain.model.aggregate.UnlockOrder;
 import com.myblog.growth.domain.repository.UnlockOrderRepository;
 import com.myblog.growth.domain.repository.UnlockRelationRepository;
@@ -9,6 +10,7 @@ import com.myblog.growth.shared.exception.GrowthBusinessException;
 import com.myblog.growth.shared.exception.GrowthErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 文章积分解锁应用服务.
  *
  * <p>
- * 负责处理用户解锁付费文章的全流程：检查文章锁态 → 幂等校验 → 积分扣减 → 写入凭证 → 分账记录。
+ * 负责处理用户解锁付费文章的全流程：检查文章锁态 → 幂等校验 → 积分扣减 → 写入凭证 → 待结算分账记录。
  * 整个流程在一个本地事务内完成，任一步骤失败整体回滚。
  * </p>
  *
@@ -32,8 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
  *   ⑤  INSERT IGNORE article_unlock_order(PENDING)
  *   ⑥  PointAppService.deductPoints(userId, pointsCost, "UNLOCK", orderNo)
  *   ⑦  INSERT IGNORE article_unlock_relation
- *   ⑧  RevenueShareAppService.createShareRecord(orderNo, articleId, authorId, pointsCost)
+ *   ⑧  RevenueShareAppService.createPendingShare(orderNo, articleId, authorId, pointsCost)
  *   ⑨  UPDATE article_unlock_order SET status=SUCCESS
+ *   ⑩  发布 RevenueShareCreatedEvent，事务提交后异步结算作者分成
  * </pre>
  */
 @Service
@@ -46,6 +49,7 @@ public class ArticleUnlockAppService {
     private final UnlockRelationRepository unlockRelationRepository;
     private final PointAppService pointAppService;
     private final RevenueShareAppService revenueShareAppService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 构造注入.
@@ -55,17 +59,20 @@ public class ArticleUnlockAppService {
      * @param unlockRelationRepository 解锁关系 Repository
      * @param pointAppService          积分应用服务
      * @param revenueShareAppService   分账应用服务
+     * @param eventPublisher           应用事件发布器
      */
     public ArticleUnlockAppService(ArticleUnlockInfoMapper articleUnlockInfoMapper,
                                    UnlockOrderRepository unlockOrderRepository,
                                    UnlockRelationRepository unlockRelationRepository,
                                    PointAppService pointAppService,
-                                   RevenueShareAppService revenueShareAppService) {
+                                   RevenueShareAppService revenueShareAppService,
+                                   ApplicationEventPublisher eventPublisher) {
         this.articleUnlockInfoMapper = articleUnlockInfoMapper;
         this.unlockOrderRepository = unlockOrderRepository;
         this.unlockRelationRepository = unlockRelationRepository;
         this.pointAppService = pointAppService;
         this.revenueShareAppService = revenueShareAppService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -190,12 +197,15 @@ public class ArticleUnlockAppService {
         // ⑦ INSERT IGNORE article_unlock_relation
         unlockRelationRepository.insertIgnore(userId, articleId, orderNo);
 
-        // ⑧ 分账记录
+        // ⑧ 分账记录：只创建待结算流水，作者入账由事务提交后的异步事件处理
         Long authorId = articleInfo.getAuthorId();
-        revenueShareAppService.createShareRecord(orderNo, articleId, authorId, pointsCost);
+        revenueShareAppService.createPendingShare(orderNo, articleId, authorId, pointsCost);
 
         // ⑨ 订单状态改为 SUCCESS
         unlockOrderRepository.markSuccess(orderNo);
+
+        // ⑩ 发布分账创建事件，监听器在 AFTER_COMMIT 阶段异步结算
+        eventPublisher.publishEvent(new RevenueShareCreatedEvent(orderNo));
 
         log.info("[解锁] 成功。userId={}, articleId={}, pointsCost={}, balanceAfter={}",
                 userId, articleId, pointsCost, balanceAfter);

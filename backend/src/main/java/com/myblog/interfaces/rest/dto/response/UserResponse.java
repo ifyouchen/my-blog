@@ -70,6 +70,9 @@ public class UserResponse {
     /** 总获赞数. */
     private long totalLikeCount;
 
+    /** 当前等级. */
+    private int currentLevel;
+
     /**
      * 获取用户ID.
      *
@@ -392,5 +395,23 @@ public class UserResponse {
      */
     public void setTotalLikeCount(long totalLikeCount) {
         this.totalLikeCount = totalLikeCount;
+    }
+
+    /**
+     * 获取当前等级.
+     *
+     * @return 当前等级
+     */
+    public int getCurrentLevel() {
+        return currentLevel;
+    }
+
+    /**
+     * 设置当前等级.
+     *
+     * @param currentLevel 当前等级
+     */
+    public void setCurrentLevel(int currentLevel) {
+        this.currentLevel = currentLevel;
     }
 }

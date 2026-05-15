@@ -22,6 +22,68 @@ public interface RevenueShareJournalMapper {
     int insertIgnore(RevenueShareJournalDO journal);
 
     /**
+     * 根据订单号查询并锁定分账流水.
+     *
+     * @param orderNo 解锁订单号
+     * @return 分账流水，不存在时返回 null
+     */
+    RevenueShareJournalDO selectByOrderNoForUpdate(@Param("orderNo") String orderNo);
+
+    /**
+     * 标记分账已结算.
+     *
+     * @param orderNo           解锁订单号
+     * @param pointJournalBizNo 作者积分流水业务单号
+     * @return 更新行数
+     */
+    int markSettled(@Param("orderNo") String orderNo,
+                    @Param("pointJournalBizNo") String pointJournalBizNo);
+
+    /**
+     * 标记分账结算失败.
+     *
+     * @param orderNo   解锁订单号
+     * @param lastError 最近一次错误信息
+     * @return 更新行数
+     */
+    int markFailed(@Param("orderNo") String orderNo,
+                   @Param("lastError") String lastError);
+
+    /**
+     * 扫描需要补偿结算的分账流水.
+     *
+     * @param maxRetry 最大重试次数
+     * @param limit    最大返回条数
+     * @return 分账流水列表
+     */
+    List<RevenueShareJournalDO> selectRetryableForSettlement(@Param("maxRetry") int maxRetry,
+                                                             @Param("limit") int limit);
+
+    /**
+     * 管理端分页查询分账流水.
+     *
+     * @param authorId         作者用户 ID（可选）
+     * @param settlementStatus 结算状态（可选）
+     * @param limit            每页条数
+     * @param offset           偏移量
+     * @return 分账流水列表
+     */
+    List<RevenueShareJournalDO> selectAdminPage(@Param("authorId") Long authorId,
+                                                @Param("settlementStatus") String settlementStatus,
+                                                @Param("limit") int limit,
+                                                @Param("offset") int offset);
+
+    /**
+     * 管理端统计分账流水总数.
+     *
+     * @param authorId         作者用户 ID（可选）
+     * @param settlementStatus 结算状态（可选）
+     * @return 总数
+     */
+    long countAdmin(@Param("authorId") Long authorId,
+                    @Param("settlementStatus") String settlementStatus);
+
+    /**
      * 查询作者的分账流水（按创建时间倒序）.
      *
      * @param authorId 作者用户 ID

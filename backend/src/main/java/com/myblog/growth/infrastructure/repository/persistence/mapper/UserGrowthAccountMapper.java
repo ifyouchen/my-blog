@@ -4,6 +4,8 @@ import com.myblog.growth.infrastructure.repository.persistence.entity.UserGrowth
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 /**
  * 用户成长账户 MyBatis Mapper.
  * <p>
@@ -21,6 +23,14 @@ public interface UserGrowthAccountMapper {
      * @return 成长账户 DO，不存在时返回 null
      */
     UserGrowthAccountDO selectByUserId(@Param("userId") Long userId);
+
+    /**
+     * 批量查询成长账户（排除已软删除记录）.
+     *
+     * @param userIds 用户 ID 列表
+     * @return 成长账户 DO 列表
+     */
+    List<UserGrowthAccountDO> selectByUserIds(@Param("userIds") List<Long> userIds);
 
     /**
      * 插入新成长账户，回填自增主键.

@@ -22,6 +22,14 @@ public interface UserPointJournalMapper {
     int insertIgnore(UserPointJournalDO journal);
 
     /**
+     * 根据业务单号查询积分流水.
+     *
+     * @param bizNo 业务单号（幂等键）
+     * @return 积分流水，不存在时返回 null
+     */
+    UserPointJournalDO selectByBizNo(@Param("bizNo") String bizNo);
+
+    /**
      * 查询用户近期积分流水（按创建时间倒序）.
      *
      * @param userId 用户 ID

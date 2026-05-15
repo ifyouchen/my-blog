@@ -26,6 +26,7 @@ public class UserDTO {
     private long followerCount;
     private int articleCount;
     private long totalLikeCount;
+    private int currentLevel;
 
     /**
      * 获取用户 ID。
@@ -349,5 +350,23 @@ public class UserDTO {
      */
     public void setTotalLikeCount(long totalLikeCount) {
         this.totalLikeCount = totalLikeCount;
+    }
+
+    /**
+     * 获取用户当前等级。
+     *
+     * @return 当前等级
+     */
+    public int getCurrentLevel() {
+        return currentLevel;
+    }
+
+    /**
+     * 设置用户当前等级。
+     *
+     * @param currentLevel 当前等级
+     */
+    public void setCurrentLevel(int currentLevel) {
+        this.currentLevel = currentLevel;
     }
 }

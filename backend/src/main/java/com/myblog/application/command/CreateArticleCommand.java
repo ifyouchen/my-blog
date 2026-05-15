@@ -66,6 +66,16 @@ public class CreateArticleCommand {
     private String seoDescription;
 
     /**
+     * 是否需要积分解锁
+     */
+    private boolean needUnlock;
+
+    /**
+     * 解锁所需积分
+     */
+    private int unlockPointPrice;
+
+    /**
      * 定时发布时间（ISO-8601 字符串），仅 status=SCHEDULED 时有效
      */
     private String scheduledPublishAt;
@@ -266,6 +276,42 @@ public class CreateArticleCommand {
      */
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    /**
+     * 获取是否需要积分解锁。
+     *
+     * @return 是否需要积分解锁
+     */
+    public boolean isNeedUnlock() {
+        return needUnlock;
+    }
+
+    /**
+     * 设置是否需要积分解锁。
+     *
+     * @param needUnlock 是否需要积分解锁
+     */
+    public void setNeedUnlock(boolean needUnlock) {
+        this.needUnlock = needUnlock;
+    }
+
+    /**
+     * 获取解锁所需积分。
+     *
+     * @return 解锁积分
+     */
+    public int getUnlockPointPrice() {
+        return unlockPointPrice;
+    }
+
+    /**
+     * 设置解锁所需积分。
+     *
+     * @param unlockPointPrice 解锁积分
+     */
+    public void setUnlockPointPrice(int unlockPointPrice) {
+        this.unlockPointPrice = unlockPointPrice;
     }
 
     /**

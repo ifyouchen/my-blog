@@ -1,6 +1,7 @@
 <script setup>
-import {computed, onBeforeUnmount, onMounted, onUnmounted, ref} from 'vue';
+import {computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref} from 'vue';
 import {getUserProfileApi} from '@/api/auth';
+import UserLevelBadge from '@/components/UserLevelBadge.vue';
 
 const profileCache = new Map();
 const pendingProfileRequests = new Map();
@@ -43,6 +44,8 @@ const showCard = ref(false);
 const loading = ref(false);
 const profile = ref(null);
 const error = ref('');
+const panelRef = ref(null);
+const placement = ref('down');
 let hoverTimer = null;
 
 const userId = computed(() => props.user?.id);
@@ -51,6 +54,7 @@ const displayUser = computed(() => profile.value?.user || props.user || {});
 const displayName = computed(() => displayUser.value.name || displayUser.value.nickname || displayUser.value.username || '用户');
 const displayAvatar = computed(() => displayUser.value.avatar || displayUser.value.avatarUrl || props.user?.avatar || props.user?.avatarUrl);
 const displayBio = computed(() => displayUser.value.bio || '这个人还没有填写简介。');
+const displayLevel = computed(() => displayUser.value.currentLevel || props.user?.currentLevel || 1);
 
 const profileStats = computed(() => {
     const source = profile.value || {};
@@ -82,6 +86,8 @@ async function loadProfile() {
         const result = await request;
         profileCache.set(cacheKey, result);
         profile.value = result;
+        await nextTick();
+        positionPanel();
     } catch (requestError) {
         error.value = requestError.message || '用户信息加载失败';
     } finally {
@@ -92,10 +98,27 @@ async function loadProfile() {
     }
 }
 
+function positionPanel() {
+    if (!showCard.value || !panelRef.value) {
+        return;
+    }
+    const triggerRect = panelRef.value.parentElement?.getBoundingClientRect();
+    const panelRect = panelRef.value.getBoundingClientRect();
+    if (!triggerRect || !panelRect.height) {
+        return;
+    }
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const belowSpace = viewportHeight - triggerRect.bottom;
+    const aboveSpace = triggerRect.top;
+    placement.value = belowSpace < panelRect.height + 16 && aboveSpace > belowSpace ? 'up' : 'down';
+}
+
 function openWithDelay() {
     window.clearTimeout(hoverTimer);
     hoverTimer = window.setTimeout(async () => {
         showCard.value = true;
+        await nextTick();
+        positionPanel();
         await loadProfile();
     }, HOVER_DELAY);
 }
@@ -103,18 +126,23 @@ function openWithDelay() {
 function closeCard() {
     window.clearTimeout(hoverTimer);
     showCard.value = false;
+    placement.value = 'down';
 }
 
 function openOnFocus() {
     window.clearTimeout(hoverTimer);
     showCard.value = true;
+    nextTick(positionPanel);
     loadProfile();
 }
 
 function toggleOnClick() {
     showCard.value = !showCard.value;
     if (showCard.value) {
+        nextTick(positionPanel);
         loadProfile();
+    } else {
+        placement.value = 'down';
     }
 }
 
@@ -124,14 +152,22 @@ function handleDocumentClick(e) {
     }
 }
 
+function handleViewportChange() {
+    positionPanel();
+}
+
 onMounted(() => {
     if (isClickTrigger.value) {
         document.addEventListener('click', handleDocumentClick);
     }
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
 });
 
 onUnmounted(() => {
     document.removeEventListener('click', handleDocumentClick);
+    window.removeEventListener('resize', handleViewportChange);
+    window.removeEventListener('scroll', handleViewportChange, true);
 });
 
 onBeforeUnmount(() => {
@@ -169,7 +205,8 @@ onBeforeUnmount(() => {
             :to="profilePath"
         >
             <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
-            {{ displayName }}
+            <span class="user-hover-card-name-text">{{ displayName }}</span>
+            <UserLevelBadge :level="displayLevel" compact />
         </RouterLink>
         <span
             v-else
@@ -177,14 +214,24 @@ onBeforeUnmount(() => {
             :class="[triggerClass, nameClass]"
         >
             <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
-            {{ displayName }}
+            <span class="user-hover-card-name-text">{{ displayName }}</span>
+            <UserLevelBadge :level="displayLevel" compact />
         </span>
 
-        <span v-if="showCard" class="user-hover-panel" role="tooltip">
+        <span
+            v-if="showCard"
+            ref="panelRef"
+            class="user-hover-panel"
+            :class="`user-hover-panel--${placement}`"
+            role="tooltip"
+        >
             <span class="user-hover-panel-head">
                 <img class="user-hover-panel-avatar" :src="displayAvatar" :alt="displayName" decoding="async">
                 <span class="user-hover-panel-main">
-                    <RouterLink class="user-hover-panel-name" :to="profilePath">{{ displayName }}</RouterLink>
+                    <span class="user-hover-panel-name-row">
+                        <RouterLink class="user-hover-panel-name" :to="profilePath">{{ displayName }}</RouterLink>
+                        <UserLevelBadge :level="displayLevel" compact />
+                    </span>
                     <small v-if="displayUser.username">@{{ displayUser.username }}</small>
                     <small v-else>内容创作者</small>
                 </span>
@@ -214,6 +261,7 @@ onBeforeUnmount(() => {
 .user-hover-card-trigger {
     display: inline-flex;
     align-items: center;
+    gap: 5px;
     color: inherit;
     text-decoration: none;
     cursor: pointer;
@@ -225,6 +273,10 @@ onBeforeUnmount(() => {
 
 .user-hover-card-prefix {
     margin-right: 2px;
+}
+
+.user-hover-card-name-text {
+    min-width: 0;
 }
 
 .user-hover-card-trigger:hover,
@@ -253,6 +305,11 @@ onBeforeUnmount(() => {
     box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
 }
 
+.user-hover-panel--up {
+    top: auto;
+    bottom: calc(100% + 10px);
+}
+
 .user-hover-panel::before {
     position: absolute;
     top: -6px;
@@ -264,6 +321,15 @@ onBeforeUnmount(() => {
     border-top: 1px solid var(--line);
     border-left: 1px solid var(--line);
     transform: rotate(45deg);
+}
+
+.user-hover-panel--up::before {
+    top: auto;
+    bottom: -6px;
+    border-top: 0;
+    border-left: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
 }
 
 .user-hover-panel-head {
@@ -282,6 +348,13 @@ onBeforeUnmount(() => {
 
 .user-hover-panel-main {
     display: grid;
+    min-width: 0;
+}
+
+.user-hover-panel-name-row {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
     min-width: 0;
 }
 

@@ -9,6 +9,7 @@ export const normalizeUser = (user) => ({
     followerCount: user.followerCount || 0,
     articleCount: user.articleCount || 0,
     totalLikeCount: user.totalLikeCount || 0,
+    currentLevel: Number(user.currentLevel || user.level || 1),
     email: user.email,
     role: user.role,
     status: user.status,
@@ -127,6 +128,8 @@ export const normalizeArticle = (article) => {
         slug: article.slug || '',
         seoTitle: article.seoTitle || '',
         seoDescription: article.seoDescription || '',
+        needUnlock: Boolean(article.needUnlock),
+        unlockPointPrice: Number(article.unlockPointPrice || 0),
         scheduledPublishAt: article.scheduledPublishAt || '',
         stats: {
             views: `${article.viewCount || 0} 阅读`,

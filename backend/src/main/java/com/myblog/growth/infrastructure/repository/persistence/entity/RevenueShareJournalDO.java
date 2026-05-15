@@ -16,6 +16,11 @@ public class RevenueShareJournalDO {
     private int platformPoints;
     private int authorPoints;
     private String shareRatio;
+    private String settlementStatus;
+    private String pointJournalBizNo;
+    private LocalDateTime settledAt;
+    private int retryCount;
+    private String lastError;
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
     private int version;
@@ -43,6 +48,21 @@ public class RevenueShareJournalDO {
 
     public String getShareRatio() { return shareRatio; }
     public void setShareRatio(String shareRatio) { this.shareRatio = shareRatio; }
+
+    public String getSettlementStatus() { return settlementStatus; }
+    public void setSettlementStatus(String settlementStatus) { this.settlementStatus = settlementStatus; }
+
+    public String getPointJournalBizNo() { return pointJournalBizNo; }
+    public void setPointJournalBizNo(String pointJournalBizNo) { this.pointJournalBizNo = pointJournalBizNo; }
+
+    public LocalDateTime getSettledAt() { return settledAt; }
+    public void setSettledAt(LocalDateTime settledAt) { this.settledAt = settledAt; }
+
+    public int getRetryCount() { return retryCount; }
+    public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
+
+    public String getLastError() { return lastError; }
+    public void setLastError(String lastError) { this.lastError = lastError; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

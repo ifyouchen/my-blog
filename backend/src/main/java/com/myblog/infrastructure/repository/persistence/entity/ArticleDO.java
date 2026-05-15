@@ -86,6 +86,16 @@ public class ArticleDO {
     private String seoDescription;
 
     /**
+     * 是否需要积分解锁
+     */
+    private Boolean needUnlock;
+
+    /**
+     * 解锁所需积分
+     */
+    private Integer unlockPointPrice;
+
+    /**
      * 文章状态
      */
     private String status;
@@ -409,6 +419,42 @@ public class ArticleDO {
      */
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    /**
+     * 获取是否需要积分解锁。
+     *
+     * @return 是否需要积分解锁
+     */
+    public Boolean getNeedUnlock() {
+        return needUnlock;
+    }
+
+    /**
+     * 设置是否需要积分解锁。
+     *
+     * @param needUnlock 是否需要积分解锁
+     */
+    public void setNeedUnlock(Boolean needUnlock) {
+        this.needUnlock = needUnlock;
+    }
+
+    /**
+     * 获取解锁所需积分。
+     *
+     * @return 解锁所需积分
+     */
+    public Integer getUnlockPointPrice() {
+        return unlockPointPrice;
+    }
+
+    /**
+     * 设置解锁所需积分。
+     *
+     * @param unlockPointPrice 解锁所需积分
+     */
+    public void setUnlockPointPrice(Integer unlockPointPrice) {
+        this.unlockPointPrice = unlockPointPrice;
     }
 
     /**

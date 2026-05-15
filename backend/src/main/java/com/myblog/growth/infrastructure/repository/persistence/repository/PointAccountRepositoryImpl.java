@@ -47,6 +47,18 @@ public class PointAccountRepositoryImpl implements PointAccountRepository {
      * {@inheritDoc}
      */
     @Override
+    public Optional<PointAccount> findByUserIdForUpdate(Long userId) {
+        UserPointAccountDO do_ = mapper.selectByUserIdForUpdate(userId);
+        if (do_ == null) {
+            return Optional.empty();
+        }
+        return Optional.of(GrowthConverter.toPointAccountDomain(do_));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void save(PointAccount account) {
         UserPointAccountDO do_ = GrowthConverter.toPointAccountDO(account);
         mapper.insert(do_);

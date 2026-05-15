@@ -13,6 +13,11 @@
         <result column="platform_points"  property="platformPoints"/>
         <result column="author_points"    property="authorPoints"/>
         <result column="share_ratio"      property="shareRatio"/>
+        <result column="settlement_status" property="settlementStatus"/>
+        <result column="point_journal_biz_no" property="pointJournalBizNo"/>
+        <result column="settled_at"       property="settledAt"/>
+        <result column="retry_count"      property="retryCount"/>
+        <result column="last_error"       property="lastError"/>
         <result column="created_at"       property="createdAt"/>
         <result column="deleted_at"       property="deletedAt"/>
         <result column="version"          property="version"/>
@@ -20,7 +25,9 @@
 
     <sql id="Base_Column_List">
         id, order_no, article_id, author_id, total_points,
-        platform_points, author_points, share_ratio, created_at, deleted_at, version
+        platform_points, author_points, share_ratio, settlement_status,
+        point_journal_biz_no, settled_at, retry_count, last_error,
+        created_at, deleted_at, version
     </sql>
 
     <!-- INSERT IGNORE：uk_order_no 冲突时静默忽略 -->
@@ -31,6 +38,52 @@
             (#{orderNo}, #{articleId}, #{authorId}, #{totalPoints},
              #{platformPoints}, #{authorPoints}, #{shareRatio})
     </insert>
+
+    <!-- 根据订单号查询并锁定分账流水 -->
+    <select id="selectByOrderNoForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM revenue_share_journal
+        WHERE order_no = #{orderNo}
+          AND deleted_at IS NULL
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <!-- 标记分账结算成功 -->
+    <update id="markSettled">
+        UPDATE revenue_share_journal
+        SET settlement_status = 'SETTLED',
+            point_journal_biz_no = #{pointJournalBizNo},
+            settled_at = NOW(),
+            last_error = NULL,
+            version = version + 1
+        WHERE order_no = #{orderNo}
+          AND deleted_at IS NULL
+          AND settlement_status != 'SETTLED'
+    </update>
+
+    <!-- 标记分账结算失败，并累计重试次数 -->
+    <update id="markFailed">
+        UPDATE revenue_share_journal
+        SET settlement_status = 'FAILED',
+            retry_count = retry_count + 1,
+            last_error = #{lastError},
+            version = version + 1
+        WHERE order_no = #{orderNo}
+          AND deleted_at IS NULL
+          AND settlement_status != 'SETTLED'
+    </update>
+
+    <!-- 扫描需要补偿结算的分账流水 -->
+    <select id="selectRetryableForSettlement" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM revenue_share_journal
+        WHERE deleted_at IS NULL
+          AND settlement_status IN ('PENDING', 'FAILED')
+          AND retry_count &lt; #{maxRetry}
+        ORDER BY created_at ASC
+        LIMIT #{limit}
+    </select>
 
     <!-- 分页查询作者分账流水 -->
     <select id="selectPageByAuthorId" resultMap="BaseResultMap">
@@ -48,6 +101,34 @@
         FROM revenue_share_journal
         WHERE author_id  = #{authorId}
           AND deleted_at IS NULL
+    </select>
+
+    <!-- 管理端分页查询分账流水 -->
+    <select id="selectAdminPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM revenue_share_journal
+        WHERE deleted_at IS NULL
+          <if test="authorId != null">
+              AND author_id = #{authorId}
+          </if>
+          <if test="settlementStatus != null and settlementStatus != ''">
+              AND settlement_status = #{settlementStatus}
+          </if>
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 管理端统计分账流水总数 -->
+    <select id="countAdmin" resultType="long">
+        SELECT COUNT(*)
+        FROM revenue_share_journal
+        WHERE deleted_at IS NULL
+          <if test="authorId != null">
+              AND author_id = #{authorId}
+          </if>
+          <if test="settlementStatus != null and settlementStatus != ''">
+              AND settlement_status = #{settlementStatus}
+          </if>
     </select>
 
 </mapper>

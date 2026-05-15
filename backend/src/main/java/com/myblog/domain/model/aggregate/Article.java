@@ -41,6 +41,8 @@ public class Article {
     private String slug;
     private String seoTitle;
     private String seoDescription;
+    private boolean needUnlock;
+    private int unlockPointPrice;
     private LocalDateTime scheduledPublishAt;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
@@ -67,7 +69,7 @@ public class Article {
     public static Article create(Long id, UserId authorId, String title, String summary, String content,
                                  String coverUrl, String category, List<String> tags, ArticleStatus status,
                                  String slug, String seoTitle, String seoDescription,
-                                 LocalDateTime scheduledPublishAt) {
+                                 boolean needUnlock, int unlockPointPrice, LocalDateTime scheduledPublishAt) {
         Article article = new Article();
         article.id = new ArticleId(id);
         article.authorId = authorId;
@@ -88,6 +90,7 @@ public class Article {
         article.slug = normalizeNullableText(slug);
         article.seoTitle = normalizeNullableText(seoTitle);
         article.seoDescription = normalizeNullableText(seoDescription);
+        article.applyUnlockRule(needUnlock, unlockPointPrice);
         article.scheduledPublishAt = null;
         article.createdAt = LocalDateTime.now();
         article.updatedAt = article.createdAt;
@@ -101,6 +104,32 @@ public class Article {
             article.publishedAt = article.createdAt;
         }
         return article;
+    }
+
+    /**
+     * 创建免费文章聚合根。
+     *
+     * @param id 文章 ID
+     * @param authorId 作者 ID
+     * @param title 标题
+     * @param summary 摘要
+     * @param content 正文
+     * @param coverUrl 封面地址
+     * @param category 分类
+     * @param tags 标签列表
+     * @param status 文章状态
+     * @param slug URL Slug
+     * @param seoTitle SEO 标题
+     * @param seoDescription SEO 描述
+     * @param scheduledPublishAt 定时发布时间
+     * @return 文章聚合根
+     */
+    public static Article create(Long id, UserId authorId, String title, String summary, String content,
+                                 String coverUrl, String category, List<String> tags, ArticleStatus status,
+                                 String slug, String seoTitle, String seoDescription,
+                                 LocalDateTime scheduledPublishAt) {
+        return create(id, authorId, title, summary, content, coverUrl, category, tags, status,
+            slug, seoTitle, seoDescription, false, 0, scheduledPublishAt);
     }
 
     /**
@@ -129,6 +158,7 @@ public class Article {
                                   int viewCount, int likeCount, int favoriteCount, int commentCount,
                                   boolean warnFlag, boolean featured, LocalDateTime featuredAt, int featureWeight,
                                   String slug, String seoTitle, String seoDescription,
+                                  boolean needUnlock, int unlockPointPrice,
                                   LocalDateTime scheduledPublishAt, LocalDateTime publishedAt,
                                   LocalDateTime createdAt, LocalDateTime updatedAt,
                                   Integer version) {
@@ -154,12 +184,30 @@ public class Article {
         article.slug = slug;
         article.seoTitle = seoTitle;
         article.seoDescription = seoDescription;
+        article.needUnlock = needUnlock;
+        article.unlockPointPrice = needUnlock ? Math.max(0, unlockPointPrice) : 0;
         article.scheduledPublishAt = scheduledPublishAt;
         article.publishedAt = publishedAt;
         article.createdAt = createdAt;
         article.updatedAt = updatedAt;
         article.version = version == null ? 0 : version;
         return article;
+    }
+
+    /**
+     * 从持久化数据还原免费文章聚合根。
+     */
+    public static Article restore(Long id, UserId authorId, String title, String summary, String content,
+                                  String coverUrl, String category, String offlineReason, List<String> tags, ArticleStatus status,
+                                  int viewCount, int likeCount, int favoriteCount, int commentCount,
+                                  boolean warnFlag, boolean featured, LocalDateTime featuredAt, int featureWeight,
+                                  String slug, String seoTitle, String seoDescription,
+                                  LocalDateTime scheduledPublishAt, LocalDateTime publishedAt,
+                                  LocalDateTime createdAt, LocalDateTime updatedAt,
+                                  Integer version) {
+        return restore(id, authorId, title, summary, content, coverUrl, category, offlineReason, tags, status,
+            viewCount, likeCount, favoriteCount, commentCount, warnFlag, featured, featuredAt, featureWeight,
+            slug, seoTitle, seoDescription, false, 0, scheduledPublishAt, publishedAt, createdAt, updatedAt, version);
     }
 
     /**
@@ -322,6 +370,33 @@ public class Article {
         this.seoTitle = normalizeNullableText(seoTitle);
         this.seoDescription = normalizeNullableText(seoDescription);
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 更新文章积分解锁规则。
+     *
+     * @param needUnlock 是否需要积分解锁
+     * @param unlockPointPrice 解锁所需积分
+     */
+    public void updateUnlockRule(boolean needUnlock, int unlockPointPrice) {
+        applyUnlockRule(needUnlock, unlockPointPrice);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    private void applyUnlockRule(boolean needUnlock, int unlockPointPrice) {
+        if (!needUnlock) {
+            this.needUnlock = false;
+            this.unlockPointPrice = 0;
+            return;
+        }
+        if (unlockPointPrice <= 0) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "开启积分解锁后，解锁积分必须大于 0");
+        }
+        if (unlockPointPrice > 1000000) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "解锁积分不能超过 1000000");
+        }
+        this.needUnlock = true;
+        this.unlockPointPrice = unlockPointPrice;
     }
 
     private void validatePublishable() {
@@ -617,6 +692,24 @@ public class Article {
      */
     public String getSeoDescription() {
         return seoDescription;
+    }
+
+    /**
+     * 获取文章是否需要积分解锁。
+     *
+     * @return 是否需要积分解锁
+     */
+    public boolean isNeedUnlock() {
+        return needUnlock;
+    }
+
+    /**
+     * 获取解锁所需积分。
+     *
+     * @return 解锁积分
+     */
+    public int getUnlockPointPrice() {
+        return unlockPointPrice;
     }
 
     /**

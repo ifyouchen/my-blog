@@ -25,6 +25,9 @@ public enum PointEventType {
     ADMIN_ADJUST,
 
     /** 发布文章奖励少量积分（每日上限）. */
-    PUBLISH
+    PUBLISH,
+
+    /** 作者文章解锁分账收益. */
+    REVENUE_SHARE
 }
 

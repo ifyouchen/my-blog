@@ -9,6 +9,7 @@ import {computed, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
+import UserLevelBadge from '@/components/UserLevelBadge.vue';
 import {getCategoriesApi} from '@/api/categories';
 import {getArticleRankingsApi, getAuthorRankingsApi} from '@/api/rankings';
 import {useSession} from '@/stores/session';
@@ -331,6 +332,7 @@ onMounted(fetchCategories);
                                     >
                                         <img :src="article.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                                         <span>{{ article.author.name }}</span>
+                                        <UserLevelBadge :level="article.author.currentLevel" compact />
                                     </RouterLink>
                                     <div class="ranking-post-stats">
                                         <span class="views">{{ article.stats.views }}</span>
@@ -360,7 +362,10 @@ onMounted(fetchCategories);
                                 <img :src="author.user.avatar" alt="作者头像" loading="lazy" decoding="async">
                             </RouterLink>
                             <div class="ranking-author-copy">
-                                <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
+                                <div class="ranking-author-name-row">
+                                    <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
+                                    <UserLevelBadge :level="author.user.currentLevel" compact />
+                                </div>
                                 <p>
                                     {{ author.articleCount }} 篇 · {{ author.totalLikeCount }} 赞 ·
                                     {{ author.followerCount }} 粉丝
@@ -868,6 +873,17 @@ onMounted(fetchCategories);
     display: flex;
     flex-direction: column;
     gap: 3px;
+}
+
+.ranking-author-name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ranking-author-name-row :deep(.user-level-badge) {
+    flex: 0 0 auto;
 }
 
 .ranking-author-copy a {

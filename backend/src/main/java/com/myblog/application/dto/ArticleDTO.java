@@ -34,6 +34,8 @@ public class ArticleDTO {
     private String slug;
     private String seoTitle;
     private String seoDescription;
+    private boolean needUnlock;
+    private int unlockPointPrice;
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
@@ -469,6 +471,42 @@ public class ArticleDTO {
      */
     public void setSeoDescription(String seoDescription) {
         this.seoDescription = seoDescription;
+    }
+
+    /**
+     * 获取是否需要积分解锁。
+     *
+     * @return 是否需要积分解锁
+     */
+    public boolean isNeedUnlock() {
+        return needUnlock;
+    }
+
+    /**
+     * 设置是否需要积分解锁。
+     *
+     * @param needUnlock 是否需要积分解锁
+     */
+    public void setNeedUnlock(boolean needUnlock) {
+        this.needUnlock = needUnlock;
+    }
+
+    /**
+     * 获取解锁所需积分。
+     *
+     * @return 解锁积分
+     */
+    public int getUnlockPointPrice() {
+        return unlockPointPrice;
+    }
+
+    /**
+     * 设置解锁所需积分。
+     *
+     * @param unlockPointPrice 解锁积分
+     */
+    public void setUnlockPointPrice(int unlockPointPrice) {
+        this.unlockPointPrice = unlockPointPrice;
     }
 
     /**

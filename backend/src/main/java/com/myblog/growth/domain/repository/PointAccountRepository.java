@@ -21,6 +21,15 @@ public interface PointAccountRepository {
     Optional<PointAccount> findByUserId(Long userId);
 
     /**
+     * 根据用户 ID 查询并锁定积分账户.
+     * <p>用于账务变更链路，避免幂等流水写入前后出现并发重复改余额。</p>
+     *
+     * @param userId 用户 ID
+     * @return 积分账户（不存在时为 empty）
+     */
+    Optional<PointAccount> findByUserIdForUpdate(Long userId);
+
+    /**
      * 保存积分账户（新增，回填主键）.
      *
      * @param account 积分账户聚合根

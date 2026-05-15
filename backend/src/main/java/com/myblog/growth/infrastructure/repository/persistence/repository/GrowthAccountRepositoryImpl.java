@@ -7,6 +7,10 @@ import com.myblog.growth.infrastructure.repository.persistence.entity.UserGrowth
 import com.myblog.growth.infrastructure.repository.persistence.mapper.UserGrowthAccountMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -41,6 +45,22 @@ public class GrowthAccountRepositoryImpl implements GrowthAccountRepository {
             return Optional.empty();
         }
         return Optional.of(GrowthConverter.toDomain(do_));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Long, GrowthAccount> findByUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<UserGrowthAccountDO> rows = mapper.selectByUserIds(userIds);
+        Map<Long, GrowthAccount> result = new HashMap<Long, GrowthAccount>();
+        for (UserGrowthAccountDO row : rows) {
+            result.put(row.getUserId(), GrowthConverter.toDomain(row));
+        }
+        return result;
     }
 
     /**

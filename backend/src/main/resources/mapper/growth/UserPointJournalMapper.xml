@@ -31,6 +31,16 @@
              #{remark}, #{operator}, #{createdAt}, #{version})
     </insert>
 
+    <!-- 根据幂等业务单号查询流水 -->
+    <select id="selectByBizNo" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM user_point_journal
+        WHERE biz_no = #{bizNo}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
     <!-- 查询用户近期积分流水（按创建时间倒序） -->
     <select id="selectRecentByUserId" resultMap="BaseResultMap">
         SELECT

@@ -57,6 +57,7 @@ public class RankingAppService {
     private final UserRepository userRepository;
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
+    private final UserLevelAppService userLevelAppService;
     private final Executor taskExecutor;
     private final Cache<String, List<ArticleDTO>> articleRankingsCache;
     private final Cache<String, List<AuthorRankingDTO>> authorRankingsCache;
@@ -65,6 +66,7 @@ public class RankingAppService {
                              UserRepository userRepository,
                              UserFollowRepository userFollowRepository,
                              ArticleAssembler articleAssembler,
+                             UserLevelAppService userLevelAppService,
                              Executor taskExecutor,
                              @Qualifier("articleRankingsCache") Cache<String, List<ArticleDTO>> articleRankingsCache,
                              @Qualifier("authorRankingsCache")
@@ -73,6 +75,7 @@ public class RankingAppService {
         this.userRepository = userRepository;
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
+        this.userLevelAppService = userLevelAppService;
         this.taskExecutor = taskExecutor;
         this.articleRankingsCache = articleRankingsCache;
         this.authorRankingsCache = authorRankingsCache;
@@ -168,6 +171,9 @@ public class RankingAppService {
                 items.add(articleAssembler.toDTO(article, author));
             }
         }
+        userLevelAppService.fillLevels(items.stream()
+            .map(ArticleDTO::getAuthor)
+            .collect(Collectors.toList()));
         return items;
     }
 
@@ -289,6 +295,9 @@ public class RankingAppService {
             dto.setRank(rank++);
             result.add(dto);
         }
+        userLevelAppService.fillLevels(result.stream()
+            .map(AuthorRankingDTO::getUser)
+            .collect(Collectors.toList()));
         return result;
     }
 
@@ -632,6 +641,7 @@ public class RankingAppService {
         dto.setAvatarUrl(source.getAvatarUrl());
         dto.setBio(source.getBio());
         dto.setRole(source.getRole());
+        dto.setCurrentLevel(source.getCurrentLevel());
         return dto;
     }
 }

@@ -300,12 +300,18 @@ CREATE TABLE IF NOT EXISTS `revenue_share_journal` (
     `platform_points` bigint          NOT NULL COMMENT '平台分成积分',
     `author_points`   bigint          NOT NULL COMMENT '作者分成积分',
     `share_ratio`     varchar(20)     NOT NULL DEFAULT '50:50' COMMENT '分成比例（平台:作者）',
+    `settlement_status` varchar(20)    NOT NULL DEFAULT 'PENDING' COMMENT '结算状态：PENDING/SETTLED/FAILED',
+    `point_journal_biz_no` varchar(128) NULL DEFAULT NULL COMMENT '作者积分入账流水业务单号',
+    `settled_at`      datetime        NULL DEFAULT NULL COMMENT '结算完成时间',
+    `retry_count`     int             NOT NULL DEFAULT 0 COMMENT '结算重试次数',
+    `last_error`      varchar(500)    NULL DEFAULT NULL COMMENT '最近一次结算失败原因',
     `created_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `deleted_at`      datetime        NULL DEFAULT NULL COMMENT '软删除时间',
     `version`         int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_order_no` (`order_no`) USING BTREE,
-    INDEX `idx_author_created` (`author_id`, `created_at`) USING BTREE
+    INDEX `idx_author_created` (`author_id`, `created_at`) USING BTREE,
+    INDEX `idx_settlement_status` (`settlement_status`, `retry_count`, `created_at`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分账流水';
 
 -- 文章表新增字段（ALTER，不重建表）

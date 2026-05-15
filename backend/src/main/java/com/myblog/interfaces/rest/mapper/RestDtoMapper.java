@@ -87,6 +87,8 @@ public class RestDtoMapper {
         command.setSlug(request.getSlug());
         command.setSeoTitle(request.getSeoTitle());
         command.setSeoDescription(request.getSeoDescription());
+        command.setNeedUnlock(Boolean.TRUE.equals(request.getNeedUnlock()));
+        command.setUnlockPointPrice(request.getUnlockPointPrice() == null ? 0 : request.getUnlockPointPrice());
         command.setScheduledPublishAt(request.getScheduledPublishAt());
         return command;
     }
@@ -172,6 +174,7 @@ public class RestDtoMapper {
         response.setFollowerCount(dto.getFollowerCount());
         response.setArticleCount(dto.getArticleCount());
         response.setTotalLikeCount(dto.getTotalLikeCount());
+        response.setCurrentLevel(Math.max(1, dto.getCurrentLevel()));
         return response;
     }
 
@@ -379,6 +382,8 @@ public class RestDtoMapper {
         response.setSlug(dto.getSlug());
         response.setSeoTitle(dto.getSeoTitle());
         response.setSeoDescription(dto.getSeoDescription());
+        response.setNeedUnlock(dto.isNeedUnlock());
+        response.setUnlockPointPrice(dto.getUnlockPointPrice());
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setOfflineReason(dto.getOfflineReason());
         response.setWarnFlag(dto.isWarnFlag());

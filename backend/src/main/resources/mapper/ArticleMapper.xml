@@ -19,6 +19,8 @@
         <result column="slug" property="slug"/>
         <result column="seo_title" property="seoTitle"/>
         <result column="seo_description" property="seoDescription"/>
+        <result column="need_unlock" property="needUnlock"/>
+        <result column="unlock_point_price" property="unlockPointPrice"/>
         <result column="status" property="status"/>
         <result column="scheduled_publish_at" property="scheduledPublishAt"/>
         <result column="view_count" property="viewCount"/>
@@ -34,22 +36,22 @@
 
     <sql id="Base_Column_List">
         id, author_id, title, summary, content, cover_url, category, offline_reason, warn_flag, featured, featured_at,
-        feature_weight, slug, seo_title, seo_description, status, scheduled_publish_at,
+        feature_weight, slug, seo_title, seo_description, need_unlock, unlock_point_price, status, scheduled_publish_at,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Column_List">
         id, author_id, title, summary, cover_url, category, offline_reason, warn_flag, featured, featured_at,
-        feature_weight, slug, seo_title, seo_description, status, scheduled_publish_at,
+        feature_weight, slug, seo_title, seo_description, need_unlock, unlock_point_price, status, scheduled_publish_at,
         view_count, like_count, favorite_count, comment_count, published_at,
         created_at, updated_at, deleted_at, version
     </sql>
 
     <sql id="List_Alias_Column_List">
         a.id, a.author_id, a.title, a.summary, a.cover_url, a.category, a.offline_reason,
-        a.warn_flag, a.featured, a.featured_at, a.feature_weight, a.slug, a.seo_title, a.seo_description, a.status,
-        a.scheduled_publish_at,
+        a.warn_flag, a.featured, a.featured_at, a.feature_weight, a.slug, a.seo_title, a.seo_description,
+        a.need_unlock, a.unlock_point_price, a.status, a.scheduled_publish_at,
         a.view_count, a.like_count, a.favorite_count, a.comment_count, a.published_at,
         a.created_at, a.updated_at, a.deleted_at, a.version
     </sql>
@@ -561,6 +563,8 @@
             slug,
             seo_title,
             seo_description,
+            need_unlock,
+            unlock_point_price,
             scheduled_publish_at,
             view_count,
             like_count,
@@ -587,6 +591,8 @@
             #{slug},
             #{seoTitle},
             #{seoDescription},
+            #{needUnlock},
+            #{unlockPointPrice},
             #{scheduledPublishAt},
             #{viewCount},
             #{likeCount},
@@ -614,6 +620,8 @@
             slug = #{slug},
             seo_title = #{seoTitle},
             seo_description = #{seoDescription},
+            need_unlock = #{needUnlock},
+            unlock_point_price = #{unlockPointPrice},
             scheduled_publish_at = #{scheduledPublishAt},
             view_count = #{viewCount},
             like_count = #{likeCount},
@@ -631,12 +639,14 @@
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article (
             id, author_id, title, summary, content, cover_url, category, offline_reason, warn_flag, status,
-            featured, featured_at, feature_weight, slug, seo_title, seo_description, scheduled_publish_at,
+            featured, featured_at, feature_weight, slug, seo_title, seo_description, need_unlock, unlock_point_price,
+            scheduled_publish_at,
             view_count, like_count, favorite_count, comment_count, published_at,
             created_at, updated_at
         ) VALUES (
             #{id}, #{authorId}, #{title}, #{summary}, #{content}, #{coverUrl}, #{category}, #{offlineReason}, #{warnFlag}, #{status},
-            #{featured}, #{featuredAt}, #{featureWeight}, #{slug}, #{seoTitle}, #{seoDescription}, #{scheduledPublishAt},
+            #{featured}, #{featuredAt}, #{featureWeight}, #{slug}, #{seoTitle}, #{seoDescription}, #{needUnlock}, #{unlockPointPrice},
+            #{scheduledPublishAt},
             #{viewCount}, #{likeCount}, #{favoriteCount}, #{commentCount}, #{publishedAt},
             #{createdAt}, #{updatedAt}
         )
@@ -655,6 +665,8 @@
             slug = #{slug},
             seo_title = #{seoTitle},
             seo_description = #{seoDescription},
+            need_unlock = #{needUnlock},
+            unlock_point_price = #{unlockPointPrice},
             scheduled_publish_at = #{scheduledPublishAt},
             view_count = #{viewCount},
             like_count = #{likeCount},

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 积分账户应用服务.
@@ -74,8 +75,20 @@ public class PointAppService {
             throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "入账积分必须大于 0，实际值：" + delta);
         }
 
-        // 查询或初始化账户
-        PointAccount account = getOrCreateAccount(userId);
+        PointJournal existing = findExistingJournal(userId, bizNo);
+        if (existing != null) {
+            log.info("[积分入账] 幂等返回，userId={}, sourceType={}, bizNo={}", userId, sourceType, bizNo);
+            return existing.getBalanceAfter();
+        }
+
+        // 查询或初始化账户，并锁定该账户，确保同一用户同一 bizNo 不会重复变更余额
+        PointAccount account = getOrCreateAccountForUpdate(userId);
+
+        existing = findExistingJournal(userId, bizNo);
+        if (existing != null) {
+            log.info("[积分入账] 锁后幂等返回，userId={}, sourceType={}, bizNo={}", userId, sourceType, bizNo);
+            return existing.getBalanceAfter();
+        }
 
         // 执行入账
         account.credit(delta);
@@ -83,13 +96,12 @@ public class PointAppService {
         // CAS 更新账户（乐观锁重试）
         account = updateAccountWithRetry(account, userId, delta, false);
 
-        // 写入流水（INSERT IGNORE，幂等）
+        // 写入流水（INSERT IGNORE，幂等）。若返回 0，抛异常回滚前面的账户变更。
         PointJournal journal = PointJournal.create(
                 userId, delta, account.getBalance(), sourceType, bizNo, remark, operator);
-        try {
-            pointJournalRepository.insertIgnore(journal);
-        } catch (DuplicateKeyException e) {
-            log.info("[积分入账] 幂等跳过，bizNo={}", bizNo);
+        int inserted = pointJournalRepository.insertIgnore(journal);
+        if (inserted == 0) {
+            throw duplicateBizNoException(userId, bizNo);
         }
 
         log.info("[积分入账] 成功。userId={}, sourceType={}, delta={}, balance={}", userId, sourceType, delta, account.getBalance());
@@ -115,9 +127,21 @@ public class PointAppService {
             throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "扣减积分必须大于 0，实际值：" + delta);
         }
 
-        // 查询账户（不存在则余额为 0，必然不足）
-        PointAccount account = pointAccountRepository.findByUserId(userId)
+        PointJournal existing = findExistingJournal(userId, bizNo);
+        if (existing != null) {
+            log.info("[积分扣减] 幂等返回，userId={}, sourceType={}, bizNo={}", userId, sourceType, bizNo);
+            return existing.getBalanceAfter();
+        }
+
+        // 查询并锁定账户（不存在则余额为 0，必然不足）
+        PointAccount account = pointAccountRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new GrowthBusinessException(GrowthErrorCode.INSUFFICIENT_POINTS, "积分账户不存在"));
+
+        existing = findExistingJournal(userId, bizNo);
+        if (existing != null) {
+            log.info("[积分扣减] 锁后幂等返回，userId={}, sourceType={}, bizNo={}", userId, sourceType, bizNo);
+            return existing.getBalanceAfter();
+        }
 
         if (!account.canDebit(delta)) {
             throw new GrowthBusinessException(GrowthErrorCode.INSUFFICIENT_POINTS,
@@ -130,13 +154,12 @@ public class PointAppService {
         // CAS 更新账户（乐观锁重试）
         account = updateAccountWithRetry(account, userId, delta, true);
 
-        // 写入流水（INSERT IGNORE，幂等）
+        // 写入流水（INSERT IGNORE，幂等）。若返回 0，抛异常回滚前面的账户变更。
         PointJournal journal = PointJournal.create(
                 userId, -delta, account.getBalance(), sourceType, bizNo, remark, operator);
-        try {
-            pointJournalRepository.insertIgnore(journal);
-        } catch (DuplicateKeyException e) {
-            log.info("[积分扣减] 幂等跳过，bizNo={}", bizNo);
+        int inserted = pointJournalRepository.insertIgnore(journal);
+        if (inserted == 0) {
+            throw duplicateBizNoException(userId, bizNo);
         }
 
         log.info("[积分扣减] 成功。userId={}, sourceType={}, delta={}, balance={}", userId, sourceType, delta, account.getBalance());
@@ -194,6 +217,57 @@ public class PointAppService {
                     return pointAccountRepository.findByUserId(userId)
                             .orElseThrow(() -> new IllegalStateException("积分账户初始化失败，userId=" + userId));
                 });
+    }
+
+    /**
+     * 查询或初始化积分账户，并以 FOR UPDATE 锁定账户行.
+     *
+     * @param userId 用户 ID
+     * @return 被锁定的积分账户
+     */
+    private PointAccount getOrCreateAccountForUpdate(Long userId) {
+        Optional<PointAccount> locked = pointAccountRepository.findByUserIdForUpdate(userId);
+        if (locked.isPresent()) {
+            return locked.get();
+        }
+        try {
+            pointAccountRepository.save(PointAccount.create(userId));
+        } catch (DuplicateKeyException e) {
+            log.info("[积分账户] 并发初始化命中唯一键，userId={}", userId);
+        }
+        return pointAccountRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalStateException("积分账户初始化失败，userId=" + userId));
+    }
+
+    /**
+     * 查询已有幂等流水，并确认该业务单号没有被其他用户占用.
+     *
+     * @param userId 用户 ID
+     * @param bizNo  业务单号
+     * @return 已有流水，不存在时返回 null
+     */
+    private PointJournal findExistingJournal(Long userId, String bizNo) {
+        Optional<PointJournal> existing = pointJournalRepository.findByBizNo(bizNo);
+        if (!existing.isPresent()) {
+            return null;
+        }
+        PointJournal journal = existing.get();
+        if (!userId.equals(journal.getUserId())) {
+            throw duplicateBizNoException(userId, bizNo);
+        }
+        return journal;
+    }
+
+    /**
+     * 构造业务单号冲突异常.
+     *
+     * @param userId 用户 ID
+     * @param bizNo  业务单号
+     * @return 业务异常
+     */
+    private GrowthBusinessException duplicateBizNoException(Long userId, String bizNo) {
+        return new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID,
+                "积分业务单号已被占用，userId=" + userId + "，bizNo=" + bizNo);
     }
 
     /**

@@ -154,6 +154,8 @@ const buildArticlePayload = (draft, status) => {
         slug: draft.slug || '',
         seoTitle: draft.seoTitle || '',
         seoDescription: draft.seoDescription || '',
+        needUnlock: Boolean(draft.needUnlock),
+        unlockPointPrice: Boolean(draft.needUnlock) ? Number(draft.unlockPointPrice || 0) : 0,
         scheduledPublishAt: draft.scheduledPublishAt || ''
     };
 };

@@ -42,6 +42,74 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
     }
 
     /**
+     * 根据订单号查询并锁定分账流水.
+     *
+     * @param orderNo 解锁订单号
+     * @return 分账流水，不存在时返回 null
+     */
+    public RevenueShareJournalDO findByOrderNoForUpdate(String orderNo) {
+        return mapper.selectByOrderNoForUpdate(orderNo);
+    }
+
+    /**
+     * 标记分账已结算.
+     *
+     * @param orderNo           解锁订单号
+     * @param pointJournalBizNo 作者积分流水业务单号
+     * @return 更新行数
+     */
+    public int markSettled(String orderNo, String pointJournalBizNo) {
+        return mapper.markSettled(orderNo, pointJournalBizNo);
+    }
+
+    /**
+     * 标记分账结算失败.
+     *
+     * @param orderNo   解锁订单号
+     * @param lastError 最近一次错误信息
+     * @return 更新行数
+     */
+    public int markFailed(String orderNo, String lastError) {
+        return mapper.markFailed(orderNo, lastError);
+    }
+
+    /**
+     * 查询待补偿结算的分账流水.
+     *
+     * @param maxRetry 最大重试次数
+     * @param limit    最大返回条数
+     * @return 分账流水 DO 列表
+     */
+    public List<RevenueShareJournalDO> findRetryableForSettlement(int maxRetry, int limit) {
+        return mapper.selectRetryableForSettlement(maxRetry, limit);
+    }
+
+    /**
+     * 管理端分页查询分账流水.
+     *
+     * @param authorId         作者用户 ID（可选）
+     * @param settlementStatus 结算状态（可选）
+     * @param page             页码（从 1 开始）
+     * @param size             每页条数
+     * @return 分账流水 DO 列表
+     */
+    public List<RevenueShareJournalDO> findAdminPage(Long authorId, String settlementStatus, int page, int size) {
+        int offset = (page - 1) * size;
+        return mapper.selectAdminPage(authorId, settlementStatus, size, offset);
+    }
+
+    /**
+     * 管理端统计分账流水总数.
+     *
+     * @param authorId         作者用户 ID（可选）
+     * @param settlementStatus 结算状态（可选）
+     * @return 总数
+     */
+    public long countAdmin(Long authorId, String settlementStatus) {
+        return mapper.countAdmin(authorId, settlementStatus);
+    }
+
+    /**
      * 分页查询作者分账流水.
      *
      * @param authorId 作者用户 ID

@@ -54,7 +54,20 @@ const loadAccount = async () => {
 const signInResult = ref(null);
 const signingIn = ref(false);
 const signInError = ref('');
-const calendarMonth = ref(new Date().toISOString().slice(0, 7)); // yyyy-MM
+const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+const formatLocalMonth = (date) => formatLocalDate(date).slice(0, 7);
+const shiftMonth = (monthValue, delta) => {
+    const [year, month] = monthValue.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    date.setMonth(date.getMonth() + delta);
+    return formatLocalMonth(date);
+};
+const calendarMonth = ref(formatLocalMonth(new Date())); // yyyy-MM
 const calendarData = ref(null);
 const calendarLoading = ref(false);
 
@@ -63,8 +76,10 @@ const signedDates = computed(() => {
     return new Set(calendarData.value.signedDates);
 });
 
-const todayStr = computed(() => new Date().toISOString().slice(0, 10)); // yyyy-MM-dd
+const todayStr = computed(() => formatLocalDate(new Date())); // yyyy-MM-dd
 const todaySigned = computed(() => signedDates.value.has(todayStr.value));
+const isCurrentMonth = computed(() => calendarMonth.value === formatLocalMonth(new Date()));
+const canSignInToday = computed(() => isCurrentMonth.value && !todaySigned.value);
 
 const calendarDays = computed(() => {
     const [year, month] = calendarMonth.value.split('-').map(Number);
@@ -99,26 +114,20 @@ const loadCalendar = async (month) => {
 };
 
 const prevMonth = () => {
-    const d = new Date(`${calendarMonth.value}-01`);
-    d.setMonth(d.getMonth() - 1);
-    calendarMonth.value = d.toISOString().slice(0, 7);
+    calendarMonth.value = shiftMonth(calendarMonth.value, -1);
     loadCalendar(calendarMonth.value);
 };
 
 const nextMonth = () => {
-    const d = new Date(`${calendarMonth.value}-01`);
-    d.setMonth(d.getMonth() + 1);
-    const now = new Date().toISOString().slice(0, 7);
-    if (d.toISOString().slice(0, 7) <= now) {
-        calendarMonth.value = d.toISOString().slice(0, 7);
+    const next = shiftMonth(calendarMonth.value, 1);
+    if (next <= formatLocalMonth(new Date())) {
+        calendarMonth.value = next;
         loadCalendar(calendarMonth.value);
     }
 };
 
-const isCurrentMonth = computed(() => calendarMonth.value === new Date().toISOString().slice(0, 7));
-
 const doSignIn = async () => {
-    if (signingIn.value || todaySigned.value) return;
+    if (signingIn.value || !canSignInToday.value) return;
     signingIn.value = true;
     signInError.value = '';
     try {
@@ -143,16 +152,46 @@ const journalError = ref('');
 const SOURCE_TYPE_LABELS = {
     SIGN_IN: '每日签到',
     RECHARGE: '积分充值',
+    INVITE: '邀请奖励',
     INVITE_REWARD: '邀请奖励',
+    UNLOCK: '文章解锁',
     ARTICLE_UNLOCK: '文章解锁',
     ADMIN_ADJUST: '管理员调整',
     PUBLISH: '发布文章',
     COMMENT: '发表评论',
+    READ: '阅读文章',
+    FAVORITE: '收藏文章',
+    SHARE: '分享文章',
+    FOLLOW: '关注用户',
+    LIKE: '点赞文章',
+    LEVEL_UP: '等级升级',
     LIKE_RECEIVED: '获得点赞',
     FOLLOW_RECEIVED: '获得关注',
+    REVENUE_SHARE: '文章解锁分成',
 };
 
 const sourceLabel = (type) => SOURCE_TYPE_LABELS[type] || type || '-';
+
+const REVENUE_STATUS_META = {
+    PENDING: { label: '待结算', className: 'pending' },
+    SETTLED: { label: '已入账', className: 'settled' },
+    FAILED: { label: '失败待处理', className: 'failed' },
+};
+
+const revenueStatusMeta = (status) => REVENUE_STATUS_META[status] || {
+    label: status || '待结算',
+    className: 'pending',
+};
+
+const revenueDesc = (item) => {
+    if (item.pointJournalBizNo) {
+        return `订单：${item.orderNo || '-'} / 流水：${item.pointJournalBizNo}`;
+    }
+    if (item.lastError) {
+        return `订单：${item.orderNo || '-'} / 错误：${item.lastError}`;
+    }
+    return `订单：${item.orderNo || '-'}`;
+};
 
 const loadJournals = async () => {
     journalLoading.value = true;
@@ -210,6 +249,11 @@ const fmtTime = (t) => {
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
+const currentLevel = computed(() => growth.value?.currentLevel ?? growth.value?.level ?? 1);
+const currentExp = computed(() => growth.value?.currentExp ?? growth.value?.exp ?? 0);
+const signInPoints = computed(() => signInResult.value?.pointsGranted ?? signInResult.value?.pointsEarned ?? 0);
+const signInDays = computed(() => signInResult.value?.consecutiveDays ?? signInResult.value?.continuousDays ?? 0);
+
 onMounted(async () => {
     await Promise.all([loadGrowth(), loadAccount(), loadCalendar(calendarMonth.value)]);
     loadJournals();
@@ -231,11 +275,11 @@ onMounted(async () => {
                 <div class="growth-card level-card">
                     <div v-if="growthLoading" class="card-skeleton"></div>
                     <template v-else-if="growth">
-                        <div class="level-badge">Lv.{{ growth.level }}</div>
+                        <div class="level-badge">Lv.{{ currentLevel }}</div>
                         <div class="level-info">
-                            <p class="level-name">{{ growth.levelName || `${growth.level} 级` }}</p>
+                            <p class="level-name">{{ growth.levelName || `${currentLevel} 级` }}</p>
                             <p class="level-exp">
-                                经验值 <strong>{{ growth.exp }}</strong>
+                                经验值 <strong>{{ currentExp }}</strong>
                                 <span v-if="growth.expToNextLevel > 0">
                                     / 距升级还需 <strong>{{ growth.expToNextLevel }}</strong> 经验
                                 </span>
@@ -281,7 +325,7 @@ onMounted(async () => {
                     <div class="signin-header">
                         <h3>每日签到</h3>
                         <div v-if="signInResult && !signInError" class="signin-reward">
-                            🎉 +{{ signInResult.pointsEarned }} 积分（连续 {{ signInResult.continuousDays }} 天）
+                            🎉 +{{ signInPoints }} 积分（连续 {{ signInDays }} 天）
                         </div>
                         <div v-if="signInError" class="signin-error">{{ signInError }}</div>
                     </div>
@@ -317,11 +361,12 @@ onMounted(async () => {
                     <!-- 签到按钮 -->
                     <button
                         type="button"
-                        :class="['signin-btn', { 'signed': todaySigned }]"
-                        :disabled="signingIn || todaySigned"
+                        :class="['signin-btn', { 'signed': isCurrentMonth && todaySigned }]"
+                        :disabled="signingIn || !canSignInToday"
                         @click="doSignIn"
                     >
                         <template v-if="signingIn">签到中...</template>
+                        <template v-else-if="!isCurrentMonth">仅本月可签到</template>
                         <template v-else-if="todaySigned">今日已签到 ✓</template>
                         <template v-else>立即签到</template>
                     </button>
@@ -360,6 +405,7 @@ onMounted(async () => {
                                 <th v-if="journalTab === 'exp'">经验值</th>
                                 <th v-if="journalTab === 'revenue'">总积分</th>
                                 <th v-if="journalTab === 'revenue'">作者分成</th>
+                                <th v-if="journalTab === 'revenue'">结算状态</th>
                                 <th>说明</th>
                                 <th>时间</th>
                             </tr>
@@ -381,8 +427,8 @@ onMounted(async () => {
                             <template v-if="journalTab === 'exp'">
                                 <tr v-for="item in journals" :key="item.id">
                                     <td><span class="tag-chip">{{ sourceLabel(item.eventType) }}</span></td>
-                                    <td :class="['delta', 'plus']">+{{ item.expAmount }}</td>
-                                    <td class="desc-cell">{{ item.description || item.remark || '-' }}</td>
+                                    <td :class="['delta', 'plus']">+{{ item.delta ?? item.expAmount ?? 0 }}</td>
+                                    <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
                                     <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
                                 </tr>
                             </template>
@@ -392,8 +438,13 @@ onMounted(async () => {
                                     <td><span class="tag-chip">文章解锁分成</span></td>
                                     <td>{{ item.totalPoints }}</td>
                                     <td :class="['delta', 'plus']">+{{ item.authorPoints }}</td>
-                                    <td class="desc-cell">订单：{{ item.orderNo || '-' }}</td>
-                                    <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
+                                    <td>
+                                        <span :class="['status-chip', revenueStatusMeta(item.settlementStatus).className]">
+                                            {{ revenueStatusMeta(item.settlementStatus).label }}
+                                        </span>
+                                    </td>
+                                    <td class="desc-cell">{{ revenueDesc(item) }}</td>
+                                    <td class="time-cell">{{ fmtTime(item.settledAt || item.createdAt) }}</td>
                                 </tr>
                             </template>
                         </tbody>
@@ -766,6 +817,31 @@ onMounted(async () => {
     background: var(--surface-soft);
     color: var(--text-muted);
     white-space: nowrap;
+}
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-chip.pending {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.status-chip.settled {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.status-chip.failed {
+    background: #fef2f2;
+    color: #b91c1c;
 }
 
 .delta { font-weight: 700; }
