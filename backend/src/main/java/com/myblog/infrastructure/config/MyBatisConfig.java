@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Configuration;
  * @since 1.0.0
  */
 @Configuration
-@MapperScan("com.myblog.infrastructure.repository.persistence.mapper")
+@MapperScan({
+    "com.myblog.infrastructure.repository.persistence.mapper",
+    "com.myblog.growth.infrastructure.repository.persistence.mapper"
+})
 public class MyBatisConfig {
 }

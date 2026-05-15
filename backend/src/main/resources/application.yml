@@ -57,8 +57,10 @@ spring:
         min-idle: 2
 
 mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.myblog.infrastructure.repository.persistence.entity
+  mapper-locations:
+    - classpath:mapper/*.xml
+    - classpath:mapper/growth/*.xml
+  type-aliases-package: com.myblog.infrastructure.repository.persistence.entity,com.myblog.growth.infrastructure.repository.persistence.entity
   configuration:
     map-underscore-to-camel-case: true
 
