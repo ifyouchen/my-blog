@@ -154,6 +154,13 @@ public class PointAccount {
 
     /** 获取主键 ID. */
     public Long getId() { return id; }
+
+    /**
+     * 回填数据库自增主键（仅供 Repository 实现使用）.
+     *
+     * @param id 数据库生成的主键 ID
+     */
+    public void setId(Long id) { this.id = id; }
     /** 获取用户 ID. */
     public Long getUserId() { return userId; }
     /** 获取当前积分余额. */

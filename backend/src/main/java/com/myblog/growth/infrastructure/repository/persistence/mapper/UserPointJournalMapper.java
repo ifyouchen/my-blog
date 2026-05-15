@@ -30,5 +30,31 @@ public interface UserPointJournalMapper {
      */
     List<UserPointJournalDO> selectRecentByUserId(@Param("userId") Long userId,
                                                    @Param("limit") int limit);
+
+    /**
+     * 按来源类型分页查询积分流水.
+     *
+     * @param userId     用户 ID
+     * @param sourceType 来源类型（null 或空字符串表示不筛选）
+     * @param limit      每页条数
+     * @param offset     偏移量
+     * @return 流水列表
+     */
+    List<UserPointJournalDO> selectPageByUserIdAndSourceType(
+            @Param("userId") Long userId,
+            @Param("sourceType") String sourceType,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /**
+     * 统计分页总数.
+     *
+     * @param userId     用户 ID
+     * @param sourceType 来源类型（null 或空字符串表示不筛选）
+     * @return 总数
+     */
+    long countByUserIdAndSourceType(
+            @Param("userId") Long userId,
+            @Param("sourceType") String sourceType);
 }
 

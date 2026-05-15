@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.UserPointJournalMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.infrastructure.repository.persistence.entity.UserPointJournalDO">
+        <id     column="id"            property="id"/>
+        <result column="user_id"       property="userId"/>
+        <result column="delta"         property="delta"/>
+        <result column="balance_after" property="balanceAfter"/>
+        <result column="source_type"   property="sourceType"/>
+        <result column="biz_no"        property="bizNo"/>
+        <result column="remark"        property="remark"/>
+        <result column="operator"      property="operator"/>
+        <result column="created_at"    property="createdAt"/>
+        <result column="deleted_at"    property="deletedAt"/>
+        <result column="version"       property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, delta, balance_after, source_type, biz_no,
+        remark, operator, created_at, deleted_at, version
+    </sql>
+
+    <!-- INSERT IGNORE：biz_no 冲突时静默忽略，保证幂等 -->
+    <insert id="insertIgnore" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO user_point_journal
+            (user_id, delta, balance_after, source_type, biz_no, remark, operator, created_at, version)
+        VALUES
+            (#{userId}, #{delta}, #{balanceAfter}, #{sourceType}, #{bizNo},
+             #{remark}, #{operator}, #{createdAt}, #{version})
+    </insert>
+
+    <!-- 查询用户近期积分流水（按创建时间倒序） -->
+    <select id="selectRecentByUserId" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM user_point_journal
+        WHERE user_id   = #{userId}
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 按来源类型分页查询积分流水 -->
+    <select id="selectPageByUserIdAndSourceType" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM user_point_journal
+        WHERE user_id    = #{userId}
+          AND deleted_at IS NULL
+          <if test="sourceType != null and sourceType != ''">
+              AND source_type = #{sourceType}
+          </if>
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计分页总数 -->
+    <select id="countByUserIdAndSourceType" resultType="long">
+        SELECT COUNT(*)
+        FROM user_point_journal
+        WHERE user_id    = #{userId}
+          AND deleted_at IS NULL
+          <if test="sourceType != null and sourceType != ''">
+              AND source_type = #{sourceType}
+          </if>
+    </select>
+
+</mapper>
+

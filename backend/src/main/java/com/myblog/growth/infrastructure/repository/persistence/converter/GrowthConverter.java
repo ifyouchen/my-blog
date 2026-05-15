@@ -1,13 +1,19 @@
 package com.myblog.growth.infrastructure.repository.persistence.converter;
 
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
+import com.myblog.growth.domain.model.aggregate.PointAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
 import com.myblog.growth.domain.model.valueobject.GrowthRule;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
+import com.myblog.growth.domain.model.valueobject.PointJournal;
+import com.myblog.growth.domain.model.valueobject.PointRule;
 import com.myblog.growth.infrastructure.repository.persistence.entity.GrowthRuleConfigDO;
 import com.myblog.growth.infrastructure.repository.persistence.entity.LevelThresholdConfigDO;
+import com.myblog.growth.infrastructure.repository.persistence.entity.PointRuleConfigDO;
 import com.myblog.growth.infrastructure.repository.persistence.entity.UserExpJournalDO;
 import com.myblog.growth.infrastructure.repository.persistence.entity.UserGrowthAccountDO;
+import com.myblog.growth.infrastructure.repository.persistence.entity.UserPointAccountDO;
+import com.myblog.growth.infrastructure.repository.persistence.entity.UserPointJournalDO;
 
 /**
  * 成长模块 DO ↔ Domain 对象转换工具类.
@@ -187,6 +193,113 @@ public final class GrowthConverter {
         do_.setOperator(threshold.getOperator());
         do_.setVersion(threshold.getVersion());
         return do_;
+    }
+
+    // ─────────────────────────── PointAccount ────────────────────────────
+
+    /**
+     * 将 {@link UserPointAccountDO} 转换为领域聚合根 {@link PointAccount}.
+     *
+     * @param do_ 数据库实体，不能为 null
+     * @return 领域聚合根
+     */
+    public static PointAccount toPointAccountDomain(UserPointAccountDO do_) {
+        return PointAccount.restore(
+                do_.getId(),
+                do_.getUserId(),
+                do_.getBalance(),
+                do_.getTotalEarned(),
+                do_.getTotalSpent(),
+                do_.getCreatedAt(),
+                do_.getUpdatedAt(),
+                do_.getVersion()
+        );
+    }
+
+    /**
+     * 将领域聚合根 {@link PointAccount} 转换为 {@link UserPointAccountDO}（用于 INSERT / CAS UPDATE）.
+     *
+     * @param account 领域聚合根，不能为 null
+     * @return 数据库实体
+     */
+    public static UserPointAccountDO toPointAccountDO(PointAccount account) {
+        UserPointAccountDO do_ = new UserPointAccountDO();
+        do_.setId(account.getId());
+        do_.setUserId(account.getUserId());
+        do_.setBalance(account.getBalance());
+        do_.setTotalEarned(account.getTotalEarned());
+        do_.setTotalSpent(account.getTotalSpent());
+        do_.setCreatedAt(account.getCreatedAt());
+        do_.setUpdatedAt(account.getUpdatedAt());
+        do_.setVersion(account.getVersion());
+        return do_;
+    }
+
+    // ─────────────────────────── PointJournal ────────────────────────────
+
+    /**
+     * 将 {@link UserPointJournalDO} 转换为值对象 {@link PointJournal}.
+     *
+     * @param do_ 数据库实体，不能为 null
+     * @return 积分流水值对象
+     */
+    public static PointJournal toPointJournalDomain(UserPointJournalDO do_) {
+        return PointJournal.restore(
+                do_.getId(),
+                do_.getUserId(),
+                do_.getDelta(),
+                do_.getBalanceAfter(),
+                do_.getSourceType(),
+                do_.getBizNo(),
+                do_.getRemark(),
+                do_.getOperator(),
+                do_.getCreatedAt(),
+                do_.getVersion()
+        );
+    }
+
+    /**
+     * 将值对象 {@link PointJournal} 转换为 {@link UserPointJournalDO}（用于 INSERT IGNORE）.
+     *
+     * @param journal 积分流水值对象，不能为 null
+     * @return 数据库实体
+     */
+    public static UserPointJournalDO toPointJournalDO(PointJournal journal) {
+        UserPointJournalDO do_ = new UserPointJournalDO();
+        do_.setId(journal.getId());
+        do_.setUserId(journal.getUserId());
+        do_.setDelta(journal.getDelta());
+        do_.setBalanceAfter(journal.getBalanceAfter());
+        do_.setSourceType(journal.getSourceType());
+        do_.setBizNo(journal.getBizNo());
+        do_.setRemark(journal.getRemark());
+        do_.setOperator(journal.getOperator());
+        do_.setCreatedAt(journal.getCreatedAt());
+        do_.setVersion(journal.getVersion());
+        return do_;
+    }
+
+    // ─────────────────────────── PointRule ───────────────────────────────
+
+    /**
+     * 将 {@link PointRuleConfigDO} 转换为值对象 {@link PointRule}.
+     *
+     * @param do_ 数据库实体，不能为 null
+     * @return 积分规则值对象
+     */
+    public static PointRule toPointRuleDomain(PointRuleConfigDO do_) {
+        return PointRule.of(
+                do_.getId(),
+                do_.getSourceType(),
+                do_.getPointAmount(),
+                do_.getDailyLimit(),
+                null,
+                Boolean.TRUE.equals(do_.getEnabled()),
+                null,
+                do_.getOperator(),
+                do_.getReason(),
+                do_.getVersion()
+        );
     }
 }
 

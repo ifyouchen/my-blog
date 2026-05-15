@@ -25,5 +25,25 @@ public interface PointJournalRepository {
      * @return 积分流水列表
      */
     List<PointJournal> findRecentByUserId(Long userId, int limit);
+
+    /**
+     * 按来源类型分页查询积分流水.
+     *
+     * @param userId     用户 ID
+     * @param sourceType 来源类型（null 表示不筛选）
+     * @param page       页码（从 1 开始）
+     * @param size       每页条数
+     * @return 积分流水列表
+     */
+    List<PointJournal> findPageByUserId(Long userId, String sourceType, int page, int size);
+
+    /**
+     * 统计用户积分流水总数.
+     *
+     * @param userId     用户 ID
+     * @param sourceType 来源类型（null 表示不筛选）
+     * @return 总数
+     */
+    long countByUserId(Long userId, String sourceType);
 }
 
