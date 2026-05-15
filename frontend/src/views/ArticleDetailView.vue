@@ -1,5 +1,4 @@
-<script setup>
-import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+<script setup>import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {getArticleApi, getArticleNeighborsApi, getArticleRecommendationsApi} from '@/api/articles';
@@ -20,11 +19,55 @@ import {
     exportArticleAsMarkdown,
     exportArticleAsPdf
 } from '@/utils/articleExport';
+import ArticleLockBadge from '@/components/ArticleLockBadge.vue';
+import ArticleUnlockModal from '@/components/ArticleUnlockModal.vue';
+import { useGrowthStore } from '@/stores/growth';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const toast = inject('toast', { error: () => {}, success: () => {} });
 const { state } = useSession();
+
+// ===== 成长模块 - 文章解锁 =====
+const growthStore = useGrowthStore();
+const unlockModalVisible = ref(false);
+const unlockStatus = ref(null);
+const unlocking = ref(false);
+
+const loadUnlockStatus = async (id) => {
+    if (!state.user) return;
+    try {
+        unlockStatus.value = await growthStore.fetchUnlockStatus(id);
+    } catch {
+        unlockStatus.value = null;
+    }
+};
+
+const openUnlockModal = () => {
+    if (!state.user) {
+        loginModal.requireLogin();
+        return;
+    }
+    unlockModalVisible.value = true;
+};
+
+const handleUnlockConfirm = async () => {
+    unlocking.value = true;
+    try {
+        const result = await growthStore.unlockArticle(articleId.value);
+        unlockStatus.value = {
+            ...unlockStatus.value,
+            unlocked: true,
+            currentBalance: result?.balanceAfter ?? unlockStatus.value?.currentBalance
+        };
+        unlockModalVisible.value = false;
+        toast.success('解锁成功！');
+    } catch (err) {
+        toast.error(err?.message || '解锁失败，请重试');
+    } finally {
+        unlocking.value = false;
+    }
+};
 
 const remoteArticle = ref(null);
 const isLoading = ref(false);
@@ -414,6 +457,7 @@ const fetchArticle = async () => {
         const detail = await getArticleApi(numericId);
         if (String(route.params.id) === routeId) {
             remoteArticle.value = detail;
+            loadUnlockStatus(numericId);
         }
     } catch (error) {
         if (String(route.params.id) === routeId) {
@@ -874,6 +918,13 @@ watch(tocDrawerOpen, (open) => {
                         </div>
                     </div>
                     <h1>{{ article.title }}</h1>
+                    <ArticleLockBadge
+                        v-if="unlockStatus && unlockStatus.needUnlock"
+                        :need-unlock="true"
+                        :unlocked="unlockStatus.unlocked"
+                        :point-price="unlockStatus.unlockPointPrice"
+                        class="article-lock-badge"
+                    />
                     <p class="article-summary">{{ article.summary }}</p>
 
                     <div class="article-heading-bottom">
@@ -1068,7 +1119,36 @@ watch(tocDrawerOpen, (open) => {
                     </div>
                 </section>
 
-                <MarkdownPreview v-if="articleMarkdown" :content="articleMarkdown" />
+                <!-- 已解锁 or 无需解锁：正常显示正文 -->
+                <MarkdownPreview
+                    v-if="articleMarkdown && (!unlockStatus || !unlockStatus.needUnlock || unlockStatus.unlocked)"
+                    :content="articleMarkdown"
+                />
+                <!-- 需要解锁且未解锁：显示遮罩 -->
+                <div v-else-if="unlockStatus && unlockStatus.needUnlock && !unlockStatus.unlocked" class="article-lock-wall">
+                    <div class="article-lock-wall-preview" aria-hidden="true">
+                        <!-- 显示一小段摘要作为预览 -->
+                        <MarkdownPreview v-if="article && article.summary" :content="article.summary" />
+                    </div>
+                    <div class="article-lock-wall-overlay">
+                        <div class="article-lock-wall-card">
+                            <svg class="lock-wall-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <p class="lock-wall-title">本文为付费内容</p>
+                            <p class="lock-wall-desc">
+                                解锁需消耗 <strong>{{ unlockStatus.unlockPointPrice }}</strong> 积分
+                                <span v-if="unlockStatus.currentBalance !== undefined">
+                                    （当前余额：{{ unlockStatus.currentBalance }} 积分）
+                                </span>
+                            </p>
+                            <button type="button" class="lock-wall-btn" @click="openUnlockModal">
+                                立即解锁
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <section v-else class="article-content-empty">
                     <p>正文暂时为空，稍后再来看一眼。</p>
                 </section>
@@ -1251,9 +1331,116 @@ watch(tocDrawerOpen, (open) => {
     >
         {{ sidebarTooltip.text }}
     </div>
+    <!-- 文章解锁弹窗 -->
+    <ArticleUnlockModal
+        :visible="unlockModalVisible"
+        :article-id="articleId"
+        :article-title="article && article.title"
+        :point-price="unlockStatus && unlockStatus.unlockPointPrice"
+        :current-balance="unlockStatus && unlockStatus.currentBalance"
+        :unlocking="unlocking"
+        @close="unlockModalVisible = false"
+        @confirm="handleUnlockConfirm"
+    />
 </template>
 
 <style scoped>
+/* ===== 文章解锁锁墙 ===== */
+.article-lock-badge {
+    margin: 8px 0 16px;
+    display: inline-flex;
+}
+
+.article-lock-wall {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    margin: 24px 0;
+    min-height: 300px;
+}
+
+.article-lock-wall-preview {
+    max-height: 200px;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+}
+
+.article-lock-wall-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 100px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 32px;
+    background: linear-gradient(to bottom, transparent 0%, var(--bg) 40%);
+}
+
+.article-lock-wall-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 28px 32px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+    max-width: 420px;
+    width: 100%;
+}
+
+.lock-wall-icon {
+    color: var(--accent);
+    opacity: 0.8;
+}
+
+.lock-wall-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0;
+}
+
+.lock-wall-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.lock-wall-desc strong {
+    color: var(--accent);
+    font-size: 16px;
+}
+
+.lock-wall-btn {
+    margin-top: 4px;
+    padding: 10px 32px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.18s, transform 0.18s;
+}
+
+.lock-wall-btn:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+.lock-wall-btn:active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .detail-layout {
     max-width: var(--layout-article-max-width);
     grid-template-columns: minmax(0, 1040px) 260px;
