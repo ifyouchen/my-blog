@@ -586,6 +586,7 @@ function applyDraft(source = {}) {
     draft.seoDescription = source.seoDescription || '';
     draft.needUnlock = Boolean(source.needUnlock);
     draft.unlockPointPrice = Number(source.unlockPointPrice || 0);
+    clampDraftUnlockPointPrice();
     draft.scheduledPublishAt = normalizeDateTimeLocal(source.scheduledPublishAt || '');
 }
 

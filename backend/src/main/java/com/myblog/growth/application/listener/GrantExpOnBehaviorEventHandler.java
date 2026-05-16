@@ -122,7 +122,7 @@ public class GrantExpOnBehaviorEventHandler {
     public void onCommentCreated(CommentCreatedEvent event) {
         Long actorUserId = event.getCommentAuthorId();
         BehaviorExpEvent expEvent = BehaviorExpEvent.builder()
-                .eventId(buildEventId(GrowthEventType.COMMENT.name(), actorUserId, event.getCommentId()))
+                .eventId(buildCommentEventId(actorUserId, event.getCommentId()))
                 .eventType(GrowthEventType.COMMENT.name())
                 .actorUserId(actorUserId)
                 .authorUserId(event.getArticleAuthorId())
@@ -159,6 +159,21 @@ public class GrantExpOnBehaviorEventHandler {
      */
     private String buildEventId(String eventType, Long userId, Long sourceId) {
         return "evt-" + eventType + "-" + userId + "-" + sourceId;
+    }
+
+    /**
+     * 构建评论经验事件 ID.
+     * <p>
+     * COMMENT 早期实现曾将评论者误当作作者写入消费记录，旧键格式为
+     * {@code evt-COMMENT-{userId}-{commentId}}。升级为 v2 可避免新逻辑被旧幂等记录误跳过。
+     * </p>
+     *
+     * @param userId    评论者用户 ID
+     * @param commentId 评论 ID
+     * @return 评论经验事件 ID
+     */
+    private String buildCommentEventId(Long userId, Long commentId) {
+        return "evt-COMMENT-v2-" + userId + "-" + commentId;
     }
 }
 

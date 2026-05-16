@@ -8,6 +8,7 @@ import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
+import UserLevelBadge from '@/components/UserLevelBadge.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
@@ -412,12 +413,14 @@ onBeforeUnmount(teardownColumnObserver);
             eyebrow="个人主页"
             :avatar-src="profile.user.avatar"
             :title="profile.user.nickname"
-            :badge-text="`LV${profile.user.currentLevel || 1}`"
             :subtitle="summarySubtitle"
             :bio="profile.user.bio"
             :stats="summaryStats"
             @stat-click="(stat) => { if (stat.key === 'followers' || stat.key === 'following') openFollowDialog(stat.key); }"
         >
+            <template #badge>
+                <UserLevelBadge :level="profile.user.currentLevel" />
+            </template>
             <template #actions>
                 <RouterLink
                     v-if="isOwnProfile"

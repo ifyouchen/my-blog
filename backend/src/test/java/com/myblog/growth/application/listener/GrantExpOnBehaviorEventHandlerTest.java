@@ -28,7 +28,7 @@ class GrantExpOnBehaviorEventHandlerTest {
         ArgumentCaptor<BehaviorExpEvent> captor = ArgumentCaptor.forClass(BehaviorExpEvent.class);
         verify(expGrantAppService).grantExpForBehavior(captor.capture());
         BehaviorExpEvent event = captor.getValue();
-        assertThat(event.getEventId()).isEqualTo("evt-COMMENT-1-1595");
+        assertThat(event.getEventId()).isEqualTo("evt-COMMENT-v2-1-1595");
         assertThat(event.getEventType()).isEqualTo(GrowthEventType.COMMENT.name());
         assertThat(event.getActorUserId()).isEqualTo(1L);
         assertThat(event.getAuthorUserId()).isEqualTo(2L);
