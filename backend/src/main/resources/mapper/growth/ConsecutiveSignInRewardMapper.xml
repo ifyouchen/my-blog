@@ -34,8 +34,8 @@
         FROM sign_in_consecutive_reward_config
         WHERE enabled = 1
           AND deleted_at IS NULL
-          AND #{consecutiveDays} >= min_days
-          AND (max_days IS NULL OR #{consecutiveDays} <= max_days)
+          AND #{consecutiveDays} &gt;= min_days
+          AND (max_days IS NULL OR #{consecutiveDays} &lt;= max_days)
         ORDER BY min_days ASC
         LIMIT 1
     </select>
