@@ -355,7 +355,31 @@ const compactCalendarDays = computed(() =>
 const currentLevel = computed(() => growth.value?.currentLevel ?? growth.value?.level ?? 1);
 const currentExp = computed(() => growth.value?.currentExp ?? growth.value?.exp ?? 0);
 const signInPoints = computed(() => signInResult.value?.pointsGranted ?? signInResult.value?.pointsEarned ?? 0);
-const signInDays = computed(() => signInResult.value?.consecutiveDays ?? signInResult.value?.continuousDays ?? 0);
+const signInDays = computed(() => {
+    if (signInResult.value?.consecutiveDays) return signInResult.value.consecutiveDays;
+    const currentCalendar = calendarData.value[calendarMonth.value];
+    return currentCalendar?.currentConsecutiveDays ?? 0;
+});
+
+// ── 签到统计 ──────────────────────────────────────────────────────
+const signedDaysThisMonth = computed(() => {
+    const currentCalendar = calendarData.value[calendarMonth.value];
+    if (!currentCalendar?.signedDates) return 0;
+    return currentCalendar.signedDates.length;
+});
+
+const totalDaysThisMonth = computed(() => {
+    const [year, month] = calendarMonth.value.split('-').map(Number);
+    return new Date(year, month, 0).getDate();
+});
+
+// ── 判断日期是否为未来日期 ────────────────────────────────────────
+const isFutureDate = (dateStr) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date > today;
+};
 
 onMounted(async () => {
     await Promise.all([loadGrowth(), loadAccount(), loadCalendar(calendarMonth.value)]);
@@ -438,42 +462,19 @@ onMounted(async () => {
                         <div v-if="signInError" class="signin-error">{{ signInError }}</div>
                     </div>
 
-                    <!-- 日历月份导航 -->
-                    <div class="calendar-nav">
-                        <button type="button" class="cal-nav-btn" @click="prevMonth">‹</button>
-                        <span class="cal-month">{{ calendarMonth }}</span>
-                        <button
-                            type="button"
-                            class="cal-nav-btn"
-                            :disabled="isCurrentMonth"
-                            @click="nextMonth"
-                        >›</button>
+                    <!-- 签到统计摘要 -->
+                    <div class="signin-summary">
+                        <span class="summary-item">
+                            <span class="summary-icon">🔥</span>
+                            连续 <strong>{{ signInDays }}</strong> 天
+                        </span>
+                        <span class="summary-item">
+                            <span class="summary-icon">📅</span>
+                            本月 <strong>{{ signedDaysThisMonth }}/{{ totalDaysThisMonth }}</strong> 天
+                        </span>
                     </div>
 
-                    <!-- 日历格子 -->
-                    <div
-                        class="calendar-grid"
-                        :class="{ 'calendar-grid--loading': calendarLoading && !calendarInitialLoading }"
-                    >
-                        <div v-for="w in WEEKDAYS" :key="w" class="cal-weekday">{{ w }}</div>
-                        <template v-if="calendarInitialLoading">
-                            <div v-for="i in 42" :key="i" class="cal-day cal-day--skeleton"></div>
-                        </template>
-                        <template v-else>
-                            <div
-                                v-for="(day, idx) in calendarDays"
-                                :key="idx"
-                                :class="['cal-day', {
-                                    'cal-day--empty': !day,
-                                    'cal-day--signed': day && day.signed,
-                                    'cal-day--today': day && day.isToday,
-                                }]"
-                            >
-                                <span v-if="day">{{ day.date }}</span>
-                            </div>
-                        </template>
-                    </div>
-
+                    <!-- 横向滚动日历条 -->
                     <div
                         class="calendar-strip"
                         :class="{ 'calendar-grid--loading': calendarLoading && !calendarInitialLoading }"
@@ -485,9 +486,9 @@ onMounted(async () => {
                             :class="['cal-strip-day', {
                                 'cal-day--signed': day.signed,
                                 'cal-day--today': day.isToday,
+                                'cal-day--missed': !day.signed && !day.isToday
                             }]"
                         >
-                            <small>周{{ day.weekday }}</small>
                             <span>{{ day.date }}</span>
                         </div>
                     </div>
@@ -820,124 +821,87 @@ onMounted(async () => {
 .signin-card {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .signin-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
 }
 
 .signin-header h3 {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
-    margin: 0 0 4px;
+    margin: 0;
     color: var(--text-strong);
 }
 
 .signin-reward {
-    font-size: 13px;
+    font-size: 12px;
     color: #16a34a;
     font-weight: 500;
 }
 
 .signin-error {
-    font-size: 13px;
+    font-size: 12px;
     color: #dc2626;
 }
 
-.calendar-nav {
+/* 签到统计摘要 */
+.signin-summary {
     display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.cal-nav-btn {
-    width: 24px;
-    height: 24px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-    padding: 0;
-}
-
-.cal-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.cal-month {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-strong);
-    flex: 1;
-    text-align: center;
-}
-
-.calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-}
-
-.calendar-grid--loading .cal-day {
-    opacity: 0.62;
-}
-
-.cal-weekday {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-align: center;
-    padding: 2px 0;
-}
-
-.cal-day {
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--text);
+    gap: 12px;
+    padding: 6px 10px;
     background: var(--surface-soft);
-    transition: background 0.15s;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
 }
 
-.cal-day--empty { background: transparent; }
-.cal-day--skeleton { background: var(--line); animation: shimmer 1.5s infinite; }
-.cal-day--signed { background: var(--accent, #6c63ff); color: #fff; font-weight: 600; }
-.cal-day--today:not(.cal-day--signed) {
-    border: 2px solid var(--accent, #6c63ff);
-    font-weight: 600;
-    color: var(--accent, #6c63ff);
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text);
 }
 
+.summary-icon {
+    font-size: 12px;
+}
+
+.summary-item strong {
+    color: var(--text-strong);
+    font-weight: 700;
+}
+
+/* 横向滚动日历条 */
 .calendar-strip {
-    display: none;
+    display: flex;
     max-width: 100%;
-    min-width: 0;
+    gap: 6px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.calendar-strip::-webkit-scrollbar {
+    display: none;
 }
 
 .cal-strip-day {
-    display: grid;
-    flex: 0 0 42px;
-    place-items: center;
-    gap: 3px;
-    min-height: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    min-height: 44px;
     color: var(--text);
-    background: var(--surface-soft);
-    border: 1px solid transparent;
+    background: var(--surface);
+    border: 1px dashed var(--line-strong);
     border-radius: 8px;
-}
-
-.cal-strip-day small {
-    color: var(--text-muted);
-    font-size: 10px;
+    transition: all 0.15s;
 }
 
 .cal-strip-day span {
@@ -945,9 +909,31 @@ onMounted(async () => {
     font-weight: 700;
 }
 
-.cal-strip-day.cal-day--signed small,
-.cal-strip-day.cal-day--today small {
-    color: currentColor;
+/* 已签到 - 实心紫色背景 */
+.cal-strip-day.cal-day--signed {
+    background: var(--accent, #6c63ff);
+    border: 1px solid var(--accent, #6c63ff);
+    color: #fff;
+}
+
+/* 今天未签到 - 脉冲动画 */
+.cal-strip-day.cal-day--today:not(.cal-day--signed) {
+    border: 2px solid var(--accent, #6c63ff);
+    background: rgba(108, 99, 255, 0.08);
+    color: var(--accent, #6c63ff);
+    animation: pulse-today-mobile 2s infinite;
+}
+
+@keyframes pulse-today-mobile {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(108, 99, 255, 0.3); }
+    50% { box-shadow: 0 0 0 4px rgba(108, 99, 255, 0); }
+}
+
+/* 错过签到（过去但未签到） */
+.cal-strip-day.cal-day--missed {
+    background: var(--surface-soft);
+    border: 1px dashed var(--line-strong);
+    color: var(--muted);
 }
 
 .signin-btn {
@@ -1249,28 +1235,6 @@ onMounted(async () => {
         max-width: 190px;
         font-size: 12px;
         text-align: right;
-    }
-
-    .calendar-nav {
-        gap: 8px;
-    }
-
-    .calendar-grid {
-        display: none;
-    }
-
-    .calendar-strip {
-        display: flex;
-        max-width: 100%;
-        gap: 6px;
-        padding-bottom: 2px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-    }
-
-    .calendar-strip::-webkit-scrollbar {
-        display: none;
     }
 
     .signin-btn {
