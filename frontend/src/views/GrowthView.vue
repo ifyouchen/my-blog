@@ -1163,55 +1163,6 @@ onMounted(async () => {
 
 /* ── 响应式 ─────────────────────────────────── */
 @media (max-width: 640px) {
-    .growth-page {
-        row-gap: 10px;
-        max-width: 100vw;
-        overflow-x: hidden;
-    }
-
-    .growth-main {
-        overflow: hidden;
-    }
-
-    .growth-page .dashboard-nav {
-        display: flex;
-        flex-wrap: nowrap;
-        max-width: calc(100vw - 28px);
-        gap: 6px;
-        margin: -4px -14px 2px;
-        padding: 8px 14px;
-        overflow-x: auto;
-        background: var(--surface);
-        border-right: 0;
-        border-left: 0;
-        border-radius: 0;
-        box-shadow: none;
-        scrollbar-width: none;
-    }
-
-    .growth-page .dashboard-nav::-webkit-scrollbar {
-        display: none;
-    }
-
-    .growth-page .dashboard-nav .eyebrow {
-        display: none;
-    }
-
-    .growth-page .dashboard-nav a {
-        flex: 0 0 auto;
-        max-width: 92px;
-        padding: 7px 10px;
-        font-size: 13px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        border-left: 0;
-        border-bottom: 2px solid transparent;
-    }
-
-    .growth-page .dashboard-nav a.router-link-active {
-        border-bottom-color: var(--brand);
-    }
-
     .growth-cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;

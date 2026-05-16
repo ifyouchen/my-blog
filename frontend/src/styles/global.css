@@ -4022,6 +4022,17 @@ button:disabled {
     .admin-nav {
         display: flex;
         flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .dashboard-nav a,
+    .admin-nav a {
+        flex: 1 0 auto;
+        min-width: 0;
+        text-align: center;
+        padding: 8px 4px;
+        font-size: 13px;
+        white-space: nowrap;
     }
 
     .admin-stats,
