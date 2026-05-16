@@ -55,6 +55,7 @@ const slots = useSlots();
 const displayBio = computed(() => props.bio || props.bioFallback);
 const hasActions = computed(() => Boolean(slots.actions));
 const hasExtra = computed(() => Boolean(slots.extra));
+const hasBadge = computed(() => Boolean(slots.badge) || Boolean(props.badgeText));
 
 const lightboxOpen = ref(false);
 
@@ -94,7 +95,9 @@ onUnmounted(() => {
                 <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
                 <div class="profile-summary-title-row">
                     <h1>{{ title }}</h1>
-                    <span v-if="badgeText" class="profile-summary-badge">{{ badgeText }}</span>
+                    <slot v-if="hasBadge" name="badge">
+                        <span class="profile-summary-badge">{{ badgeText }}</span>
+                    </slot>
                 </div>
                 <p v-if="subtitle" class="profile-summary-subtitle">{{ subtitle }}</p>
                 <p class="profile-summary-bio">{{ displayBio }}</p>
