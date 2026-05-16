@@ -98,7 +98,7 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
     private boolean authenticateToken(String token, boolean lenient) {
         try {
             JwtPayload payload = jwtTokenProvider.parseToken(token);
-            ensureUserAvailable(payload.getUserId());
+            ensureUserAvailable(payload);
             AuthContext.set(payload);
             return true;
         } catch (ApplicationException e) {
@@ -110,16 +110,18 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 校验 token 对应的用户仍处于可用状态。
+     * 校验 token 对应的用户仍处于可用状态，并同步最新角色。
      *
-     * <p>即使 token 尚未过期，也要阻止已禁用账号继续访问。</p>
+     * <p>即使 token 尚未过期，也要阻止已禁用账号继续访问。
+     * 同时用数据库中的最新角色覆盖 JWT 中的角色，确保后台权限变更立即生效。</p>
      */
-    private void ensureUserAvailable(Long userId) {
-        User user = userRepository.findById(new UserId(userId))
+    private void ensureUserAvailable(JwtPayload payload) {
+        User user = userRepository.findById(new UserId(payload.getUserId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录"));
         if (!UserStatus.NORMAL.equals(user.getStatus())) {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "账号不可用");
         }
+        payload.setRole(user.getRole().name());
     }
 
     private boolean isPublicRequest(HttpServletRequest request) {

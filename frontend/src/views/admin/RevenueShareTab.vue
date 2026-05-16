@@ -109,7 +109,10 @@ onMounted(() => { loadRevenueShares(); });
                     <tr v-for="row in revenueState.items" :key="row.id || row.orderNo">
                         <td class="biz-no" :title="row.orderNo">{{ row.orderNo }}</td>
                         <td>{{ row.authorId }}</td>
-                        <td>{{ row.articleId }}</td>
+                        <td>
+                            <div>{{ row.articleId }}</div>
+                            <div v-if="row.articleTitle" class="article-title">{{ row.articleTitle }}</div>
+                        </td>
                         <td>{{ row.totalPoints }}</td>
                         <td>{{ row.platformPoints }}</td>
                         <td class="delta plus">+{{ row.authorPoints }}</td>
@@ -143,3 +146,15 @@ onMounted(() => { loadRevenueShares(); });
         </div>
     </section>
 </template>
+
+<style scoped>
+.article-title {
+    font-size: 0.85em;
+    color: #666;
+    line-height: 1.4;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>

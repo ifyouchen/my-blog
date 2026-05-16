@@ -632,4 +632,168 @@ onMounted(() => {
         max-width: none;
     }
 }
+
+@media (max-width: 640px) {
+    .ag-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0;
+    }
+
+    .ag-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ag-tab {
+        padding: 10px 14px;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    :deep(.ag-section) {
+        padding: 16px;
+        border-radius: 8px;
+    }
+
+    :deep(.ag-section-head) {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    :deep(.revenue-toolbar) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :deep(.revenue-author-input),
+    :deep(.revenue-status-select) {
+        max-width: none;
+        width: 100%;
+    }
+
+    :deep(.ag-query-row) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :deep(.ag-query-row .ag-btn) {
+        width: 100%;
+    }
+
+    :deep(.ag-input) {
+        width: 100%;
+    }
+
+    :deep(.ag-form) {
+        max-width: none;
+    }
+
+    :deep(.input-with-btn) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :deep(.input-with-btn .ag-btn) {
+        width: 100%;
+    }
+
+    :deep(.ag-action-row) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :deep(.ag-action-row .ag-btn) {
+        width: 100%;
+    }
+
+    :deep(.submit-btn) {
+        align-self: stretch;
+        width: 100%;
+    }
+
+    :deep(.ag-table th),
+    :deep(.ag-table td) {
+        padding: 6px 6px;
+        font-size: 12px;
+    }
+
+    :deep(.ag-table-wrap) {
+        margin: 0 -16px;
+        width: calc(100% + 32px);
+        padding: 0 2px;
+    }
+
+    :deep(.revenue-table) {
+        min-width: 800px;
+    }
+
+    :deep(.ag-table) {
+        font-size: 12px;
+    }
+
+    :deep(.template-btns) {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    :deep(.template-btns .ag-btn) {
+        font-size: 12px;
+        padding: 4px 10px;
+        height: 30px;
+    }
+
+    :deep(.ag-drawer) {
+        width: 100vw !important;
+        max-width: 100vw !important;
+    }
+
+    :deep(.rules-table) {
+        min-width: 600px;
+    }
+
+    :deep(.threshold-table) {
+        min-width: 500px;
+    }
+
+    :deep(.threshold-table input),
+    :deep(.threshold-table .cell-input) {
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+    }
+
+    :deep(.ag-hint) {
+        font-size: 12px;
+    }
+
+    :deep(.result-item) {
+        gap: 2px;
+    }
+
+    :deep(.ag-section) + :deep(.ag-section) {
+        margin-top: 16px;
+    }
+
+    :deep(.ag-pagination) {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    :deep(.ag-pagination button) {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    :deep(.cell-input.wide) {
+        width: 100%;
+        max-width: none;
+    }
+
+    :deep(.ag-action-row) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
 </style>

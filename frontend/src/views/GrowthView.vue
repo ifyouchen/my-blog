@@ -332,10 +332,25 @@ const nextPage = () => {
 const fmtTime = (t) => {
     if (!t) return '-';
     const d = new Date(t);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    const dateText = `${year}-${month}-${date}`;
+    const timeText = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${dateText} ${timeText}`;
 };
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+const compactCalendarDays = computed(() =>
+    calendarDays.value.filter(Boolean).map((day) => {
+        const [year, month, date] = day.dateStr.split('-').map(Number);
+        return {
+            ...day,
+            weekday: WEEKDAYS[new Date(year, month - 1, date).getDay()]
+        };
+    })
+);
 
 const currentLevel = computed(() => growth.value?.currentLevel ?? growth.value?.level ?? 1);
 const currentExp = computed(() => growth.value?.currentExp ?? growth.value?.exp ?? 0);
@@ -427,7 +442,12 @@ onMounted(async () => {
                     <div class="calendar-nav">
                         <button type="button" class="cal-nav-btn" @click="prevMonth">‹</button>
                         <span class="cal-month">{{ calendarMonth }}</span>
-                        <button type="button" class="cal-nav-btn" :disabled="isCurrentMonth" @click="nextMonth">›</button>
+                        <button
+                            type="button"
+                            class="cal-nav-btn"
+                            :disabled="isCurrentMonth"
+                            @click="nextMonth"
+                        >›</button>
                     </div>
 
                     <!-- 日历格子 -->
@@ -452,6 +472,24 @@ onMounted(async () => {
                                 <span v-if="day">{{ day.date }}</span>
                             </div>
                         </template>
+                    </div>
+
+                    <div
+                        class="calendar-strip"
+                        :class="{ 'calendar-grid--loading': calendarLoading && !calendarInitialLoading }"
+                        aria-label="签到日期"
+                    >
+                        <div
+                            v-for="day in compactCalendarDays"
+                            :key="day.dateStr"
+                            :class="['cal-strip-day', {
+                                'cal-day--signed': day.signed,
+                                'cal-day--today': day.isToday,
+                            }]"
+                        >
+                            <small>周{{ day.weekday }}</small>
+                            <span>{{ day.date }}</span>
+                        </div>
                     </div>
 
                     <!-- 签到按钮 -->
@@ -625,18 +663,21 @@ onMounted(async () => {
 /* ── 卡片区 ─────────────────────────────────── */
 .growth-cards {
     display: grid;
-    grid-template-columns: 1fr 1fr 1.4fr;
-    gap: 20px;
-    margin-bottom: 32px;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
 .growth-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
-    padding: 24px;
-    min-height: 180px;
+    padding: 16px 20px;
     box-shadow: var(--shadow);
+}
+
+.signin-card {
+    grid-column: 1 / -1;
 }
 
 .card-skeleton {
@@ -776,6 +817,13 @@ onMounted(async () => {
     gap: 12px;
 }
 
+.signin-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
 .signin-header h3 {
     font-size: 15px;
     font-weight: 600;
@@ -857,7 +905,42 @@ onMounted(async () => {
 .cal-day--empty { background: transparent; }
 .cal-day--skeleton { background: var(--line); animation: shimmer 1.5s infinite; }
 .cal-day--signed { background: var(--accent, #6c63ff); color: #fff; font-weight: 600; }
-.cal-day--today:not(.cal-day--signed) { border: 2px solid var(--accent, #6c63ff); font-weight: 600; color: var(--accent, #6c63ff); }
+.cal-day--today:not(.cal-day--signed) {
+    border: 2px solid var(--accent, #6c63ff);
+    font-weight: 600;
+    color: var(--accent, #6c63ff);
+}
+
+.calendar-strip {
+    display: none;
+}
+
+.cal-strip-day {
+    display: grid;
+    flex: 0 0 42px;
+    place-items: center;
+    gap: 3px;
+    min-height: 50px;
+    color: var(--text);
+    background: var(--surface-soft);
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.cal-strip-day small {
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+.cal-strip-day span {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.cal-strip-day.cal-day--signed small,
+.cal-strip-day.cal-day--today small {
+    color: currentColor;
+}
 
 .signin-btn {
     margin-top: 4px;
@@ -1063,21 +1146,199 @@ onMounted(async () => {
 .journal-pagination button:not(:disabled):hover { background: var(--surface-soft); }
 
 /* ── 响应式 ─────────────────────────────────── */
-@media (max-width: 1024px) {
-    .growth-cards {
-        grid-template-columns: 1fr 1fr;
+@media (max-width: 640px) {
+    .growth-page {
+        row-gap: 10px;
     }
+
+    .growth-page .dashboard-nav {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        margin: -4px -14px 2px;
+        padding: 8px 14px;
+        overflow-x: auto;
+        background: var(--surface);
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+        box-shadow: none;
+        scrollbar-width: none;
+    }
+
+    .growth-page .dashboard-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .growth-page .dashboard-nav .eyebrow {
+        display: none;
+    }
+
+    .growth-page .dashboard-nav a {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        font-size: 13px;
+        border-left: 0;
+        border-bottom: 2px solid transparent;
+    }
+
+    .growth-page .dashboard-nav a.router-link-active {
+        border-bottom-color: var(--brand);
+    }
+
+    .growth-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 0;
+        margin-bottom: 14px;
+    }
+
     .signin-card {
         grid-column: 1 / -1;
     }
-}
 
-@media (max-width: 768px) {
-    .growth-cards {
-        grid-template-columns: 1fr;
+    .growth-heading {
+        padding: 0;
+        margin-bottom: 8px;
     }
+
+    .growth-card {
+        padding: 12px;
+        min-height: 0;
+        border-radius: var(--radius-sm);
+    }
+
+    .level-card {
+        gap: 10px;
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .level-badge {
+        width: 42px;
+        height: 42px;
+        font-size: 13px;
+    }
+
+    .level-name {
+        margin-bottom: 4px;
+        font-size: 15px;
+    }
+
+    .level-exp {
+        margin-bottom: 8px;
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    .point-num {
+        font-size: 26px;
+    }
+
+    .point-card {
+        gap: 10px;
+        justify-content: flex-start;
+    }
+
+    .point-stats {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .point-stat-item {
+        min-width: 56px;
+    }
+
+    .stat-val {
+        font-size: 14px;
+    }
+
     .signin-card {
-        grid-column: auto;
+        gap: 10px;
+    }
+
+    .signin-header {
+        align-items: center;
+    }
+
+    .signin-header h3 {
+        margin-bottom: 0;
+    }
+
+    .signin-reward,
+    .signin-error {
+        max-width: 190px;
+        font-size: 12px;
+        text-align: right;
+    }
+
+    .calendar-nav {
+        gap: 8px;
+    }
+
+    .calendar-grid {
+        display: none;
+    }
+
+    .calendar-strip {
+        display: flex;
+        gap: 6px;
+        padding-bottom: 2px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .calendar-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .signin-btn {
+        margin-top: 0;
+        padding: 9px 10px;
+        border-radius: 7px;
+        font-size: 13px;
+    }
+
+    .journal-section {
+        margin: 0 -14px;
+        padding: 14px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .journal-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .journal-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .journal-content {
+        min-height: 260px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .journal-table {
+        min-width: 720px;
+    }
+
+    .journal-table th,
+    .journal-table td {
+        padding: 8px 8px;
+        font-size: 12px;
     }
 }
 </style>
