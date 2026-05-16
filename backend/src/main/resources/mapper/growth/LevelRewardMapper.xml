@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.LevelRewardMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.LevelRewardConfig">
+        <id column="id" property="id"/>
+        <result column="level" property="level"/>
+        <result column="reward_points" property="rewardPoints"/>
+        <result column="reward_title" property="rewardTitle"/>
+        <result column="description" property="description"/>
+        <result column="enabled" property="enabled"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, level, reward_points, reward_title, description, enabled,
+        created_at, updated_at, version
+    </sql>
+
+    <select id="selectByLevel" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM level_reward_config
+        WHERE level = #{level}
+          AND enabled = 1
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM level_reward_config
+        WHERE enabled = 1
+          AND deleted_at IS NULL
+        ORDER BY level ASC
+    </select>
+
+    <update id="updateById">
+        UPDATE level_reward_config
+        SET reward_points = #{rewardPoints},
+            reward_title  = #{rewardTitle},
+            description   = #{description},
+            enabled       = #{enabled},
+            version       = version + 1
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.CumulativeSignInRewardMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.CumulativeSignInRewardConfig">
+        <id column="id" property="id"/>
+        <result column="milestone_days" property="milestoneDays"/>
+        <result column="reward_points" property="rewardPoints"/>
+        <result column="reward_title" property="rewardTitle"/>
+        <result column="badge_code" property="badgeCode"/>
+        <result column="description" property="description"/>
+        <result column="enabled" property="enabled"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, milestone_days, reward_points, reward_title, badge_code, description, enabled,
+        created_at, updated_at, version
+    </sql>
+
+    <select id="selectAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_cumulative_reward_config
+        WHERE enabled = 1
+          AND deleted_at IS NULL
+        ORDER BY milestone_days ASC
+    </select>
+
+    <select id="selectByMilestoneLessThanEqual" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_cumulative_reward_config
+        WHERE enabled = 1
+          AND deleted_at IS NULL
+          AND milestone_days &lt;= #{days}
+        ORDER BY milestone_days ASC
+    </select>
+
+    <update id="updateById">
+        UPDATE sign_in_cumulative_reward_config
+        SET milestone_days = #{milestoneDays},
+            reward_points  = #{rewardPoints},
+            reward_title   = #{rewardTitle},
+            badge_code     = #{badgeCode},
+            description    = #{description},
+            enabled        = #{enabled},
+            version        = version + 1
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.UserSignInStatsMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.UserSignInStats">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="total_sign_days" property="totalSignDays"/>
+        <result column="current_streak" property="currentStreak"/>
+        <result column="longest_streak" property="longestStreak"/>
+        <result column="last_sign_date" property="lastSignDate"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, total_sign_days, current_streak, longest_streak, last_sign_date,
+        created_at, updated_at, version
+    </sql>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_sign_in_stats
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_sign_in_stats
+            (user_id, total_sign_days, current_streak, longest_streak, last_sign_date)
+        VALUES
+            (#{userId}, #{totalSignDays}, #{currentStreak}, #{longestStreak}, #{lastSignDate})
+    </insert>
+
+    <update id="updateWithCAS">
+        UPDATE user_sign_in_stats
+        SET total_sign_days = #{totalSignDays},
+            current_streak  = #{currentStreak},
+            longest_streak  = #{longestStreak},
+            last_sign_date  = #{lastSignDate},
+            version         = version + 1
+        WHERE user_id = #{userId}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>

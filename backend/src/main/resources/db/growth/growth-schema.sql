@@ -204,6 +204,86 @@ CREATE TABLE IF NOT EXISTS `sign_in_record` (
     INDEX `idx_user_date_desc` (`user_id`, `sign_date`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户签到记录';
 
+-- 用户签到统计表
+CREATE TABLE IF NOT EXISTS `user_sign_in_stats` (
+    `id`              bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`         bigint unsigned NOT NULL COMMENT '用户ID',
+    `total_sign_days` int unsigned    NOT NULL DEFAULT 0 COMMENT '累计签到总天数',
+    `current_streak`  int unsigned    NOT NULL DEFAULT 0 COMMENT '当前连续签到天数',
+    `longest_streak`  int unsigned    NOT NULL DEFAULT 0 COMMENT '历史最长连续签到天数',
+    `last_sign_date`  date            NULL DEFAULT NULL COMMENT '最后签到日期',
+    `created_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`      datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`      datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`         int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_user` (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户签到统计表';
+
+-- 连续签到奖励配置表
+CREATE TABLE IF NOT EXISTS `sign_in_consecutive_reward_config` (
+    `id`           bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `min_days`     int unsigned    NOT NULL COMMENT '最小连续天数',
+    `max_days`     int unsigned    NULL DEFAULT NULL COMMENT '最大连续天数（NULL=无上限）',
+    `bonus_points` int             NOT NULL DEFAULT 0 COMMENT '额外奖励积分',
+    `reward_tier`  varchar(32)     NOT NULL COMMENT '档位标识：NORMAL/TRIPLE/WEEK/BIWEEK/MONTH',
+    `reward_desc`  varchar(128)    NULL DEFAULT NULL COMMENT '奖励描述',
+    `enabled`      tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_at`   datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`   datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`   datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`      int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_days_range` (`min_days`, `max_days`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='连续签到奖励配置表';
+
+-- 累计签到里程碑奖励配置表
+CREATE TABLE IF NOT EXISTS `sign_in_cumulative_reward_config` (
+    `id`             bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `milestone_days` int unsigned    NOT NULL COMMENT '累计签到天数里程碑',
+    `reward_points`  int             NOT NULL DEFAULT 0 COMMENT '奖励积分',
+    `reward_title`   varchar(64)     NULL DEFAULT NULL COMMENT '解锁称号',
+    `badge_code`     varchar(64)     NULL DEFAULT NULL COMMENT '徽章标识',
+    `description`    varchar(255)    NULL DEFAULT NULL COMMENT '里程碑说明',
+    `enabled`        tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`     datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`        int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_milestone` (`milestone_days`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='累计签到里程碑奖励配置表';
+
+-- 等级奖励配置表
+CREATE TABLE IF NOT EXISTS `level_reward_config` (
+    `id`            bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `level`         int unsigned    NOT NULL COMMENT '等级',
+    `reward_points` int             NOT NULL DEFAULT 0 COMMENT '升级奖励积分',
+    `reward_title`  varchar(64)     NULL DEFAULT NULL COMMENT '解锁称号',
+    `description`   varchar(255)    NULL DEFAULT NULL COMMENT '奖励说明',
+    `enabled`       tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_at`    datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`    datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`       int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_level` (`level`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='等级奖励配置表';
+
+-- 用户奖励领取记录表
+CREATE TABLE IF NOT EXISTS `user_reward_grant_log` (
+    `id`             bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`        bigint unsigned NOT NULL COMMENT '用户ID',
+    `reward_type`    varchar(32)     NOT NULL COMMENT '奖励类型：LEVEL_UP/CONSECUTIVE_SIGN/CUMULATIVE_SIGN',
+    `reward_id`      bigint unsigned NOT NULL COMMENT '关联配置ID',
+    `points_granted` int             NOT NULL DEFAULT 0 COMMENT '发放积分数',
+    `granted_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发放时间',
+    `remark`         varchar(255)    NULL DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_user_reward` (`user_id`, `reward_type`, `reward_id`) USING BTREE,
+    INDEX `idx_user_type` (`user_id`, `reward_type`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户奖励领取记录表';
+
 
 -- ========================
 -- 4. 邀请
@@ -369,4 +449,32 @@ INSERT IGNORE INTO `point_rule_config` (`source_type`, `point_amount`, `daily_li
 ('RECHARGE',            1, 0, 1, 'system', '初始化 - 1元=1积分'),
 ('PUBLISH',             5, 3, 1, 'system', '初始化 - 作者发布文章，每日最多3篇计积分'),
 ('UNLOCK_SHARE_RATIO', 50, 0, 1, 'system', '初始化 - 平台分账比例50%');
+
+-- 初始化连续签到奖励配置
+INSERT IGNORE INTO `sign_in_consecutive_reward_config` (`min_days`, `max_days`, `bonus_points`, `reward_tier`, `reward_desc`) VALUES
+(1, 2, 0, 'NORMAL', '继续加油'),
+(3, 4, 5, 'TRIPLE', '连续 3 天，额外 +5'),
+(5, 6, 8, 'TRIPLE', '连续 5 天，额外 +8'),
+(7, 13, 10, 'WEEK', '连续 7 天，额外 +10'),
+(14, 29, 20, 'BIWEEK', '连续 14 天，额外 +20'),
+(30, NULL, 50, 'MONTH', '连续 30 天，额外 +50');
+
+-- 初始化累计签到里程碑配置
+INSERT IGNORE INTO `sign_in_cumulative_reward_config` (`milestone_days`, `reward_points`, `reward_title`, `description`) VALUES
+(7, 20, '一周坚持者', '累计签到 7 天'),
+(30, 100, '月度达人', '累计签到 30 天'),
+(100, 500, '百日挑战者', '累计签到 100 天'),
+(200, 1000, '半年坚持者', '累计签到 200 天'),
+(365, 2000, '年度创作者', '累计签到 365 天');
+
+-- 初始化等级奖励配置
+INSERT IGNORE INTO `level_reward_config` (`level`, `reward_points`, `reward_title`, `description`) VALUES
+(1, 0, '新手', '注册即得'),
+(2, 50, '见习作者', '升级奖励 50 积分'),
+(3, 100, '活跃创作者', '升级奖励 100 积分'),
+(4, 200, '优质作者', '解锁付费文章发布权限'),
+(5, 500, '专家作者', '升级奖励 500 积分'),
+(6, 1000, '大师作者', '解锁专属徽章'),
+(7, 2000, '宗师作者', '平台首页推荐资格'),
+(8, 5000, '传奇作者', '年度创作者评选资格');
 

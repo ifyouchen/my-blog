@@ -35,8 +35,7 @@ spring:
         - classpath:db/growth/growth-schema.sql
       data-locations:
         - classpath:db/initdata.sql
-        - classpath:db/articles/articles_ai_agent.sql
-#        - classpath*:db/articles/*.sql
+        - classpath*:db/articles/*.sql
   task:
     scheduling:
       pool:

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.ConsecutiveSignInRewardMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.ConsecutiveSignInRewardConfig">
+        <id column="id" property="id"/>
+        <result column="min_days" property="minDays"/>
+        <result column="max_days" property="maxDays"/>
+        <result column="bonus_points" property="bonusPoints"/>
+        <result column="reward_tier" property="rewardTier"/>
+        <result column="reward_desc" property="rewardDesc"/>
+        <result column="enabled" property="enabled"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, min_days, max_days, bonus_points, reward_tier, reward_desc, enabled,
+        created_at, updated_at, version
+    </sql>
+
+    <select id="selectAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_consecutive_reward_config
+        WHERE enabled = 1
+          AND deleted_at IS NULL
+        ORDER BY min_days ASC
+    </select>
+
+    <select id="selectByConsecutiveDays" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_consecutive_reward_config
+        WHERE enabled = 1
+          AND deleted_at IS NULL
+          AND #{consecutiveDays} >= min_days
+          AND (max_days IS NULL OR #{consecutiveDays} <= max_days)
+        ORDER BY min_days ASC
+        LIMIT 1
+    </select>
+
+    <update id="updateById">
+        UPDATE sign_in_consecutive_reward_config
+        SET min_days     = #{minDays},
+            max_days     = #{maxDays},
+            bonus_points = #{bonusPoints},
+            reward_tier  = #{rewardTier},
+            reward_desc  = #{rewardDesc},
+            enabled      = #{enabled},
+            version      = version + 1
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>
