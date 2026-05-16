@@ -130,6 +130,8 @@ export const normalizeArticle = (article) => {
         seoDescription: article.seoDescription || '',
         needUnlock: Boolean(article.needUnlock),
         unlockPointPrice: Number(article.unlockPointPrice || 0),
+        contentLocked: Boolean(article.contentLocked),
+        unlockReason: article.unlockReason || '',
         scheduledPublishAt: article.scheduledPublishAt || '',
         stats: {
             views: `${article.viewCount || 0} 阅读`,

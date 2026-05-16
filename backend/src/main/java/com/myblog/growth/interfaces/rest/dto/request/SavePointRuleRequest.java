@@ -30,8 +30,7 @@ public class SavePointRuleRequest {
     /** 是否启用. */
     private boolean enabled = true;
 
-    /** 操作人（由网关注入）. */
-    @NotBlank(message = "operator 不能为空")
+    /** 操作人（由服务端注入）. */
     private String operator;
 
     /** 变更原因. */

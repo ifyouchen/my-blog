@@ -1,11 +1,13 @@
 package com.myblog.growth.infrastructure.repository.persistence.repository;
 
+import com.myblog.growth.domain.model.valueobject.RevenueShareJournal;
 import com.myblog.growth.domain.repository.RevenueShareRepository;
 import com.myblog.growth.infrastructure.repository.persistence.entity.RevenueShareJournalDO;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.RevenueShareJournalMapper;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 分账流水 Repository 实现.
@@ -47,8 +49,9 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param orderNo 解锁订单号
      * @return 分账流水，不存在时返回 null
      */
-    public RevenueShareJournalDO findByOrderNoForUpdate(String orderNo) {
-        return mapper.selectByOrderNoForUpdate(orderNo);
+    @Override
+    public RevenueShareJournal findByOrderNoForUpdate(String orderNo) {
+        return toDomain(mapper.selectByOrderNoForUpdate(orderNo));
     }
 
     /**
@@ -58,6 +61,7 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param pointJournalBizNo 作者积分流水业务单号
      * @return 更新行数
      */
+    @Override
     public int markSettled(String orderNo, String pointJournalBizNo) {
         return mapper.markSettled(orderNo, pointJournalBizNo);
     }
@@ -69,6 +73,7 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param lastError 最近一次错误信息
      * @return 更新行数
      */
+    @Override
     public int markFailed(String orderNo, String lastError) {
         return mapper.markFailed(orderNo, lastError);
     }
@@ -80,8 +85,9 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param limit    最大返回条数
      * @return 分账流水 DO 列表
      */
-    public List<RevenueShareJournalDO> findRetryableForSettlement(int maxRetry, int limit) {
-        return mapper.selectRetryableForSettlement(maxRetry, limit);
+    @Override
+    public List<RevenueShareJournal> findRetryableForSettlement(int maxRetry, int limit) {
+        return toDomainList(mapper.selectRetryableForSettlement(maxRetry, limit));
     }
 
     /**
@@ -93,9 +99,10 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param size             每页条数
      * @return 分账流水 DO 列表
      */
-    public List<RevenueShareJournalDO> findAdminPage(Long authorId, String settlementStatus, int page, int size) {
+    @Override
+    public List<RevenueShareJournal> findAdminPage(Long authorId, String settlementStatus, int page, int size) {
         int offset = (page - 1) * size;
-        return mapper.selectAdminPage(authorId, settlementStatus, size, offset);
+        return toDomainList(mapper.selectAdminPage(authorId, settlementStatus, size, offset));
     }
 
     /**
@@ -105,6 +112,7 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param settlementStatus 结算状态（可选）
      * @return 总数
      */
+    @Override
     public long countAdmin(Long authorId, String settlementStatus) {
         return mapper.countAdmin(authorId, settlementStatus);
     }
@@ -117,9 +125,10 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param size     每页条数
      * @return 分账流水 DO 列表
      */
-    public List<RevenueShareJournalDO> findPageByAuthorId(Long authorId, int page, int size) {
+    @Override
+    public List<RevenueShareJournal> findPageByAuthorId(Long authorId, int page, int size) {
         int offset = (page - 1) * size;
-        return mapper.selectPageByAuthorId(authorId, size, offset);
+        return toDomainList(mapper.selectPageByAuthorId(authorId, size, offset));
     }
 
     /**
@@ -128,8 +137,37 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * @param authorId 作者用户 ID
      * @return 总数
      */
+    @Override
     public long countByAuthorId(Long authorId) {
         return mapper.countByAuthorId(authorId);
+    }
+
+    private List<RevenueShareJournal> toDomainList(List<RevenueShareJournalDO> journals) {
+        return journals.stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    private RevenueShareJournal toDomain(RevenueShareJournalDO do_) {
+        if (do_ == null) {
+            return null;
+        }
+        return RevenueShareJournal.builder()
+                .id(do_.getId())
+                .orderNo(do_.getOrderNo())
+                .articleId(do_.getArticleId())
+                .authorId(do_.getAuthorId())
+                .totalPoints(do_.getTotalPoints())
+                .platformPoints(do_.getPlatformPoints())
+                .authorPoints(do_.getAuthorPoints())
+                .shareRatio(do_.getShareRatio())
+                .settlementStatus(do_.getSettlementStatus())
+                .pointJournalBizNo(do_.getPointJournalBizNo())
+                .settledAt(do_.getSettledAt())
+                .retryCount(do_.getRetryCount())
+                .lastError(do_.getLastError())
+                .createdAt(do_.getCreatedAt())
+                .build();
     }
 }
 

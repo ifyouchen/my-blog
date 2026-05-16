@@ -1,7 +1,7 @@
 package com.myblog.growth.application.service;
 
-import com.myblog.growth.infrastructure.repository.persistence.entity.RevenueShareJournalDO;
-import com.myblog.growth.infrastructure.repository.persistence.repository.RevenueShareRepositoryImpl;
+import com.myblog.growth.domain.model.valueobject.RevenueShareJournal;
+import com.myblog.growth.domain.repository.RevenueShareRepository;
 import com.myblog.growth.shared.enums.PointEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,7 @@ public class RevenueShareSettlementAppService {
 
     private static final int MAX_ERROR_LENGTH = 500;
 
-    private final RevenueShareRepositoryImpl revenueShareRepository;
+    private final RevenueShareRepository revenueShareRepository;
     private final PointAppService pointAppService;
     private final TransactionTemplate transactionTemplate;
 
@@ -50,7 +50,7 @@ public class RevenueShareSettlementAppService {
      * @param pointAppService        积分应用服务
      * @param transactionTemplate    编程式事务模板
      */
-    public RevenueShareSettlementAppService(RevenueShareRepositoryImpl revenueShareRepository,
+    public RevenueShareSettlementAppService(RevenueShareRepository revenueShareRepository,
                                             PointAppService pointAppService,
                                             TransactionTemplate transactionTemplate) {
         this.revenueShareRepository = revenueShareRepository;
@@ -88,16 +88,16 @@ public class RevenueShareSettlementAppService {
     public int settleRetryable(int maxRetry, int limit) {
         int safeMaxRetry = Math.max(1, maxRetry);
         int safeLimit = Math.min(Math.max(1, limit), DEFAULT_SCAN_LIMIT);
-        List<RevenueShareJournalDO> journals =
+        List<RevenueShareJournal> journals =
                 revenueShareRepository.findRetryableForSettlement(safeMaxRetry, safeLimit);
-        for (RevenueShareJournalDO journal : journals) {
+        for (RevenueShareJournal journal : journals) {
             settle(journal.getOrderNo());
         }
         return journals.size();
     }
 
     private SettlementResult settleInTransaction(String orderNo) {
-        RevenueShareJournalDO share = revenueShareRepository.findByOrderNoForUpdate(orderNo);
+        RevenueShareJournal share = revenueShareRepository.findByOrderNoForUpdate(orderNo);
         if (share == null) {
             return SettlementResult.failed(orderNo, "分账记录不存在");
         }
@@ -131,7 +131,7 @@ public class RevenueShareSettlementAppService {
     }
 
     private SettlementResult markFailedInTransaction(String orderNo, Exception cause) {
-        RevenueShareJournalDO share = revenueShareRepository.findByOrderNoForUpdate(orderNo);
+        RevenueShareJournal share = revenueShareRepository.findByOrderNoForUpdate(orderNo);
         if (share == null) {
             return SettlementResult.failed(orderNo, "分账记录不存在：" + errorMessage(cause));
         }

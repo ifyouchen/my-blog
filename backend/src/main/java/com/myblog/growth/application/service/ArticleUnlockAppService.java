@@ -2,10 +2,10 @@ package com.myblog.growth.application.service;
 
 import com.myblog.growth.application.event.RevenueShareCreatedEvent;
 import com.myblog.growth.domain.model.aggregate.UnlockOrder;
+import com.myblog.growth.domain.model.valueobject.ArticleUnlockInfo;
+import com.myblog.growth.domain.repository.ArticleUnlockInfoRepository;
 import com.myblog.growth.domain.repository.UnlockOrderRepository;
 import com.myblog.growth.domain.repository.UnlockRelationRepository;
-import com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockInfoMapper;
-import com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockInfoMapper.ArticleUnlockInfoVO;
 import com.myblog.growth.shared.exception.GrowthBusinessException;
 import com.myblog.growth.shared.exception.GrowthErrorCode;
 import com.myblog.shared.enums.UserRole;
@@ -41,20 +41,20 @@ public class ArticleUnlockAppService {
     /** 正常已解锁标识. */
     private static final String REASON_UNLOCKED = "UNLOCKED";
 
-    private final ArticleUnlockInfoMapper articleUnlockInfoMapper;
+    private final ArticleUnlockInfoRepository articleUnlockInfoRepository;
     private final UnlockOrderRepository unlockOrderRepository;
     private final UnlockRelationRepository unlockRelationRepository;
     private final PointAppService pointAppService;
     private final RevenueShareAppService revenueShareAppService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public ArticleUnlockAppService(ArticleUnlockInfoMapper articleUnlockInfoMapper,
+    public ArticleUnlockAppService(ArticleUnlockInfoRepository articleUnlockInfoRepository,
                                    UnlockOrderRepository unlockOrderRepository,
                                    UnlockRelationRepository unlockRelationRepository,
                                    PointAppService pointAppService,
                                    RevenueShareAppService revenueShareAppService,
                                    ApplicationEventPublisher eventPublisher) {
-        this.articleUnlockInfoMapper = articleUnlockInfoMapper;
+        this.articleUnlockInfoRepository = articleUnlockInfoRepository;
         this.unlockOrderRepository = unlockOrderRepository;
         this.unlockRelationRepository = unlockRelationRepository;
         this.pointAppService = pointAppService;
@@ -136,10 +136,8 @@ public class ArticleUnlockAppService {
     @Transactional(rollbackFor = Exception.class)
     public UnlockResult unlock(Long userId, Long articleId, String role) {
         // ① 查文章解锁信息
-        ArticleUnlockInfoVO articleInfo = articleUnlockInfoMapper.selectUnlockInfoById(articleId);
-        if (articleInfo == null) {
-            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "文章不存在");
-        }
+        ArticleUnlockInfo articleInfo = articleUnlockInfoRepository.findByArticleId(articleId)
+                .orElseThrow(() -> new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "文章不存在"));
         if (!"PUBLISHED".equals(articleInfo.getStatus())) {
             throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "文章未发布，无法解锁");
         }
@@ -229,10 +227,8 @@ public class ArticleUnlockAppService {
      * @return 解锁状态结果
      */
     public UnlockStatusResult getUnlockStatus(Long userId, Long articleId, String role) {
-        ArticleUnlockInfoVO articleInfo = articleUnlockInfoMapper.selectUnlockInfoById(articleId);
-        if (articleInfo == null) {
-            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "文章不存在");
-        }
+        ArticleUnlockInfo articleInfo = articleUnlockInfoRepository.findByArticleId(articleId)
+                .orElseThrow(() -> new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "文章不存在"));
 
         // 作者本人 → 直接已解锁
         if (userId.equals(articleInfo.getAuthorId())) {

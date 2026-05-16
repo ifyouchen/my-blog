@@ -210,6 +210,9 @@ public class AdminGrowthRuleController {
                 throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID,
                         sourceType + " 的 pointAmount 必须大于 0");
             }
+        } else {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID,
+                    "不支持的积分规则来源类型：" + sourceType);
         }
 
         if (req.getDailyLimit() < 0) {

@@ -35,14 +35,47 @@ const unlockModalVisible = ref(false);
 const unlockStatus = ref(null);
 const unlocking = ref(false);
 
+const buildLockedStatusFromArticle = (articleData, id) => {
+    const shouldTreatAsLocked = Boolean(articleData?.contentLocked)
+        || (!state.user && Boolean(articleData?.needUnlock));
+    if (!articleData || !shouldTreatAsLocked) {
+        return null;
+    }
+    return {
+        articleId: id || articleData.id,
+        needUnlock: Boolean(articleData.needUnlock || articleData.contentLocked),
+        unlockPointPrice: Number(articleData.unlockPointPrice || 0),
+        unlocked: false,
+        currentBalance: undefined,
+        reason: articleData.unlockReason || 'CONTENT_LOCKED'
+    };
+};
+
+const syncUnlockStatusFromArticle = (articleData, id) => {
+    unlockStatus.value = buildLockedStatusFromArticle(articleData, id);
+};
+
 const loadUnlockStatus = async (id) => {
-    if (!state.user) return;
+    if (!state.user) {
+        syncUnlockStatusFromArticle(article.value, id);
+        return;
+    }
     try {
         unlockStatus.value = await growthStore.fetchUnlockStatus(id);
     } catch {
-        unlockStatus.value = null;
+        syncUnlockStatusFromArticle(article.value, id);
     }
 };
+
+const effectiveUnlockStatus = computed(() =>
+    unlockStatus.value || buildLockedStatusFromArticle(article.value, articleId.value)
+);
+
+const canReadArticleContent = computed(() => {
+    const status = effectiveUnlockStatus.value;
+    return Boolean(articleMarkdown.value)
+        && (!status || !status.needUnlock || status.unlocked);
+});
 
 const openUnlockModal = () => {
     if (!state.user) {
@@ -54,13 +87,20 @@ const openUnlockModal = () => {
 
 const handleUnlockConfirm = async () => {
     unlocking.value = true;
+    const targetArticleId = articleId.value;
     try {
         const result = await growthStore.unlockArticle(articleId.value);
-        unlockStatus.value = {
-            ...unlockStatus.value,
-            unlocked: true,
-            currentBalance: result?.balanceAfter ?? unlockStatus.value?.currentBalance
-        };
+        growthStore.invalidateUnlockCache(targetArticleId);
+        const detail = await getArticleApi(targetArticleId);
+        if (articleId.value === targetArticleId) {
+            remoteArticle.value = detail;
+            const status = await growthStore.fetchUnlockStatus(targetArticleId);
+            unlockStatus.value = {
+                ...status,
+                unlocked: true,
+                currentBalance: result?.balanceAfter ?? status?.currentBalance
+            };
+        }
         unlockModalVisible.value = false;
         toast.success('解锁成功！');
     } catch (err) {
@@ -458,7 +498,11 @@ const fetchArticle = async () => {
         const detail = await getArticleApi(numericId);
         if (String(route.params.id) === routeId) {
             remoteArticle.value = detail;
-            loadUnlockStatus(numericId);
+            if (state.user) {
+                loadUnlockStatus(numericId);
+            } else {
+                syncUnlockStatusFromArticle(detail, numericId);
+            }
         }
     } catch (error) {
         if (String(route.params.id) === routeId) {
@@ -673,6 +717,18 @@ const handleScroll = () => {
 
 watch(article, syncArticleState, { immediate: true });
 watch(() => route.params.id, fetchArticle, { immediate: true });
+watch(() => state.user?.id, () => {
+    if (!article.value) {
+        unlockStatus.value = null;
+        return;
+    }
+    if (state.user) {
+        growthStore.invalidateUnlockCache(articleId.value);
+        fetchArticle();
+        return;
+    }
+    syncUnlockStatusFromArticle(article.value, articleId.value);
+});
 watch(() => remoteArticle.value?.id, (id) => {
     const currentArticle = remoteArticle.value;
     if (id && currentArticle) {
@@ -920,10 +976,10 @@ watch(tocDrawerOpen, (open) => {
                     </div>
                     <h1>{{ article.title }}</h1>
                     <ArticleLockBadge
-                        v-if="unlockStatus && unlockStatus.needUnlock"
+                        v-if="effectiveUnlockStatus && effectiveUnlockStatus.needUnlock"
                         :need-unlock="true"
-                        :unlocked="unlockStatus.unlocked"
-                        :point-price="unlockStatus.unlockPointPrice"
+                        :unlocked="effectiveUnlockStatus.unlocked"
+                        :point-price="effectiveUnlockStatus.unlockPointPrice"
                         class="article-lock-badge"
                     />
                     <p class="article-summary">{{ article.summary }}</p>
@@ -1122,21 +1178,30 @@ watch(tocDrawerOpen, (open) => {
 
                 <!-- 已解锁 or 无需解锁：正常显示正文 -->
                 <div
-                    v-if="articleMarkdown && (!unlockStatus || !unlockStatus.needUnlock || unlockStatus.unlocked)"
+                    v-if="canReadArticleContent"
                     class="article-unlocked-content"
                 >
                     <!-- 作者本人查看文章 -->
-                    <div v-if="unlockStatus && unlockStatus.reason === 'AUTHOR_SELF'" class="article-author-self-notice">
+                    <div
+                        v-if="effectiveUnlockStatus && effectiveUnlockStatus.reason === 'AUTHOR_SELF'"
+                        class="article-author-self-notice"
+                    >
                         作者本人可直接阅读
                     </div>
                     <!-- 管理员免积分查看 -->
-                    <div v-if="unlockStatus && unlockStatus.reason === 'ADMIN_BYPASS'" class="article-admin-bypass-notice">
+                    <div
+                        v-if="effectiveUnlockStatus && effectiveUnlockStatus.reason === 'ADMIN_BYPASS'"
+                        class="article-admin-bypass-notice"
+                    >
                         管理员可直接查看
                     </div>
                     <MarkdownPreview :content="articleMarkdown" />
                 </div>
                 <!-- 需要解锁且未解锁：显示遮罩 -->
-                <div v-else-if="unlockStatus && unlockStatus.needUnlock && !unlockStatus.unlocked" class="article-lock-wall">
+                <div
+                    v-else-if="effectiveUnlockStatus && effectiveUnlockStatus.needUnlock && !effectiveUnlockStatus.unlocked"
+                    class="article-lock-wall"
+                >
                     <div class="article-lock-wall-preview" aria-hidden="true">
                         <!-- 显示一小段摘要作为预览 -->
                         <MarkdownPreview v-if="article && article.summary" :content="article.summary" />
@@ -1149,9 +1214,9 @@ watch(tocDrawerOpen, (open) => {
                             </svg>
                             <p class="lock-wall-title">本文为付费内容</p>
                             <p class="lock-wall-desc">
-                                解锁需消耗 <strong>{{ unlockStatus.unlockPointPrice }}</strong> 积分
-                                <span v-if="unlockStatus.currentBalance !== undefined">
-                                    （当前余额：{{ unlockStatus.currentBalance }} 积分）
+                                解锁需消耗 <strong>{{ effectiveUnlockStatus.unlockPointPrice }}</strong> 积分
+                                <span v-if="effectiveUnlockStatus.currentBalance !== undefined">
+                                    （当前余额：{{ effectiveUnlockStatus.currentBalance }} 积分）
                                 </span>
                             </p>
                             <button type="button" class="lock-wall-btn" @click="openUnlockModal">
@@ -1347,8 +1412,8 @@ watch(tocDrawerOpen, (open) => {
         :visible="unlockModalVisible"
         :article-id="articleId"
         :article-title="article && article.title"
-        :point-price="unlockStatus && unlockStatus.unlockPointPrice"
-        :current-balance="unlockStatus && unlockStatus.currentBalance"
+        :point-price="effectiveUnlockStatus && effectiveUnlockStatus.unlockPointPrice"
+        :current-balance="effectiveUnlockStatus && effectiveUnlockStatus.currentBalance"
         :unlocking="unlocking"
         @close="unlockModalVisible = false"
         @confirm="handleUnlockConfirm"

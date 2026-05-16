@@ -1,10 +1,9 @@
 package com.myblog.growth.application.service;
 
 import com.myblog.growth.domain.model.valueobject.PointRule;
+import com.myblog.growth.domain.model.valueobject.RevenueShareJournal;
 import com.myblog.growth.domain.repository.PointRuleRepository;
 import com.myblog.growth.domain.repository.RevenueShareRepository;
-import com.myblog.growth.infrastructure.repository.persistence.entity.RevenueShareJournalDO;
-import com.myblog.growth.infrastructure.repository.persistence.repository.RevenueShareRepositoryImpl;
 import com.myblog.shared.result.PageResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,14 +34,11 @@ public class RevenueShareAppService {
     private static final double DEFAULT_PLATFORM_RATIO = 0.5;
 
     private final RevenueShareRepository revenueShareRepository;
-    private final RevenueShareRepositoryImpl revenueShareRepositoryImpl;
     private final PointRuleRepository pointRuleRepository;
 
     public RevenueShareAppService(RevenueShareRepository revenueShareRepository,
-                                  RevenueShareRepositoryImpl revenueShareRepositoryImpl,
                                   PointRuleRepository pointRuleRepository) {
         this.revenueShareRepository = revenueShareRepository;
-        this.revenueShareRepositoryImpl = revenueShareRepositoryImpl;
         this.pointRuleRepository = pointRuleRepository;
     }
 
@@ -124,21 +120,21 @@ public class RevenueShareAppService {
         private final String lastError;
         private final LocalDateTime createdAt;
 
-        public RevenueShareVO(RevenueShareJournalDO do_) {
-            this.id = do_.getId();
-            this.orderNo = do_.getOrderNo();
-            this.articleId = do_.getArticleId();
-            this.authorId = do_.getAuthorId();
-            this.totalPoints = do_.getTotalPoints();
-            this.platformPoints = do_.getPlatformPoints();
-            this.authorPoints = do_.getAuthorPoints();
-            this.shareRatio = do_.getShareRatio();
-            this.settlementStatus = do_.getSettlementStatus();
-            this.pointJournalBizNo = do_.getPointJournalBizNo();
-            this.settledAt = do_.getSettledAt();
-            this.retryCount = do_.getRetryCount();
-            this.lastError = do_.getLastError();
-            this.createdAt = do_.getCreatedAt();
+        public RevenueShareVO(RevenueShareJournal journal) {
+            this.id = journal.getId();
+            this.orderNo = journal.getOrderNo();
+            this.articleId = journal.getArticleId();
+            this.authorId = journal.getAuthorId();
+            this.totalPoints = journal.getTotalPoints();
+            this.platformPoints = journal.getPlatformPoints();
+            this.authorPoints = journal.getAuthorPoints();
+            this.shareRatio = journal.getShareRatio();
+            this.settlementStatus = journal.getSettlementStatus();
+            this.pointJournalBizNo = journal.getPointJournalBizNo();
+            this.settledAt = journal.getSettledAt();
+            this.retryCount = journal.getRetryCount();
+            this.lastError = journal.getLastError();
+            this.createdAt = journal.getCreatedAt();
         }
 
         public Long getId() { return id; }
@@ -160,15 +156,15 @@ public class RevenueShareAppService {
     /**
      * 分页查询作者分账流水.
      */
-    public List<RevenueShareJournalDO> getAuthorJournals(Long authorId, int page, int size) {
-        return revenueShareRepositoryImpl.findPageByAuthorId(authorId, page, size);
+    public List<RevenueShareJournal> getAuthorJournals(Long authorId, int page, int size) {
+        return revenueShareRepository.findPageByAuthorId(authorId, page, size);
     }
 
     /**
      * 统计作者分账流水总数.
      */
     public long countAuthorJournals(Long authorId) {
-        return revenueShareRepositoryImpl.countByAuthorId(authorId);
+        return revenueShareRepository.countByAuthorId(authorId);
     }
 
     /**
@@ -176,7 +172,7 @@ public class RevenueShareAppService {
      */
     public PageResult<RevenueShareVO> pageAuthorRevenue(Long authorId, int page, int size) {
         long total = countAuthorJournals(authorId);
-        List<RevenueShareJournalDO> journals = getAuthorJournals(authorId, page, size);
+        List<RevenueShareJournal> journals = getAuthorJournals(authorId, page, size);
         return new PageResult<>(toVOList(journals), page, size, total);
     }
 
@@ -184,13 +180,13 @@ public class RevenueShareAppService {
      * 管理端分页查询分账流水.
      */
     public PageResult<RevenueShareVO> pageAdminRevenue(Long authorId, String settlementStatus, int page, int size) {
-        long total = revenueShareRepositoryImpl.countAdmin(authorId, settlementStatus);
-        List<RevenueShareJournalDO> journals =
-                revenueShareRepositoryImpl.findAdminPage(authorId, settlementStatus, page, size);
+        long total = revenueShareRepository.countAdmin(authorId, settlementStatus);
+        List<RevenueShareJournal> journals =
+                revenueShareRepository.findAdminPage(authorId, settlementStatus, page, size);
         return new PageResult<>(toVOList(journals), page, size, total);
     }
 
-    private List<RevenueShareVO> toVOList(List<RevenueShareJournalDO> journals) {
+    private List<RevenueShareVO> toVOList(List<RevenueShareJournal> journals) {
         return journals.stream()
                 .map(RevenueShareVO::new)
                 .collect(Collectors.toList());
