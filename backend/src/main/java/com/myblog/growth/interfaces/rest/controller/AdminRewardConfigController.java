@@ -74,9 +74,10 @@ public class AdminRewardConfigController {
     /**
      * 检查管理员权限.
      */
-    private void checkAdminRole() {
-        if (!AuthContext.isAdmin()) {
-            throw new ApplicationException(ErrorCode.FORBIDDEN, "需要管理员权限");
+    private void requireAdmin() {
+        String role = AuthContext.getRole();
+        if (!UserRole.ADMIN.name().equals(role)) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "无权操作，需要 ADMIN 角色");
         }
     }
 
@@ -84,14 +85,14 @@ public class AdminRewardConfigController {
 
     @GetMapping("/level")
     public Result<List<LevelRewardConfig>> getLevelRewards() {
-        checkAdminRole();
+        requireAdmin();
         return Result.success(levelRewardRepository.findAllEnabled());
     }
 
     @PutMapping("/level/{id}")
     public Result<Void> updateLevelReward(@PathVariable Long id,
                                            @RequestBody LevelRewardConfig request) {
-        checkAdminRole();
+        requireAdmin();
         request.setId(id);
         levelRewardMapper.updateById(request);
         return Result.success(null);
@@ -101,14 +102,14 @@ public class AdminRewardConfigController {
 
     @GetMapping("/sign-in/consecutive")
     public Result<List<ConsecutiveSignInRewardConfig>> getConsecutiveRewards() {
-        checkAdminRole();
+        requireAdmin();
         return Result.success(consecutiveRewardRepository.findAllEnabled());
     }
 
     @PutMapping("/sign-in/consecutive/{id}")
     public Result<Void> updateConsecutiveReward(@PathVariable Long id,
                                                   @RequestBody ConsecutiveSignInRewardConfig request) {
-        checkAdminRole();
+        requireAdmin();
         request.setId(id);
         consecutiveRewardMapper.updateById(request);
         return Result.success(null);
@@ -118,14 +119,14 @@ public class AdminRewardConfigController {
 
     @GetMapping("/sign-in/cumulative")
     public Result<List<CumulativeSignInRewardConfig>> getCumulativeRewards() {
-        checkAdminRole();
+        requireAdmin();
         return Result.success(cumulativeRewardRepository.findAllEnabled());
     }
 
     @PutMapping("/sign-in/cumulative/{id}")
     public Result<Void> updateCumulativeReward(@PathVariable Long id,
                                                  @RequestBody CumulativeSignInRewardConfig request) {
-        checkAdminRole();
+        requireAdmin();
         request.setId(id);
         cumulativeRewardMapper.updateById(request);
         return Result.success(null);
