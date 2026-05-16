@@ -242,7 +242,8 @@ public class CommentAppService {
         eventPublisher.publishEvent(new CommentCreatedEvent(
             comment.getId().getValue(),
             article.getId().getValue(),
-            user.getId().getValue()
+            user.getId().getValue(),
+            article.getAuthorId().getValue()
         ));
 
         CommentDTO dto = CommentAssembler.toDTO(comment, user);

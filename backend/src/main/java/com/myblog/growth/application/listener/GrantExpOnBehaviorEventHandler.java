@@ -13,8 +13,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
 /**
  * 行为经验发放事件监听器.
  * <p>
@@ -114,7 +112,7 @@ public class GrantExpOnBehaviorEventHandler {
     /**
      * 监听评论创建事件 → 发放 COMMENT 经验.
      * <p>
-     * {@link CommentCreatedEvent} 包含 authorId（文章作者），可直接发放 AUTHOR 经验。
+     * {@link CommentCreatedEvent} 包含评论者和文章作者，可同时支持 ACTOR / AUTHOR 规则。
      * </p>
      *
      * @param event 评论创建事件
@@ -122,14 +120,12 @@ public class GrantExpOnBehaviorEventHandler {
     @Async
     @EventListener
     public void onCommentCreated(CommentCreatedEvent event) {
-        // CommentCreatedEvent 中 authorId 为文章作者，暂不含评论者 userId；
-        // 仅触发 AUTHOR 侧经验（规则中只有 AUTHOR 角色时会自动跳过 ACTOR）。
-        // 若后续 CommentCreatedEvent 补充 userId，可在此直接赋给 actorUserId。
+        Long actorUserId = event.getCommentAuthorId();
         BehaviorExpEvent expEvent = BehaviorExpEvent.builder()
-                .eventId(buildEventId(GrowthEventType.COMMENT.name(), event.getAuthorId(), event.getCommentId()))
+                .eventId(buildEventId(GrowthEventType.COMMENT.name(), actorUserId, event.getCommentId()))
                 .eventType(GrowthEventType.COMMENT.name())
-                .actorUserId(null)              // 评论者 ID 当前事件未携带
-                .authorUserId(event.getAuthorId())  // 文章作者
+                .actorUserId(actorUserId)
+                .authorUserId(event.getArticleAuthorId())
                 .sourceId(event.getCommentId())
                 .occurredAt(event.getOccurredOn())
                 .build();

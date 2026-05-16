@@ -1348,10 +1348,10 @@ public class ArticleAppService {
             errors,
             "unlockPointPrice",
             "积分解锁",
-            !needUnlock || unlockPointPrice > 0,
+            !needUnlock || unlockPointPrice >= Article.MIN_UNLOCK_POINT_PRICE,
             "error",
             needUnlock ? "已设置解锁积分" : "文章免费阅读",
-            "开启积分解锁后请设置大于 0 的解锁积分"
+            "开启积分解锁后请设置至少 " + Article.MIN_UNLOCK_POINT_PRICE + " 的解锁积分"
         );
 
         // 敏感词检测

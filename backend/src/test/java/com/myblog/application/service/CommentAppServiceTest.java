@@ -101,6 +101,8 @@ class CommentAppServiceTest {
         assertThat(event.getCommentId()).isEqualTo(1595L);
         assertThat(event.getArticleId()).isEqualTo(100L);
         assertThat(event.getAuthorId()).isEqualTo(1L);
+        assertThat(event.getCommentAuthorId()).isEqualTo(1L);
+        assertThat(event.getArticleAuthorId()).isEqualTo(2L);
     }
 
     @Test

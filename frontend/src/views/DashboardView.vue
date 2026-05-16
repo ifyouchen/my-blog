@@ -32,6 +32,8 @@ const route = useRoute();
 const router = useRouter();
 const { isLoggedIn } = useSession();
 const SCHEDULED_ARTICLE_REFRESH_MS = 30000;
+const MIN_UNLOCK_POINT_PRICE = 10;
+const MAX_UNLOCK_POINT_PRICE = 1000000;
 const {
     confirmDialog,
     openConfirmDialog,
@@ -462,6 +464,7 @@ const openUnlockDialog = (article) => {
         needUnlock: Boolean(article.needUnlock),
         unlockPointPrice: Number(article.unlockPointPrice || 0)
     };
+    clampUnlockFormPointPrice();
     unlockError.value = '';
     unlockDialogVisible.value = true;
 };
@@ -496,16 +499,35 @@ const normalizeUnlockPointPrice = () => {
     return Number.isNaN(price) ? 0 : price;
 };
 
+const clampUnlockFormPointPrice = () => {
+    if (!unlockForm.value.needUnlock) {
+        return;
+    }
+    const price = Number.parseInt(unlockForm.value.unlockPointPrice, 10);
+    unlockForm.value.unlockPointPrice = Number.isNaN(price)
+        ? MIN_UNLOCK_POINT_PRICE
+        : Math.min(MAX_UNLOCK_POINT_PRICE, Math.max(MIN_UNLOCK_POINT_PRICE, price));
+};
+
+const onUnlockNeedUnlockChange = () => {
+    clampUnlockFormPointPrice();
+};
+
+const onUnlockPointPriceCommit = () => {
+    clampUnlockFormPointPrice();
+};
+
 const validateUnlockForm = () => {
+    clampUnlockFormPointPrice();
     if (!unlockForm.value.needUnlock) {
         return '';
     }
     const price = normalizeUnlockPointPrice();
-    if (price <= 0) {
-        return '开启积分解锁后，请设置大于 0 的积分。';
+    if (price < MIN_UNLOCK_POINT_PRICE) {
+        return `开启积分解锁后，请设置至少 ${MIN_UNLOCK_POINT_PRICE} 的积分。`;
     }
-    if (price > 1000000) {
-        return '解锁积分不能超过 1000000。';
+    if (price > MAX_UNLOCK_POINT_PRICE) {
+        return `解锁积分不能超过 ${MAX_UNLOCK_POINT_PRICE}。`;
     }
     return '';
 };
@@ -1517,6 +1539,7 @@ onUnmounted(() => {
                                 type="radio"
                                 :value="false"
                                 :disabled="unlockSaving"
+                                @change="onUnlockNeedUnlockChange"
                             >
                             <span>
                                 <strong>免费阅读</strong>
@@ -1529,6 +1552,7 @@ onUnmounted(() => {
                                 type="radio"
                                 :value="true"
                                 :disabled="unlockSaving"
+                                @change="onUnlockNeedUnlockChange"
                             >
                             <span>
                                 <strong>积分解锁</strong>
@@ -1542,11 +1566,13 @@ onUnmounted(() => {
                             id="unlock-point-price"
                             v-model.number="unlockForm.unlockPointPrice"
                             type="number"
-                            min="1"
-                            max="1000000"
+                            :min="MIN_UNLOCK_POINT_PRICE"
+                            :max="MAX_UNLOCK_POINT_PRICE"
                             step="1"
                             inputmode="numeric"
                             :disabled="!unlockForm.needUnlock || unlockSaving"
+                            @change="onUnlockPointPriceCommit"
+                            @blur="onUnlockPointPriceCommit"
                         >
                     </label>
                     <p v-if="unlockError" class="unlock-rule-error">{{ unlockError }}</p>

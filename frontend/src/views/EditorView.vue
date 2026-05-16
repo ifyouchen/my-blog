@@ -27,6 +27,8 @@ import {useConfirmDialog} from '@/composables/useConfirmDialog';
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
 const AUTO_SAVE_DELAY_MS = 15000;
+const MIN_UNLOCK_POINT_PRICE = 10;
+const MAX_UNLOCK_POINT_PRICE = 1000000;
 const CATEGORY_GROUP_RULES = [
     {
         name: '数据库',
@@ -256,16 +258,35 @@ function canServerAutoSave() {
 }
 
 function isUnlockConfigValid() {
-    return !draft.needUnlock || Number(draft.unlockPointPrice || 0) > 0;
+    return !draft.needUnlock || Number(draft.unlockPointPrice || 0) >= MIN_UNLOCK_POINT_PRICE;
 }
 
 function ensureUnlockConfigValid() {
+    clampDraftUnlockPointPrice();
     if (isUnlockConfigValid()) {
         return true;
     }
-    statusMessage.value = '开启积分解锁后，请设置大于 0 的解锁积分';
+    statusMessage.value = `开启积分解锁后，请设置至少 ${MIN_UNLOCK_POINT_PRICE} 的解锁积分`;
     feedbackType.value = 'warning';
     return false;
+}
+
+function clampDraftUnlockPointPrice() {
+    if (!draft.needUnlock) {
+        return;
+    }
+    const price = Number.parseInt(draft.unlockPointPrice, 10);
+    draft.unlockPointPrice = Number.isNaN(price)
+        ? MIN_UNLOCK_POINT_PRICE
+        : Math.min(MAX_UNLOCK_POINT_PRICE, Math.max(MIN_UNLOCK_POINT_PRICE, price));
+}
+
+function onNeedUnlockToggle() {
+    clampDraftUnlockPointPrice();
+}
+
+function onUnlockPointPriceCommit() {
+    clampDraftUnlockPointPrice();
 }
 
 async function runAutoSaveDraft() {
@@ -1342,7 +1363,12 @@ onUnmounted(() => {
                         <strong>{{ draft.needUnlock ? '积分解锁' : '免费阅读' }}</strong>
                     </div>
                     <label class="editor-unlock-switch">
-                        <input v-model="draft.needUnlock" type="checkbox" data-testid="editor-need-unlock-toggle">
+                        <input
+                            v-model="draft.needUnlock"
+                            type="checkbox"
+                            data-testid="editor-need-unlock-toggle"
+                            @change="onNeedUnlockToggle"
+                        >
                         <span>{{ draft.needUnlock ? '已开启' : '关闭' }}</span>
                     </label>
                 </div>
@@ -1351,11 +1377,13 @@ onUnmounted(() => {
                     <input
                         v-model.number="draft.unlockPointPrice"
                         type="number"
-                        min="0"
-                        max="1000000"
+                        :min="MIN_UNLOCK_POINT_PRICE"
+                        :max="MAX_UNLOCK_POINT_PRICE"
                         step="1"
                         :disabled="!draft.needUnlock"
                         data-testid="editor-unlock-price-input"
+                        @change="onUnlockPointPriceCommit"
+                        @blur="onUnlockPointPriceCommit"
                     >
                 </label>
             </section>

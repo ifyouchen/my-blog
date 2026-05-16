@@ -19,6 +19,9 @@ import java.util.List;
  */
 public class Article {
 
+    public static final int MIN_UNLOCK_POINT_PRICE = 10;
+    public static final int MAX_UNLOCK_POINT_PRICE = 1000000;
+
     private ArticleId id;
     private UserId authorId;
     private String title;
@@ -389,11 +392,14 @@ public class Article {
             this.unlockPointPrice = 0;
             return;
         }
-        if (unlockPointPrice <= 0) {
-            throw new DomainException(ErrorCode.PARAM_ERROR, "开启积分解锁后，解锁积分必须大于 0");
+        if (unlockPointPrice < MIN_UNLOCK_POINT_PRICE) {
+            throw new DomainException(
+                ErrorCode.PARAM_ERROR,
+                "开启积分解锁后，解锁积分不能低于 " + MIN_UNLOCK_POINT_PRICE
+            );
         }
-        if (unlockPointPrice > 1000000) {
-            throw new DomainException(ErrorCode.PARAM_ERROR, "解锁积分不能超过 1000000");
+        if (unlockPointPrice > MAX_UNLOCK_POINT_PRICE) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "解锁积分不能超过 " + MAX_UNLOCK_POINT_PRICE);
         }
         this.needUnlock = true;
         this.unlockPointPrice = unlockPointPrice;

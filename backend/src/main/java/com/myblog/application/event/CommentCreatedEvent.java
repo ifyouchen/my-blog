@@ -19,7 +19,10 @@ public class CommentCreatedEvent {
     private final Long articleId;
 
     /** 评论者用户ID. */
-    private final Long authorId;
+    private final Long commentAuthorId;
+
+    /** 被评论文章作者用户ID. */
+    private final Long articleAuthorId;
 
     /** 事件发生时间. */
     private final LocalDateTime occurredOn;
@@ -32,9 +35,22 @@ public class CommentCreatedEvent {
      * @param authorId  评论者用户ID
      */
     public CommentCreatedEvent(Long commentId, Long articleId, Long authorId) {
+        this(commentId, articleId, authorId, null);
+    }
+
+    /**
+     * 构造评论创建事件.
+     *
+     * @param commentId       评论ID
+     * @param articleId       所属文章ID
+     * @param commentAuthorId 评论者用户ID
+     * @param articleAuthorId 被评论文章作者用户ID
+     */
+    public CommentCreatedEvent(Long commentId, Long articleId, Long commentAuthorId, Long articleAuthorId) {
         this.commentId = commentId;
         this.articleId = articleId;
-        this.authorId = authorId;
+        this.commentAuthorId = commentAuthorId;
+        this.articleAuthorId = articleAuthorId;
         this.occurredOn = LocalDateTime.now();
     }
 
@@ -62,7 +78,25 @@ public class CommentCreatedEvent {
      * @return 评论者用户ID
      */
     public Long getAuthorId() {
-        return authorId;
+        return commentAuthorId;
+    }
+
+    /**
+     * 获取评论者用户ID.
+     *
+     * @return 评论者用户ID
+     */
+    public Long getCommentAuthorId() {
+        return commentAuthorId;
+    }
+
+    /**
+     * 获取被评论文章作者用户ID.
+     *
+     * @return 被评论文章作者用户ID
+     */
+    public Long getArticleAuthorId() {
+        return articleAuthorId;
     }
 
     /**
