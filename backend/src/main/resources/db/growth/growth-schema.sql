@@ -336,19 +336,31 @@ INSERT IGNORE INTO `level_threshold_config` (`level`, `min_exp`, `level_name`, `
 (8, 12000, '传奇', '极少数杰出贡献者',     1);
 
 -- 初始化经验规则
-INSERT IGNORE INTO `growth_rule_config`
-    (`event_type`, `role`, `exp_amount`, `daily_limit`, `daily_limit_strategy`, `enabled`, `operator`, `reason`) VALUES
-('LIKE',     'ACTOR',  2,  20, 'SKIP', 1, 'system', '初始化'),
-('LIKE',     'AUTHOR', 5,  50, 'SKIP', 1, 'system', '初始化'),
-('READ',     'ACTOR',  1,  30, 'SKIP', 1, 'system', '初始化'),
-('COMMENT',  'ACTOR',  5,  10, 'SKIP', 1, 'system', '初始化'),
-('COMMENT',  'AUTHOR', 3,  30, 'SKIP', 1, 'system', '初始化'),
-('FAVORITE', 'ACTOR',  3,  15, 'SKIP', 1, 'system', '初始化'),
-('FAVORITE', 'AUTHOR', 8,  40, 'SKIP', 1, 'system', '初始化'),
-('SHARE',    'ACTOR',  4,  10, 'SKIP', 1, 'system', '初始化'),
-('FOLLOW',   'ACTOR',  5,   5, 'SKIP', 1, 'system', '初始化'),
-('FOLLOW',   'AUTHOR',10,  20, 'SKIP', 1, 'system', '初始化'),
-('PUBLISH',  'ACTOR', 20,   3, 'SKIP', 1, 'system', '初始化 - 作者发布文章每日最多3篇计经验');
+INSERT INTO `growth_rule_config`
+    (`event_type`, `role`, `exp_amount`, `daily_limit`, `daily_limit_strategy`, `enabled`, `operator`, `reason`)
+SELECT seed.event_type, seed.role, seed.exp_amount, seed.daily_limit,
+       seed.daily_limit_strategy, seed.enabled, seed.operator, seed.reason
+FROM (
+    SELECT 'LIKE' AS event_type, 'ACTOR' AS role, 2 AS exp_amount, 20 AS daily_limit,
+           'SKIP' AS daily_limit_strategy, 1 AS enabled, 'system' AS operator, '初始化' AS reason
+    UNION ALL SELECT 'LIKE', 'AUTHOR', 5, 50, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'READ', 'ACTOR', 1, 30, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'COMMENT', 'ACTOR', 5, 10, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'COMMENT', 'AUTHOR', 3, 30, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'FAVORITE', 'ACTOR', 3, 15, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'FAVORITE', 'AUTHOR', 8, 40, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'SHARE', 'ACTOR', 4, 10, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'FOLLOW', 'ACTOR', 5, 5, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'FOLLOW', 'AUTHOR', 10, 20, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'PUBLISH', 'ACTOR', 20, 3, 'SKIP', 1, 'system',
+                     '初始化 - 作者发布文章每日最多3篇计经验'
+) seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `growth_rule_config` existing
+    WHERE existing.event_type = seed.event_type
+      AND existing.role = seed.role
+);
 
 -- 初始化积分规则
 INSERT IGNORE INTO `point_rule_config` (`source_type`, `point_amount`, `daily_limit`, `enabled`, `operator`, `reason`) VALUES

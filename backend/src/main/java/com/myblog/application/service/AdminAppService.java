@@ -14,6 +14,7 @@ import com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStat
 import com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.shared.enums.ArticleStatus;
+import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
@@ -248,6 +249,48 @@ public class AdminAppService {
             BizLogHelper.trace(),
             BizLogHelper.params("userId", userId, "status", status),
             BizLogHelper.result(BizLogHelper.statusChanged(previousStatus.name(), newStatus.name())),
+            BizLogHelper.elapsed(_start));
+        return result;
+    }
+
+    /**
+     * 更新用户角色。
+     *
+     * @param userId 用户 ID
+     * @param role 目标角色
+     * @param operatorUserId 操作管理员 ID
+     * @return 变更结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> updateUserRole(Long userId, String role, Long operatorUserId) {
+        long _start = System.currentTimeMillis();
+        if (userId != null && userId.equals(operatorUserId)) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "不能修改当前登录管理员自己的角色");
+        }
+        User user = userRepository.findById(new UserId(userId))
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+
+        UserRole newRole;
+        try {
+            newRole = UserRole.valueOf(role);
+        } catch (RuntimeException ex) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "用户角色不合法：" + role);
+        }
+
+        UserRole previousRole = user.getRole();
+        user.updateRole(newRole);
+        userRepository.save(user);
+
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("id", user.getId().getValue());
+        result.put("username", user.getUsername());
+        result.put("previousRole", previousRole.name());
+        result.put("role", newRole.name());
+        log.info("{} | {} | 入参({}) | 结果({}) | {}",
+            "管理员 变更用户角色",
+            BizLogHelper.trace(),
+            BizLogHelper.params("userId", userId, "role", role),
+            BizLogHelper.result(BizLogHelper.statusChanged(previousRole.name(), newRole.name())),
             BizLogHelper.elapsed(_start));
         return result;
     }

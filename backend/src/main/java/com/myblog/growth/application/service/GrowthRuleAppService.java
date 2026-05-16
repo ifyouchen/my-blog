@@ -81,12 +81,37 @@ public class GrowthRuleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void updateRule(GrowthRule rule) {
+        growthRuleRepository.findByEventTypeAndRole(rule.getEventType(), rule.getRole())
+                .ifPresent(existing -> {
+                    if (!existing.getId().equals(rule.getId())) {
+                        throw new GrowthBusinessException(GrowthErrorCode.RULE_DUPLICATE,
+                                "规则已存在：eventType=" + rule.getEventType() + ", role=" + rule.getRole());
+                    }
+                });
         int updated = growthRuleRepository.update(rule);
         if (updated == 0) {
             throw new GrowthBusinessException(GrowthErrorCode.OPTIMISTIC_LOCK_CONFLICT,
                     "规则更新失败，可能已被其他人修改，请刷新后重试。id=" + rule.getId());
         }
         log.info("[规则管理] 更新规则成功。id={}", rule.getId());
+    }
+
+    /**
+     * 软删除经验规则.
+     *
+     * @param id       规则 ID
+     * @param version  当前版本号
+     * @param operator 操作人
+     * @param reason   删除原因
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteRule(Long id, int version, String operator, String reason) {
+        int deleted = growthRuleRepository.softDelete(id, version, operator, reason);
+        if (deleted == 0) {
+            throw new GrowthBusinessException(GrowthErrorCode.OPTIMISTIC_LOCK_CONFLICT,
+                    "规则删除失败，可能已被其他人修改，请刷新后重试。id=" + id);
+        }
+        log.info("[规则管理] 软删除规则成功。id={}, operator={}", id, operator);
     }
 
     // ─────────────────────────── 等级阈值 ───────────────────────────

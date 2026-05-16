@@ -36,17 +36,24 @@
         WHERE event_type = #{eventType}
           AND role       = #{role}
           AND deleted_at IS NULL
+        ORDER BY id DESC
         LIMIT 1
     </select>
 
-    <!-- 查询所有启用规则（生效时间过滤） -->
+    <!-- 查询每个 event_type + role 的最新配置，避免历史重复初始化数据污染管理端 -->
     <select id="selectAllEnabled" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM growth_rule_config
-        WHERE enabled    = 1
-          AND deleted_at IS NULL
-          AND (effective_at IS NULL OR effective_at &lt;= NOW())
-        ORDER BY event_type, role
+        SELECT
+            c.id, c.event_type, c.role, c.exp_amount, c.daily_limit, c.daily_limit_strategy,
+            c.enabled, c.effective_at, c.operator, c.reason,
+            c.created_at, c.updated_at, c.deleted_at, c.version
+        FROM growth_rule_config c
+        INNER JOIN (
+            SELECT event_type, role, MAX(id) AS id
+            FROM growth_rule_config
+            WHERE deleted_at IS NULL
+            GROUP BY event_type, role
+        ) latest ON latest.id = c.id
+        ORDER BY c.event_type, c.role
     </select>
 
     <!-- 插入新规则 -->
@@ -62,7 +69,9 @@
     <!-- 乐观锁 CAS 更新规则 -->
     <update id="updateCAS">
         UPDATE growth_rule_config
-        SET exp_amount           = #{expAmount},
+        SET event_type           = #{eventType},
+            role                 = #{role},
+            exp_amount           = #{expAmount},
             daily_limit          = #{dailyLimit},
             daily_limit_strategy = #{dailyLimitStrategy},
             enabled              = #{enabled},
@@ -74,6 +83,24 @@
         WHERE id         = #{id}
           AND version    = #{version}
           AND deleted_at IS NULL
+    </update>
+
+    <!-- 乐观锁 CAS 软删除规则 -->
+    <update id="softDeleteCAS">
+        UPDATE growth_rule_config target
+        INNER JOIN growth_rule_config selected
+            ON selected.id = #{id}
+           AND selected.version = #{version}
+           AND selected.deleted_at IS NULL
+           AND target.event_type = selected.event_type
+           AND target.role = selected.role
+        SET target.deleted_at = NOW(),
+            target.enabled    = 0,
+            target.operator   = #{operator},
+            target.reason     = #{reason},
+            target.updated_at = NOW(),
+            target.version    = target.version + 1
+        WHERE target.deleted_at IS NULL
     </update>
 
 </mapper>

@@ -143,6 +143,17 @@ export const updateAdminGrowthRuleApi = (payload) =>
     });
 
 /**
+ * 管理员软删除经验规则.
+ * @param {number} id 规则 ID
+ * @param {number} version 当前版本号（乐观锁）
+ * @returns {Promise<void>}
+ */
+export const deleteAdminGrowthRuleApi = (id, version) =>
+    request(`/admin/growth/rules/${id}?version=${version}`, {
+        method: 'DELETE'
+    });
+
+/**
  * 管理员查询等级阈值.
  * @returns {Promise<Array>}
  */
@@ -178,6 +189,20 @@ export const adminAdjustPointsApi = (payload) =>
  */
 export const adminGetPointAccountApi = (userId) =>
     request(`/admin/points/account?userId=${userId}`);
+
+/**
+ * 管理员分页查询指定用户积分流水.
+ * @param {{ userId: number|string, sourceType?: string, page?: number, size?: number }} params
+ * @returns {Promise<PageResult>}
+ */
+export const adminGetPointJournalsApi = (params = {}) => {
+    const query = new URLSearchParams();
+    query.set('userId', params.userId);
+    if (params.sourceType) query.set('sourceType', params.sourceType);
+    if (params.page) query.set('page', params.page);
+    if (params.size) query.set('size', params.size);
+    return request(`/admin/points/journals?${query.toString()}`);
+};
 
 /**
  * 管理员分页查询分账流水.

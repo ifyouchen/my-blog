@@ -69,5 +69,13 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
         GrowthRuleConfigDO do_ = GrowthConverter.toDO(rule);
         return mapper.updateCAS(do_);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int softDelete(Long id, int version, String operator, String reason) {
+        return mapper.softDeleteCAS(id, version, operator, reason);
+    }
 }
 

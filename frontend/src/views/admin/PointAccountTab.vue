@@ -4,15 +4,64 @@ import {useToast} from '@/composables/useToast';
 import {
     adminAdjustPointsApi,
     adminGetPointAccountApi,
+    adminGetPointJournalsApi,
 } from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
 
 const toast = useToast();
 
+const SOURCE_TYPE_OPTIONS = [
+    {value: '', label: '全部类型'},
+    {value: 'SIGN_IN', label: '签到'},
+    {value: 'INVITE', label: '邀请'},
+    {value: 'RECHARGE', label: '充值'},
+    {value: 'PUBLISH', label: '发布奖励'},
+    {value: 'UNLOCK', label: '文章解锁'},
+    {value: 'REVENUE_SHARE', label: '文章解锁分成'},
+    {value: 'ADMIN_ADJUST', label: '管理员调整'},
+];
+
+const sourceTypeLabel = (sourceType) =>
+    SOURCE_TYPE_OPTIONS.find(option => option.value === sourceType)?.label || sourceType || '-';
+
 const queryUserId = ref('');
 const queryResult = ref(null);
 const querying = ref(false);
 const queryError = ref('');
+const journalSourceType = ref('');
+const journals = ref([]);
+const journalsTotal = ref(0);
+const journalsPage = ref(1);
+const journalsPageSize = 10;
+const journalsLoading = ref(false);
+const journalsError = ref('');
+
+const hasJournalPrev = () => journalsPage.value > 1;
+const hasJournalNext = () => journalsPage.value * journalsPageSize < journalsTotal.value;
+
+const loadJournals = async (page = 1) => {
+    const uid = String(queryUserId.value || '').trim();
+    if (!uid) return;
+    journalsLoading.value = true;
+    journalsError.value = '';
+    try {
+        const result = await adminGetPointJournalsApi({
+            userId: uid,
+            sourceType: journalSourceType.value,
+            page,
+            size: journalsPageSize,
+        });
+        journals.value = result.items || [];
+        journalsTotal.value = result.total || 0;
+        journalsPage.value = result.page || page;
+    } catch (e) {
+        journals.value = [];
+        journalsTotal.value = 0;
+        journalsError.value = e.message || '积分流水加载失败';
+    } finally {
+        journalsLoading.value = false;
+    }
+};
 
 const queryAccount = async () => {
     const uid = String(queryUserId.value || '').trim();
@@ -20,8 +69,11 @@ const queryAccount = async () => {
     querying.value = true;
     queryError.value = '';
     queryResult.value = null;
+    journals.value = [];
+    journalsTotal.value = 0;
     try {
         queryResult.value = await adminGetPointAccountApi(uid);
+        await loadJournals(1);
     } catch (e) {
         queryError.value = e.message || '查询失败';
     } finally {
@@ -61,6 +113,9 @@ const doAdjust = async () => {
         adjustResult.value = result;
         adjustHistory.value.unshift({...payload, balanceAfter: result?.balanceAfter, time: new Date().toISOString()});
         toast.success(`积分调整成功！用户 ${result?.targetUserId} 余额：${result?.balanceAfter}`);
+        if (String(payload.targetUserId) === String(queryUserId.value || '').trim()) {
+            await queryAccount();
+        }
         adjustForm.delta = '';
         adjustForm.reason = '';
         adjustForm.bizNo = '';
@@ -69,6 +124,12 @@ const doAdjust = async () => {
         toast.error(e.message || '积分调整失败');
     } finally {
         adjusting.value = false;
+    }
+};
+
+const changeJournalSourceType = () => {
+    if (queryResult.value) {
+        loadJournals(1);
     }
 };
 </script>
@@ -101,6 +162,70 @@ const doAdjust = async () => {
                 <span class="result-val">{{ queryResult.totalSpent }}</span>
             </div>
         </div>
+
+        <section v-if="queryResult" class="journal-panel">
+            <div class="journal-head">
+                <div>
+                    <h2 class="ag-section-title">积分流水</h2>
+                    <p class="ag-hint">共 {{ journalsTotal }} 条记录，按创建时间倒序展示。</p>
+                </div>
+                <select v-model="journalSourceType" class="ag-input source-filter" @change="changeJournalSourceType">
+                    <option
+                        v-for="option in SOURCE_TYPE_OPTIONS"
+                        :key="option.value"
+                        :value="option.value"
+                    >
+                        {{ option.label }}
+                    </option>
+                </select>
+            </div>
+            <div v-if="journalsError" class="ag-error">{{ journalsError }}</div>
+            <div v-if="journalsLoading" class="ag-table-empty">积分流水加载中...</div>
+            <div v-else-if="!journals.length" class="ag-table-empty">暂无积分流水</div>
+            <table v-else class="ag-table point-journal-table">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>类型</th>
+                        <th>变动</th>
+                        <th>变更后余额</th>
+                        <th>业务流水号</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in journals" :key="row.id">
+                        <td class="time-cell"><span>{{ formatAdminDateTime(row.createdAt) }}</span></td>
+                        <td>{{ sourceTypeLabel(row.sourceType) }}</td>
+                        <td :class="['delta', row.delta >= 0 ? 'plus' : 'minus']">
+                            {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+                        </td>
+                        <td>{{ row.balanceAfter }}</td>
+                        <td class="biz-no">{{ row.bizNo }}</td>
+                        <td class="remark-cell">{{ row.remark || '-' }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div v-if="journalsTotal > journalsPageSize" class="ag-pagination">
+                <button
+                    type="button"
+                    class="ag-btn secondary small"
+                    :disabled="!hasJournalPrev() || journalsLoading"
+                    @click="loadJournals(journalsPage - 1)"
+                >
+                    上一页
+                </button>
+                <span>第 {{ journalsPage }} 页</span>
+                <button
+                    type="button"
+                    class="ag-btn secondary small"
+                    :disabled="!hasJournalNext() || journalsLoading"
+                    @click="loadJournals(journalsPage + 1)"
+                >
+                    下一页
+                </button>
+            </div>
+        </section>
 
         <h2 class="ag-section-title" style="margin-top:20px">调整用户积分</h2>
         <p class="ag-hint">
@@ -163,3 +288,54 @@ const doAdjust = async () => {
         </section>
     </section>
 </template>
+
+<style scoped>
+.journal-panel {
+    margin-top: 20px;
+}
+
+.journal-head {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.journal-head .ag-section-title {
+    margin-bottom: 4px;
+}
+
+.journal-head .ag-hint {
+    margin-bottom: 0;
+}
+
+.source-filter {
+    max-width: 180px;
+    flex: 0 0 180px;
+}
+
+.point-journal-table {
+    min-width: 860px;
+}
+
+.remark-cell {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #6b7280;
+}
+
+@media (max-width: 760px) {
+    .journal-head {
+        flex-direction: column;
+    }
+
+    .source-filter {
+        max-width: none;
+        width: 100%;
+        flex-basis: auto;
+    }
+}
+</style>

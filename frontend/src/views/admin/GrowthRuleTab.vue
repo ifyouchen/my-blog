@@ -3,6 +3,7 @@ import {computed, onMounted, reactive, ref} from 'vue';
 import {useToast} from '@/composables/useToast';
 import {
     createAdminGrowthRuleApi,
+    deleteAdminGrowthRuleApi,
     getAdminGrowthRulesApi,
     updateAdminGrowthRuleApi,
 } from '@/api/growth';
@@ -33,8 +34,8 @@ const RULE_ROLE_OPTIONS = [
 ];
 
 const LIMIT_STRATEGY_OPTIONS = [
-    {value: 'SKIP', label: '达上限跳过'},
-    {value: 'PARTIAL', label: '发放剩余额度'},
+    {value: 'SKIP', label: '达到上限后不发放', desc: '适合评论、点赞等高频行为，超过今日次数后直接跳过。'},
+    {value: 'PARTIAL', label: '只发放剩余额度', desc: '适合规则中途调小或人工补偿，只补到今日经验上限。'},
 ];
 
 const ruleEventLabel = (eventType) =>
@@ -85,12 +86,26 @@ const resetGrowthRuleForm = () => {
 
 const drawerTitle = computed(() => drawerMode.value === 'edit' ? '编辑经验规则' : '新增经验规则');
 
+const enabledRuleCount = computed(() => growthRules.value.filter(rule => rule.enabled).length);
+const disabledRuleCount = computed(() => growthRules.value.length - enabledRuleCount.value);
+
+const isEventSelected = (value) => growthRuleForm.eventType === value;
+const isRoleSelected = (value) => growthRuleForm.role === value;
+const isStrategySelected = (value) => growthRuleForm.dailyLimitStrategy === value;
+
 // ── Impact Preview ──────────────────────────────────────────────────
 const impactPreviewText = computed(() => {
     const event = RULE_EVENT_OPTIONS.find(o => o.value === growthRuleForm.eventType)?.label || growthRuleForm.eventType;
     const role = RULE_ROLE_OPTIONS.find(o => o.value === growthRuleForm.role)?.label || growthRuleForm.role;
     const daily = growthRuleForm.dailyLimit > 0 ? `每日最多 ${growthRuleForm.dailyLimit} 次` : '不限次数';
     return `${event} · ${role} · +${growthRuleForm.expAmount} 经验 · ${daily}`;
+});
+
+const dailyLimitHelpText = computed(() => {
+    const limit = Number(growthRuleForm.dailyLimit || 0);
+    const amount = Number(growthRuleForm.expAmount || 0);
+    if (limit <= 0) return '0 表示不限制次数。';
+    return `按次数限制：最多触发 ${limit} 次，今日最多发放 ${limit * amount} 经验。`;
 });
 
 // ── API ─────────────────────────────────────────────────────────────
@@ -146,6 +161,27 @@ const saveGrowthRule = async () => {
         toast.error(growthRulesError.value);
     } finally {
         growthRuleSaving.value = false;
+    }
+};
+
+const deleteGrowthRule = async (row) => {
+    if (!row.id || row.version === undefined) return;
+    if (!confirm(`确定要删除「${ruleEventLabel(row.eventType)} · ${ruleRoleLabel(row.role)}」规则吗？`)) {
+        return;
+    }
+    growthRulesError.value = '';
+    try {
+        await deleteAdminGrowthRuleApi(row.id, row.version);
+        toast.success('经验规则已删除');
+        await loadGrowthRules();
+    } catch (e) {
+        const msg = e.message || '删除失败';
+        if (msg.includes('OPTIMISTIC_LOCK') || msg.includes('version') || msg.includes('刷新')) {
+            growthRulesError.value = '删除失败：数据已被其他人修改，请刷新后重试';
+        } else {
+            growthRulesError.value = msg;
+        }
+        toast.error(growthRulesError.value);
     }
 };
 
@@ -211,7 +247,10 @@ defineExpose({loadGrowthRules});
 
         <!-- Toolbar -->
         <div class="tab-toolbar">
-            <span class="tab-count">共 {{ growthRules.length }} 条规则</span>
+            <div class="tab-count-group">
+                <span class="tab-count">当前 {{ growthRules.length }} 条规则</span>
+                <span class="tab-count-muted">启用 {{ enabledRuleCount }}，停用 {{ disabledRuleCount }}</span>
+            </div>
             <button type="button" class="ag-btn primary" @click="openCreate">+ 新增规则</button>
         </div>
 
@@ -224,7 +263,7 @@ defineExpose({loadGrowthRules});
                     <th>行为</th>
                     <th>角色</th>
                     <th>经验</th>
-                    <th>上限</th>
+                    <th>每日上限（次数）</th>
                     <th>策略</th>
                     <th>生效</th>
                     <th>版本</th>
@@ -246,58 +285,105 @@ defineExpose({loadGrowthRules});
                         <small v-if="rule.effectiveAt">{{ formatAdminDateTime(rule.effectiveAt) }}</small>
                     </td>
                     <td>v{{ rule.version }}</td>
-                    <td><button type="button" class="ag-btn secondary small" @click="openEdit(rule)">编辑</button></td>
+                    <td class="action-cell">
+                        <button type="button" class="ag-btn secondary small" @click="openEdit(rule)">编辑</button>
+                        <button type="button" class="ag-btn danger small" @click="deleteGrowthRule(rule)">删除</button>
+                    </td>
                 </tr>
             </tbody>
         </table>
 
         <!-- ── Drawer ── -->
-        <ADrawer v-model:visible="drawerVisible" :title="drawerTitle" width="440px">
-            <div class="ag-form drawer-form">
-                <div class="form-row">
-                    <label class="form-label">行为类型</label>
-                    <select v-model="growthRuleForm.eventType" class="ag-input">
-                        <option v-for="option in RULE_EVENT_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <label class="form-label">作用角色</label>
-                    <select v-model="growthRuleForm.role" class="ag-input">
-                        <option v-for="option in RULE_ROLE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <label class="form-label">单次经验</label>
-                    <input v-model.number="growthRuleForm.expAmount" type="number" min="1" class="ag-input" />
-                </div>
-                <div class="form-row">
-                    <label class="form-label">每日上限</label>
-                    <input v-model.number="growthRuleForm.dailyLimit" type="number" min="0" class="ag-input" />
-                </div>
-                <div class="form-row">
-                    <label class="form-label">超限策略</label>
-                    <select v-model="growthRuleForm.dailyLimitStrategy" class="ag-input">
-                        <option v-for="option in LIMIT_STRATEGY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-                    </select>
-                </div>
-                <label class="ag-toggle">
-                    <input v-model="growthRuleForm.enabled" type="checkbox" />
-                    <span>启用规则</span>
-                </label>
-                <div class="form-row">
-                    <label class="form-label">生效时间</label>
-                    <input v-model="growthRuleForm.effectiveAt" type="datetime-local" class="ag-input" />
-                </div>
-                <div class="form-row">
-                    <label class="form-label">变更原因</label>
-                    <input v-model="growthRuleForm.reason" type="text" maxlength="500" class="ag-input" />
-                </div>
+        <ADrawer v-model:visible="drawerVisible" :title="drawerTitle" width="560px">
+            <div class="rule-editor">
+                <section class="editor-panel">
+                    <div class="editor-panel-head">
+                        <span class="editor-panel-kicker">行为</span>
+                        <strong>谁在什么行为后获得经验</strong>
+                    </div>
+                    <div class="option-grid event-grid">
+                        <button
+                            v-for="option in RULE_EVENT_OPTIONS"
+                            :key="option.value"
+                            type="button"
+                            :class="['option-card', {selected: isEventSelected(option.value)}]"
+                            @click="growthRuleForm.eventType = option.value"
+                        >
+                            <span>{{ option.label }}</span>
+                            <small>{{ option.value }}</small>
+                        </button>
+                    </div>
+                    <div class="role-segment">
+                        <button
+                            v-for="option in RULE_ROLE_OPTIONS"
+                            :key="option.value"
+                            type="button"
+                            :class="['segment-btn', {selected: isRoleSelected(option.value)}]"
+                            @click="growthRuleForm.role = option.value"
+                        >
+                            {{ option.label }}
+                        </button>
+                    </div>
+                </section>
 
-                <!-- Impact Preview -->
+                <section class="editor-panel">
+                    <div class="editor-panel-head">
+                        <span class="editor-panel-kicker">额度</span>
+                        <strong>单次经验与每日次数上限</strong>
+                    </div>
+                    <div class="metric-grid">
+                        <label class="metric-field">
+                            <span>单次经验</span>
+                            <input v-model.number="growthRuleForm.expAmount" type="number" min="1" class="ag-input" />
+                        </label>
+                        <label class="metric-field">
+                            <span>每日上限（次数）</span>
+                            <input v-model.number="growthRuleForm.dailyLimit" type="number" min="0" class="ag-input" />
+                        </label>
+                    </div>
+                    <p class="field-hint">{{ dailyLimitHelpText }}</p>
+                </section>
+
+                <section class="editor-panel">
+                    <div class="editor-panel-head">
+                        <span class="editor-panel-kicker">策略</span>
+                        <strong>达到每日上限后的处理方式</strong>
+                    </div>
+                    <div class="strategy-grid">
+                        <button
+                            v-for="option in LIMIT_STRATEGY_OPTIONS"
+                            :key="option.value"
+                            type="button"
+                            :class="['strategy-card', {selected: isStrategySelected(option.value)}]"
+                            @click="growthRuleForm.dailyLimitStrategy = option.value"
+                        >
+                            <span>{{ option.label }}</span>
+                            <small>{{ option.desc }}</small>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="editor-panel compact-panel">
+                    <label class="ag-toggle">
+                        <input v-model="growthRuleForm.enabled" type="checkbox" />
+                        <span>启用规则</span>
+                    </label>
+                    <div class="form-row">
+                        <label class="form-label">生效时间</label>
+                        <input v-model="growthRuleForm.effectiveAt" type="datetime-local" class="ag-input" />
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">变更原因</label>
+                        <input v-model="growthRuleForm.reason" type="text" maxlength="500" class="ag-input" />
+                    </div>
+                </section>
+
                 <div class="impact-preview">
                     <span class="impact-label">规则预览</span>
                     <p class="impact-text">{{ impactPreviewText }}</p>
-                    <p class="impact-hint">保存后立即生效。已启用规则将开始对用户行为发放经验。</p>
+                    <p class="impact-hint">
+                        同一行为和角色只保留一条当前配置；编辑后按最新版本发放经验。
+                    </p>
                 </div>
 
                 <div v-if="growthRulesError" class="ag-error">{{ growthRulesError }}</div>
@@ -353,10 +439,161 @@ defineExpose({loadGrowthRules});
     color: #6b7280;
 }
 
-/* ── Drawer form ── */
-.drawer-form {
-    max-width: none;
-    gap: 16px;
+.tab-count-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.tab-count-muted {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* ── Rule editor ── */
+.rule-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.editor-panel {
+    padding: 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.editor-panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 12px;
+}
+
+.editor-panel-head strong {
+    font-size: 14px;
+    color: #111827;
+}
+
+.editor-panel-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+}
+
+.option-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.event-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.option-card,
+.strategy-card,
+.segment-btn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.option-card {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-start;
+    min-height: 58px;
+    padding: 10px 12px;
+    border-radius: 8px;
+}
+
+.option-card span,
+.strategy-card span {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.option-card small {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.option-card.selected,
+.strategy-card.selected,
+.segment-btn.selected {
+    border-color: #6366f1;
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.role-segment {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.segment-btn {
+    height: 36px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.metric-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.metric-field span {
+    font-size: 12px;
+    font-weight: 700;
+    color: #4b5563;
+}
+
+.field-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.strategy-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.strategy-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+    padding: 11px 12px;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.strategy-card small {
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.compact-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
 }
 
 /* ── Impact Preview ── */

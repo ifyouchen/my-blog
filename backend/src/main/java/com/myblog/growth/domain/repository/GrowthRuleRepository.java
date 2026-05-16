@@ -41,5 +41,16 @@ public interface GrowthRuleRepository {
      * @return 更新行数
      */
     int update(GrowthRule rule);
+
+    /**
+     * 软删除经验规则.
+     *
+     * @param id       规则 ID
+     * @param version  当前版本号
+     * @param operator 操作人
+     * @param reason   删除原因
+     * @return 更新行数
+     */
+    int softDelete(Long id, int version, String operator, String reason);
 }
 

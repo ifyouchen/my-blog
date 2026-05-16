@@ -47,5 +47,19 @@ public interface GrowthRuleConfigMapper {
      * @return 更新行数（1=成功，0=版本冲突）
      */
     int updateCAS(GrowthRuleConfigDO rule);
+
+    /**
+     * 软删除规则（乐观锁 CAS）.
+     *
+     * @param id       规则 ID
+     * @param version  当前版本号
+     * @param operator 操作人
+     * @param reason   删除原因
+     * @return 更新行数（1=成功，0=版本冲突或不存在）
+     */
+    int softDeleteCAS(@Param("id") Long id,
+                      @Param("version") int version,
+                      @Param("operator") String operator,
+                      @Param("reason") String reason);
 }
 

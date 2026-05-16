@@ -3,7 +3,15 @@ import { reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
-import { disableAdminUserApi, exportAdminUsersApi, getAdminUsersApi, recommendAdminUserApi, unrecommendAdminUserApi, updateAdminUserStatusApi } from '@/api/admin';
+import {
+    disableAdminUserApi,
+    exportAdminUsersApi,
+    getAdminUsersApi,
+    recommendAdminUserApi,
+    unrecommendAdminUserApi,
+    updateAdminUserRoleApi,
+    updateAdminUserStatusApi
+} from '@/api/admin';
 import {
     createPagedState,
     formatAdminDateTime,
@@ -15,16 +23,26 @@ import {
 } from '@/views/admin/adminShared';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useToast } from '@/composables/useToast';
+import { useSession } from '@/stores/session';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const {state: sessionState} = useSession();
 const {
     confirmDialog,
     openConfirmDialog,
     closeConfirmDialog,
     executeConfirmDialog
 } = useConfirmDialog();
+
+const ROLE_OPTIONS = [
+    {value: 'USER', label: '普通用户'},
+    {value: 'ADMIN', label: '管理员'},
+];
+
+const roleLabel = (role) => ROLE_OPTIONS.find((item) => item.value === role)?.label || role || '-';
+const isCurrentUser = (user) => String(user.id) === String(sessionState.user?.id || '');
 
 const state = reactive({
     ...createPagedState(),
@@ -131,6 +149,36 @@ const toggleUserStatus = async (user) => {
             }
         });
     }
+};
+
+const changeUserRole = (user, event) => {
+    const nextRole = event.target.value;
+    event.target.value = user.role;
+    if (!nextRole || nextRole === user.role) return;
+    if (isCurrentUser(user)) {
+        toast.error('不能修改当前登录管理员自己的角色');
+        return;
+    }
+    openConfirmDialog({
+        eyebrow: '用户角色确认',
+        title: '修改用户角色',
+        message: `确定将用户 ${user.username} 的角色从「${roleLabel(user.role)}」改为「${roleLabel(nextRole)}」吗？`,
+        confirmText: '确认修改',
+        tone: 'primary',
+        onConfirm: async () => {
+            state.actionLoadingId = user.id;
+            try {
+                const result = await updateAdminUserRoleApi(user.id, nextRole);
+                user.role = result?.role || nextRole;
+                await loadUsers();
+                toast.success('用户角色已更新');
+            } catch (error) {
+                toast.error(error.message || '用户角色更新失败');
+            } finally {
+                state.actionLoadingId = null;
+            }
+        }
+    });
 };
 
 const openDisableDialog = (user) => {
@@ -254,7 +302,27 @@ watch(
                                     <p class="admin-subtext">@{{ user.username }}</p>
                                 </td>
                                 <td>{{ user.email }}</td>
-                                <td>{{ user.role }}</td>
+                                <td>
+                                    <div class="role-control">
+                                        <span class="role-badge" :class="{admin: user.role === 'ADMIN'}">
+                                            {{ roleLabel(user.role) }}
+                                        </span>
+                                        <select
+                                            :value="user.role"
+                                            :disabled="state.actionLoadingId === user.id || isCurrentUser(user)"
+                                            :title="isCurrentUser(user) ? '不能修改当前登录管理员自己的角色' : '修改角色'"
+                                            @change="changeUserRole(user, $event)"
+                                        >
+                                            <option
+                                                v-for="option in ROLE_OPTIONS"
+                                                :key="option.value"
+                                                :value="option.value"
+                                            >
+                                                {{ option.label }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </td>
                                 <td>
                                     <span class="status-pill" :class="{ danger: user.status !== 'NORMAL' }">
                                         {{ user.status === 'NORMAL' ? '正常' : '禁用' }}
@@ -330,5 +398,44 @@ watch(
     border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--text);
+}
+
+.role-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.role-badge.admin {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.role-control select {
+    min-width: 96px;
+    height: 30px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+}
+
+.role-control select:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 </style>

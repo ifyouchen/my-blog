@@ -420,6 +420,34 @@ public class AdminController {
     }
 
     /**
+     * 更新用户角色。
+     *
+     * @param id 用户 ID
+     * @param role 用户角色
+     * @param request HTTP 请求
+     * @return 更新结果
+     */
+    @PutMapping("/users/{id}/role")
+    public Result<Map<String, Object>> updateUserRole(
+            @PathVariable Long id,
+            @RequestParam String role,
+            @Nullable HttpServletRequest request) {
+        ensureAdmin();
+        Result<Map<String, Object>> result = Result.success(
+            adminAppService.updateUserRole(id, role, AuthContext.getRequiredUserId()));
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_USER_ROLE",
+            "USER",
+            id,
+            "更新用户角色为 " + role,
+            buildUserRoleBeforeSnapshot(result.getData()),
+            buildUserRoleAfterSnapshot(result.getData()),
+            request
+        ));
+        return result;
+    }
+
+    /**
      * 推荐用户。
      *
      * @param id 用户 ID
@@ -1147,6 +1175,34 @@ public class AdminController {
         snapshot.put("id", result.get("id"));
         snapshot.put("username", result.get("username"));
         snapshot.put("status", result.get("status"));
+        return snapshot;
+    }
+
+    /**
+     * 构建用户角色变更前快照。
+     *
+     * @param result 业务结果
+     * @return 变更前快照
+     */
+    private Map<String, Object> buildUserRoleBeforeSnapshot(Map<String, Object> result) {
+        Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
+        snapshot.put("id", result.get("id"));
+        snapshot.put("username", result.get("username"));
+        snapshot.put("role", result.get("previousRole"));
+        return snapshot;
+    }
+
+    /**
+     * 构建用户角色变更后快照。
+     *
+     * @param result 业务结果
+     * @return 变更后快照
+     */
+    private Map<String, Object> buildUserRoleAfterSnapshot(Map<String, Object> result) {
+        Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
+        snapshot.put("id", result.get("id"));
+        snapshot.put("username", result.get("username"));
+        snapshot.put("role", result.get("role"));
         return snapshot;
     }
 

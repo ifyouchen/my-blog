@@ -158,6 +158,19 @@ public class User {
     }
 
     /**
+     * 更新用户角色。
+     *
+     * @param role 新角色
+     */
+    public void updateRole(UserRole role) {
+        if (role == null) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "用户角色不能为空");
+        }
+        this.role = role;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 禁用用户。
      *
      * @param reason 禁用原因

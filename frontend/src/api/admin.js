@@ -21,6 +21,16 @@ export const updateAdminUserStatusApi = async (userId, status) => {
     });
 };
 
+export const updateAdminUserRoleApi = async (userId, role) => {
+    return await request(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `role=${encodeURIComponent(role)}`
+    });
+};
+
 export const disableAdminUserApi = async (userId, reason) => {
     return await request(`/admin/users/${userId}/disable`, {
         method: 'POST',

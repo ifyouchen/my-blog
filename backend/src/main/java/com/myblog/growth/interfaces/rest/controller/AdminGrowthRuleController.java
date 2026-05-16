@@ -43,6 +43,7 @@ import java.util.List;
  *   GET  /api/admin/growth/rules          — 查询所有经验规则
  *   POST /api/admin/growth/rules          — 新增经验规则
  *   PUT  /api/admin/growth/rules          — 更新经验规则（乐观锁）
+ *   DELETE /api/admin/growth/rules/{id}   — 软删除经验规则（乐观锁）
  *   GET  /api/admin/growth/thresholds     — 查询等级阈值列表
  *   PUT  /api/admin/growth/thresholds     — 批量保存等级阈值
  *
@@ -106,6 +107,21 @@ public class AdminGrowthRuleController {
         req.setOperator(AuthContext.getUsername());
         GrowthRule rule = growthAssembler.toDomain(req);
         growthRuleAppService.updateRule(rule);
+        return Result.success();
+    }
+
+    /**
+     * 软删除经验规则（乐观锁 CAS）.
+     *
+     * @param id      规则 ID
+     * @param version 当前版本号（必传）
+     */
+    @DeleteMapping("/rules/{id}")
+    public Result<Void> deleteRule(@PathVariable Long id,
+                                   @RequestParam("version") int version) {
+        requireAdmin();
+        String operator = AuthContext.getUsername();
+        growthRuleAppService.deleteRule(id, version, operator, "管理员删除");
         return Result.success();
     }
 
