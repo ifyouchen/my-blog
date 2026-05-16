@@ -257,41 +257,43 @@ defineExpose({loadGrowthRules});
         <!-- Loading / Empty / Table -->
         <div v-if="growthRulesLoading" class="ag-table-empty">规则加载中...</div>
         <div v-else-if="!growthRules.length" class="ag-table-empty">暂无经验规则</div>
-        <table v-else class="ag-table rules-table">
-            <thead>
-                <tr>
-                    <th>行为</th>
-                    <th>角色</th>
-                    <th>经验</th>
-                    <th>每日上限（次数）</th>
-                    <th>策略</th>
-                    <th>生效</th>
-                    <th>版本</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="rule in growthRules" :key="rule.id">
-                    <td>
-                        <strong>{{ ruleEventLabel(rule.eventType) }}</strong>
-                        <small>{{ rule.eventType }}</small>
-                    </td>
-                    <td>{{ ruleRoleLabel(rule.role) }}</td>
-                    <td class="delta plus">+{{ rule.expAmount }}</td>
-                    <td>{{ rule.dailyLimit || '不限' }}</td>
-                    <td>{{ limitStrategyLabel(rule.dailyLimitStrategy) }}</td>
-                    <td>
-                        <span :class="['status-chip', rule.enabled ? 'settled' : 'failed']">{{ rule.enabled ? '启用' : '停用' }}</span>
-                        <small v-if="rule.effectiveAt">{{ formatAdminDateTime(rule.effectiveAt) }}</small>
-                    </td>
-                    <td>v{{ rule.version }}</td>
-                    <td class="action-cell">
-                        <button type="button" class="ag-btn secondary small" @click="openEdit(rule)">编辑</button>
-                        <button type="button" class="ag-btn danger small" @click="deleteGrowthRule(rule)">删除</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div v-else class="ag-table-wrap">
+            <table class="ag-table rules-table">
+                <thead>
+                    <tr>
+                        <th>行为</th>
+                        <th>角色</th>
+                        <th>经验</th>
+                        <th>每日上限（次数）</th>
+                        <th>策略</th>
+                        <th>生效</th>
+                        <th>版本</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="rule in growthRules" :key="rule.id">
+                        <td>
+                            <strong>{{ ruleEventLabel(rule.eventType) }}</strong>
+                            <small>{{ rule.eventType }}</small>
+                        </td>
+                        <td>{{ ruleRoleLabel(rule.role) }}</td>
+                        <td class="delta plus">+{{ rule.expAmount }}</td>
+                        <td>{{ rule.dailyLimit || '不限' }}</td>
+                        <td>{{ limitStrategyLabel(rule.dailyLimitStrategy) }}</td>
+                        <td>
+                            <span :class="['status-chip', rule.enabled ? 'settled' : 'failed']">{{ rule.enabled ? '启用' : '停用' }}</span>
+                            <small v-if="rule.effectiveAt">{{ formatAdminDateTime(rule.effectiveAt) }}</small>
+                        </td>
+                        <td>v{{ rule.version }}</td>
+                        <td class="action-cell">
+                            <button type="button" class="ag-btn secondary small" @click="openEdit(rule)">编辑</button>
+                            <button type="button" class="ag-btn danger small" @click="deleteGrowthRule(rule)">删除</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
         <!-- ── Drawer ── -->
         <ADrawer v-model:visible="drawerVisible" :title="drawerTitle" width="560px">

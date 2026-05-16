@@ -15,7 +15,7 @@ import {
 } from '@/api/growth';
 import {useSession} from '@/stores/session';
 
-useHead({title: '积分与成长 - DevNotes'});
+useHead({title: '经验积分 - DevNotes'});
 
 const {state: session} = useSession();
 
@@ -373,7 +373,7 @@ onMounted(async () => {
             <div class="section-heading growth-heading">
                 <div>
                     <p class="eyebrow">个人账户</p>
-                    <h1>积分与成长</h1>
+                    <h1>经验积分</h1>
                 </div>
             </div>
 
@@ -652,6 +652,7 @@ onMounted(async () => {
 <style scoped>
 .growth-main {
     min-width: 0;
+    max-width: 100%;
 }
 
 .growth-heading h1 {
@@ -666,9 +667,12 @@ onMounted(async () => {
     grid-template-columns: 1fr 1fr;
     gap: 16px;
     margin-bottom: 24px;
+    min-width: 0;
 }
 
 .growth-card {
+    min-width: 0;
+    max-width: 100%;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
@@ -734,6 +738,7 @@ onMounted(async () => {
     font-size: 13px;
     color: var(--text-muted);
     margin: 0 0 10px;
+    overflow-wrap: anywhere;
 }
 
 .level-exp strong { color: var(--text-strong); }
@@ -791,6 +796,7 @@ onMounted(async () => {
 .point-stats {
     display: flex;
     gap: 20px;
+    min-width: 0;
 }
 
 .point-stat-item {
@@ -913,6 +919,8 @@ onMounted(async () => {
 
 .calendar-strip {
     display: none;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .cal-strip-day {
@@ -962,6 +970,9 @@ onMounted(async () => {
 
 /* ── 流水区 ─────────────────────────────────── */
 .journal-section {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
@@ -972,6 +983,7 @@ onMounted(async () => {
 .journal-tabs {
     display: flex;
     gap: 4px;
+    min-width: 0;
     margin-bottom: 20px;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0;
@@ -998,8 +1010,12 @@ onMounted(async () => {
 .tab-btn:not(.active):hover { color: var(--text); }
 
 .journal-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     min-height: 360px;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 .journal-loading,
@@ -1149,11 +1165,18 @@ onMounted(async () => {
 @media (max-width: 640px) {
     .growth-page {
         row-gap: 10px;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .growth-main {
+        overflow: hidden;
     }
 
     .growth-page .dashboard-nav {
         display: flex;
         flex-wrap: nowrap;
+        max-width: calc(100vw - 28px);
         gap: 6px;
         margin: -4px -14px 2px;
         padding: 8px 14px;
@@ -1176,8 +1199,11 @@ onMounted(async () => {
 
     .growth-page .dashboard-nav a {
         flex: 0 0 auto;
+        max-width: 92px;
         padding: 7px 10px;
         font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
         border-left: 0;
         border-bottom: 2px solid transparent;
     }
@@ -1212,6 +1238,7 @@ onMounted(async () => {
         gap: 10px;
         align-items: flex-start;
         text-align: left;
+        overflow: hidden;
     }
 
     .level-badge {
@@ -1246,7 +1273,8 @@ onMounted(async () => {
     }
 
     .point-stat-item {
-        min-width: 56px;
+        flex: 1 1 56px;
+        min-width: 0;
     }
 
     .stat-val {
@@ -1282,6 +1310,7 @@ onMounted(async () => {
 
     .calendar-strip {
         display: flex;
+        max-width: 100%;
         gap: 6px;
         padding-bottom: 2px;
         overflow-x: auto;
@@ -1309,6 +1338,7 @@ onMounted(async () => {
     }
 
     .journal-tabs {
+        max-width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;

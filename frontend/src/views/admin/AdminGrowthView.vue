@@ -159,12 +159,16 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 0;
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* ── Tabs ── */
 .ag-tabs {
     display: flex;
     gap: 0;
+    min-width: 0;
+    max-width: 100%;
     border-bottom: 2px solid #e5e7eb;
     margin-bottom: 24px;
     background: #fff;
@@ -202,12 +206,14 @@ onMounted(() => {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
+    min-width: 0;
 }
 
 .dashboard-card {
     display: flex;
     align-items: center;
     gap: 16px;
+    min-width: 0;
     padding: 20px;
     background: #f9fafb;
     border: 1px solid #e5e7eb;
@@ -251,6 +257,7 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
 }
 
 .dashboard-card-value {
@@ -271,10 +278,14 @@ onMounted(() => {
 .dashboard-card-label {
     font-size: 12px;
     color: #6b7280;
+    overflow-wrap: anywhere;
 }
 
 /* ── Sections (shared by tab components) ── */
 :deep(.ag-section) {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     background: var(--admin-surface, #fff);
     border: 1px solid var(--admin-line, #e5e7eb);
     border-radius: 10px;
@@ -316,6 +327,7 @@ onMounted(() => {
     grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
     gap: 18px;
     align-items: start;
+    min-width: 0;
 }
 
 :deep(.rule-form) {
@@ -446,6 +458,7 @@ onMounted(() => {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
+    min-width: 0;
     margin-top: 16px;
     padding: 16px;
     background: #f9fafb;
@@ -527,13 +540,17 @@ onMounted(() => {
 
 :deep(.ag-table) {
     width: 100%;
+    max-width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
 
 :deep(.ag-table-wrap) {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 :deep(.ag-table th) {
@@ -634,6 +651,10 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
+    .admin-growth {
+        overflow-x: hidden;
+    }
+
     .ag-tabs {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -649,6 +670,33 @@ onMounted(() => {
         padding: 10px 14px;
         font-size: 13px;
         flex-shrink: 0;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .dashboard-card {
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    .dashboard-card-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        font-size: 21px;
+    }
+
+    .dashboard-card-value {
+        font-size: 20px;
+    }
+
+    .dashboard-card-label {
+        line-height: 1.35;
     }
 
     :deep(.ag-section) {

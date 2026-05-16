@@ -182,30 +182,32 @@ const changeJournalSourceType = () => {
             <div v-if="journalsError" class="ag-error">{{ journalsError }}</div>
             <div v-if="journalsLoading" class="ag-table-empty">积分流水加载中...</div>
             <div v-else-if="!journals.length" class="ag-table-empty">暂无积分流水</div>
-            <table v-else class="ag-table point-journal-table">
-                <thead>
-                    <tr>
-                        <th>时间</th>
-                        <th>类型</th>
-                        <th>变动</th>
-                        <th>变更后余额</th>
-                        <th>业务流水号</th>
-                        <th>备注</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="row in journals" :key="row.id">
-                        <td class="time-cell"><span>{{ formatAdminDateTime(row.createdAt) }}</span></td>
-                        <td>{{ sourceTypeLabel(row.sourceType) }}</td>
-                        <td :class="['delta', row.delta >= 0 ? 'plus' : 'minus']">
-                            {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
-                        </td>
-                        <td>{{ row.balanceAfter }}</td>
-                        <td class="biz-no">{{ row.bizNo }}</td>
-                        <td class="remark-cell">{{ row.remark || '-' }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div v-else class="ag-table-wrap">
+                <table class="ag-table point-journal-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>类型</th>
+                            <th>变动</th>
+                            <th>变更后余额</th>
+                            <th>业务流水号</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="row in journals" :key="row.id">
+                            <td class="time-cell"><span>{{ formatAdminDateTime(row.createdAt) }}</span></td>
+                            <td>{{ sourceTypeLabel(row.sourceType) }}</td>
+                            <td :class="['delta', row.delta >= 0 ? 'plus' : 'minus']">
+                                {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+                            </td>
+                            <td>{{ row.balanceAfter }}</td>
+                            <td class="biz-no">{{ row.bizNo }}</td>
+                            <td class="remark-cell">{{ row.remark || '-' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
             <div v-if="journalsTotal > journalsPageSize" class="ag-pagination">
                 <button
                     type="button"
@@ -263,28 +265,30 @@ const changeJournalSourceType = () => {
 
         <section v-if="adjustHistory.length > 0" style="margin-top:24px">
             <h2 class="ag-section-title">本页操作记录（会话内）</h2>
-            <table class="ag-table">
-                <thead>
-                    <tr>
-                        <th>目标用户 ID</th>
-                        <th>变动</th>
-                        <th>调整后余额</th>
-                        <th>原因</th>
-                        <th>流水号</th>
-                        <th>时间</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(row, idx) in adjustHistory" :key="idx">
-                        <td>{{ row.targetUserId }}</td>
-                        <td :class="['delta', row.delta > 0 ? 'plus' : 'minus']">{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</td>
-                        <td>{{ row.balanceAfter ?? '-' }}</td>
-                        <td>{{ row.reason }}</td>
-                        <td class="biz-no">{{ row.bizNo }}</td>
-                        <td>{{ formatAdminDateTime(row.time) }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="ag-table-wrap">
+                <table class="ag-table">
+                    <thead>
+                        <tr>
+                            <th>目标用户 ID</th>
+                            <th>变动</th>
+                            <th>调整后余额</th>
+                            <th>原因</th>
+                            <th>流水号</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(row, idx) in adjustHistory" :key="idx">
+                            <td>{{ row.targetUserId }}</td>
+                            <td :class="['delta', row.delta > 0 ? 'plus' : 'minus']">{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</td>
+                            <td>{{ row.balanceAfter ?? '-' }}</td>
+                            <td>{{ row.reason }}</td>
+                            <td class="biz-no">{{ row.bizNo }}</td>
+                            <td>{{ formatAdminDateTime(row.time) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
     </section>
 </template>

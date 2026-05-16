@@ -19,7 +19,7 @@ const navItems = [
         path: '/dashboard/favorites'
     },
     {
-        label: '积分与成长',
+        label: '经验积分',
         path: '/dashboard/growth'
     }
 ];
@@ -27,7 +27,7 @@ const navItems = [
 
 <template>
     <aside class="dashboard-nav">
-        <p class="eyebrow">创作者后台</p>
+        <p class="eyebrow">创作台</p>
         <RouterLink
             v-for="item in navItems"
             :key="item.path"

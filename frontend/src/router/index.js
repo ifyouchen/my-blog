@@ -277,7 +277,7 @@ const routes = [
         name: 'dashboardGrowth',
         component: GrowthView,
         meta: {
-            title: '积分与成长',
+            title: '经验积分',
             requiresAuth: true
         }
     },
@@ -456,12 +456,16 @@ const router = createRouter({
     routes,
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
-            return savedPosition;
+            return {
+                ...savedPosition,
+                left: 0
+            };
         }
         if (to.hash) {
             return {
                 el: to.hash,
                 top: 88,
+                left: 0,
                 behavior: 'smooth'
             };
         }
@@ -478,7 +482,7 @@ const router = createRouter({
         if (to.path === from.path && samePathNoScroll.includes(to.path)) {
             return false;
         }
-        return { top: 0 };
+        return { top: 0, left: 0 };
     }
 });
 

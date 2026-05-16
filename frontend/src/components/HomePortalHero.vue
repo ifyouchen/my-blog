@@ -1,5 +1,5 @@
 <script setup>
-import {computed} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {RouterLink} from 'vue-router';
 import {DEFAULT_ARTICLE_COVER_URL} from '@/utils/media';
 
@@ -35,14 +35,42 @@ const PICK_SKELETON_ROWS = [
     { tag: '60px', title: '70%', meta: '38%' }
 ];
 const HOTSPOT_SKELETON_ROWS = ['78%', '64%', '72%'];
+const MOBILE_CAROUSEL_QUERY = '(max-width: 760px)';
+const MOBILE_CAROUSEL_INTERVAL = 3800;
 
 const primaryArticle = computed(() => props.articles[0] || null);
 const secondaryArticles = computed(() => props.articles.slice(1, 5));
+const focusCarouselArticles = computed(() => props.articles.slice(0, 5).filter(Boolean));
 const visibleTopics = computed(() => props.topics.slice(0, 3));
 const visibleColumns = computed(() => props.columns.slice(0, 3));
 const showPickSkeleton = computed(() => props.loading && !secondaryArticles.value.length);
 const showTopicSkeleton = computed(() => props.loading && !visibleTopics.value.length);
 const showColumnSkeleton = computed(() => props.loading && !visibleColumns.value.length);
+const isMobileCarousel = ref(false);
+const mobileCarouselIndex = ref(0);
+let mobileCarouselTimer = null;
+let mobileCarouselQueryList = null;
+let focusPointerId = null;
+let focusPointerStartX = 0;
+let focusPointerStartY = 0;
+let focusPointerDragging = false;
+let suppressFocusClick = false;
+
+const activeFocusArticle = computed(() => {
+    if (!isMobileCarousel.value) {
+        return primaryArticle.value;
+    }
+    const articles = focusCarouselArticles.value;
+    if (!articles.length) {
+        return primaryArticle.value;
+    }
+    return articles[mobileCarouselIndex.value % articles.length] || primaryArticle.value;
+});
+const activeFocusArea = computed(() => mobileCarouselIndex.value === 0 ? 'focus' : 'weekly_pick');
+const activeFocusEyebrow = computed(() => mobileCarouselIndex.value === 0 ? '今日焦点' : '本周必读');
+const canUseMobileCarousel = computed(() =>
+    isMobileCarousel.value && focusCarouselArticles.value.length > 1
+);
 
 const articlePath = (article) => {
     if (!article) return '/';
@@ -76,36 +104,208 @@ const setCoverFallback = (event) => {
     }
     event.target.src = DEFAULT_ARTICLE_COVER_URL;
 };
+
+const stopMobileCarousel = () => {
+    if (mobileCarouselTimer) {
+        window.clearInterval(mobileCarouselTimer);
+        mobileCarouselTimer = null;
+    }
+};
+
+const startMobileCarousel = () => {
+    stopMobileCarousel();
+    if (!canUseMobileCarousel.value) {
+        return;
+    }
+    mobileCarouselTimer = window.setInterval(() => {
+        mobileCarouselIndex.value = (mobileCarouselIndex.value + 1) % focusCarouselArticles.value.length;
+    }, MOBILE_CAROUSEL_INTERVAL);
+};
+
+const setMobileCarouselIndex = (index) => {
+    const length = focusCarouselArticles.value.length;
+    if (!length) {
+        mobileCarouselIndex.value = 0;
+        return;
+    }
+    mobileCarouselIndex.value = (index + length) % length;
+    startMobileCarousel();
+};
+
+const switchMobileCarouselBy = (step) => {
+    setMobileCarouselIndex(mobileCarouselIndex.value + step);
+};
+
+const syncMobileCarousel = (matches) => {
+    isMobileCarousel.value = Boolean(matches);
+    mobileCarouselIndex.value = 0;
+    startMobileCarousel();
+};
+
+const handleMobileCarouselChange = (event) => {
+    syncMobileCarousel(event.matches);
+};
+
+const handleFocusClick = (event, article, area, navigate) => {
+    if (suppressFocusClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressFocusClick = false;
+        return;
+    }
+    emitArticleClick(article, area);
+    navigate(event);
+};
+
+const onFocusPointerDown = (event) => {
+    if (!canUseMobileCarousel.value || event.button > 0) {
+        return;
+    }
+    focusPointerId = event.pointerId;
+    focusPointerStartX = event.clientX;
+    focusPointerStartY = event.clientY;
+    focusPointerDragging = false;
+    suppressFocusClick = false;
+    stopMobileCarousel();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+};
+
+const onFocusPointerMove = (event) => {
+    if (focusPointerId !== event.pointerId || !canUseMobileCarousel.value) {
+        return;
+    }
+    const deltaX = event.clientX - focusPointerStartX;
+    const deltaY = event.clientY - focusPointerStartY;
+    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+        focusPointerDragging = true;
+        event.preventDefault();
+    }
+};
+
+const finishFocusPointer = (event) => {
+    if (focusPointerId !== event.pointerId) {
+        return;
+    }
+    const deltaX = event.clientX - focusPointerStartX;
+    const deltaY = event.clientY - focusPointerStartY;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    focusPointerId = null;
+    if (focusPointerDragging && Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        suppressFocusClick = true;
+        switchMobileCarouselBy(deltaX < 0 ? 1 : -1);
+        window.setTimeout(() => {
+            suppressFocusClick = false;
+        }, 350);
+    } else {
+        startMobileCarousel();
+    }
+    focusPointerDragging = false;
+};
+
+const cancelFocusPointer = (event) => {
+    if (focusPointerId === event.pointerId) {
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
+    focusPointerId = null;
+    focusPointerDragging = false;
+    startMobileCarousel();
+};
+
+watch(
+    () => focusCarouselArticles.value.length,
+    (length) => {
+        if (mobileCarouselIndex.value >= length) {
+            mobileCarouselIndex.value = 0;
+        }
+        startMobileCarousel();
+    }
+);
+
+onMounted(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        return;
+    }
+    mobileCarouselQueryList = window.matchMedia(MOBILE_CAROUSEL_QUERY);
+    syncMobileCarousel(mobileCarouselQueryList.matches);
+    if (typeof mobileCarouselQueryList.addEventListener === 'function') {
+        mobileCarouselQueryList.addEventListener('change', handleMobileCarouselChange);
+    } else if (typeof mobileCarouselQueryList.addListener === 'function') {
+        mobileCarouselQueryList.addListener(handleMobileCarouselChange);
+    }
+});
+
+onBeforeUnmount(() => {
+    stopMobileCarousel();
+    if (!mobileCarouselQueryList) {
+        return;
+    }
+    if (typeof mobileCarouselQueryList.removeEventListener === 'function') {
+        mobileCarouselQueryList.removeEventListener('change', handleMobileCarouselChange);
+    } else if (typeof mobileCarouselQueryList.removeListener === 'function') {
+        mobileCarouselQueryList.removeListener(handleMobileCarouselChange);
+    }
+});
 </script>
 
 <template>
     <section class="home-portal-hero" aria-label="首页精选" data-testid="home-portal-hero">
         <RouterLink
-            v-if="primaryArticle"
-            class="portal-focus-card"
-            data-testid="home-focus-article"
-            :to="articlePath(primaryArticle)"
-            @click="emitArticleClick(primaryArticle, 'focus')"
+            v-if="activeFocusArticle"
+            custom
+            :to="articlePath(activeFocusArticle)"
+            v-slot="{ href, navigate }"
         >
-            <span class="portal-focus-cover">
-                <img
-                    :src="primaryArticle.cover"
-                    :alt="primaryArticle.coverAlt"
-                    loading="eager"
-                    decoding="async"
-                    @error="setCoverFallback"
-                >
-            </span>
-            <span class="portal-focus-body">
-                <span class="portal-eyebrow">今日焦点</span>
-                <span class="portal-focus-title">{{ primaryArticle.title }}</span>
-                <span class="portal-focus-summary">{{ primaryArticle.summary }}</span>
-                <span class="portal-meta">
-                    <span>{{ primaryArticle.category || '技术' }}</span>
-                    <span>{{ primaryArticle.readingTime || '深度阅读' }}</span>
-                    <span>{{ primaryArticle.stats?.views || `${primaryArticle.viewCount || 0} 阅读` }}</span>
+            <a
+                class="portal-focus-card"
+                data-testid="home-focus-article"
+                :href="href"
+                @click="handleFocusClick($event, activeFocusArticle, activeFocusArea, navigate)"
+                @pointerdown="onFocusPointerDown"
+                @pointermove="onFocusPointerMove"
+                @pointerup="finishFocusPointer"
+                @pointercancel="cancelFocusPointer"
+            >
+                <span class="portal-focus-cover">
+                    <img
+                        v-for="(article, index) in focusCarouselArticles"
+                        :key="article.id"
+                        class="portal-focus-cover-slide"
+                        :class="{ active: index === mobileCarouselIndex }"
+                        :src="article.cover"
+                        :alt="article.coverAlt"
+                        loading="eager"
+                        decoding="async"
+                        @error="setCoverFallback"
+                    >
                 </span>
-            </span>
+                <span class="portal-focus-body">
+                    <span class="portal-eyebrow">{{ activeFocusEyebrow }}</span>
+                    <span class="portal-focus-title">{{ activeFocusArticle.title }}</span>
+                    <span class="portal-focus-summary">{{ activeFocusArticle.summary }}</span>
+                    <span class="portal-meta">
+                        <span>{{ activeFocusArticle.category || '技术' }}</span>
+                        <span>{{ activeFocusArticle.readingTime || '深度阅读' }}</span>
+                        <span>{{ activeFocusArticle.stats?.views || `${activeFocusArticle.viewCount || 0} 阅读` }}</span>
+                    </span>
+                    <span
+                        v-if="isMobileCarousel && focusCarouselArticles.length > 1"
+                        class="portal-focus-indicators"
+                        aria-hidden="true"
+                    >
+                        <span
+                            v-for="(article, index) in focusCarouselArticles"
+                            :key="`indicator-${article.id}`"
+                            role="button"
+                            tabindex="0"
+                            :class="{ active: index === mobileCarouselIndex }"
+                            :aria-label="`切换到第 ${index + 1} 篇`"
+                            @click.prevent.stop="setMobileCarouselIndex(index)"
+                            @keydown.enter.prevent.stop="setMobileCarouselIndex(index)"
+                            @keydown.space.prevent.stop="setMobileCarouselIndex(index)"
+                        ></span>
+                    </span>
+                </span>
+            </a>
         </RouterLink>
 
         <div v-else class="portal-focus-card portal-empty-card" data-testid="home-focus-article" :aria-busy="loading">
@@ -268,6 +468,7 @@ const setCoverFallback = (event) => {
     overflow: hidden;
     color: #ffffff;
     text-decoration: none;
+    touch-action: pan-y;
 }
 
 .portal-focus-cover {
@@ -282,6 +483,19 @@ const setCoverFallback = (event) => {
     height: 100%;
     object-fit: cover;
     transition: transform 0.25s ease;
+}
+
+.portal-focus-cover-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: scale(1.02);
+    transition: opacity 0.42s ease, transform 0.62s ease;
+}
+
+.portal-focus-cover-slide.active {
+    opacity: 1;
+    transform: scale(1);
 }
 
 .portal-focus-card:hover .portal-focus-cover img,
@@ -354,6 +568,27 @@ const setCoverFallback = (event) => {
     margin-left: 8px;
     content: "/";
     color: rgba(255, 255, 255, 0.42);
+}
+
+.portal-focus-indicators {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+.portal-focus-indicators span {
+    width: 13px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.36);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: width 0.2s ease, background 0.2s ease;
+}
+
+.portal-focus-indicators span.active {
+    width: 22px;
+    background: rgba(255, 255, 255, 0.92);
 }
 
 .portal-empty-card {
@@ -618,13 +853,43 @@ const setCoverFallback = (event) => {
     }
 }
 
+@media (max-width: 760px) {
+    .home-portal-hero {
+        gap: 10px;
+        margin: 8px 0 14px;
+    }
+
+    .portal-focus-card {
+        min-height: 220px;
+    }
+
+    .portal-focus-body {
+        gap: 8px;
+        padding: 16px;
+    }
+
+    .portal-focus-title {
+        font-size: 20px;
+    }
+
+    .portal-focus-summary {
+        font-size: 13px;
+        line-height: 1.5;
+        -webkit-line-clamp: 1;
+    }
+
+    .portal-picks {
+        display: none;
+    }
+}
+
 @media (max-width: 560px) {
     .home-portal-hero {
         margin-bottom: 16px;
     }
 
     .portal-focus-card {
-        min-height: 260px;
+        min-height: 210px;
     }
 
     .portal-focus-body {

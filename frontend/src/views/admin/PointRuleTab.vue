@@ -248,43 +248,45 @@ defineExpose({loadPointRules});
         <!-- Loading / Empty / Table -->
         <div v-if="pointRulesLoading" class="ag-table-empty">积分规则加载中...</div>
         <div v-else-if="!pointRules.length" class="ag-table-empty">暂无积分规则</div>
-        <table v-else class="ag-table rules-table">
-            <thead>
-                <tr>
-                    <th>来源类型</th>
-                    <th>单次积分/比例</th>
-                    <th>每日上限</th>
-                    <th>状态</th>
-                    <th>版本</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="rule in pointRules" :key="rule.id" :class="{'row-deleted': rule.deleted}">
-                    <td>
-                        <strong>{{ sourceTypeLabel(rule.sourceType) }}</strong>
-                        <small>{{ rule.sourceType }}</small>
-                    </td>
-                    <td class="delta plus">+{{ rule.pointAmount }}</td>
-                    <td>{{ rule.dailyLimit || '不限' }}</td>
-                    <td>
-                        <span :class="['status-chip', rule.deleted ? 'failed' : (rule.enabled ? 'settled' : 'pending')]">
-                            {{ rule.statusLabel || (rule.enabled ? '启用' : '停用') }}
-                        </span>
-                    </td>
-                    <td>v{{ rule.version }}</td>
-                    <td class="action-cell">
-                        <template v-if="rule.deleted">
-                            <button type="button" class="ag-btn secondary small" @click="restorePointRule(rule)">恢复</button>
-                        </template>
-                        <template v-else>
-                            <button type="button" class="ag-btn secondary small" @click="openEdit(rule)">编辑</button>
-                            <button type="button" class="ag-btn danger small" @click="deletePointRule(rule)">删除</button>
-                        </template>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div v-else class="ag-table-wrap">
+            <table class="ag-table rules-table">
+                <thead>
+                    <tr>
+                        <th>来源类型</th>
+                        <th>单次积分/比例</th>
+                        <th>每日上限</th>
+                        <th>状态</th>
+                        <th>版本</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="rule in pointRules" :key="rule.id" :class="{'row-deleted': rule.deleted}">
+                        <td>
+                            <strong>{{ sourceTypeLabel(rule.sourceType) }}</strong>
+                            <small>{{ rule.sourceType }}</small>
+                        </td>
+                        <td class="delta plus">+{{ rule.pointAmount }}</td>
+                        <td>{{ rule.dailyLimit || '不限' }}</td>
+                        <td>
+                            <span :class="['status-chip', rule.deleted ? 'failed' : (rule.enabled ? 'settled' : 'pending')]">
+                                {{ rule.statusLabel || (rule.enabled ? '启用' : '停用') }}
+                            </span>
+                        </td>
+                        <td>v{{ rule.version }}</td>
+                        <td class="action-cell">
+                            <template v-if="rule.deleted">
+                                <button type="button" class="ag-btn secondary small" @click="restorePointRule(rule)">恢复</button>
+                            </template>
+                            <template v-else>
+                                <button type="button" class="ag-btn secondary small" @click="openEdit(rule)">编辑</button>
+                                <button type="button" class="ag-btn danger small" @click="deletePointRule(rule)">删除</button>
+                            </template>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
         <!-- ── Drawer ── -->
         <ADrawer v-model:visible="drawerVisible" :title="drawerTitle" width="440px">

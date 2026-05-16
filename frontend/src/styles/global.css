@@ -3271,6 +3271,7 @@ button:disabled {
 .admin-workspace {
     display: grid;
     gap: 14px;
+    min-width: 0;
 }
 
 .admin-workspace-head {
