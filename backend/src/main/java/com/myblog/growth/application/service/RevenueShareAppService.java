@@ -10,8 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -35,11 +38,14 @@ public class RevenueShareAppService {
 
     private final RevenueShareRepository revenueShareRepository;
     private final PointRuleRepository pointRuleRepository;
+    private final GrowthJournalContextService journalContextService;
 
     public RevenueShareAppService(RevenueShareRepository revenueShareRepository,
-                                  PointRuleRepository pointRuleRepository) {
+                                  PointRuleRepository pointRuleRepository,
+                                  GrowthJournalContextService journalContextService) {
         this.revenueShareRepository = revenueShareRepository;
         this.pointRuleRepository = pointRuleRepository;
+        this.journalContextService = journalContextService;
     }
 
     /**
@@ -115,12 +121,20 @@ public class RevenueShareAppService {
         private final String shareRatio;
         private final String settlementStatus;
         private final String pointJournalBizNo;
+        private final String articleTitle;
+        private final String articleStatus;
+        private final boolean articleAccessible;
         private final LocalDateTime settledAt;
         private final int retryCount;
         private final String lastError;
         private final LocalDateTime createdAt;
 
         public RevenueShareVO(RevenueShareJournal journal) {
+            this(journal, null);
+        }
+
+        public RevenueShareVO(RevenueShareJournal journal,
+                              GrowthJournalContextService.ArticleContext articleContext) {
             this.id = journal.getId();
             this.orderNo = journal.getOrderNo();
             this.articleId = journal.getArticleId();
@@ -131,6 +145,9 @@ public class RevenueShareAppService {
             this.shareRatio = journal.getShareRatio();
             this.settlementStatus = journal.getSettlementStatus();
             this.pointJournalBizNo = journal.getPointJournalBizNo();
+            this.articleTitle = articleContext == null ? null : articleContext.getArticleTitle();
+            this.articleStatus = articleContext == null ? null : articleContext.getArticleStatus();
+            this.articleAccessible = articleContext != null && articleContext.isArticleAccessible();
             this.settledAt = journal.getSettledAt();
             this.retryCount = journal.getRetryCount();
             this.lastError = journal.getLastError();
@@ -147,6 +164,9 @@ public class RevenueShareAppService {
         public String getShareRatio() { return shareRatio; }
         public String getSettlementStatus() { return settlementStatus; }
         public String getPointJournalBizNo() { return pointJournalBizNo; }
+        public String getArticleTitle() { return articleTitle; }
+        public String getArticleStatus() { return articleStatus; }
+        public boolean isArticleAccessible() { return articleAccessible; }
         public LocalDateTime getSettledAt() { return settledAt; }
         public int getRetryCount() { return retryCount; }
         public String getLastError() { return lastError; }
@@ -187,8 +207,16 @@ public class RevenueShareAppService {
     }
 
     private List<RevenueShareVO> toVOList(List<RevenueShareJournal> journals) {
+        Set<Long> articleIds = new LinkedHashSet<>();
+        for (RevenueShareJournal journal : journals) {
+            if (journal.getArticleId() != null) {
+                articleIds.add(journal.getArticleId());
+            }
+        }
+        Map<Long, GrowthJournalContextService.ArticleContext> articleContexts =
+                journalContextService.resolveArticleContexts(articleIds);
         return journals.stream()
-                .map(RevenueShareVO::new)
+                .map(journal -> new RevenueShareVO(journal, articleContexts.get(journal.getArticleId())))
                 .collect(Collectors.toList());
     }
 }

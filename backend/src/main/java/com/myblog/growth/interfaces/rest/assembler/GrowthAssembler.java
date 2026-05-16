@@ -76,9 +76,47 @@ public class GrowthAssembler {
         vo.setDelta(journal.getDelta());
         vo.setBalanceAfter(journal.getBalanceAfter());
         vo.setEventType(journal.getEventType());
+        vo.setSourceId(journal.getSourceId());
+        String grantRole = resolveGrantRole(journal);
+        vo.setGrantRole(grantRole);
+        vo.setGrantRoleLabel(grantRoleLabel(grantRole));
         vo.setRemark(journal.getRemark());
         vo.setCreatedAt(journal.getCreatedAt());
         return vo;
+    }
+
+    private String resolveGrantRole(ExpJournal journal) {
+        String idempotentKey = journal.getIdempotentKey();
+        if (idempotentKey != null) {
+            String[] parts = idempotentKey.split(":");
+            if (parts.length > 1 && isKnownGrantRole(parts[1])) {
+                return parts[1];
+            }
+        }
+        String remark = journal.getRemark();
+        if (remark != null) {
+            if (remark.startsWith("ACTOR")) {
+                return "ACTOR";
+            }
+            if (remark.startsWith("AUTHOR")) {
+                return "AUTHOR";
+            }
+        }
+        return null;
+    }
+
+    private boolean isKnownGrantRole(String grantRole) {
+        return "ACTOR".equals(grantRole) || "AUTHOR".equals(grantRole);
+    }
+
+    private String grantRoleLabel(String grantRole) {
+        if ("ACTOR".equals(grantRole)) {
+            return "你操作获得";
+        }
+        if ("AUTHOR".equals(grantRole)) {
+            return "别人互动后你获得";
+        }
+        return null;
     }
 
     /**

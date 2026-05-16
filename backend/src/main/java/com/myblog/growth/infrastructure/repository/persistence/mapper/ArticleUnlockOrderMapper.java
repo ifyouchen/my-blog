@@ -4,6 +4,9 @@ import com.myblog.growth.infrastructure.repository.persistence.entity.ArticleUnl
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 文章解锁订单 MyBatis Mapper.
  * <p>对应表 {@code article_unlock_order}，XML 在 {@code mapper/growth/ArticleUnlockOrderMapper.xml}。</p>
@@ -26,6 +29,14 @@ public interface ArticleUnlockOrderMapper {
      * @return 解锁订单 DO，不存在时返回 null
      */
     ArticleUnlockOrderDO selectByOrderNo(@Param("orderNo") String orderNo);
+
+    /**
+     * 根据订单号批量查询订单.
+     *
+     * @param orderNos 订单号集合
+     * @return 解锁订单 DO 列表
+     */
+    List<ArticleUnlockOrderDO> selectByOrderNos(@Param("orderNos") Collection<String> orderNos);
 
     /**
      * 根据用户 ID + 文章 ID 查询订单.

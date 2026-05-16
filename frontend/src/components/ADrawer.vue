@@ -10,9 +10,29 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'close']);
 
+let overlayPointerDownOnSelf = false;
+
 const doClose = () => {
   emit('update:visible', false);
   emit('close');
+};
+
+const onOverlayPointerDown = (event) => {
+  overlayPointerDownOnSelf = event.target === event.currentTarget;
+};
+
+const resetOverlayPointer = () => {
+  overlayPointerDownOnSelf = false;
+};
+
+const onOverlayPointerUp = (event) => {
+  const shouldClose = props.closeOnClickOverlay
+      && overlayPointerDownOnSelf
+      && event.target === event.currentTarget;
+  resetOverlayPointer();
+  if (shouldClose) {
+    doClose();
+  }
 };
 
 const onKeydown = (e) => {
@@ -40,7 +60,13 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <Transition name="drawer-fade">
-      <div v-if="visible" class="a-drawer-overlay" @click.self="closeOnClickOverlay && doClose()">
+      <div
+        v-if="visible"
+        class="a-drawer-overlay"
+        @pointerdown="onOverlayPointerDown"
+        @pointerup="onOverlayPointerUp"
+        @pointercancel="resetOverlayPointer"
+      >
         <Transition name="drawer-slide" appear>
           <div v-if="visible" class="a-drawer" :style="{width}">
             <div class="a-drawer-header">

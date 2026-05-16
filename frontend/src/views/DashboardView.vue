@@ -102,6 +102,7 @@ const unlockForm = ref({
 const unlockSaving = ref(false);
 const unlockError = ref('');
 let scheduledArticleRefreshTimer = null;
+let unlockOverlayPointerDownOnSelf = false;
 
 // 文章统计抽屉
 const statsDrawerVisible = ref(false);
@@ -472,6 +473,22 @@ const closeUnlockDialog = () => {
     unlockDialogVisible.value = false;
     unlockDialogArticle.value = null;
     unlockError.value = '';
+};
+
+const onUnlockOverlayPointerDown = (event) => {
+    unlockOverlayPointerDownOnSelf = event.target === event.currentTarget;
+};
+
+const resetUnlockOverlayPointer = () => {
+    unlockOverlayPointerDownOnSelf = false;
+};
+
+const onUnlockOverlayPointerUp = (event) => {
+    const shouldClose = unlockOverlayPointerDownOnSelf && event.target === event.currentTarget;
+    resetUnlockOverlayPointer();
+    if (shouldClose) {
+        closeUnlockDialog();
+    }
 };
 
 const normalizeUnlockPointPrice = () => {
@@ -1462,7 +1479,13 @@ onUnmounted(() => {
     </main>
 
     <Teleport to="body">
-        <div v-if="unlockDialogVisible" class="unlock-rule-modal-overlay" @click.self="closeUnlockDialog">
+        <div
+            v-if="unlockDialogVisible"
+            class="unlock-rule-modal-overlay"
+            @pointerdown="onUnlockOverlayPointerDown"
+            @pointerup="onUnlockOverlayPointerUp"
+            @pointercancel="resetUnlockOverlayPointer"
+        >
             <section
                 class="unlock-rule-modal"
                 role="dialog"

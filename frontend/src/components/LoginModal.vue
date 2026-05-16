@@ -27,12 +27,29 @@ const account = ref('');
 const password = ref('');
 const error = ref('');
 const loading = ref(false);
+let overlayPointerDownOnSelf = false;
 
 const close = () => {
     account.value = '';
     password.value = '';
     error.value = '';
     emit('close');
+};
+
+const onOverlayPointerDown = (event) => {
+    overlayPointerDownOnSelf = event.target === event.currentTarget;
+};
+
+const resetOverlayPointer = () => {
+    overlayPointerDownOnSelf = false;
+};
+
+const onOverlayPointerUp = (event) => {
+    const shouldClose = overlayPointerDownOnSelf && event.target === event.currentTarget;
+    resetOverlayPointer();
+    if (shouldClose) {
+        close();
+    }
 };
 
 const handleLogin = async () => {
@@ -61,7 +78,15 @@ const goToRegister = () => {
 
 <template>
     <Teleport to="body">
-        <div v-if="visible" class="modal-overlay" data-testid="login-modal" @click.self="close" @keydown.esc="close">
+        <div
+            v-if="visible"
+            class="modal-overlay"
+            data-testid="login-modal"
+            @pointerdown="onOverlayPointerDown"
+            @pointerup="onOverlayPointerUp"
+            @pointercancel="resetOverlayPointer"
+            @keydown.esc="close"
+        >
             <div class="modal-content">
                 <button class="modal-close" type="button" aria-label="关闭登录弹窗" @click="close">×</button>
                 <p class="modal-eyebrow">需要登录</p>

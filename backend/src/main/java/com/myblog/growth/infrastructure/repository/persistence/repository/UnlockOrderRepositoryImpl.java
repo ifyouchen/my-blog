@@ -6,7 +6,11 @@ import com.myblog.growth.infrastructure.repository.persistence.entity.ArticleUnl
 import com.myblog.growth.infrastructure.repository.persistence.mapper.ArticleUnlockOrderMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 解锁订单 Repository 实现.
@@ -45,6 +49,19 @@ public class UnlockOrderRepositoryImpl implements UnlockOrderRepository {
     public Optional<UnlockOrder> findByOrderNo(String orderNo) {
         ArticleUnlockOrderDO do_ = mapper.selectByOrderNo(orderNo);
         return Optional.ofNullable(do_).map(this::toDomain);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<UnlockOrder> findByOrderNos(Collection<String> orderNos) {
+        if (orderNos == null || orderNos.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return mapper.selectByOrderNos(orderNos).stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
     }
 
     /**

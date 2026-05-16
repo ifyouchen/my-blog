@@ -39,6 +39,17 @@
         LIMIT 1
     </select>
 
+    <!-- 根据订单号批量查询订单 -->
+    <select id="selectByOrderNos" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_unlock_order
+        WHERE deleted_at IS NULL
+          AND order_no IN
+          <foreach collection="orderNos" item="orderNo" open="(" separator="," close=")">
+              #{orderNo}
+          </foreach>
+    </select>
+
     <!-- 根据用户 ID + 文章 ID 查询订单 -->
     <select id="selectByUserIdAndArticleId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>

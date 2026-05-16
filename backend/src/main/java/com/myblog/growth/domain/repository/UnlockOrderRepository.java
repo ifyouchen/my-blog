@@ -2,6 +2,8 @@ package com.myblog.growth.domain.repository;
 
 import com.myblog.growth.domain.model.aggregate.UnlockOrder;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -24,6 +26,14 @@ public interface UnlockOrderRepository {
      * @return 订单（Optional 包装）
      */
     Optional<UnlockOrder> findByOrderNo(String orderNo);
+
+    /**
+     * 根据订单号批量查询订单.
+     *
+     * @param orderNos 订单号集合
+     * @return 解锁订单列表
+     */
+    List<UnlockOrder> findByOrderNos(Collection<String> orderNos);
 
     /**
      * 根据用户 ID + 文章 ID 查询订单.

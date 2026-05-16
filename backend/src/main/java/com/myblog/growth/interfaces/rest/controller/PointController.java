@@ -1,5 +1,6 @@
 package com.myblog.growth.interfaces.rest.controller;
 
+import com.myblog.growth.application.service.GrowthJournalContextService;
 import com.myblog.growth.application.service.PointAppService;
 import com.myblog.growth.domain.model.aggregate.PointAccount;
 import com.myblog.growth.domain.model.valueobject.PointJournal;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -29,14 +31,18 @@ import java.util.stream.Collectors;
 public class PointController {
 
     private final PointAppService pointAppService;
+    private final GrowthJournalContextService journalContextService;
 
     /**
      * 构造注入.
      *
-     * @param pointAppService 积分应用服务
+     * @param pointAppService      积分应用服务
+     * @param journalContextService 流水上下文服务
      */
-    public PointController(PointAppService pointAppService) {
+    public PointController(PointAppService pointAppService,
+                           GrowthJournalContextService journalContextService) {
         this.pointAppService = pointAppService;
+        this.journalContextService = journalContextService;
     }
 
     /**
@@ -72,8 +78,10 @@ public class PointController {
         long total = pointAppService.countJournals(userId, sourceType);
         List<PointJournal> journals = pointAppService.getJournals(userId, sourceType, safePage, safeSize);
 
+        Map<String, GrowthJournalContextService.ArticleContext> articleContexts =
+                journalContextService.resolvePointJournalContexts(journals);
         List<PointJournalVO> voList = journals.stream()
-                .map(this::toJournalVO)
+                .map(journal -> toJournalVO(journal, articleContexts.get(journal.getBizNo())))
                 .collect(Collectors.toList());
 
         return Result.success(new PageResult<>(voList, safePage, safeSize, total));
@@ -90,7 +98,8 @@ public class PointController {
         return vo;
     }
 
-    private PointJournalVO toJournalVO(PointJournal journal) {
+    private PointJournalVO toJournalVO(PointJournal journal,
+                                       GrowthJournalContextService.ArticleContext articleContext) {
         PointJournalVO vo = new PointJournalVO();
         vo.setId(journal.getId());
         vo.setDelta(journal.getDelta());
@@ -98,6 +107,12 @@ public class PointController {
         vo.setSourceType(journal.getSourceType());
         vo.setBizNo(journal.getBizNo());
         vo.setRemark(journal.getRemark());
+        if (articleContext != null) {
+            vo.setArticleId(articleContext.getArticleId());
+            vo.setArticleTitle(articleContext.getArticleTitle());
+            vo.setArticleStatus(articleContext.getArticleStatus());
+            vo.setArticleAccessible(articleContext.isArticleAccessible());
+        }
         vo.setCreatedAt(journal.getCreatedAt());
         return vo;
     }

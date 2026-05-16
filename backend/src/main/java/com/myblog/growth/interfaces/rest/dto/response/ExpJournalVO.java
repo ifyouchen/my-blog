@@ -22,6 +22,15 @@ public class ExpJournalVO {
     /** 行为类型（如 LIKE / PUBLISH）. */
     private String eventType;
 
+    /** 来源 ID（文章 ID / 评论 ID 等，可为 null）. */
+    private Long sourceId;
+
+    /** 经验归因角色（ACTOR / AUTHOR）. */
+    private String grantRole;
+
+    /** 经验归因角色展示文案. */
+    private String grantRoleLabel;
+
     /** 备注（如"ACTOR 行为经验"）. */
     private String remark;
 
@@ -53,6 +62,15 @@ public class ExpJournalVO {
     public String getEventType() { return eventType; }
     /** 设置行为类型. */
     public void setEventType(String eventType) { this.eventType = eventType; }
+
+    public Long getSourceId() { return sourceId; }
+    public void setSourceId(Long sourceId) { this.sourceId = sourceId; }
+
+    public String getGrantRole() { return grantRole; }
+    public void setGrantRole(String grantRole) { this.grantRole = grantRole; }
+
+    public String getGrantRoleLabel() { return grantRoleLabel; }
+    public void setGrantRoleLabel(String grantRoleLabel) { this.grantRoleLabel = grantRoleLabel; }
 
     /** 获取备注. */
     public String getRemark() { return remark; }

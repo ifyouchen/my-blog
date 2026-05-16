@@ -10,15 +10,27 @@
         <result column="unlock_point_price"  property="unlockPointPrice"/>
         <result column="author_id"           property="authorId"/>
         <result column="status"              property="status"/>
+        <result column="title"               property="title"/>
     </resultMap>
 
     <!-- 查询文章的解锁信息（只读博客核心表的解锁相关字段） -->
     <select id="selectUnlockInfoById" resultMap="UnlockInfoResultMap">
-        SELECT id, need_unlock, unlock_point_price, author_id, status
+        SELECT id, title, need_unlock, unlock_point_price, author_id, status
         FROM blog_article
         WHERE id         = #{articleId}
           AND deleted_at IS NULL
         LIMIT 1
+    </select>
+
+    <!-- 批量查询文章的解锁信息（用于流水展示补齐文章标题） -->
+    <select id="selectUnlockInfoByIds" resultMap="UnlockInfoResultMap">
+        SELECT id, title, need_unlock, unlock_point_price, author_id, status
+        FROM blog_article
+        WHERE deleted_at IS NULL
+          AND id IN
+          <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+              #{articleId}
+          </foreach>
     </select>
 
 </mapper>

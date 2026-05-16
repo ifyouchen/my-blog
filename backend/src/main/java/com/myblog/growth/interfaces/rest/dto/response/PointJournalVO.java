@@ -26,6 +26,18 @@ public class PointJournalVO {
     /** 备注. */
     private String remark;
 
+    /** 关联文章 ID（文章解锁/分成流水展示用，可为 null）. */
+    private Long articleId;
+
+    /** 关联文章标题（可为 null）. */
+    private String articleTitle;
+
+    /** 关联文章状态（可为 null）. */
+    private String articleStatus;
+
+    /** 关联文章是否可点击访问. */
+    private boolean articleAccessible;
+
     /** 创建时间. */
     private LocalDateTime createdAt;
 
@@ -50,6 +62,18 @@ public class PointJournalVO {
 
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
+
+    public Long getArticleId() { return articleId; }
+    public void setArticleId(Long articleId) { this.articleId = articleId; }
+
+    public String getArticleTitle() { return articleTitle; }
+    public void setArticleTitle(String articleTitle) { this.articleTitle = articleTitle; }
+
+    public String getArticleStatus() { return articleStatus; }
+    public void setArticleStatus(String articleStatus) { this.articleStatus = articleStatus; }
+
+    public boolean isArticleAccessible() { return articleAccessible; }
+    public void setArticleAccessible(boolean articleAccessible) { this.articleAccessible = articleAccessible; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

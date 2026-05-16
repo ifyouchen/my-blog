@@ -1,6 +1,7 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue';
 import {useHead} from '@unhead/vue';
+import {RouterLink} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {
@@ -182,6 +183,62 @@ const SOURCE_TYPE_LABELS = {
 
 const sourceLabel = (type) => SOURCE_TYPE_LABELS[type] || type || '-';
 
+const ARTICLE_POINT_SOURCE_TYPES = ['UNLOCK', 'ARTICLE_UNLOCK', 'REVENUE_SHARE'];
+
+const AUTHOR_EVENT_LABELS = {
+    COMMENT: '评论你的文章',
+    READ: '阅读你的文章',
+    FAVORITE: '收藏你的文章',
+    SHARE: '分享你的文章',
+    LIKE: '点赞你的文章',
+    FOLLOW: '关注你',
+    PUBLISH: '作为作者发布文章',
+};
+
+const hasArticleContext = (item) =>
+    item?.articleId && ARTICLE_POINT_SOURCE_TYPES.includes(item.sourceType);
+
+const articleDisplayTitle = (item) => item.articleTitle || '文章已不可用';
+
+const pointJournalArticleLabel = (item) => {
+    if (!hasArticleContext(item)) {
+        return '';
+    }
+    return `${sourceLabel(item.sourceType)}[${item.articleId}-${articleDisplayTitle(item)}]`;
+};
+
+const revenueArticleLabel = (item) => {
+    if (!item?.articleId) {
+        return '-';
+    }
+    return `[${item.articleId}-${articleDisplayTitle(item)}]`;
+};
+
+const articleRoute = (item) => `/articles/${item.articleId}`;
+
+const expJournalDesc = (item) => {
+    const role = item.grantRole;
+    if (role === 'AUTHOR') {
+        const eventLabel = AUTHOR_EVENT_LABELS[item.eventType] || sourceLabel(item.eventType);
+        return `${item.grantRoleLabel || '别人互动后你获得'} · ${eventLabel}`;
+    }
+    if (role === 'ACTOR') {
+        return `${item.grantRoleLabel || '你操作获得'} · ${sourceLabel(item.eventType)}`;
+    }
+    return item.remark || item.description || sourceLabel(item.eventType);
+};
+
+const formatShareRatio = (ratio) => {
+    if (!ratio) {
+        return '-';
+    }
+    const parts = String(ratio).split(':');
+    if (parts.length === 2) {
+        return `平台 ${parts[0]}% / 作者 ${parts[1]}%`;
+    }
+    return ratio;
+};
+
 const REVENUE_STATUS_META = {
     PENDING: { label: '待结算', className: 'pending' },
     SETTLED: { label: '已入账', className: 'settled' },
@@ -191,16 +248,6 @@ const REVENUE_STATUS_META = {
 const revenueStatusMeta = (status) => REVENUE_STATUS_META[status] || {
     label: status || '待结算',
     className: 'pending',
-};
-
-const revenueDesc = (item) => {
-    if (item.pointJournalBizNo) {
-        return `订单：${item.orderNo || '-'} / 流水：${item.pointJournalBizNo}`;
-    }
-    if (item.lastError) {
-        return `订单：${item.orderNo || '-'} / 错误：${item.lastError}`;
-    }
-    return `订单：${item.orderNo || '-'}`;
 };
 
 const getJournalCacheKey = (tab = journalTab.value, page = journalPage.value) => `${tab}:${page}`;
@@ -448,7 +495,7 @@ onMounted(async () => {
                     <template v-else-if="journals.length > 0">
                         <table class="journal-table">
                             <thead>
-                                <tr>
+                                <tr v-if="journalTab !== 'revenue'">
                                     <th>类型</th>
                                     <th v-if="journalTab === 'points'">变动</th>
                                     <th v-if="journalTab === 'points'">余额</th>
@@ -457,6 +504,16 @@ onMounted(async () => {
                                     <th v-if="journalTab === 'revenue'">作者分成</th>
                                     <th v-if="journalTab === 'revenue'">结算状态</th>
                                     <th>说明</th>
+                                    <th>时间</th>
+                                </tr>
+                                <tr v-else>
+                                    <th>文章</th>
+                                    <th>解锁积分</th>
+                                    <th>作者分成</th>
+                                    <th>平台分成</th>
+                                    <th>分成比例</th>
+                                    <th>结算状态</th>
+                                    <th>订单号</th>
                                     <th>时间</th>
                                 </tr>
                             </thead>
@@ -469,7 +526,23 @@ onMounted(async () => {
                                             {{ item.delta > 0 ? '+' : '' }}{{ item.delta }}
                                         </td>
                                         <td>{{ item.balanceAfter ?? '-' }}</td>
-                                        <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
+                                        <td class="desc-cell">
+                                            <template v-if="pointJournalArticleLabel(item)">
+                                                <RouterLink
+                                                    v-if="item.articleAccessible"
+                                                    class="journal-article-link"
+                                                    :to="articleRoute(item)"
+                                                >
+                                                    {{ pointJournalArticleLabel(item) }}
+                                                </RouterLink>
+                                                <span v-else class="journal-article-link disabled">
+                                                    {{ pointJournalArticleLabel(item) }}
+                                                </span>
+                                            </template>
+                                            <template v-else>
+                                                {{ item.remark || item.description || '-' }}
+                                            </template>
+                                        </td>
                                         <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
                                     </tr>
                                 </template>
@@ -478,22 +551,42 @@ onMounted(async () => {
                                     <tr v-for="item in journals" :key="item.id">
                                         <td><span class="tag-chip">{{ sourceLabel(item.eventType) }}</span></td>
                                         <td :class="['delta', 'plus']">+{{ item.delta ?? item.expAmount ?? 0 }}</td>
-                                        <td class="desc-cell">{{ item.remark || item.description || '-' }}</td>
+                                        <td class="desc-cell">{{ expJournalDesc(item) }}</td>
                                         <td class="time-cell">{{ fmtTime(item.createdAt) }}</td>
                                     </tr>
                                 </template>
                                 <!-- 分账收益 -->
                                 <template v-if="journalTab === 'revenue'">
                                     <tr v-for="item in journals" :key="item.id || item.orderNo">
-                                        <td><span class="tag-chip">文章解锁分成</span></td>
+                                        <td class="article-cell">
+                                            <RouterLink
+                                                v-if="item.articleAccessible"
+                                                class="journal-article-link"
+                                                :to="articleRoute(item)"
+                                            >
+                                                {{ revenueArticleLabel(item) }}
+                                            </RouterLink>
+                                            <span v-else class="journal-article-link disabled">
+                                                {{ revenueArticleLabel(item) }}
+                                            </span>
+                                        </td>
                                         <td>{{ item.totalPoints }}</td>
                                         <td :class="['delta', 'plus']">+{{ item.authorPoints }}</td>
+                                        <td>{{ item.platformPoints }}</td>
+                                        <td>{{ formatShareRatio(item.shareRatio) }}</td>
                                         <td>
-                                            <span :class="['status-chip', revenueStatusMeta(item.settlementStatus).className]">
+                                            <span
+                                                :class="[
+                                                    'status-chip',
+                                                    revenueStatusMeta(item.settlementStatus).className
+                                                ]"
+                                            >
                                                 {{ revenueStatusMeta(item.settlementStatus).label }}
                                             </span>
                                         </td>
-                                        <td class="desc-cell">{{ revenueDesc(item) }}</td>
+                                        <td class="desc-cell">
+                                            <span class="order-code">{{ item.orderNo || '-' }}</span>
+                                        </td>
                                         <td class="time-cell">{{ fmtTime(item.settledAt || item.createdAt) }}</td>
                                     </tr>
                                 </template>
@@ -504,7 +597,11 @@ onMounted(async () => {
                         <div v-if="journalTab !== 'exp'" class="journal-pagination">
                             <button type="button" :disabled="journalPage <= 1" @click="prevPage">上一页</button>
                             <span>第 {{ journalPage }} / {{ journalTotalPages }} 页</span>
-                            <button type="button" :disabled="journalPage >= journalTotalPages" @click="nextPage">下一页</button>
+                            <button
+                                type="button"
+                                :disabled="journalPage >= journalTotalPages"
+                                @click="nextPage"
+                            >下一页</button>
                         </div>
                     </template>
                     <div v-else class="journal-empty">暂无记录</div>
@@ -843,7 +940,7 @@ onMounted(async () => {
 
 .journal-table {
     width: 100%;
-    min-width: 720px;
+    min-width: 900px;
     border-collapse: collapse;
     font-size: 14px;
 }
@@ -906,7 +1003,39 @@ onMounted(async () => {
 .delta.plus { color: #16a34a; }
 .delta.minus { color: #dc2626; }
 
-.desc-cell { max-width: 240px; color: var(--text-muted); font-size: 13px; }
+.article-cell {
+    min-width: 220px;
+}
+
+.desc-cell {
+    max-width: 280px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.journal-article-link {
+    color: var(--brand);
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.journal-article-link:hover {
+    color: var(--brand-strong);
+    text-decoration: underline;
+}
+
+.journal-article-link.disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+.order-code {
+    font-family: Consolas, 'Liberation Mono', monospace;
+    color: var(--text-muted);
+}
+
 .time-cell { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 
 .journal-pagination {

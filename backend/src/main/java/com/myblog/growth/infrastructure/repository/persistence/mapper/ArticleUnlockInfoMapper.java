@@ -3,6 +3,9 @@ package com.myblog.growth.infrastructure.repository.persistence.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 文章解锁信息只读 Mapper.
  *
@@ -30,6 +33,14 @@ public interface ArticleUnlockInfoMapper {
     ArticleUnlockInfoVO selectUnlockInfoById(@Param("articleId") Long articleId);
 
     /**
+     * 批量查询文章的解锁信息.
+     *
+     * @param articleIds 文章 ID 集合
+     * @return 解锁信息 VO 列表
+     */
+    List<ArticleUnlockInfoVO> selectUnlockInfoByIds(@Param("articleIds") Collection<Long> articleIds);
+
+    /**
      * 文章解锁信息值对象（Mapper 内嵌使用）.
      */
     class ArticleUnlockInfoVO {
@@ -49,6 +60,9 @@ public interface ArticleUnlockInfoMapper {
         /** 文章状态（PUBLISHED 才能解锁）. */
         private String status;
 
+        /** 文章标题. */
+        private String title;
+
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
 
@@ -63,6 +77,9 @@ public interface ArticleUnlockInfoMapper {
 
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
     }
 }
 
