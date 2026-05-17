@@ -3,6 +3,7 @@ package com.myblog.growth.interfaces.rest.controller;
 import com.myblog.growth.application.service.GrowthQueryAppService;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
+import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
 import com.myblog.growth.domain.repository.LevelThresholdRepository;
 import com.myblog.growth.interfaces.rest.assembler.GrowthAssembler;
@@ -62,7 +63,8 @@ public class GrowthController {
         Long userId = AuthContext.getRequiredUserId();
         GrowthAccount account = growthQueryAppService.getGrowthAccount(userId);
         List<LevelThreshold> thresholds = levelThresholdRepository.findAllEnabled();
-        GrowthAccountVO vo = growthAssembler.toVO(account, thresholds);
+        List<LevelRewardConfig> levelRewards = growthQueryAppService.getVisibleLevelRewards();
+        GrowthAccountVO vo = growthAssembler.toVO(account, thresholds, levelRewards);
         return Result.success(vo);
     }
 

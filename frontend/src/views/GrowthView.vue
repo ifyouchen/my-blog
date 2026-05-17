@@ -382,6 +382,18 @@ const compactCalendarDays = computed(() =>
 
 const currentLevel = computed(() => growth.value?.currentLevel ?? growth.value?.level ?? 1);
 const currentExp = computed(() => growth.value?.currentExp ?? growth.value?.exp ?? 0);
+const levelRewards = computed(() => Array.isArray(growth.value?.levelRewards) ? growth.value.levelRewards : []);
+const rewardDialogOpen = ref(false);
+const nextLevelReward = computed(() =>
+    levelRewards.value.find((reward) => Number(reward.level || 0) > currentLevel.value && Number(reward.rewardPoints || 0) > 0)
+        || levelRewards.value.find((reward) => Number(reward.level || 0) > currentLevel.value)
+        || null
+);
+const rewardSummaryText = computed(() => {
+    if (!levelRewards.value.length) return '暂无奖励';
+    if (!nextLevelReward.value) return '已达成全部等级奖励';
+    return `下级 Lv.${nextLevelReward.value.level} 可得 +${nextLevelReward.value.rewardPoints || 0} 积分`;
+});
 const signInPoints = computed(() => signInResult.value?.pointsGranted ?? signInResult.value?.pointsEarned ?? 0);
 const signInDays = computed(() => {
     if (signInResult.value?.consecutiveDays) return signInResult.value.consecutiveDays;
@@ -407,6 +419,27 @@ const isFutureDate = (dateStr) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return date > today;
+};
+
+let rewardDialogPointerDownOnSelf = false;
+const openRewardDialog = () => {
+    rewardDialogOpen.value = true;
+};
+
+const closeRewardDialog = () => {
+    rewardDialogOpen.value = false;
+    rewardDialogPointerDownOnSelf = false;
+};
+
+const handleRewardDialogPointerDown = (event) => {
+    rewardDialogPointerDownOnSelf = event.target === event.currentTarget;
+};
+
+const handleRewardDialogPointerUp = (event) => {
+    if (rewardDialogPointerDownOnSelf && event.target === event.currentTarget) {
+        closeRewardDialog();
+    }
+    rewardDialogPointerDownOnSelf = false;
 };
 
 onMounted(async () => {
@@ -436,13 +469,23 @@ onMounted(async () => {
                 <div class="growth-card level-card">
                     <div v-if="growthLoading" class="card-skeleton"></div>
                     <template v-else-if="growth">
+                        <button
+                            type="button"
+                            class="reward-entry"
+                            aria-label="查看等级奖励"
+                            @click="openRewardDialog"
+                        >
+                            <span class="reward-entry-icon" aria-hidden="true">奖</span>
+                            <span>奖励</span>
+                        </button>
                         <div class="level-badge">Lv.{{ currentLevel }}</div>
                         <div class="level-info">
                             <p class="level-name">{{ growth.levelName || `${currentLevel} 级` }}</p>
                             <p class="level-exp">
-                                经验值 <strong>{{ currentExp }}</strong>
+                                <span class="exp-label">EXP</span>
+                                <strong>{{ currentExp }}</strong>
                                 <span v-if="growth.expToNextLevel > 0">
-                                    / 距升级还需 <strong>{{ growth.expToNextLevel }}</strong> 经验
+                                    · 还差 <strong>{{ growth.expToNextLevel }}</strong>
                                 </span>
                                 <span v-else class="max-level">（已达最高等级）</span>
                             </p>
@@ -453,6 +496,7 @@ onMounted(async () => {
                                 ></div>
                             </div>
                             <p class="exp-percent">{{ growth.progressPercent || 0 }}%</p>
+                            <p class="reward-summary">{{ rewardSummaryText }}</p>
                         </div>
                     </template>
                     <div v-else-if="growthError" class="card-error">{{ growthError }}</div>
@@ -690,6 +734,57 @@ onMounted(async () => {
             </section>
         </section>
     </main>
+
+    <Teleport to="body">
+        <div
+            v-if="rewardDialogOpen"
+            class="level-reward-overlay"
+            role="presentation"
+            @pointerdown="handleRewardDialogPointerDown"
+            @pointerup="handleRewardDialogPointerUp"
+        >
+            <section
+                class="level-reward-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="level-reward-title"
+            >
+                <button
+                    type="button"
+                    class="level-reward-close"
+                    aria-label="关闭等级奖励弹窗"
+                    @click="closeRewardDialog"
+                >×</button>
+                <p class="reward-dialog-eyebrow">等级权益</p>
+                <h2 id="level-reward-title">等级奖励</h2>
+                <p class="reward-dialog-desc">
+                    {{ rewardSummaryText }}
+                </p>
+                <div v-if="levelRewards.length" class="level-reward-list">
+                    <article
+                        v-for="reward in levelRewards"
+                        :key="reward.level"
+                        :class="['level-reward-row', {achieved: reward.achieved}]"
+                    >
+                        <div class="level-reward-rank">
+                            <span>Lv.{{ reward.level }}</span>
+                        </div>
+                        <div class="level-reward-body">
+                            <div class="level-reward-main">
+                                <strong>{{ reward.rewardTitle || '等级奖励' }}</strong>
+                                <span>+{{ reward.rewardPoints || 0 }} 积分</span>
+                            </div>
+                            <p>{{ reward.description || '达到该等级后自动发放奖励' }}</p>
+                        </div>
+                        <span :class="['reward-state', reward.achieved ? 'claimed' : 'locked']">
+                            {{ reward.achieved ? '已领取' : '未解锁' }}
+                        </span>
+                    </article>
+                </div>
+                <div v-else class="level-reward-empty">暂无等级奖励配置</div>
+            </section>
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -746,9 +841,11 @@ onMounted(async () => {
 
 /* ── 等级卡片 ───────────────────────────────── */
 .level-card {
+    position: relative;
     display: flex;
     gap: 16px;
     align-items: flex-start;
+    padding-right: 112px;
 }
 
 .level-badge {
@@ -786,6 +883,12 @@ onMounted(async () => {
 
 .level-exp strong { color: var(--text-strong); }
 
+.exp-label {
+    color: var(--text-strong);
+    font-size: 12px;
+    font-weight: 800;
+}
+
 .max-level { color: var(--accent); }
 
 .exp-bar {
@@ -808,6 +911,225 @@ onMounted(async () => {
     color: var(--text-muted);
     text-align: right;
     margin: 0;
+}
+
+.reward-entry {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px 0 8px;
+    color: #2563eb;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.reward-entry:hover {
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.reward-entry-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #8b5cf6);
+    border-radius: 50%;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.reward-summary {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.level-reward-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.42);
+}
+
+.level-reward-dialog {
+    position: relative;
+    width: min(560px, calc(100vw - 40px));
+    max-height: min(680px, calc(100vh - 40px));
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+    padding: 24px;
+}
+
+.level-reward-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--text-muted);
+    background: var(--surface);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.level-reward-close:hover {
+    color: var(--text-strong);
+    background: var(--surface-soft);
+}
+
+.reward-dialog-eyebrow {
+    margin: 0 0 6px;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.level-reward-dialog h2 {
+    margin: 0;
+    color: var(--text-strong);
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.reward-dialog-desc {
+    margin: 8px 40px 18px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.level-reward-list {
+    display: grid;
+    gap: 10px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.level-reward-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.level-reward-row.achieved {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.level-reward-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #64748b, #94a3b8);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.level-reward-row.achieved .level-reward-rank {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.level-reward-body {
+    min-width: 0;
+}
+
+.level-reward-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.level-reward-main strong {
+    min-width: 0;
+    color: var(--text-strong);
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.level-reward-main span {
+    flex-shrink: 0;
+    color: #16a34a;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.level-reward-body p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.reward-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.reward-state.claimed {
+    color: #047857;
+    background: #d1fae5;
+}
+
+.reward-state.locked {
+    color: #64748b;
+    background: #e2e8f0;
+}
+
+.level-reward-empty {
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background: var(--surface-soft);
+    border-radius: 10px;
 }
 
 /* ── 积分卡片 ───────────────────────────────── */
@@ -1241,12 +1563,32 @@ onMounted(async () => {
         align-items: flex-start;
         text-align: left;
         overflow: hidden;
+        padding-right: 48px;
     }
 
     .level-badge {
         width: 42px;
         height: 42px;
         font-size: 13px;
+    }
+
+    .reward-entry {
+        top: 10px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .reward-entry span:not(.reward-entry-icon) {
+        display: none;
+    }
+
+    .reward-entry-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
     }
 
     .level-name {
@@ -1258,6 +1600,72 @@ onMounted(async () => {
         margin-bottom: 8px;
         font-size: 12px;
         line-height: 1.45;
+    }
+
+    .reward-summary {
+        display: -webkit-box;
+        margin-top: 6px;
+        font-size: 11px;
+        line-height: 1.35;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .level-reward-overlay {
+        align-items: flex-end;
+        padding: 12px;
+    }
+
+    .level-reward-dialog {
+        width: 100%;
+        max-height: min(620px, calc(100vh - 24px));
+        padding: 20px 16px 16px;
+        border-radius: 14px 14px 10px 10px;
+    }
+
+    .level-reward-dialog h2 {
+        font-size: 20px;
+    }
+
+    .reward-dialog-desc {
+        margin-right: 36px;
+        font-size: 13px;
+    }
+
+    .level-reward-list {
+        max-height: 430px;
+    }
+
+    .level-reward-row {
+        grid-template-columns: 46px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .level-reward-rank {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+    .level-reward-main {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+    }
+
+    .level-reward-main strong {
+        flex: 1 1 100%;
+        white-space: normal;
+    }
+
+    .reward-state {
+        grid-column: 2;
+        justify-self: start;
+        min-width: 58px;
+        height: 24px;
+        padding: 0 8px;
+        font-size: 11px;
     }
 
     .point-num {

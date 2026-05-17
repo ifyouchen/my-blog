@@ -2,9 +2,11 @@ package com.myblog.growth.application.service;
 
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
+import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
 import com.myblog.growth.domain.repository.ExpJournalRepository;
 import com.myblog.growth.domain.repository.GrowthAccountRepository;
+import com.myblog.growth.domain.repository.LevelRewardRepository;
 import com.myblog.growth.domain.repository.LevelThresholdRepository;
 import com.myblog.growth.domain.service.LevelPolicyService;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class GrowthQueryAppService {
     private final GrowthAccountRepository growthAccountRepository;
     private final ExpJournalRepository expJournalRepository;
     private final LevelThresholdRepository levelThresholdRepository;
+    private final LevelRewardRepository levelRewardRepository;
     private final LevelPolicyService levelPolicyService;
 
     /**
@@ -35,10 +38,12 @@ public class GrowthQueryAppService {
     public GrowthQueryAppService(GrowthAccountRepository growthAccountRepository,
                                   ExpJournalRepository expJournalRepository,
                                   LevelThresholdRepository levelThresholdRepository,
+                                  LevelRewardRepository levelRewardRepository,
                                   LevelPolicyService levelPolicyService) {
         this.growthAccountRepository = growthAccountRepository;
         this.expJournalRepository = expJournalRepository;
         this.levelThresholdRepository = levelThresholdRepository;
+        this.levelRewardRepository = levelRewardRepository;
         this.levelPolicyService = levelPolicyService;
     }
 
@@ -90,6 +95,15 @@ public class GrowthQueryAppService {
      */
     public List<ExpJournal> getRecentJournals(Long userId, int limit) {
         return expJournalRepository.findRecentByUserId(userId, limit);
+    }
+
+    /**
+     * 查询普通用户可见的等级奖励配置.
+     *
+     * @return 已启用等级奖励列表
+     */
+    public List<LevelRewardConfig> getVisibleLevelRewards() {
+        return levelRewardRepository.findAllEnabled();
     }
 }
 

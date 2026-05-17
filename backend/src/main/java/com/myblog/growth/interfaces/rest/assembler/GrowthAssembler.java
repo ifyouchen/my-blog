@@ -3,6 +3,7 @@ package com.myblog.growth.interfaces.rest.assembler;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
 import com.myblog.growth.domain.model.valueobject.GrowthRule;
+import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
 import com.myblog.growth.domain.model.valueobject.PointRule;
 import com.myblog.growth.domain.service.LevelPolicyService;
@@ -60,6 +61,40 @@ public class GrowthAssembler {
         vo.setExpToNextLevel(levelPolicyService.expToNextLevel(
                 account.getCurrentExp(), account.getCurrentLevel(), thresholds));
         return vo;
+    }
+
+    /**
+     * 将成长账户、等级阈值和等级奖励列表组装为 {@link GrowthAccountVO}.
+     *
+     * @param account      成长账户聚合根
+     * @param thresholds   等级阈值列表（按 level ASC）
+     * @param levelRewards 等级奖励列表（按 level ASC）
+     * @return 成长账户 VO
+     */
+    public GrowthAccountVO toVO(GrowthAccount account,
+                                List<LevelThreshold> thresholds,
+                                List<LevelRewardConfig> levelRewards) {
+        GrowthAccountVO vo = toVO(account, thresholds);
+        vo.setLevelRewards(toLevelRewardVOList(levelRewards, account.getCurrentLevel()));
+        return vo;
+    }
+
+    private List<GrowthAccountVO.LevelRewardVO> toLevelRewardVOList(List<LevelRewardConfig> rewards,
+                                                                     int currentLevel) {
+        List<GrowthAccountVO.LevelRewardVO> voList = new ArrayList<>();
+        if (rewards == null) {
+            return voList;
+        }
+        for (LevelRewardConfig reward : rewards) {
+            GrowthAccountVO.LevelRewardVO vo = new GrowthAccountVO.LevelRewardVO();
+            vo.setLevel(reward.getLevel());
+            vo.setRewardPoints(reward.getRewardPoints());
+            vo.setRewardTitle(reward.getRewardTitle());
+            vo.setDescription(reward.getDescription());
+            vo.setAchieved(reward.getLevel() <= currentLevel);
+            voList.add(vo);
+        }
+        return voList;
     }
 
     // ─────────────────── ExpJournal → VO ───────────────────
