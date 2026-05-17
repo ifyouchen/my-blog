@@ -994,7 +994,7 @@ async function handleCoverSelected(event) {
     coverUploading.value = true;
     try {
         const result = await uploadImageApi(file, 'cover');
-        draft.coverUrl = result.url || defaultDraft.coverUrl;
+        draft.coverUrl = result.mediumUrl || result.url || defaultDraft.coverUrl;
         debouncedCoverUrl.value = draft.coverUrl;
         coverPreviewFailed.value = false;
         statusMessage.value = '封面已上传，发布或保存草稿后会写入文章';

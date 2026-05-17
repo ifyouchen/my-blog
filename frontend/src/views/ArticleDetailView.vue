@@ -17,11 +17,6 @@ import AdBanner from '@/components/AdBanner.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
 import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
 import {useSession} from '@/stores/session';
-import {
-    exportArticleAsHtml,
-    exportArticleAsMarkdown,
-    exportArticleAsPdf
-} from '@/utils/articleExport';
 import ArticleLockBadge from '@/components/ArticleLockBadge.vue';
 import ArticleUnlockModal from '@/components/ArticleUnlockModal.vue';
 import { useGrowthStore } from '@/stores/growth';
@@ -377,6 +372,11 @@ const handleExportArticle = async (format) => {
 
     try {
         let result;
+        const {
+            exportArticleAsHtml,
+            exportArticleAsMarkdown,
+            exportArticleAsPdf
+        } = await import('@/utils/articleExport');
         const payload = {
             markdown,
             title: article.value?.title || `article-${articleId.value}`

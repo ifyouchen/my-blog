@@ -12,6 +12,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -54,6 +62,20 @@ public class UploadController {
     private static final long FILE_MAX_BYTES = 20L * 1024L * 1024L;
     /** 按年月分目录存储的格式化器。 */
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM");
+    /** 头像最长边。 */
+    private static final int AVATAR_MAX_SIDE = 320;
+    /** 封面最长边。 */
+    private static final int COVER_MAX_SIDE = 1280;
+    /** 正文图片最长边。 */
+    private static final int CONTENT_IMAGE_MAX_SIDE = 1600;
+    /** 私信图片最长边。 */
+    private static final int MESSAGE_IMAGE_MAX_SIDE = 1600;
+    /** 缩略图最长边。 */
+    private static final int THUMBNAIL_MAX_SIDE = 480;
+    /** 中等尺寸图片最长边。 */
+    private static final int MEDIUM_MAX_SIDE = 960;
+    /** JPEG 输出质量。 */
+    private static final float JPEG_QUALITY = 0.82F;
 
     /** 允许上传的附件 MIME 类型集合。 */
     private static final Set<String> ALLOWED_ATTACHMENT_TYPES = new HashSet<>(Arrays.asList(
@@ -110,15 +132,18 @@ public class UploadController {
 
         try {
             Files.createDirectories(targetDir);
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
-            }
+            saveOptimizedImage(file, scope, extension, targetFile);
         } catch (IOException exception) {
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "图片上传失败");
         }
 
         Map<String, String> data = new HashMap<>();
-        data.put("url", "/api/uploads/files/" + relativeFolder + "/" + fileName);
+        String fileUrl = "/api/uploads/files/" + relativeFolder + "/" + fileName;
+        data.put("url", fileUrl);
+        data.put("originalUrl", fileUrl);
+        if (canOptimize(extension)) {
+            putVariantUrls(data, relativeFolder, fileName);
+        }
         return Result.success(data);
     }
 
@@ -248,5 +273,144 @@ public class UploadController {
             return ".webp";
         }
         return ".jpg";
+    }
+
+    /**
+     * 保存优化后的图片。
+     *
+     * @param file 上传文件
+     * @param scope 图片用途
+     * @param extension 文件扩展名
+     * @param targetFile 目标文件
+     * @throws IOException 保存失败时抛出
+     */
+    private void saveOptimizedImage(MultipartFile file, String scope, String extension, Path targetFile)
+        throws IOException {
+        if (!canOptimize(extension)) {
+            copyOriginal(file, targetFile);
+            return;
+        }
+        BufferedImage source;
+        try (InputStream inputStream = file.getInputStream()) {
+            source = ImageIO.read(inputStream);
+        }
+        if (source == null) {
+            copyOriginal(file, targetFile);
+            return;
+        }
+        BufferedImage output = resizeIfNeeded(source, resolveMaxSide(scope));
+        if (isJpeg(extension)) {
+            writeJpeg(output, targetFile);
+            saveImageVariants(output, targetFile, extension);
+            return;
+        }
+        ImageIO.write(output, "png", targetFile.toFile());
+        saveImageVariants(output, targetFile, extension);
+    }
+
+    private void saveImageVariants(BufferedImage source, Path targetFile, String extension) throws IOException {
+        writeVariant(source, targetFile, extension, "-thumb", THUMBNAIL_MAX_SIDE);
+        writeVariant(source, targetFile, extension, "-medium", MEDIUM_MAX_SIDE);
+    }
+
+    private void writeVariant(BufferedImage source, Path targetFile, String extension, String suffix, int maxSide)
+        throws IOException {
+        Path variantFile = resolveVariantFile(targetFile, suffix);
+        BufferedImage variant = resizeIfNeeded(source, maxSide);
+        if (isJpeg(extension)) {
+            writeJpeg(variant, variantFile);
+            return;
+        }
+        ImageIO.write(variant, "png", variantFile.toFile());
+    }
+
+    private void putVariantUrls(Map<String, String> data, String relativeFolder, String fileName) {
+        String baseUrl = "/api/uploads/files/" + relativeFolder + "/";
+        data.put("thumbnailUrl", baseUrl + buildVariantFileName(fileName, "-thumb"));
+        data.put("mediumUrl", baseUrl + buildVariantFileName(fileName, "-medium"));
+    }
+
+    private Path resolveVariantFile(Path targetFile, String suffix) {
+        return targetFile.resolveSibling(buildVariantFileName(targetFile.getFileName().toString(), suffix));
+    }
+
+    private String buildVariantFileName(String fileName, String suffix) {
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex < 0) {
+            return fileName + suffix;
+        }
+        return fileName.substring(0, dotIndex) + suffix + fileName.substring(dotIndex);
+    }
+
+    private boolean canOptimize(String extension) {
+        return isJpeg(extension) || ".png".equalsIgnoreCase(extension);
+    }
+
+    private boolean isJpeg(String extension) {
+        return ".jpg".equalsIgnoreCase(extension) || ".jpeg".equalsIgnoreCase(extension);
+    }
+
+    private int resolveMaxSide(String scope) {
+        if ("avatar".equalsIgnoreCase(scope)) {
+            return AVATAR_MAX_SIDE;
+        }
+        if ("content".equalsIgnoreCase(scope)) {
+            return CONTENT_IMAGE_MAX_SIDE;
+        }
+        if ("message".equalsIgnoreCase(scope)) {
+            return MESSAGE_IMAGE_MAX_SIDE;
+        }
+        return COVER_MAX_SIDE;
+    }
+
+    private BufferedImage resizeIfNeeded(BufferedImage source, int maxSide) {
+        int width = source.getWidth();
+        int height = source.getHeight();
+        int longestSide = Math.max(width, height);
+        if (longestSide <= maxSide) {
+            return source;
+        }
+        double scale = maxSide / (double) longestSide;
+        int targetWidth = Math.max(1, (int) Math.round(width * scale));
+        int targetHeight = Math.max(1, (int) Math.round(height * scale));
+        BufferedImage resized = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = resized.createGraphics();
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        graphics.drawImage(source, 0, 0, targetWidth, targetHeight, null);
+        graphics.dispose();
+        return resized;
+    }
+
+    private void writeJpeg(BufferedImage source, Path targetFile) throws IOException {
+        BufferedImage rgb = toRgb(source);
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(JPEG_QUALITY);
+        try (ImageOutputStream output = ImageIO.createImageOutputStream(targetFile.toFile())) {
+            writer.setOutput(output);
+            writer.write(null, new IIOImage(rgb, null, null), param);
+        } finally {
+            writer.dispose();
+        }
+    }
+
+    private BufferedImage toRgb(BufferedImage source) {
+        if (source.getType() == BufferedImage.TYPE_INT_RGB) {
+            return source;
+        }
+        BufferedImage rgb = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = rgb.createGraphics();
+        graphics.drawImage(source, 0, 0, java.awt.Color.WHITE, null);
+        graphics.dispose();
+        return rgb;
+    }
+
+    private void copyOriginal(MultipartFile file, Path targetFile) throws IOException {
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }
