@@ -43,6 +43,8 @@ public class ArticleDTO {
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
+    private Long recommendationApplicationId;
+    private String recommendationApplicationStatus;
     private UserDTO author;
 
     /**
@@ -571,6 +573,42 @@ public class ArticleDTO {
      */
     public void setWarnFlag(boolean warnFlag) {
         this.warnFlag = warnFlag;
+    }
+
+    /**
+     * 获取推荐申请ID。
+     *
+     * @return 推荐申请ID
+     */
+    public Long getRecommendationApplicationId() {
+        return recommendationApplicationId;
+    }
+
+    /**
+     * 设置推荐申请ID。
+     *
+     * @param recommendationApplicationId 推荐申请ID
+     */
+    public void setRecommendationApplicationId(Long recommendationApplicationId) {
+        this.recommendationApplicationId = recommendationApplicationId;
+    }
+
+    /**
+     * 获取推荐申请状态。
+     *
+     * @return 推荐申请状态
+     */
+    public String getRecommendationApplicationStatus() {
+        return recommendationApplicationStatus;
+    }
+
+    /**
+     * 设置推荐申请状态。
+     *
+     * @param recommendationApplicationStatus 推荐申请状态
+     */
+    public void setRecommendationApplicationStatus(String recommendationApplicationStatus) {
+        this.recommendationApplicationStatus = recommendationApplicationStatus;
     }
 
     /**

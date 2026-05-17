@@ -358,6 +358,39 @@ export const getAdminRewardGrantLogsApi = (params = {}) => {
     return request(`/admin/rewards/grant-logs${suffix}`);
 };
 
+export const getAdminRecommendationApplicationsApi = (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.page) query.set('page', params.page);
+    if (params.size) query.set('size', params.size);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request(`/admin/recommendation-applications${suffix}`);
+};
+
+export const approveAdminRecommendationApplicationApi = (id, reviewNote = '') =>
+    request(`/admin/recommendation-applications/${id}/approve`, {
+        method: 'POST',
+        body: { reviewNote }
+    });
+
+export const rejectAdminRecommendationApplicationApi = (id, reviewNote = '') =>
+    request(`/admin/recommendation-applications/${id}/reject`, {
+        method: 'POST',
+        body: { reviewNote }
+    });
+
+export const getAdminAnnualCreatorCandidatesApi = () =>
+    request('/admin/growth/annual-creator-candidates');
+
+export const backfillAdminGrowthRewardsApi = ({ mode = 'ALL', userId } = {}) =>
+    request('/admin/growth/rewards/backfill', {
+        method: 'POST',
+        body: {
+            mode,
+            userId
+        }
+    });
+
 // ─────────────────────── 管理员接口：积分规则 ─────────────────────
 
 /**

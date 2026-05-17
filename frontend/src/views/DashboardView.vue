@@ -8,12 +8,14 @@ import CreatorSidebar from '@/components/CreatorSidebar.vue';
 import {getMyFavoritesApi, unfavoriteArticleApi} from '@/api/favorites';
 import {getMyColumnsApi} from '@/api/columns';
 import {
+    applyHomepageRecommendationApi,
     deleteArticleApi,
     exportMyArticlesApi,
     getMyArticlesApi,
     updateArticleStatusApi,
     updateArticleUnlockRuleApi
 } from '@/api/articles';
+import {getMyGrowthApi} from '@/api/growth';
 import {
   getArticleStatsApi,
   getDashboardArticlePerformanceApi,
@@ -30,7 +32,7 @@ import {track} from '@/utils/track';
 
 const route = useRoute();
 const router = useRouter();
-const { isLoggedIn } = useSession();
+const { state: session, isLoggedIn } = useSession();
 const SCHEDULED_ARTICLE_REFRESH_MS = 30000;
 const MIN_UNLOCK_POINT_PRICE = 10;
 const MAX_UNLOCK_POINT_PRICE = 1000000;
@@ -94,9 +96,11 @@ const {
 const feedback = ref('');
 const feedbackType = ref('success');
 const actionLoadingId = ref(null);
+const recommendationApplyingId = ref(null);
 const jumpPage = ref(String(currentPage.value));
 const unlockDialogVisible = ref(false);
 const unlockDialogArticle = ref(null);
+const growthAccess = ref(null);
 const unlockForm = ref({
     needUnlock: false,
     unlockPointPrice: 0
@@ -167,6 +171,18 @@ const articleStatusLabels = {
     OFFLINE: '已下架',
     DELETED: '已删除'
 };
+const RECOMMENDATION_STATUS_LABELS = {
+    PENDING: '推荐申请审核中',
+    APPROVED: '已通过推荐申请',
+    REJECTED: '推荐申请已拒绝'
+};
+const creatorPrivilegeCodes = computed(() => (
+    growthAccess.value?.ownedPrivilegeCodes
+    || session.user?.privilegeCodes
+    || []
+));
+const hasPaidArticlePrivilege = computed(() => creatorPrivilegeCodes.value.includes('PAID_ARTICLE_PUBLISH'));
+const hasHomepageRecommendationPrivilege = computed(() => creatorPrivilegeCodes.value.includes('HOMEPAGE_RECOMMEND_ELIGIBLE'));
 
 const emptyOverview = () => ({
     totalCount: 0,
@@ -370,8 +386,10 @@ const fetchCurrentTab = async () => {
         articles.value = [];
         favorites.value = [];
         total.value = 0;
+        growthAccess.value = null;
         return;
     }
+    await loadCreatorPrivileges();
     if (isOverview.value) {
         await fetchDashboardAnalytics();
         return;
@@ -384,6 +402,14 @@ const fetchCurrentTab = async () => {
         fetchArticles({ silent: hasLoadedOnce.value && articles.value.length > 0 }),
         fetchOverview()
     ]);
+};
+
+const loadCreatorPrivileges = async () => {
+    try {
+        growthAccess.value = await getMyGrowthApi();
+    } catch {
+        growthAccess.value = growthAccess.value || null;
+    }
 };
 
 const changePage = async (page) => {
@@ -510,6 +536,11 @@ const clampUnlockFormPointPrice = () => {
 };
 
 const onUnlockNeedUnlockChange = () => {
+    if (unlockForm.value.needUnlock && !hasPaidArticlePrivilege.value) {
+        unlockForm.value.needUnlock = false;
+        unlockError.value = '当前等级未解锁付费文章发布权限，达到 Lv.4 后可开启积分解锁。';
+        return;
+    }
     clampUnlockFormPointPrice();
 };
 
@@ -536,6 +567,10 @@ const saveUnlockRule = async () => {
     if (!unlockDialogArticle.value || unlockSaving.value) {
         return;
     }
+    if (unlockForm.value.needUnlock && !hasPaidArticlePrivilege.value) {
+        unlockError.value = '当前等级未解锁付费文章发布权限，达到 Lv.4 后可开启积分解锁。';
+        return;
+    }
     const validationMessage = validateUnlockForm();
     if (validationMessage) {
         unlockError.value = validationMessage;
@@ -560,6 +595,42 @@ const saveUnlockRule = async () => {
         unlockError.value = error.message || '阅读权限保存失败，请稍后重试。';
     } finally {
         unlockSaving.value = false;
+    }
+};
+
+const getRecommendationStatusLabel = (status) => RECOMMENDATION_STATUS_LABELS[status] || '';
+
+const canApplyRecommendation = (article) => (
+    article?.status === 'PUBLISHED'
+    && hasHomepageRecommendationPrivilege.value
+    && article?.recommendationApplicationStatus !== 'PENDING'
+    && article?.recommendationApplicationStatus !== 'APPROVED'
+);
+
+const submitRecommendationApplication = async (article) => {
+    if (!article?.id || recommendationApplyingId.value === article.id || !canApplyRecommendation(article)) {
+        return;
+    }
+    recommendationApplyingId.value = article.id;
+    feedback.value = '';
+    try {
+        const result = await applyHomepageRecommendationApi(article.id);
+        articles.value = articles.value.map((item) => (
+            String(item.id) === String(article.id)
+                ? {
+                    ...item,
+                    recommendationApplicationId: result.id,
+                    recommendationApplicationStatus: result.status
+                }
+                : item
+        ));
+        feedback.value = `《${article.title}》已提交首页推荐申请`;
+        feedbackType.value = 'success';
+    } catch (error) {
+        feedback.value = error.message || '提交首页推荐申请失败';
+        feedbackType.value = 'error';
+    } finally {
+        recommendationApplyingId.value = null;
     }
 };
 
@@ -1353,6 +1424,33 @@ onUnmounted(() => {
                                         统计
                                     </button>
                                     <button
+                                        v-if="canApplyRecommendation(article)"
+                                        type="button"
+                                        class="action-link action-link-secondary"
+                                        :disabled="recommendationApplyingId === article.id"
+                                        @click="submitRecommendationApplication(article)"
+                                    >
+                                        {{
+                                            recommendationApplyingId === article.id
+                                                ? '提交中...'
+                                                : (article.recommendationApplicationStatus === 'REJECTED'
+                                                    ? '重新申请推荐'
+                                                    : '申请首页推荐')
+                                        }}
+                                    </button>
+                                    <span
+                                        v-else-if="article.status === 'PUBLISHED' && article.recommendationApplicationStatus"
+                                        class="article-action-muted"
+                                    >
+                                        {{ getRecommendationStatusLabel(article.recommendationApplicationStatus) }}
+                                    </span>
+                                    <span
+                                        v-else-if="article.status === 'PUBLISHED' && !hasHomepageRecommendationPrivilege"
+                                        class="article-action-muted"
+                                    >
+                                        Lv.7 解锁首页推荐申请资格
+                                    </span>
+                                    <button
                                         v-if="article.status !== 'DELETED'"
                                         type="button"
                                         class="action-link action-link-danger"
@@ -1426,6 +1524,33 @@ onUnmounted(() => {
                             >
                                 权限
                             </button>
+                            <button
+                                v-if="canApplyRecommendation(article)"
+                                type="button"
+                                class="action-link action-link-secondary"
+                                :disabled="recommendationApplyingId === article.id"
+                                @click="submitRecommendationApplication(article)"
+                            >
+                                {{
+                                    recommendationApplyingId === article.id
+                                        ? '提交中...'
+                                        : (article.recommendationApplicationStatus === 'REJECTED'
+                                            ? '重新申请推荐'
+                                            : '申请推荐')
+                                }}
+                            </button>
+                            <span
+                                v-else-if="article.status === 'PUBLISHED' && article.recommendationApplicationStatus"
+                                class="article-action-muted"
+                            >
+                                {{ getRecommendationStatusLabel(article.recommendationApplicationStatus) }}
+                            </span>
+                            <span
+                                v-else-if="article.status === 'PUBLISHED' && !hasHomepageRecommendationPrivilege"
+                                class="article-action-muted"
+                            >
+                                Lv.7 解锁推荐资格
+                            </span>
                             <button
                                 v-if="article.status !== 'DELETED'"
                                 type="button"
@@ -1532,6 +1657,12 @@ onUnmounted(() => {
                     </button>
                 </header>
                 <div class="unlock-rule-modal-body">
+                    <p
+                        v-if="!hasPaidArticlePrivilege"
+                        class="unlock-rule-tip"
+                    >
+                        当前等级未解锁付费文章发布权限，达到 Lv.4 后可开启积分解锁。
+                    </p>
                     <div class="unlock-option-grid" role="radiogroup" aria-label="阅读权限">
                         <label :class="['unlock-option-card', { active: !unlockForm.needUnlock }]">
                             <input
@@ -1551,7 +1682,7 @@ onUnmounted(() => {
                                 v-model="unlockForm.needUnlock"
                                 type="radio"
                                 :value="true"
-                                :disabled="unlockSaving"
+                                :disabled="unlockSaving || !hasPaidArticlePrivilege"
                                 @change="onUnlockNeedUnlockChange"
                             >
                             <span>
@@ -1570,7 +1701,7 @@ onUnmounted(() => {
                             :max="MAX_UNLOCK_POINT_PRICE"
                             step="1"
                             inputmode="numeric"
-                            :disabled="!unlockForm.needUnlock || unlockSaving"
+                            :disabled="!unlockForm.needUnlock || unlockSaving || !hasPaidArticlePrivilege"
                             @change="onUnlockPointPriceCommit"
                             @blur="onUnlockPointPriceCommit"
                         >
@@ -2997,6 +3128,17 @@ onUnmounted(() => {
     border-radius: var(--radius-sm);
     font-size: 13px;
     line-height: 1.5;
+}
+
+.unlock-rule-tip {
+    margin: 0;
+    padding: 10px 12px;
+    color: #8a5b00;
+    background: rgba(255, 214, 102, 0.18);
+    border: 1px solid rgba(201, 141, 0, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    line-height: 1.6;
 }
 
 .unlock-rule-modal-actions {

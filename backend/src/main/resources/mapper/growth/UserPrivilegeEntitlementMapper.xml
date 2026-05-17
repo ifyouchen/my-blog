@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.UserPrivilegeEntitlementMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.UserPrivilegeEntitlement">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="privilege_code" property="privilegeCode"/>
+        <result column="source_level" property="sourceLevel"/>
+        <result column="status" property="status"/>
+        <result column="granted_at" property="grantedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, privilege_code, source_level, status, granted_at,
+        created_at, updated_at, version
+    </sql>
+
+    <select id="selectActiveByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_privilege_entitlement
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+          AND deleted_at IS NULL
+        ORDER BY granted_at ASC, id ASC
+    </select>
+
+    <select id="selectActiveByUserIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_privilege_entitlement
+        WHERE status = 'ACTIVE'
+          AND deleted_at IS NULL
+          AND user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        ORDER BY user_id ASC, granted_at ASC, id ASC
+    </select>
+
+    <select id="selectActiveByPrivilegeCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_privilege_entitlement
+        WHERE privilege_code = #{privilegeCode}
+          AND status = 'ACTIVE'
+          AND deleted_at IS NULL
+        ORDER BY granted_at ASC, id ASC
+    </select>
+
+    <select id="countActiveByUserIdAndPrivilegeCode" resultType="int">
+        SELECT COUNT(*)
+        FROM user_privilege_entitlement
+        WHERE user_id = #{userId}
+          AND privilege_code = #{privilegeCode}
+          AND status = 'ACTIVE'
+          AND deleted_at IS NULL
+    </select>
+
+    <insert id="insertIgnore" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO user_privilege_entitlement
+            (user_id, privilege_code, source_level, status, granted_at, created_at, updated_at, version)
+        VALUES
+            (#{userId}, #{privilegeCode}, #{sourceLevel}, #{status}, #{grantedAt},
+             NOW(), NOW(), #{version})
+    </insert>
+</mapper>

@@ -8,6 +8,8 @@ import PointRuleTab from '@/views/admin/PointRuleTab.vue';
 import PointAccountTab from '@/views/admin/PointAccountTab.vue';
 import RevenueShareTab from '@/views/admin/RevenueShareTab.vue';
 import RewardGrantLogTab from '@/views/admin/RewardGrantLogTab.vue';
+import RecommendationApplicationTab from '@/views/admin/RecommendationApplicationTab.vue';
+import AnnualCreatorCandidateTab from '@/views/admin/AnnualCreatorCandidateTab.vue';
 import SignInRewardTab from '@/views/admin/SignInRewardTab.vue';
 import {getAdminGrowthRulesApi, getAdminPointRulesApi, getAdminRevenueSharesApi} from '@/api/growth';
 
@@ -23,6 +25,8 @@ const TABS = [
     {key: 'point-rules', label: '积分规则'},
     {key: 'points', label: '积分账户'},
     {key: 'reward-logs', label: '奖励记录'},
+    {key: 'recommendation-applications', label: '推荐申请'},
+    {key: 'annual-candidates', label: '年度候选'},
     {key: 'revenue', label: '分账流水'},
 ];
 
@@ -37,6 +41,9 @@ watch(() => route.query.tab, (tab) => {
 const switchTab = (key) => {
     activeTab.value = key;
     router.replace({query: {...route.query, tab: key}});
+    if (key === 'dashboard') {
+        loadDashboard();
+    }
 };
 
 // ── 仪表盘统计 ────────────────────────────────────────────────────
@@ -163,6 +170,12 @@ onMounted(() => {
 
         <!-- ==================== 奖励记录 ==================== -->
         <RewardGrantLogTab v-if="activeTab === 'reward-logs'" />
+
+        <!-- ==================== 推荐申请 ==================== -->
+        <RecommendationApplicationTab v-if="activeTab === 'recommendation-applications'" />
+
+        <!-- ==================== 年度候选 ==================== -->
+        <AnnualCreatorCandidateTab v-if="activeTab === 'annual-candidates'" />
 
         <!-- ==================== 分账流水 ==================== -->
         <RevenueShareTab v-if="activeTab === 'revenue'" />

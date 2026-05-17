@@ -4,10 +4,12 @@ import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticleRecommendationSectionDTO;
 import com.myblog.application.dto.ArticleRecommendationsDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
+import com.myblog.application.dto.RecommendationApplicationDTO;
 import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.service.ArticleAppService;
 import com.myblog.application.service.RecommendationAppService;
+import com.myblog.application.service.RecommendationApplicationAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.CreateArticleRequest;
 import com.myblog.interfaces.rest.dto.request.UpdateArticleStatusRequest;
@@ -50,6 +52,7 @@ public class ArticleController {
 
     private final ArticleAppService articleAppService;
     private final RecommendationAppService recommendationAppService;
+    private final RecommendationApplicationAppService recommendationApplicationAppService;
     private final RestDtoMapper restDtoMapper;
 
     /**
@@ -60,9 +63,11 @@ public class ArticleController {
      */
     public ArticleController(ArticleAppService articleAppService,
                              RecommendationAppService recommendationAppService,
+                             RecommendationApplicationAppService recommendationApplicationAppService,
                              RestDtoMapper restDtoMapper) {
         this.articleAppService = articleAppService;
         this.recommendationAppService = recommendationAppService;
+        this.recommendationApplicationAppService = recommendationApplicationAppService;
         this.restDtoMapper = restDtoMapper;
     }
 
@@ -258,6 +263,17 @@ public class ArticleController {
                 AuthContext.getRole()
             )
         ));
+    }
+
+    /**
+     * 提交首页推荐申请。
+     *
+     * @param id 文章 ID
+     * @return 推荐申请结果
+     */
+    @PostMapping("/{id}/homepage-recommendation-apply")
+    public Result<RecommendationApplicationDTO> applyHomepageRecommendation(@PathVariable Long id) {
+        return Result.success(recommendationApplicationAppService.apply(id, AuthContext.getRequiredUserId()));
     }
 
     /**

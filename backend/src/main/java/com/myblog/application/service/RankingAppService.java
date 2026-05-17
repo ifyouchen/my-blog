@@ -642,6 +642,8 @@ public class RankingAppService {
         dto.setBio(source.getBio());
         dto.setRole(source.getRole());
         dto.setCurrentLevel(source.getCurrentLevel());
+        dto.setPrivilegeCodes(source.getPrivilegeCodes());
+        dto.setExclusiveBadgeEnabled(source.isExclusiveBadgeEnabled());
         return dto;
     }
 }

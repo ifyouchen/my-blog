@@ -9,6 +9,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
+import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
@@ -419,7 +420,10 @@ onBeforeUnmount(teardownColumnObserver);
             @stat-click="(stat) => { if (stat.key === 'followers' || stat.key === 'following') openFollowDialog(stat.key); }"
         >
             <template #badge>
-                <UserLevelBadge :level="profile.user.currentLevel" />
+                <div class="profile-badge-row">
+                    <UserLevelBadge :level="profile.user.currentLevel" />
+                    <UserPrivilegeBadge :privilege-codes="profile.user.privilegeCodes || []" />
+                </div>
             </template>
             <template #actions>
                 <RouterLink
@@ -806,6 +810,13 @@ onBeforeUnmount(teardownColumnObserver);
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
+}
+
+.profile-badge-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .profile-content-tabs {

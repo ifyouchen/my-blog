@@ -1,5 +1,7 @@
 package com.myblog.application.dto;
 
+import java.util.List;
+
 /**
  * 用户应用数据。
  *
@@ -27,6 +29,8 @@ public class UserDTO {
     private int articleCount;
     private long totalLikeCount;
     private int currentLevel;
+    private List<String> privilegeCodes;
+    private boolean exclusiveBadgeEnabled;
 
     /**
      * 获取用户 ID。
@@ -368,5 +372,41 @@ public class UserDTO {
      */
     public void setCurrentLevel(int currentLevel) {
         this.currentLevel = currentLevel;
+    }
+
+    /**
+     * 获取用户权益编码列表。
+     *
+     * @return 权益编码列表
+     */
+    public List<String> getPrivilegeCodes() {
+        return privilegeCodes;
+    }
+
+    /**
+     * 设置用户权益编码列表。
+     *
+     * @param privilegeCodes 权益编码列表
+     */
+    public void setPrivilegeCodes(List<String> privilegeCodes) {
+        this.privilegeCodes = privilegeCodes;
+    }
+
+    /**
+     * 获取是否启用专属徽章。
+     *
+     * @return true 表示启用专属徽章
+     */
+    public boolean isExclusiveBadgeEnabled() {
+        return exclusiveBadgeEnabled;
+    }
+
+    /**
+     * 设置是否启用专属徽章。
+     *
+     * @param exclusiveBadgeEnabled 是否启用专属徽章
+     */
+    public void setExclusiveBadgeEnabled(boolean exclusiveBadgeEnabled) {
+        this.exclusiveBadgeEnabled = exclusiveBadgeEnabled;
     }
 }

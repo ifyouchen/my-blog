@@ -175,6 +175,8 @@ public class RestDtoMapper {
         response.setArticleCount(dto.getArticleCount());
         response.setTotalLikeCount(dto.getTotalLikeCount());
         response.setCurrentLevel(Math.max(1, dto.getCurrentLevel()));
+        response.setPrivilegeCodes(dto.getPrivilegeCodes());
+        response.setExclusiveBadgeEnabled(dto.isExclusiveBadgeEnabled());
         return response;
     }
 
@@ -389,6 +391,8 @@ public class RestDtoMapper {
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setOfflineReason(dto.getOfflineReason());
         response.setWarnFlag(dto.isWarnFlag());
+        response.setRecommendationApplicationId(dto.getRecommendationApplicationId());
+        response.setRecommendationApplicationStatus(dto.getRecommendationApplicationStatus());
         // 作者信息是否脱敏取决于当前输出的是后台视图还是公开视图。
         if (dto.getAuthor() != null) {
             response.setAuthor(publicUser ? toPublicResponse(dto.getAuthor()) : toResponse(dto.getAuthor()));

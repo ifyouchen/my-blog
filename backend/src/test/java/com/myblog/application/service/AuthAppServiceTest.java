@@ -6,6 +6,7 @@ import com.myblog.application.dto.AuthDTO;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.domain.service.PasswordDomainService;
+import com.myblog.growth.application.service.PointAppService;
 import com.myblog.infrastructure.security.JwtTokenProvider;
 import com.myblog.shared.exception.ApplicationException;
 import org.junit.jupiter.api.Test;
@@ -37,10 +38,21 @@ class AuthAppServiceTest {
     @Mock
     private RegisterEmailCodeAppService registerEmailCodeAppService;
 
+    @Mock
+    private PointAppService pointAppService;
+
+    @Mock
+    private UserLevelAppService userLevelAppService;
+
     @Test
     void sendRegisterEmailCodeRejectsExistingEmail() {
         AuthAppService service = new AuthAppService(
-            userRepository, passwordDomainService, jwtTokenProvider, registerEmailCodeAppService
+            userRepository,
+            passwordDomainService,
+            jwtTokenProvider,
+            registerEmailCodeAppService,
+            pointAppService,
+            userLevelAppService
         );
         when(userRepository.existsByEmail("user@example.com")).thenReturn(true);
 
@@ -53,7 +65,12 @@ class AuthAppServiceTest {
     @Test
     void registerRequiresAndConsumesEmailCodeBeforeCreatingUser() {
         AuthAppService service = new AuthAppService(
-            userRepository, passwordDomainService, jwtTokenProvider, registerEmailCodeAppService
+            userRepository,
+            passwordDomainService,
+            jwtTokenProvider,
+            registerEmailCodeAppService,
+            pointAppService,
+            userLevelAppService
         );
         when(userRepository.existsByUsername("coder")).thenReturn(false);
         when(userRepository.existsByEmail("coder@example.com")).thenReturn(false);
@@ -75,7 +92,12 @@ class AuthAppServiceTest {
     @Test
     void loginRecordsClientIpAndPersistsLastLoginInfo() {
         AuthAppService service = new AuthAppService(
-            userRepository, passwordDomainService, jwtTokenProvider, registerEmailCodeAppService
+            userRepository,
+            passwordDomainService,
+            jwtTokenProvider,
+            registerEmailCodeAppService,
+            pointAppService,
+            userLevelAppService
         );
         User user = User.create(1002L, "coder", "coder@example.com", "encoded-password");
         when(userRepository.findByAccount("coder")).thenReturn(Optional.of(user));

@@ -43,6 +43,9 @@ class UserAppServicePasswordTest {
     @Mock
     private UserLevelAppService userLevelAppService;
 
+    @Mock
+    private RecommendationApplicationAppService recommendationApplicationAppService;
+
     private EmailQueueAppService emailQueueAppService;
 
     @Test
@@ -131,6 +134,7 @@ class UserAppServicePasswordTest {
             passwordDomainService,
             emailQueueAppService,
             userLevelAppService,
+            recommendationApplicationAppService,
             "http://localhost:5173/"
         );
     }

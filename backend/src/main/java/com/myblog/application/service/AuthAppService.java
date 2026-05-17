@@ -5,6 +5,7 @@ import com.myblog.application.command.LoginCommand;
 import com.myblog.application.command.RegisterCommand;
 import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.dto.UserDTO;
+import com.myblog.growth.application.service.PointAppService;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.UserRepository;
@@ -37,6 +38,8 @@ public class AuthAppService {
     private final PasswordDomainService passwordDomainService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RegisterEmailCodeAppService registerEmailCodeAppService;
+    private final PointAppService pointAppService;
+    private final UserLevelAppService userLevelAppService;
     private InviteCodeAppService inviteCodeAppService;
 
     @Autowired(required = false)
@@ -54,11 +57,15 @@ public class AuthAppService {
     public AuthAppService(UserRepository userRepository,
                           PasswordDomainService passwordDomainService,
                           JwtTokenProvider jwtTokenProvider,
-                          RegisterEmailCodeAppService registerEmailCodeAppService) {
+                          RegisterEmailCodeAppService registerEmailCodeAppService,
+                          PointAppService pointAppService,
+                          UserLevelAppService userLevelAppService) {
         this.userRepository = userRepository;
         this.passwordDomainService = passwordDomainService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.registerEmailCodeAppService = registerEmailCodeAppService;
+        this.pointAppService = pointAppService;
+        this.userLevelAppService = userLevelAppService;
     }
 
     /**
@@ -97,8 +104,18 @@ public class AuthAppService {
         if (inviteCodeAppService != null && command.getInviteCode() != null && !command.getInviteCode().isEmpty()) {
             inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
         }
+        pointAppService.addPoints(
+            user.getId().getValue(),
+            10,
+            "REGISTER_BONUS",
+            "REGISTER:" + user.getId().getValue(),
+            "注册奖励",
+            "SYSTEM"
+        );
         String token = jwtTokenProvider.createToken(user.getId().getValue(), user.getUsername(), user.getRole().name());
-        AuthDTO result = new AuthDTO(token, UserAssembler.toDTO(user));
+        UserDTO userDTO = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(userDTO);
+        AuthDTO result = new AuthDTO(token, userDTO);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(user.getId().getValue(), user.getNickname()),
@@ -130,7 +147,9 @@ public class AuthAppService {
         user.recordLogin(command.getLoginIp());
         userRepository.save(user);
         String token = jwtTokenProvider.createToken(user.getId().getValue(), user.getUsername(), user.getRole().name());
-        AuthDTO result = new AuthDTO(token, UserAssembler.toDTO(user));
+        UserDTO userDTO = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(userDTO);
+        AuthDTO result = new AuthDTO(token, userDTO);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(user.getId().getValue(), user.getNickname()),

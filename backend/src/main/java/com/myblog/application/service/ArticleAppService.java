@@ -7,10 +7,12 @@ import com.myblog.application.command.CreateArticleCommand;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.ArticlePublishValidationDTO;
 import com.myblog.application.dto.ArticleVersionDTO;
+import com.myblog.application.dto.UserDTO;
 import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.application.event.ArticleViewedEvent;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.query.RecommendArticleCacheKey;
+import com.myblog.growth.application.service.UserPrivilegeAppService;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.ArticleId;
@@ -28,6 +30,7 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.util.BizLogHelper;
+import com.myblog.growth.shared.constant.GrowthPrivilegeCodes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -83,6 +86,8 @@ public class ArticleAppService {
     private final Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache;
     private final Set<RecommendArticleCacheKey> recommendedArticleCacheKeys = ConcurrentHashMap.newKeySet();
     private final ArticleContentAccessService articleContentAccessService;
+    private final UserLevelAppService userLevelAppService;
+    private final UserPrivilegeAppService userPrivilegeAppService;
 
     public ArticleAppService(ArticleRepository articleRepository,
                              ArticleLikeRepository articleLikeRepository,
@@ -97,7 +102,9 @@ public class ArticleAppService {
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl,
                              @Qualifier("recommendedArticleFeedCache")
                              Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache,
-                             ArticleContentAccessService articleContentAccessService) {
+                             ArticleContentAccessService articleContentAccessService,
+                             UserLevelAppService userLevelAppService,
+                             UserPrivilegeAppService userPrivilegeAppService) {
         this.articleRepository = articleRepository;
         this.articleLikeRepository = articleLikeRepository;
         this.articleFavoriteRepository = articleFavoriteRepository;
@@ -112,6 +119,8 @@ public class ArticleAppService {
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
         this.recommendedArticleFeedCache = recommendedArticleFeedCache;
         this.articleContentAccessService = articleContentAccessService;
+        this.userLevelAppService = userLevelAppService;
+        this.userPrivilegeAppService = userPrivilegeAppService;
     }
 
     /**
@@ -368,6 +377,7 @@ public class ArticleAppService {
         final Set<Long> finalFollowedAuthorIds = followedAuthorIds;
 
         List<ArticleDTO> items = new ArrayList<>(articles.size());
+        List<UserDTO> authors = new ArrayList<UserDTO>(articles.size());
         for (Article article : articles) {
             User author = authorMap.get(article.getAuthorId().getValue());
             if (author != null) {
@@ -381,8 +391,12 @@ public class ArticleAppService {
                     dto.getAuthor().setFollowed(followed);
                 }
                 items.add(dto);
+                if (dto.getAuthor() != null) {
+                    authors.add(dto.getAuthor());
+                }
             }
         }
+        userLevelAppService.fillLevels(authors);
         return items;
     }
 
@@ -461,6 +475,9 @@ public class ArticleAppService {
         long _start = System.currentTimeMillis();
         User author = userRepository.findById(new UserId(command.getAuthorId()))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
+        if (command.isNeedUnlock()) {
+            ensureCanEnablePaidArticle(command.getAuthorId(), UserRole.USER.name());
+        }
         ensureSlugAvailable(command.getSlug(), null);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
@@ -539,6 +556,9 @@ public class ArticleAppService {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
+        if (command.isNeedUnlock()) {
+            ensureCanEnablePaidArticle(userId, currentUserRole);
+        }
         ensureSlugAvailable(command.getSlug(), articleId);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
@@ -600,6 +620,9 @@ public class ArticleAppService {
         ensureCanManage(article, userId, currentUserRole);
         ArticleStatus oldStatus = article.getStatus();
         if (ArticleStatus.PUBLISHED.name().equals(status)) {
+            if (article.isNeedUnlock()) {
+                ensureCanEnablePaidArticle(userId, currentUserRole);
+            }
             sanitizeExistingArticleForPublish(article, "发布文章");
         }
         applyStatus(article, status);
@@ -641,6 +664,9 @@ public class ArticleAppService {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, currentUserRole);
+        if (needUnlock) {
+            ensureCanEnablePaidArticle(userId, currentUserRole);
+        }
         ArticleStatus oldStatus = article.getStatus();
         article.updateUnlockRule(needUnlock, unlockPointPrice);
         articleRepository.save(article);
@@ -1086,6 +1112,9 @@ public class ArticleAppService {
      */
     private ArticleDTO buildDto(Article article, User author, Long currentUserId) {
         ArticleDTO dto = articleAssembler.toDTO(article, author);
+        if (dto.getAuthor() != null) {
+            userLevelAppService.fillLevel(dto.getAuthor());
+        }
         populateUserStatus(dto, article, currentUserId);
         return dto;
     }
@@ -1101,8 +1130,18 @@ public class ArticleAppService {
     private ArticleDTO buildDetailDto(Article article, User author, Long currentUserId) {
         ArticleDTO dto = articleAssembler.toDetailDTO(article, author);
         dto.getAuthor().setFollowerCount(userRepository.countFollowers(author.getId().getValue()));
+        userLevelAppService.fillLevel(dto.getAuthor());
         populateUserStatus(dto, article, currentUserId);
         return dto;
+    }
+
+    private void ensureCanEnablePaidArticle(Long userId, String currentUserRole) {
+        if (UserRole.ADMIN.name().equals(currentUserRole)) {
+            return;
+        }
+        if (!userPrivilegeAppService.hasPrivilege(userId, GrowthPrivilegeCodes.PAID_ARTICLE_PUBLISH)) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "当前等级未解锁付费文章发布权限");
+        }
     }
 
     /**

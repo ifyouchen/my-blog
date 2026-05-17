@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.ArticleRecommendationApplicationMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.domain.model.valueobject.ArticleRecommendationApplication">
+        <id column="id" property="id"/>
+        <result column="article_id" property="articleId"/>
+        <result column="author_id" property="authorId"/>
+        <result column="status" property="status"/>
+        <result column="applied_at" property="appliedAt"/>
+        <result column="reviewed_at" property="reviewedAt"/>
+        <result column="reviewed_by" property="reviewedBy"/>
+        <result column="review_note" property="reviewNote"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, article_id, author_id, status, applied_at, reviewed_at, reviewed_by, review_note, version
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO article_recommendation_application
+            (article_id, author_id, status, applied_at, reviewed_at, reviewed_by, review_note, created_at, updated_at, version)
+        VALUES
+            (#{articleId}, #{authorId}, #{status}, #{appliedAt}, #{reviewedAt}, #{reviewedBy},
+             #{reviewNote}, NOW(), NOW(), #{version})
+    </insert>
+
+    <update id="updateById">
+        UPDATE article_recommendation_application
+        SET status = #{status},
+            reviewed_at = #{reviewedAt},
+            reviewed_by = #{reviewedBy},
+            review_note = #{reviewNote},
+            version = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="selectPendingByArticleId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_recommendation_application
+        WHERE article_id = #{articleId}
+          AND status = 'PENDING'
+          AND deleted_at IS NULL
+        ORDER BY applied_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_recommendation_application
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectByArticleIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_recommendation_application
+        WHERE deleted_at IS NULL
+          AND article_id IN
+        <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+            #{articleId}
+        </foreach>
+        ORDER BY applied_at DESC, id DESC
+    </select>
+
+    <select id="countForAdmin" resultType="long">
+        SELECT COUNT(*)
+        FROM article_recommendation_application
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <select id="selectPageForAdmin" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM article_recommendation_application
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY applied_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

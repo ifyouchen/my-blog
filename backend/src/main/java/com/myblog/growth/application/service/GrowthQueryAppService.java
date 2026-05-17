@@ -4,13 +4,20 @@ import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
 import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
+import com.myblog.growth.domain.model.valueobject.PointJournal;
+import com.myblog.growth.domain.model.valueobject.RewardGrantLog;
+import com.myblog.growth.domain.model.valueobject.UserPrivilegeEntitlement;
 import com.myblog.growth.domain.repository.ExpJournalRepository;
 import com.myblog.growth.domain.repository.GrowthAccountRepository;
 import com.myblog.growth.domain.repository.LevelRewardRepository;
 import com.myblog.growth.domain.repository.LevelThresholdRepository;
+import com.myblog.growth.domain.repository.PointJournalRepository;
+import com.myblog.growth.domain.repository.RewardGrantLogRepository;
+import com.myblog.growth.domain.repository.UserPrivilegeEntitlementRepository;
 import com.myblog.growth.domain.service.LevelPolicyService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,6 +38,9 @@ public class GrowthQueryAppService {
     private final LevelThresholdRepository levelThresholdRepository;
     private final LevelRewardRepository levelRewardRepository;
     private final LevelPolicyService levelPolicyService;
+    private final RewardGrantLogRepository rewardGrantLogRepository;
+    private final UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository;
+    private final PointJournalRepository pointJournalRepository;
 
     /**
      * 构造注入所有依赖.
@@ -39,12 +49,18 @@ public class GrowthQueryAppService {
                                   ExpJournalRepository expJournalRepository,
                                   LevelThresholdRepository levelThresholdRepository,
                                   LevelRewardRepository levelRewardRepository,
-                                  LevelPolicyService levelPolicyService) {
+                                  LevelPolicyService levelPolicyService,
+                                  RewardGrantLogRepository rewardGrantLogRepository,
+                                  UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository,
+                                  PointJournalRepository pointJournalRepository) {
         this.growthAccountRepository = growthAccountRepository;
         this.expJournalRepository = expJournalRepository;
         this.levelThresholdRepository = levelThresholdRepository;
         this.levelRewardRepository = levelRewardRepository;
         this.levelPolicyService = levelPolicyService;
+        this.rewardGrantLogRepository = rewardGrantLogRepository;
+        this.userPrivilegeEntitlementRepository = userPrivilegeEntitlementRepository;
+        this.pointJournalRepository = pointJournalRepository;
     }
 
     /**
@@ -104,6 +120,50 @@ public class GrowthQueryAppService {
      */
     public List<LevelRewardConfig> getVisibleLevelRewards() {
         return levelRewardRepository.findAllEnabled();
+    }
+
+    /**
+     * 查询用户当前已发放的等级奖励记录.
+     *
+     * @param userId 用户ID
+     * @return 奖励记录列表
+     */
+    public List<RewardGrantLog> getRewardGrantLogs(Long userId) {
+        return rewardGrantLogRepository.findByUserId(userId);
+    }
+
+    /**
+     * 查询用户当前有效权益记录.
+     *
+     * @param userId 用户ID
+     * @return 权益记录列表
+     */
+    public List<UserPrivilegeEntitlement> getActiveEntitlements(Long userId) {
+        return userPrivilegeEntitlementRepository.findActiveByUserId(userId);
+    }
+
+    /**
+     * 判断注册奖励是否已发放.
+     *
+     * @param userId 用户ID
+     * @return true 表示已发放
+     */
+    public boolean hasRegisterBonus(Long userId) {
+        return pointJournalRepository.findByBizNo("REGISTER:" + userId).isPresent();
+    }
+
+    /**
+     * 查询用户当前拥有的权益编码列表.
+     *
+     * @param userId 用户ID
+     * @return 权益编码列表
+     */
+    public List<String> getOwnedPrivilegeCodes(Long userId) {
+        List<String> codes = new ArrayList<String>();
+        for (UserPrivilegeEntitlement entitlement : userPrivilegeEntitlementRepository.findActiveByUserId(userId)) {
+            codes.add(entitlement.getPrivilegeCode());
+        }
+        return codes;
     }
 }
 

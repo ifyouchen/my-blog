@@ -2,6 +2,7 @@ package com.myblog.growth.application.listener;
 
 import com.myblog.growth.application.event.LevelUpCheckEvent;
 import com.myblog.growth.application.service.PointAppService;
+import com.myblog.growth.application.service.UserPrivilegeAppService;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
@@ -49,19 +50,22 @@ public class LevelUpCheckEventHandler {
     private final LevelRewardRepository levelRewardRepository;
     private final RewardGrantLogRepository rewardGrantLogRepository;
     private final PointAppService pointAppService;
+    private final UserPrivilegeAppService userPrivilegeAppService;
 
     public LevelUpCheckEventHandler(GrowthAccountRepository growthAccountRepository,
                                      LevelThresholdRepository levelThresholdRepository,
                                      LevelPolicyService levelPolicyService,
                                      LevelRewardRepository levelRewardRepository,
                                      RewardGrantLogRepository rewardGrantLogRepository,
-                                     PointAppService pointAppService) {
+                                     PointAppService pointAppService,
+                                     UserPrivilegeAppService userPrivilegeAppService) {
         this.growthAccountRepository = growthAccountRepository;
         this.levelThresholdRepository = levelThresholdRepository;
         this.levelPolicyService = levelPolicyService;
         this.levelRewardRepository = levelRewardRepository;
         this.rewardGrantLogRepository = rewardGrantLogRepository;
         this.pointAppService = pointAppService;
+        this.userPrivilegeAppService = userPrivilegeAppService;
     }
 
     @EventListener
@@ -91,6 +95,7 @@ public class LevelUpCheckEventHandler {
             if (updated > 0) {
                 log.info("[等级升级] 用户升级成功。userId={}, newLevel={}, exp={}", userId, targetLevel, newExp);
                 grantLevelUpReward(userId, targetLevel);
+                userPrivilegeAppService.grantLevelPrivileges(userId, targetLevel);
             } else {
                 log.warn("[等级检查] 乐观锁冲突，等级更新延迟。userId={}", userId);
             }

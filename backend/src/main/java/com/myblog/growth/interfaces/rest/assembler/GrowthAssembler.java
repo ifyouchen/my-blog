@@ -4,8 +4,11 @@ import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
 import com.myblog.growth.domain.model.valueobject.GrowthRule;
 import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
+import com.myblog.growth.domain.model.valueobject.LevelPrivilegeConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
 import com.myblog.growth.domain.model.valueobject.PointRule;
+import com.myblog.growth.domain.model.valueobject.RewardGrantLog;
+import com.myblog.growth.domain.model.valueobject.UserPrivilegeEntitlement;
 import com.myblog.growth.domain.service.LevelPolicyService;
 import com.myblog.growth.interfaces.rest.dto.request.BatchSaveThresholdRequest;
 import com.myblog.growth.interfaces.rest.dto.request.SavePointRuleRequest;
@@ -17,8 +20,14 @@ import com.myblog.growth.interfaces.rest.dto.response.LevelThresholdVO;
 import com.myblog.growth.interfaces.rest.dto.response.PointRuleVO;
 import org.springframework.stereotype.Component;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 成长模块 Assembler.
@@ -29,6 +38,8 @@ import java.util.List;
  */
 @Component
 public class GrowthAssembler {
+
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final LevelPolicyService levelPolicyService;
 
@@ -79,6 +90,38 @@ public class GrowthAssembler {
         return vo;
     }
 
+    /**
+     * 将成长账户、等级阈值、等级奖励与权益状态组装为成长账户 VO.
+     *
+     * @param account           成长账户
+     * @param thresholds        等级阈值
+     * @param levelRewards      等级奖励列表
+     * @param privilegeConfigs  等级权益配置
+     * @param grantLogs         奖励发放记录
+     * @param entitlements      已生效权益记录
+     * @param registerGranted   注册奖励是否已发放
+     * @return 成长账户 VO
+     */
+    public GrowthAccountVO toVO(GrowthAccount account,
+                                List<LevelThreshold> thresholds,
+                                List<LevelRewardConfig> levelRewards,
+                                List<LevelPrivilegeConfig> privilegeConfigs,
+                                List<RewardGrantLog> grantLogs,
+                                List<UserPrivilegeEntitlement> entitlements,
+                                boolean registerGranted) {
+        GrowthAccountVO vo = toVO(account, thresholds);
+        vo.setOwnedPrivilegeCodes(extractPrivilegeCodes(entitlements));
+        vo.setLevelRewards(toLevelRewardVOList(
+                levelRewards,
+                privilegeConfigs,
+                grantLogs,
+                entitlements,
+                account.getCurrentLevel(),
+                registerGranted
+        ));
+        return vo;
+    }
+
     private List<GrowthAccountVO.LevelRewardVO> toLevelRewardVOList(List<LevelRewardConfig> rewards,
                                                                      int currentLevel) {
         List<GrowthAccountVO.LevelRewardVO> voList = new ArrayList<>();
@@ -95,6 +138,97 @@ public class GrowthAssembler {
             voList.add(vo);
         }
         return voList;
+    }
+
+    private List<GrowthAccountVO.LevelRewardVO> toLevelRewardVOList(List<LevelRewardConfig> rewards,
+                                                                     List<LevelPrivilegeConfig> privilegeConfigs,
+                                                                     List<RewardGrantLog> grantLogs,
+                                                                     List<UserPrivilegeEntitlement> entitlements,
+                                                                     int currentLevel,
+                                                                     boolean registerGranted) {
+        List<GrowthAccountVO.LevelRewardVO> voList = new ArrayList<GrowthAccountVO.LevelRewardVO>();
+        if (rewards == null) {
+            return voList;
+        }
+        Map<Integer, List<String>> privilegeCodesByLevel = buildPrivilegeCodesByLevel(privilegeConfigs);
+        Set<Long> grantedRewardIds = new LinkedHashSet<Long>();
+        Map<Long, String> grantTimeByRewardId = new HashMap<Long, String>();
+        if (grantLogs != null) {
+            for (RewardGrantLog grantLog : grantLogs) {
+                grantedRewardIds.add(grantLog.getRewardId());
+                if (grantLog.getGrantedAt() != null) {
+                    grantTimeByRewardId.put(grantLog.getRewardId(), DATETIME_FORMATTER.format(grantLog.getGrantedAt()));
+                }
+            }
+        }
+        Set<String> activePrivilegeCodes = new LinkedHashSet<String>(extractPrivilegeCodes(entitlements));
+        for (LevelRewardConfig reward : rewards) {
+            GrowthAccountVO.LevelRewardVO vo = new GrowthAccountVO.LevelRewardVO();
+            vo.setLevel(reward.getLevel());
+            vo.setRewardPoints(reward.getRewardPoints());
+            vo.setRewardTitle(reward.getRewardTitle());
+            vo.setDescription(reward.getDescription());
+            boolean achieved = reward.getLevel() <= currentLevel;
+            vo.setAchieved(achieved);
+            List<String> privilegeCodes = privilegeCodesByLevel.get(reward.getLevel());
+            vo.setPrivilegeCodes(privilegeCodes == null ? Collections.<String>emptyList() : privilegeCodes);
+            boolean pointsGranted = reward.getLevel() == 1
+                    ? registerGranted
+                    : reward.getRewardPoints() <= 0 || grantedRewardIds.contains(reward.getId());
+            boolean privilegeGranted = privilegeCodes == null || privilegeCodes.isEmpty()
+                    || activePrivilegeCodes.containsAll(privilegeCodes);
+            vo.setRewardKind(resolveRewardKind(reward.getRewardPoints(), privilegeCodes));
+            boolean granted = achieved && pointsGranted && privilegeGranted;
+            vo.setStatus(granted ? "GRANTED" : "LOCKED");
+            if (reward.getLevel() == 1 && registerGranted) {
+                vo.setGrantedAt("已发放");
+            } else {
+                vo.setGrantedAt(grantTimeByRewardId.get(reward.getId()));
+            }
+            voList.add(vo);
+        }
+        return voList;
+    }
+
+    private String resolveRewardKind(int rewardPoints, List<String> privilegeCodes) {
+        boolean hasPoints = rewardPoints > 0;
+        boolean hasPrivileges = privilegeCodes != null && !privilegeCodes.isEmpty();
+        if (hasPoints && hasPrivileges) {
+            return "MIXED";
+        }
+        if (hasPrivileges) {
+            return "PRIVILEGE";
+        }
+        return "POINTS";
+    }
+
+    private Map<Integer, List<String>> buildPrivilegeCodesByLevel(List<LevelPrivilegeConfig> privilegeConfigs) {
+        Map<Integer, List<String>> result = new HashMap<Integer, List<String>>();
+        if (privilegeConfigs == null) {
+            return result;
+        }
+        for (LevelPrivilegeConfig privilegeConfig : privilegeConfigs) {
+            List<String> codes = result.get(privilegeConfig.getLevel());
+            if (codes == null) {
+                codes = new ArrayList<String>();
+                result.put(privilegeConfig.getLevel(), codes);
+            }
+            codes.add(privilegeConfig.getPrivilegeCode());
+        }
+        return result;
+    }
+
+    private List<String> extractPrivilegeCodes(List<UserPrivilegeEntitlement> entitlements) {
+        List<String> codes = new ArrayList<String>();
+        if (entitlements == null) {
+            return codes;
+        }
+        for (UserPrivilegeEntitlement entitlement : entitlements) {
+            if (entitlement.getPrivilegeCode() != null && !codes.contains(entitlement.getPrivilegeCode())) {
+                codes.add(entitlement.getPrivilegeCode());
+            }
+        }
+        return codes;
     }
 
     // ─────────────────── ExpJournal → VO ───────────────────

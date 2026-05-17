@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
+import java.util.List;
+
 /**
  * 用户响应.
  * <p>
@@ -72,6 +74,12 @@ public class UserResponse {
 
     /** 当前等级. */
     private int currentLevel;
+
+    /** 权益编码列表. */
+    private List<String> privilegeCodes;
+
+    /** 是否显示专属徽章. */
+    private boolean exclusiveBadgeEnabled;
 
     /**
      * 获取用户ID.
@@ -413,5 +421,41 @@ public class UserResponse {
      */
     public void setCurrentLevel(int currentLevel) {
         this.currentLevel = currentLevel;
+    }
+
+    /**
+     * 获取权益编码列表.
+     *
+     * @return 权益编码列表
+     */
+    public List<String> getPrivilegeCodes() {
+        return privilegeCodes;
+    }
+
+    /**
+     * 设置权益编码列表.
+     *
+     * @param privilegeCodes 权益编码列表
+     */
+    public void setPrivilegeCodes(List<String> privilegeCodes) {
+        this.privilegeCodes = privilegeCodes;
+    }
+
+    /**
+     * 是否显示专属徽章.
+     *
+     * @return true 表示显示专属徽章
+     */
+    public boolean isExclusiveBadgeEnabled() {
+        return exclusiveBadgeEnabled;
+    }
+
+    /**
+     * 设置是否显示专属徽章.
+     *
+     * @param exclusiveBadgeEnabled 是否显示专属徽章
+     */
+    public void setExclusiveBadgeEnabled(boolean exclusiveBadgeEnabled) {
+        this.exclusiveBadgeEnabled = exclusiveBadgeEnabled;
     }
 }

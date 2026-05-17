@@ -11,7 +11,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 经验规则管理应用服务.
@@ -61,6 +65,7 @@ public class GrowthRuleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Long createRule(GrowthRule rule) {
+        validateRule(rule);
         // 检查是否已存在相同 eventType + role 的规则
         growthRuleRepository.findByEventTypeAndRole(rule.getEventType(), rule.getRole())
                 .ifPresent(existing -> {
@@ -81,6 +86,7 @@ public class GrowthRuleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void updateRule(GrowthRule rule) {
+        validateRule(rule);
         growthRuleRepository.findByEventTypeAndRole(rule.getEventType(), rule.getRole())
                 .ifPresent(existing -> {
                     if (!existing.getId().equals(rule.getId())) {
@@ -135,11 +141,56 @@ public class GrowthRuleAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void saveThresholds(List<LevelThreshold> thresholds) {
+        validateThresholds(thresholds);
+        int count = levelThresholdRepository.batchSave(thresholds);
+        log.info("[规则管理] 批量保存等级阈值成功，条数={}", count);
+    }
+
+    private void validateRule(GrowthRule rule) {
+        if (rule == null) {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "经验规则不能为空");
+        }
+        if (rule.getExpAmount() <= 0) {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "单次经验必须大于 0");
+        }
+        if (rule.getDailyLimit() < 0) {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "每日上限次数不能小于 0");
+        }
+        String strategy = rule.getDailyLimitStrategy();
+        if (!"SKIP".equals(strategy) && !"PARTIAL".equals(strategy)) {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "不支持的超限策略：" + strategy);
+        }
+    }
+
+    private void validateThresholds(List<LevelThreshold> thresholds) {
         if (thresholds == null || thresholds.isEmpty()) {
             throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "等级阈值列表不能为空");
         }
-        int count = levelThresholdRepository.batchSave(thresholds);
-        log.info("[规则管理] 批量保存等级阈值成功，条数={}", count);
+        Set<Integer> levels = new HashSet<>();
+        List<LevelThreshold> sorted = thresholds.stream()
+                .sorted(Comparator.comparingInt(LevelThreshold::getLevel))
+                .collect(Collectors.toList());
+        int lastMinExp = -1;
+        for (LevelThreshold threshold : sorted) {
+            int level = threshold.getLevel();
+            int minExp = threshold.getMinExp();
+            if (level <= 0) {
+                throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "等级必须大于 0");
+            }
+            if (!levels.add(level)) {
+                throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "等级重复：Lv." + level);
+            }
+            if (minExp < 0) {
+                throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "最低经验不能小于 0");
+            }
+            if (minExp < lastMinExp) {
+                throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "最低经验需要随等级递增");
+            }
+            if (threshold.getLevelName() == null || threshold.getLevelName().trim().isEmpty()) {
+                throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "等级名称不能为空");
+            }
+            lastMinExp = minExp;
+        }
     }
 }
 

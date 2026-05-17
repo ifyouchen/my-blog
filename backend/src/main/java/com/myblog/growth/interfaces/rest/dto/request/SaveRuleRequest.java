@@ -29,18 +29,18 @@ public class SaveRuleRequest {
     @Min(value = 1, message = "expAmount 最小值为 1")
     private Integer expAmount;
 
-    /** 每日总发放上限（0 = 无限制）. */
+    /** 每日触发次数上限（0 = 无限制）. */
     @Min(value = 0, message = "dailyLimit 最小值为 0")
     private int dailyLimit = 0;
 
     /**
      * 每日限额策略.
      * <ul>
-     *   <li>TOTAL — 每日发放经验总量不超过 dailyLimit</li>
-     *   <li>COUNT — 每日触发次数不超过 dailyLimit</li>
+     *   <li>SKIP — 达到次数上限后不再发放</li>
+     *   <li>PARTIAL — 只发放剩余额度</li>
      * </ul>
      */
-    private String dailyLimitStrategy = "TOTAL";
+    private String dailyLimitStrategy = "SKIP";
 
     /** 是否启用（默认 true）. */
     private boolean enabled = true;

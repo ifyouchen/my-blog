@@ -45,6 +45,8 @@ public class ArticleResponse {
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
+    private Long recommendationApplicationId;
+    private String recommendationApplicationStatus;
     private UserResponse author;
 
     /**
@@ -443,6 +445,22 @@ public class ArticleResponse {
 
     public void setWarnFlag(boolean warnFlag) {
         this.warnFlag = warnFlag;
+    }
+
+    public Long getRecommendationApplicationId() {
+        return recommendationApplicationId;
+    }
+
+    public void setRecommendationApplicationId(Long recommendationApplicationId) {
+        this.recommendationApplicationId = recommendationApplicationId;
+    }
+
+    public String getRecommendationApplicationStatus() {
+        return recommendationApplicationStatus;
+    }
+
+    public void setRecommendationApplicationStatus(String recommendationApplicationStatus) {
+        this.recommendationApplicationStatus = recommendationApplicationStatus;
     }
 
     /**

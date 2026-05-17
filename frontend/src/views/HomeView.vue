@@ -53,9 +53,6 @@ const portalFallbackArticles = ref([]);
 const portalArticles = ref([]);
 const sidebarTopics = ref([]);
 const sidebarColumns = ref([]);
-const learningTopics = ref([]);
-const knowledgeTags = ref([]);
-const knowledgeKeywords = ref([]);
 const activeSort = ref(ARTICLE_SORT_RECOMMEND);
 const activeCategory = ref('');
 const bootstrapLoaded = ref(false);
@@ -215,8 +212,6 @@ const feedTitle = computed(() => {
 const feedEyebrow = computed(() => activeCategory.value || '全部内容');
 const sidebarTopicItems = computed(() => sidebarTopics.value.slice(0, 5));
 const sidebarColumnItems = computed(() => sidebarColumns.value.slice(0, 4));
-// 知识地图专题独立于侧边栏热门专题，使用运营权重排序，不回退到热度列表
-const knowledgeTopicItems = computed(() => learningTopics.value.slice(0, 3));
 
 const buildPortalArticles = (focus = null, weekly = [], featured = []) => {
     const seenIds = new Set();
@@ -233,19 +228,6 @@ const buildPortalArticles = (focus = null, weekly = [], featured = []) => {
     (featured || []).forEach(append);
     return items.slice(0, 5);
 };
-
-// 热门关键词去重：过滤掉已在热门标签中出现的词，避免两组 chip 显示重复内容
-const deduplicatedKeywords = computed(() => {
-    const tagNameSet = new Set(knowledgeTags.value.map(t => t.name.toLowerCase()));
-    return knowledgeKeywords.value.filter(k => !tagNameSet.has(k.toLowerCase()));
-});
-
-const DIFFICULTY_LABEL_MAP = {
-    BEGINNER: '入门',
-    INTERMEDIATE: '进阶',
-    ADVANCED: '深入'
-};
-const difficultyLabel = (difficulty) => DIFFICULTY_LABEL_MAP[difficulty] || '进阶';
 
 const switchFeedTab = async (tab) => {
     if (tab === feedTab.value) return;
@@ -334,16 +316,10 @@ const loadHomeBootstrap = async () => {
         }
         sidebarTopics.value = bootstrap?.hotTopics || [];
         sidebarColumns.value = bootstrap?.recommendedColumns || [];
-        learningTopics.value = bootstrap?.learningTopics || [];
-        knowledgeTags.value = bootstrap?.hotTags || [];
-        knowledgeKeywords.value = bootstrap?.hotKeywords || [];
     } catch (error) {
         topicItems.value = topicItems.value.length ? topicItems.value : DEFAULT_TOPIC_ITEMS;
         sidebarColumns.value = [];
         sidebarTopics.value = [];
-        learningTopics.value = [];
-        knowledgeTags.value = [];
-        knowledgeKeywords.value = [];
     } finally {
         bootstrapLoaded.value = true;
     }
@@ -568,48 +544,6 @@ onBeforeRouteLeave(() => {
             :loading="!bootstrapLoaded"
             @article-click="(payload) => track('home_featured_article_clicked', payload)"
         />
-        <section
-            v-if="knowledgeTopicItems.length || knowledgeTags.length || deduplicatedKeywords.length"
-            class="knowledge-map-band"
-            aria-label="知识地图"
-        >
-            <div class="knowledge-map-heading">
-                <p class="eyebrow">知识地图</p>
-                <h2>按专题、标签和搜索热度继续深入</h2>
-            </div>
-            <div class="knowledge-map-grid">
-                <RouterLink
-                    v-for="topic in knowledgeTopicItems"
-                    :key="`topic-${topic.id}`"
-                    class="knowledge-topic-link"
-                    :to="`/topics/${topic.id}`"
-                >
-                    <span :class="`kt-diff difficulty-${(topic.difficulty || 'INTERMEDIATE').toLowerCase()}`">{{ difficultyLabel(topic.difficulty) }}</span>
-                    <strong>{{ topic.title }}</strong>
-                    <small>{{ topic.articleCount }} 篇文章</small>
-                </RouterLink>
-                <div v-if="knowledgeTags.length" class="knowledge-chip-group">
-                    <RouterLink
-                        v-for="tag in knowledgeTags.slice(0, 8)"
-                        :key="`tag-${tag.id || tag.name}`"
-                        class="knowledge-chip"
-                        :to="{ path: '/search', query: { tag: tag.name } }"
-                    >
-                        {{ tag.name }}
-                    </RouterLink>
-                </div>
-                <div v-if="deduplicatedKeywords.length" class="knowledge-chip-group">
-                <RouterLink
-                    v-for="keyword in deduplicatedKeywords.slice(0, 8)"
-                        :key="`keyword-${keyword}`"
-                        class="knowledge-chip hot"
-                        :to="{ path: '/search', query: { keyword } }"
-                    >
-                        {{ keyword }}
-                    </RouterLink>
-                </div>
-            </div>
-        </section>
         <section class="home-channel-bar" aria-label="频道导航" data-testid="home-channel-bar">
             <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
         </section>
@@ -719,126 +653,6 @@ onBeforeRouteLeave(() => {
     align-items: start;
 }
 
-.knowledge-map-band {
-    display: grid;
-    gap: 14px;
-    margin-bottom: 18px;
-    padding: 18px 0;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-}
-
-.knowledge-map-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.knowledge-map-heading h2,
-.knowledge-map-heading p {
-    margin: 0;
-}
-
-.knowledge-map-heading h2 {
-    color: var(--text-strong);
-    font-size: 18px;
-}
-
-.knowledge-map-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.knowledge-topic-link {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    padding: 12px 14px;
-    color: inherit;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
-.knowledge-topic-link:hover {
-    border-color: var(--brand);
-}
-
-.knowledge-topic-link span,
-.knowledge-topic-link small {
-    color: var(--muted);
-    font-size: 12px;
-}
-
-/* 难度标签颜色 */
-.kt-diff {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    padding: 1px 7px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-}
-
-.kt-diff.difficulty-beginner {
-    color: #166534;
-    background: #dcfce7;
-}
-
-.kt-diff.difficulty-intermediate {
-    color: #92400e;
-    background: #fef3c7;
-}
-
-.kt-diff.difficulty-advanced {
-    color: #991b1b;
-    background: #fee2e2;
-}
-
-.knowledge-topic-link strong {
-    overflow: hidden;
-    color: var(--text-strong);
-    font-size: 15px;
-    line-height: 1.45;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.knowledge-chip-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-content: start;
-}
-
-.knowledge-chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 30px;
-    padding: 0 10px;
-    color: var(--text);
-    font-size: 13px;
-    background: var(--surface-soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-}
-
-.knowledge-chip.hot {
-    color: #9a3412;
-    background: #fff7ed;
-    border-color: #fed7aa;
-}
-
-.knowledge-chip:hover {
-    color: var(--brand);
-    border-color: var(--brand);
-    background: var(--brand-soft);
-}
-
 .announcement-banners {
     display: grid;
     gap: 8px;
@@ -904,16 +718,6 @@ onBeforeRouteLeave(() => {
         align-items: flex-start;
         flex-direction: column;
         gap: 6px;
-    }
-
-    .knowledge-map-heading {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .knowledge-map-grid {
-        grid-template-columns: 1fr;
     }
 
     .feed-tabs {

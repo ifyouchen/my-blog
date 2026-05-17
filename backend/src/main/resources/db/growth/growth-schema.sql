@@ -270,6 +270,39 @@ CREATE TABLE IF NOT EXISTS `level_reward_config` (
     UNIQUE INDEX `uk_level` (`level`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='等级奖励配置表';
 
+-- 等级权益配置表
+CREATE TABLE IF NOT EXISTS `level_privilege_config` (
+    `id`             bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `level`          int unsigned    NOT NULL COMMENT '等级',
+    `privilege_code` varchar(64)     NOT NULL COMMENT '权益编码',
+    `privilege_name` varchar(64)     NOT NULL COMMENT '权益名称',
+    `description`    varchar(255)    NULL DEFAULT NULL COMMENT '权益说明',
+    `enabled`        tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`     datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`        int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_level_privilege` (`level`, `privilege_code`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='等级权益配置表';
+
+-- 用户权益授予记录表
+CREATE TABLE IF NOT EXISTS `user_privilege_entitlement` (
+    `id`             bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`        bigint unsigned NOT NULL COMMENT '用户ID',
+    `privilege_code` varchar(64)     NOT NULL COMMENT '权益编码',
+    `source_level`   int unsigned    NOT NULL COMMENT '权益来源等级',
+    `status`         varchar(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE',
+    `granted_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发放时间',
+    `created_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`     datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`     datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`        int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_user_privilege` (`user_id`, `privilege_code`) USING BTREE,
+    INDEX `idx_privilege_code` (`privilege_code`, `deleted_at`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户权益授予记录表';
+
 -- 用户奖励领取记录表
 CREATE TABLE IF NOT EXISTS `user_reward_grant_log` (
     `id`             bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -399,6 +432,25 @@ ALTER TABLE `blog_article`
     ADD COLUMN `need_unlock`        tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否需要解锁：1-需要 0-免费' AFTER `seo_description`,
     ADD COLUMN `unlock_point_price` int        NOT NULL DEFAULT 0 COMMENT '解锁所需积分数' AFTER `need_unlock`;
 
+-- 首页推荐申请表
+CREATE TABLE IF NOT EXISTS `article_recommendation_application` (
+    `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `article_id`  bigint unsigned NOT NULL COMMENT '文章ID',
+    `author_id`   bigint unsigned NOT NULL COMMENT '作者用户ID',
+    `status`      varchar(20)     NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING/APPROVED/REJECTED',
+    `applied_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+    `reviewed_at` datetime        NULL DEFAULT NULL COMMENT '审核时间',
+    `reviewed_by` bigint unsigned NULL DEFAULT NULL COMMENT '审核人用户ID',
+    `review_note` varchar(255)    NULL DEFAULT NULL COMMENT '审核备注',
+    `created_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`  datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`     int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_article_status` (`article_id`, `status`, `deleted_at`) USING BTREE,
+    INDEX `idx_author_status` (`author_id`, `status`, `deleted_at`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='首页推荐申请表';
+
 
 -- ========================
 -- 7. 初始化数据
@@ -406,14 +458,16 @@ ALTER TABLE `blog_article`
 
 -- 初始化等级配置
 INSERT IGNORE INTO `level_threshold_config` (`level`, `min_exp`, `level_name`, `description`, `enabled`) VALUES
-(1,     0, '新手', '刚入门的博客读者',     1),
-(2,   100, '学徒', '已积累一定阅读经验',   1),
-(3,   300, '进阶', '活跃参与社区互动',     1),
-(4,   700, '达人', '持续输出高质量内容',   1),
-(5,  1500, '专家', '社区认可的内容创作者', 1),
-(6,  3000, '大师', '领域深度贡献者',       1),
-(7,  6000, '宗师', '平台顶尖创作者',       1),
-(8, 12000, '传奇', '极少数杰出贡献者',     1);
+(1,     0, '新手', '刚入门的博客读者',       1),
+(2,   100, '学徒', '已积累一定阅读经验',     1),
+(3,   300, '进阶', '活跃参与社区互动',       1),
+(4,   800, '达人', '持续输出高质量内容',     1),
+(5,  1800, '专家', '社区认可的内容创作者',   1),
+(6,  3500, '大师作者', '领域深度贡献者',     1),
+(7,  7000, '资深专家', '平台资深内容贡献者', 1),
+(8, 13000, '领域导师', '持续产出优质内容',   1),
+(9, 22000, '技术领袖', '具备社区影响力',     1),
+(10, 35000, '荣耀创作者', '长期杰出贡献者',  1);
 
 -- 初始化经验规则
 INSERT INTO `growth_rule_config`
@@ -421,18 +475,18 @@ INSERT INTO `growth_rule_config`
 SELECT seed.event_type, seed.role, seed.exp_amount, seed.daily_limit,
        seed.daily_limit_strategy, seed.enabled, seed.operator, seed.reason
 FROM (
-    SELECT 'LIKE' AS event_type, 'ACTOR' AS role, 2 AS exp_amount, 20 AS daily_limit,
+    SELECT 'LIKE' AS event_type, 'ACTOR' AS role, 1 AS exp_amount, 20 AS daily_limit,
            'SKIP' AS daily_limit_strategy, 1 AS enabled, 'system' AS operator, '初始化' AS reason
-    UNION ALL SELECT 'LIKE', 'AUTHOR', 5, 50, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'READ', 'ACTOR', 1, 30, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'COMMENT', 'ACTOR', 5, 10, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'COMMENT', 'AUTHOR', 3, 30, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'FAVORITE', 'ACTOR', 3, 15, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'FAVORITE', 'AUTHOR', 8, 40, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'SHARE', 'ACTOR', 4, 10, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'LIKE', 'AUTHOR', 3, 30, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'READ', 'ACTOR', 1, 20, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'COMMENT', 'ACTOR', 3, 10, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'COMMENT', 'AUTHOR', 5, 20, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'FAVORITE', 'ACTOR', 3, 10, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'FAVORITE', 'AUTHOR', 8, 20, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'SHARE', 'ACTOR', 3, 5, 'SKIP', 1, 'system', '初始化'
     UNION ALL SELECT 'FOLLOW', 'ACTOR', 5, 5, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'FOLLOW', 'AUTHOR', 10, 20, 'SKIP', 1, 'system', '初始化'
-    UNION ALL SELECT 'PUBLISH', 'ACTOR', 20, 3, 'SKIP', 1, 'system',
+    UNION ALL SELECT 'FOLLOW', 'AUTHOR', 10, 10, 'SKIP', 1, 'system', '初始化'
+    UNION ALL SELECT 'PUBLISH', 'ACTOR', 30, 3, 'SKIP', 1, 'system',
                      '初始化 - 作者发布文章每日最多3篇计经验'
 ) seed
 WHERE NOT EXISTS (
@@ -477,4 +531,13 @@ INSERT IGNORE INTO `level_reward_config` (`level`, `reward_points`, `reward_titl
 (6, 1000, '大师作者', '解锁专属徽章'),
 (7, 2000, '宗师作者', '平台首页推荐资格'),
 (8, 5000, '传奇作者', '年度创作者评选资格');
+
+-- 初始化等级权益配置
+INSERT IGNORE INTO `level_privilege_config`
+    (`level`, `privilege_code`, `privilege_name`, `description`, `enabled`)
+VALUES
+    (4, 'PAID_ARTICLE_PUBLISH', '付费文章发布权限', '达到 Lv.4 后可开启文章积分解锁', 1),
+    (6, 'EXCLUSIVE_BADGE', '专属徽章', '达到 Lv.6 后显示专属徽章', 1),
+    (7, 'HOMEPAGE_RECOMMEND_ELIGIBLE', '首页推荐申请资格', '达到 Lv.7 后可申请首页推荐', 1),
+    (8, 'ANNUAL_CREATOR_ELIGIBLE', '年度创作者候选资格', '达到 Lv.8 后进入年度创作者候选池', 1);
 

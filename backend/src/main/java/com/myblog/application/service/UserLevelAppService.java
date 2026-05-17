@@ -3,6 +3,9 @@ package com.myblog.application.service;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.repository.GrowthAccountRepository;
+import com.myblog.growth.domain.repository.UserPrivilegeEntitlementRepository;
+import com.myblog.growth.domain.model.valueobject.UserPrivilegeEntitlement;
+import com.myblog.growth.shared.constant.GrowthPrivilegeCodes;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -10,6 +13,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 /**
  * 用户等级展示填充服务。
@@ -18,9 +22,12 @@ import java.util.Map;
 public class UserLevelAppService {
 
     private final GrowthAccountRepository growthAccountRepository;
+    private final UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository;
 
-    public UserLevelAppService(GrowthAccountRepository growthAccountRepository) {
+    public UserLevelAppService(GrowthAccountRepository growthAccountRepository,
+                               UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository) {
         this.growthAccountRepository = growthAccountRepository;
+        this.userPrivilegeEntitlementRepository = userPrivilegeEntitlementRepository;
     }
 
     /**
@@ -36,6 +43,12 @@ public class UserLevelAppService {
             .map(GrowthAccount::getCurrentLevel)
             .orElse(1);
         user.setCurrentLevel(Math.max(1, level));
+        List<String> privilegeCodes = new ArrayList<String>();
+        for (UserPrivilegeEntitlement entitlement : userPrivilegeEntitlementRepository.findActiveByUserId(user.getId())) {
+            privilegeCodes.add(entitlement.getPrivilegeCode());
+        }
+        user.setPrivilegeCodes(privilegeCodes);
+        user.setExclusiveBadgeEnabled(privilegeCodes.contains(GrowthPrivilegeCodes.EXCLUSIVE_BADGE));
     }
 
     /**
@@ -64,9 +77,20 @@ public class UserLevelAppService {
         }
         Map<Long, GrowthAccount> accountMap =
             growthAccountRepository.findByUserIds(new ArrayList<Long>(userIds));
+        Map<Long, List<UserPrivilegeEntitlement>> privilegeMap =
+            userPrivilegeEntitlementRepository.findActiveByUserIds(new ArrayList<Long>(userIds));
         for (UserDTO user : validUsers) {
             GrowthAccount account = accountMap.get(user.getId());
             user.setCurrentLevel(account == null ? 1 : Math.max(1, account.getCurrentLevel()));
+            List<UserPrivilegeEntitlement> entitlements = privilegeMap.get(user.getId());
+            List<String> codes = new ArrayList<String>();
+            if (entitlements != null) {
+                for (UserPrivilegeEntitlement entitlement : entitlements) {
+                    codes.add(entitlement.getPrivilegeCode());
+                }
+            }
+            user.setPrivilegeCodes(codes);
+            user.setExclusiveBadgeEnabled(codes.contains(GrowthPrivilegeCodes.EXCLUSIVE_BADGE));
         }
     }
 }

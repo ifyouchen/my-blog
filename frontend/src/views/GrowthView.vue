@@ -163,6 +163,7 @@ const journalError = ref('');
 const journalCache = ref({});
 
 const SOURCE_TYPE_LABELS = {
+    REGISTER_BONUS: '注册奖励',
     SIGN_IN: '每日签到',
     RECHARGE: '积分充值',
     INVITE: '邀请奖励',
@@ -382,8 +383,38 @@ const compactCalendarDays = computed(() =>
 
 const currentLevel = computed(() => growth.value?.currentLevel ?? growth.value?.level ?? 1);
 const currentExp = computed(() => growth.value?.currentExp ?? growth.value?.exp ?? 0);
+const expToNextLevel = computed(() => Number(growth.value?.expToNextLevel || 0));
+const nextLevelExpTarget = computed(() => currentExp.value + expToNextLevel.value);
 const levelRewards = computed(() => Array.isArray(growth.value?.levelRewards) ? growth.value.levelRewards : []);
+const LEVEL_PRIVILEGE_LABELS = {
+    PAID_ARTICLE_PUBLISH: '解锁付费文章发布权限',
+    EXCLUSIVE_BADGE: '解锁专属徽章',
+    HOMEPAGE_RECOMMEND_ELIGIBLE: '解锁首页推荐申请资格',
+    ANNUAL_CREATOR_ELIGIBLE: '获得年度创作者候选资格',
+};
 const rewardDialogOpen = ref(false);
+const rewardStatusText = (reward) => {
+    if (reward?.status === 'GRANTED') {
+        return reward?.rewardKind === 'POINTS' ? '已发放' : '已获得';
+    }
+    return '未解锁';
+};
+const rewardStatusClass = (reward) => reward?.status === 'GRANTED' ? 'claimed' : 'locked';
+const rewardGranted = (reward) => reward?.status === 'GRANTED' || reward?.achieved;
+const rewardPrivilegeSummary = (reward) => {
+    const codes = Array.isArray(reward?.privilegeCodes) ? reward.privilegeCodes : [];
+    if (!codes.length) {
+        return '';
+    }
+    return codes.map((code) => LEVEL_PRIVILEGE_LABELS[code] || code).join(' · ');
+};
+const rewardPointsSummary = (reward) => Number(reward?.rewardPoints || 0) > 0
+    ? `+${Number(reward.rewardPoints || 0)} 积分`
+    : '';
+const rewardBenefitSummary = (reward) => {
+    const parts = [rewardPointsSummary(reward), rewardPrivilegeSummary(reward)].filter(Boolean);
+    return parts.join(' · ');
+};
 const nextLevelReward = computed(() =>
     levelRewards.value.find((reward) => Number(reward.level || 0) > currentLevel.value && Number(reward.rewardPoints || 0) > 0)
         || levelRewards.value.find((reward) => Number(reward.level || 0) > currentLevel.value)
@@ -392,7 +423,10 @@ const nextLevelReward = computed(() =>
 const rewardSummaryText = computed(() => {
     if (!levelRewards.value.length) return '暂无奖励';
     if (!nextLevelReward.value) return '已达成全部等级奖励';
-    return `下级 Lv.${nextLevelReward.value.level} 可得 +${nextLevelReward.value.rewardPoints || 0} 积分`;
+    const benefit = rewardBenefitSummary(nextLevelReward.value);
+    return benefit
+        ? `下级 Lv.${nextLevelReward.value.level} 可得 ${benefit}`
+        : `下级 Lv.${nextLevelReward.value.level} 解锁新权益`;
 });
 const signInPoints = computed(() => signInResult.value?.pointsGranted ?? signInResult.value?.pointsEarned ?? 0);
 const signInDays = computed(() => {
@@ -484,10 +518,10 @@ onMounted(async () => {
                             <p class="level-exp">
                                 <span class="exp-label">EXP</span>
                                 <strong>{{ currentExp }}</strong>
-                                <span v-if="growth.expToNextLevel > 0">
-                                    · 还差 <strong>{{ growth.expToNextLevel }}</strong>
+                                <span v-if="expToNextLevel > 0" class="exp-target">
+                                    / {{ nextLevelExpTarget }}
                                 </span>
-                                <span v-else class="max-level">（已达最高等级）</span>
+                                <span v-else class="max-level">· 已满级</span>
                             </p>
                             <div class="exp-bar">
                                 <div
@@ -764,7 +798,7 @@ onMounted(async () => {
                     <article
                         v-for="reward in levelRewards"
                         :key="reward.level"
-                        :class="['level-reward-row', {achieved: reward.achieved}]"
+                        :class="['level-reward-row', {achieved: rewardGranted(reward)}]"
                     >
                         <div class="level-reward-rank">
                             <span>Lv.{{ reward.level }}</span>
@@ -772,12 +806,12 @@ onMounted(async () => {
                         <div class="level-reward-body">
                             <div class="level-reward-main">
                                 <strong>{{ reward.rewardTitle || '等级奖励' }}</strong>
-                                <span>+{{ reward.rewardPoints || 0 }} 积分</span>
+                                <span v-if="rewardBenefitSummary(reward)">{{ rewardBenefitSummary(reward) }}</span>
                             </div>
-                            <p>{{ reward.description || '达到该等级后自动发放奖励' }}</p>
+                            <p>{{ reward.description || '达到该等级后自动发放奖励或解锁权益' }}</p>
                         </div>
-                        <span :class="['reward-state', reward.achieved ? 'claimed' : 'locked']">
-                            {{ reward.achieved ? '已领取' : '未解锁' }}
+                        <span :class="['reward-state', rewardStatusClass(reward)]">
+                            {{ rewardStatusText(reward) }}
                         </span>
                     </article>
                 </div>
@@ -875,6 +909,10 @@ onMounted(async () => {
 }
 
 .level-exp {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    flex-wrap: wrap;
     font-size: 13px;
     color: var(--text-muted);
     margin: 0 0 10px;
@@ -887,6 +925,11 @@ onMounted(async () => {
     color: var(--text-strong);
     font-size: 12px;
     font-weight: 800;
+}
+
+.exp-target {
+    color: var(--text-muted);
+    font-weight: 600;
 }
 
 .max-level { color: var(--accent); }

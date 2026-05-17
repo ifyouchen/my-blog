@@ -4,7 +4,11 @@ import com.myblog.growth.application.service.GrowthQueryAppService;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.model.valueobject.ExpJournal;
 import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
+import com.myblog.growth.domain.model.valueobject.LevelPrivilegeConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
+import com.myblog.growth.domain.model.valueobject.RewardGrantLog;
+import com.myblog.growth.domain.model.valueobject.UserPrivilegeEntitlement;
+import com.myblog.growth.domain.repository.LevelPrivilegeRepository;
 import com.myblog.growth.domain.repository.LevelThresholdRepository;
 import com.myblog.growth.interfaces.rest.assembler.GrowthAssembler;
 import com.myblog.growth.interfaces.rest.dto.response.ExpJournalVO;
@@ -35,6 +39,7 @@ public class GrowthController {
 
     private final GrowthQueryAppService growthQueryAppService;
     private final LevelThresholdRepository levelThresholdRepository;
+    private final LevelPrivilegeRepository levelPrivilegeRepository;
     private final GrowthAssembler growthAssembler;
 
     /**
@@ -46,9 +51,11 @@ public class GrowthController {
      */
     public GrowthController(GrowthQueryAppService growthQueryAppService,
                              LevelThresholdRepository levelThresholdRepository,
+                             LevelPrivilegeRepository levelPrivilegeRepository,
                              GrowthAssembler growthAssembler) {
         this.growthQueryAppService = growthQueryAppService;
         this.levelThresholdRepository = levelThresholdRepository;
+        this.levelPrivilegeRepository = levelPrivilegeRepository;
         this.growthAssembler = growthAssembler;
     }
 
@@ -64,7 +71,18 @@ public class GrowthController {
         GrowthAccount account = growthQueryAppService.getGrowthAccount(userId);
         List<LevelThreshold> thresholds = levelThresholdRepository.findAllEnabled();
         List<LevelRewardConfig> levelRewards = growthQueryAppService.getVisibleLevelRewards();
-        GrowthAccountVO vo = growthAssembler.toVO(account, thresholds, levelRewards);
+        List<LevelPrivilegeConfig> privilegeConfigs = levelPrivilegeRepository.findAllEnabled();
+        List<RewardGrantLog> grantLogs = growthQueryAppService.getRewardGrantLogs(userId);
+        List<UserPrivilegeEntitlement> entitlements = growthQueryAppService.getActiveEntitlements(userId);
+        GrowthAccountVO vo = growthAssembler.toVO(
+            account,
+            thresholds,
+            levelRewards,
+            privilegeConfigs,
+            grantLogs,
+            entitlements,
+            growthQueryAppService.hasRegisterBonus(userId)
+        );
         return Result.success(vo);
     }
 

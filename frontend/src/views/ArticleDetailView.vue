@@ -14,6 +14,8 @@ import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import AdBanner from '@/components/AdBanner.vue';
+import UserLevelBadge from '@/components/UserLevelBadge.vue';
+import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
 import {useSession} from '@/stores/session';
 import {
     exportArticleAsHtml,
@@ -997,7 +999,11 @@ watch(tocDrawerOpen, (open) => {
                                 >
                                 <span class="byline-avatar-fallback" v-else>{{ article.author.name[0] }}</span>
                                 <div class="byline-info">
-                                    <strong class="byline-name">{{ article.author.name }}</strong>
+                                    <div class="byline-name-row">
+                                        <strong class="byline-name">{{ article.author.name }}</strong>
+                                        <UserLevelBadge :level="article.author.currentLevel" compact />
+                                        <UserPrivilegeBadge :privilege-codes="article.author.privilegeCodes || []" compact />
+                                    </div>
                                     <span class="byline-meta">
                                         <span class="byline-date">{{ article.publishedText }}</span>
                                         <span class="byline-separator">·</span>
@@ -2459,6 +2465,13 @@ watch(tocDrawerOpen, (open) => {
 .byline-info {
     display: grid;
     gap: 1px;
+    min-width: 0;
+}
+
+.byline-name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
 }
 

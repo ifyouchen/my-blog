@@ -31,6 +31,9 @@ public class GrowthAccountVO {
     /** 等级奖励列表（仅包含启用配置）. */
     private List<LevelRewardVO> levelRewards;
 
+    /** 当前用户已拥有的权益编码列表. */
+    private List<String> ownedPrivilegeCodes;
+
     // ──────── 构造方法 & getter/setter ────────
 
     /** 默认构造方法. */
@@ -72,6 +75,11 @@ public class GrowthAccountVO {
     /** 设置等级奖励列表. */
     public void setLevelRewards(List<LevelRewardVO> levelRewards) { this.levelRewards = levelRewards; }
 
+    /** 获取当前用户已拥有的权益编码列表. */
+    public List<String> getOwnedPrivilegeCodes() { return ownedPrivilegeCodes; }
+    /** 设置当前用户已拥有的权益编码列表. */
+    public void setOwnedPrivilegeCodes(List<String> ownedPrivilegeCodes) { this.ownedPrivilegeCodes = ownedPrivilegeCodes; }
+
     /**
      * 等级奖励展示对象.
      *
@@ -90,6 +98,14 @@ public class GrowthAccountVO {
         private String description;
         /** 是否已达到该等级. */
         private boolean achieved;
+        /** 真实奖励状态. */
+        private String status;
+        /** 奖励类型. */
+        private String rewardKind;
+        /** 发放时间. */
+        private String grantedAt;
+        /** 关联权益编码. */
+        private List<String> privilegeCodes;
 
         /** 获取等级. */
         public int getLevel() { return level; }
@@ -111,6 +127,22 @@ public class GrowthAccountVO {
         public boolean isAchieved() { return achieved; }
         /** 设置是否已达到. */
         public void setAchieved(boolean achieved) { this.achieved = achieved; }
+        /** 获取真实奖励状态. */
+        public String getStatus() { return status; }
+        /** 设置真实奖励状态. */
+        public void setStatus(String status) { this.status = status; }
+        /** 获取奖励类型. */
+        public String getRewardKind() { return rewardKind; }
+        /** 设置奖励类型. */
+        public void setRewardKind(String rewardKind) { this.rewardKind = rewardKind; }
+        /** 获取发放时间. */
+        public String getGrantedAt() { return grantedAt; }
+        /** 设置发放时间. */
+        public void setGrantedAt(String grantedAt) { this.grantedAt = grantedAt; }
+        /** 获取权益编码列表. */
+        public List<String> getPrivilegeCodes() { return privilegeCodes; }
+        /** 设置权益编码列表. */
+        public void setPrivilegeCodes(List<String> privilegeCodes) { this.privilegeCodes = privilegeCodes; }
     }
 }
 

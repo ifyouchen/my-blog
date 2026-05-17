@@ -13,6 +13,7 @@ import {
 } from '@/api/articles';
 import {getToken} from '@/api/http';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
+import {getMyGrowthApi} from '@/api/growth';
 import {uploadImageApi} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
@@ -211,6 +212,10 @@ const publishValidation = ref({
 const publishValidationLoading = ref(false);
 const publishValidationError = ref('');
 let publishValidationTimer = null;
+const growthAccess = ref(null);
+const creatorPrivilegeCodes = computed(() => growthAccess.value?.ownedPrivilegeCodes || []);
+const hasPaidArticlePrivilege = computed(() => creatorPrivilegeCodes.value.includes('PAID_ARTICLE_PUBLISH'));
+const unlockSwitchDisabled = computed(() => !hasPaidArticlePrivilege.value && !draft.needUnlock);
 
 // ── 版本历史 ──────────────────────────────────────────────────────────
 const showVersionDrawer = ref(false);
@@ -262,6 +267,11 @@ function isUnlockConfigValid() {
 }
 
 function ensureUnlockConfigValid() {
+    if (draft.needUnlock && !hasPaidArticlePrivilege.value) {
+        statusMessage.value = '当前等级未解锁付费文章发布权限，达到 Lv.4 后可开启积分解锁';
+        feedbackType.value = 'warning';
+        return false;
+    }
     clampDraftUnlockPointPrice();
     if (isUnlockConfigValid()) {
         return true;
@@ -282,6 +292,12 @@ function clampDraftUnlockPointPrice() {
 }
 
 function onNeedUnlockToggle() {
+    if (draft.needUnlock && !hasPaidArticlePrivilege.value) {
+        draft.needUnlock = false;
+        statusMessage.value = '当前等级未解锁付费文章发布权限，达到 Lv.4 后可开启积分解锁';
+        feedbackType.value = 'warning';
+        return;
+    }
     clampDraftUnlockPointPrice();
 }
 
@@ -783,6 +799,18 @@ async function fetchArticle() {
     }
 }
 
+async function loadGrowthAccess() {
+    if (!getToken()) {
+        growthAccess.value = null;
+        return;
+    }
+    try {
+        growthAccess.value = await getMyGrowthApi();
+    } catch {
+        growthAccess.value = null;
+    }
+}
+
 async function refreshPublishValidation(options = {}) {
     const silent = options.silent === true;
     publishValidationLoading.value = !silent;
@@ -1163,6 +1191,7 @@ onMounted(async () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('scroll', handleScroll);
     await fetchMetadata();
+    await loadGrowthAccess();
     await fetchArticle();
     if (getToken()) {
         await refreshPublishValidation({ silent: true });
@@ -1362,12 +1391,16 @@ onUnmounted(() => {
                     <div>
                         <p class="eyebrow">文章权限</p>
                         <strong>{{ draft.needUnlock ? '积分解锁' : '免费阅读' }}</strong>
+                        <p v-if="!hasPaidArticlePrivilege" class="editor-unlock-tip">
+                            Lv.4 解锁付费文章发布权限
+                        </p>
                     </div>
                     <label class="editor-unlock-switch">
                         <input
                             v-model="draft.needUnlock"
                             type="checkbox"
                             data-testid="editor-need-unlock-toggle"
+                            :disabled="unlockSwitchDisabled"
                             @change="onNeedUnlockToggle"
                         >
                         <span>{{ draft.needUnlock ? '已开启' : '关闭' }}</span>
@@ -1381,7 +1414,7 @@ onUnmounted(() => {
                         :min="MIN_UNLOCK_POINT_PRICE"
                         :max="MAX_UNLOCK_POINT_PRICE"
                         step="1"
-                        :disabled="!draft.needUnlock"
+                        :disabled="!draft.needUnlock || !hasPaidArticlePrivilege"
                         data-testid="editor-unlock-price-input"
                         @change="onUnlockPointPriceCommit"
                         @blur="onUnlockPointPriceCommit"
@@ -2222,6 +2255,13 @@ onUnmounted(() => {
     margin-top: 3px;
     color: var(--text);
     font-size: 15px;
+}
+
+.editor-unlock-tip {
+    margin: 6px 0 0;
+    color: #8a5b00;
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 .editor-unlock-switch {

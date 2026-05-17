@@ -53,6 +53,7 @@ public class UserAppService {
     private final PasswordDomainService passwordDomainService;
     private final EmailQueueAppService emailQueueAppService;
     private final UserLevelAppService userLevelAppService;
+    private final RecommendationApplicationAppService recommendationApplicationAppService;
     private final String frontendBaseUrl;
 
     public UserAppService(UserRepository userRepository,
@@ -62,6 +63,7 @@ public class UserAppService {
                           PasswordDomainService passwordDomainService,
                           EmailQueueAppService emailQueueAppService,
                           UserLevelAppService userLevelAppService,
+                          RecommendationApplicationAppService recommendationApplicationAppService,
                           @Value("${my-blog.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
@@ -70,6 +72,7 @@ public class UserAppService {
         this.passwordDomainService = passwordDomainService;
         this.emailQueueAppService = emailQueueAppService;
         this.userLevelAppService = userLevelAppService;
+        this.recommendationApplicationAppService = recommendationApplicationAppService;
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
@@ -438,9 +441,16 @@ public class UserAppService {
      */
     private List<ArticleDTO> buildArticleItems(List<Article> source, User author) {
         List<ArticleDTO> items = new ArrayList<ArticleDTO>(source.size());
+        List<UserDTO> authors = new ArrayList<UserDTO>(source.size());
         for (Article article : source) {
-            items.add(articleAssembler.toDTO(article, author));
+            ArticleDTO dto = articleAssembler.toDTO(article, author);
+            items.add(dto);
+            if (dto.getAuthor() != null) {
+                authors.add(dto.getAuthor());
+            }
         }
+        userLevelAppService.fillLevels(authors);
+        recommendationApplicationAppService.fillRecommendationStatus(items);
         return items;
     }
 

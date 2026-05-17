@@ -44,18 +44,54 @@ const ruleRoleLabel = (role) =>
     RULE_ROLE_OPTIONS.find((item) => item.value === role)?.label || role || '-';
 const limitStrategyLabel = (strategy) =>
     LIMIT_STRATEGY_OPTIONS.find((item) => item.value === strategy)?.label || strategy || '-';
+const dailyMaxExp = (rule) => {
+    const limit = Number(rule?.dailyLimit || 0);
+    const amount = Number(rule?.expAmount || 0);
+    return limit > 0 ? limit * amount : null;
+};
+const dailyLimitText = (rule) => {
+    const limit = Number(rule?.dailyLimit || 0);
+    return limit > 0 ? `${limit} 次` : '不限次数';
+};
+const dailyMaxExpText = (rule) => {
+    const max = dailyMaxExp(rule);
+    return max === null ? '不限' : `${max} 经验`;
+};
 
 // ── Rule Templates ──────────────────────────────────────────────────
 const RULE_TEMPLATES = [
-    {name: '发布文章 +10', fill: {eventType: 'PUBLISH', role: 'ACTOR', expAmount: 10, dailyLimit: 10, dailyLimitStrategy: 'SKIP', enabled: true}},
-    {name: '发布文章 +5(作者)', fill: {eventType: 'PUBLISH', role: 'AUTHOR', expAmount: 5, dailyLimit: 20, dailyLimitStrategy: 'SKIP', enabled: true}},
-    {name: '评论 +2', fill: {eventType: 'COMMENT', role: 'ACTOR', expAmount: 2, dailyLimit: 20, dailyLimitStrategy: 'SKIP', enabled: true}},
-    {name: '阅读 +1', fill: {eventType: 'READ', role: 'ACTOR', expAmount: 1, dailyLimit: 50, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '发布文章 +30', fill: {eventType: 'PUBLISH', role: 'ACTOR', expAmount: 30, dailyLimit: 3, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '评论 +3', fill: {eventType: 'COMMENT', role: 'ACTOR', expAmount: 3, dailyLimit: 10, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '被评论 +5', fill: {eventType: 'COMMENT', role: 'AUTHOR', expAmount: 5, dailyLimit: 20, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '阅读 +1', fill: {eventType: 'READ', role: 'ACTOR', expAmount: 1, dailyLimit: 20, dailyLimitStrategy: 'SKIP', enabled: true}},
     {name: '收藏 +3', fill: {eventType: 'FAVORITE', role: 'ACTOR', expAmount: 3, dailyLimit: 10, dailyLimitStrategy: 'SKIP', enabled: true}},
-    {name: '分享 +2', fill: {eventType: 'SHARE', role: 'ACTOR', expAmount: 2, dailyLimit: 10, dailyLimitStrategy: 'SKIP', enabled: true}},
-    {name: '关注 +1', fill: {eventType: 'FOLLOW', role: 'ACTOR', expAmount: 1, dailyLimit: 15, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '被收藏 +8', fill: {eventType: 'FAVORITE', role: 'AUTHOR', expAmount: 8, dailyLimit: 20, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '分享 +3', fill: {eventType: 'SHARE', role: 'ACTOR', expAmount: 3, dailyLimit: 5, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '关注 +5', fill: {eventType: 'FOLLOW', role: 'ACTOR', expAmount: 5, dailyLimit: 5, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '被关注 +10', fill: {eventType: 'FOLLOW', role: 'AUTHOR', expAmount: 10, dailyLimit: 10, dailyLimitStrategy: 'SKIP', enabled: true}},
     {name: '点赞 +1', fill: {eventType: 'LIKE', role: 'ACTOR', expAmount: 1, dailyLimit: 20, dailyLimitStrategy: 'SKIP', enabled: true}},
+    {name: '被点赞 +3', fill: {eventType: 'LIKE', role: 'AUTHOR', expAmount: 3, dailyLimit: 30, dailyLimitStrategy: 'SKIP', enabled: true}},
 ];
+
+const RECOMMENDED_RULES = [
+    {eventType: 'READ', role: 'ACTOR', expAmount: 1, dailyLimit: 20},
+    {eventType: 'LIKE', role: 'ACTOR', expAmount: 1, dailyLimit: 20},
+    {eventType: 'FAVORITE', role: 'ACTOR', expAmount: 3, dailyLimit: 10},
+    {eventType: 'SHARE', role: 'ACTOR', expAmount: 3, dailyLimit: 5},
+    {eventType: 'COMMENT', role: 'ACTOR', expAmount: 3, dailyLimit: 10},
+    {eventType: 'FOLLOW', role: 'ACTOR', expAmount: 5, dailyLimit: 5},
+    {eventType: 'PUBLISH', role: 'ACTOR', expAmount: 30, dailyLimit: 3},
+    {eventType: 'LIKE', role: 'AUTHOR', expAmount: 3, dailyLimit: 30},
+    {eventType: 'FAVORITE', role: 'AUTHOR', expAmount: 8, dailyLimit: 20},
+    {eventType: 'COMMENT', role: 'AUTHOR', expAmount: 5, dailyLimit: 20},
+    {eventType: 'FOLLOW', role: 'AUTHOR', expAmount: 10, dailyLimit: 10},
+].map((rule) => ({
+    ...rule,
+    dailyLimitStrategy: 'SKIP',
+    enabled: true,
+    effectiveAt: null,
+    reason: '应用长期活跃 + 内容认可型推荐方案',
+}));
 
 // ── State ───────────────────────────────────────────────────────────
 const growthRules = ref([]);
@@ -98,7 +134,10 @@ const impactPreviewText = computed(() => {
     const event = RULE_EVENT_OPTIONS.find(o => o.value === growthRuleForm.eventType)?.label || growthRuleForm.eventType;
     const role = RULE_ROLE_OPTIONS.find(o => o.value === growthRuleForm.role)?.label || growthRuleForm.role;
     const daily = growthRuleForm.dailyLimit > 0 ? `每日最多 ${growthRuleForm.dailyLimit} 次` : '不限次数';
-    return `${event} · ${role} · +${growthRuleForm.expAmount} 经验 · ${daily}`;
+    const maxExp = growthRuleForm.dailyLimit > 0
+        ? ` · 今日最高 ${Number(growthRuleForm.dailyLimit || 0) * Number(growthRuleForm.expAmount || 0)} 经验`
+        : '';
+    return `${event} · ${role} · +${growthRuleForm.expAmount} 经验 · ${daily}${maxExp}`;
 });
 
 const dailyLimitHelpText = computed(() => {
@@ -185,6 +224,38 @@ const deleteGrowthRule = async (row) => {
     }
 };
 
+const applyRecommendedRules = async () => {
+    if (!confirm('确定应用推荐经验方案吗？相同行为和角色的规则会被更新，缺失规则会自动新增。')) {
+        return;
+    }
+    growthRuleSaving.value = true;
+    growthRulesError.value = '';
+    try {
+        const latestByKey = new Map(
+            growthRules.value.map((rule) => [`${rule.eventType}:${rule.role}`, rule])
+        );
+        for (const preset of RECOMMENDED_RULES) {
+            const existing = latestByKey.get(`${preset.eventType}:${preset.role}`);
+            if (existing?.id) {
+                await updateAdminGrowthRuleApi({
+                    ...preset,
+                    id: existing.id,
+                    version: existing.version ?? 0,
+                });
+            } else {
+                await createAdminGrowthRuleApi(preset);
+            }
+        }
+        toast.success('推荐经验方案已应用');
+        await loadGrowthRules();
+    } catch (e) {
+        growthRulesError.value = e.message || '推荐经验方案应用失败';
+        toast.error(growthRulesError.value);
+    } finally {
+        growthRuleSaving.value = false;
+    }
+};
+
 // ── Actions ─────────────────────────────────────────────────────────
 const openCreate = () => {
     resetGrowthRuleForm();
@@ -227,7 +298,7 @@ defineExpose({loadGrowthRules});
     <section class="ag-section">
         <div class="ag-section-head">
             <h2 class="ag-section-title">经验规则配置</h2>
-            <span class="ag-section-subtitle">行为事件触发后按规则发放经验</span>
+            <span class="ag-section-subtitle">每日上限按次数计算，经验按“单次经验 × 次数上限”封顶</span>
         </div>
 
         <!-- Templates bar -->
@@ -251,7 +322,12 @@ defineExpose({loadGrowthRules});
                 <span class="tab-count">当前 {{ growthRules.length }} 条规则</span>
                 <span class="tab-count-muted">启用 {{ enabledRuleCount }}，停用 {{ disabledRuleCount }}</span>
             </div>
-            <button type="button" class="ag-btn primary" @click="openCreate">+ 新增规则</button>
+            <div class="tab-toolbar-actions">
+                <button type="button" class="ag-btn secondary" :disabled="growthRuleSaving" @click="applyRecommendedRules">
+                    应用推荐方案
+                </button>
+                <button type="button" class="ag-btn primary" @click="openCreate">+ 新增规则</button>
+            </div>
         </div>
 
         <!-- Loading / Empty / Table -->
@@ -265,6 +341,7 @@ defineExpose({loadGrowthRules});
                         <th>角色</th>
                         <th>经验</th>
                         <th>每日上限（次数）</th>
+                        <th>每日最高经验</th>
                         <th>策略</th>
                         <th>生效</th>
                         <th>版本</th>
@@ -279,7 +356,8 @@ defineExpose({loadGrowthRules});
                         </td>
                         <td>{{ ruleRoleLabel(rule.role) }}</td>
                         <td class="delta plus">+{{ rule.expAmount }}</td>
-                        <td>{{ rule.dailyLimit || '不限' }}</td>
+                        <td>{{ dailyLimitText(rule) }}</td>
+                        <td class="daily-max-cell">{{ dailyMaxExpText(rule) }}</td>
                         <td>{{ limitStrategyLabel(rule.dailyLimitStrategy) }}</td>
                         <td>
                             <span :class="['status-chip', rule.enabled ? 'settled' : 'failed']">{{ rule.enabled ? '启用' : '停用' }}</span>
@@ -452,6 +530,13 @@ defineExpose({loadGrowthRules});
     color: #9ca3af;
 }
 
+.tab-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
 /* ── Rule editor ── */
 .rule-editor {
     display: flex;
@@ -568,6 +653,12 @@ defineExpose({loadGrowthRules});
     margin: 8px 0 0;
     font-size: 12px;
     color: #6b7280;
+}
+
+.daily-max-cell {
+    color: #475569;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .strategy-grid {
