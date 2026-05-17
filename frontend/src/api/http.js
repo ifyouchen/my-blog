@@ -109,7 +109,7 @@ const createRequestError = (payload, response, traceId, fallbackMessage, options
 };
 
 export const request = async (path, options = {}) => {
-    const { suppressAuthPrompt = false, ...fetchOptions } = options;
+    const { suppressAuthPrompt = false, timeout = 15000, ...fetchOptions } = options;
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers = {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -128,11 +128,27 @@ export const request = async (path, options = {}) => {
         : options.body;
 
     const url = resolveUrl(path);
-    const response = await fetch(url, {
-        ...fetchOptions,
-        body,
-        headers
-    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    let response;
+    try {
+        response = await fetch(url, {
+            ...fetchOptions,
+            body,
+            headers,
+            signal: controller.signal
+        });
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error(`请求超时（${timeout / 1000}s），请检查网络连接`);
+        }
+        throw error;
+    }
+    clearTimeout(timeoutId);
+
     const traceId = response.headers.get('X-Trace-Id') || '';
     let payload;
     try {
