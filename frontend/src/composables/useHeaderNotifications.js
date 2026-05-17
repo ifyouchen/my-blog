@@ -59,7 +59,7 @@ const fetchUnreadCount = async () => {
             unreadCount.value = result.count || 0;
         }
     } catch (e) {
-        console.error('Failed to fetch unread count:', e);
+        // 获取未读通知失败
     }
 };
 
@@ -73,7 +73,7 @@ const fetchMessageUnreadCount = async () => {
             messageUnreadCount.value = result.count || 0;
         }
     } catch (e) {
-        console.error('Failed to fetch message unread count:', e);
+        // 获取消息未读数失败
     }
 };
 

@@ -1307,11 +1307,11 @@ watch(tocDrawerOpen, (open) => {
                     :aria-hidden="rightSidebarCollapsed"
                     :inert="rightSidebarCollapsed ? '' : null"
                 >
-                    <ArticleToc
-                        v-if="remoteArticle"
-                        :content="articleMarkdown"
-                        class="detail-toc"
-                    />
+                    <div v-if="remoteArticle" class="detail-toc">
+                        <ArticleToc
+                            :content="articleMarkdown"
+                        />
+                    </div>
 
                     <AdBanner v-if="!isInContext" class="article-sidebar-ad" :slot-code="'article_sidebar'" />
                 </div>

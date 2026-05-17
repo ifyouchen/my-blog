@@ -310,7 +310,7 @@ const fetchStats = async () => {
     try {
         stats.value = await getAdminStatsApi();
     } catch (error) {
-        console.error('获取统计数据失败:', error);
+        // 获取统计数据失败
     }
 };
 
@@ -324,7 +324,7 @@ const fetchUsers = async () => {
         const result = await getAdminUsersApi(1, 20);
         users.value = result.items || [];
     } catch (error) {
-        console.error('获取用户列表失败:', error);
+        // 获取用户列表失败
     }
 };
 
@@ -338,7 +338,7 @@ const fetchArticles = async () => {
         const result = await getAdminArticlesApi(1, 20);
         articles.value = result.items || [];
     } catch (error) {
-        console.error('获取文章列表失败:', error);
+        // 获取文章列表失败
     }
 };
 
@@ -352,7 +352,7 @@ const fetchComments = async () => {
         const result = await getAdminCommentsApi(1, 20);
         comments.value = result.items || [];
     } catch (error) {
-        console.error('获取评论列表失败:', error);
+        // 获取评论列表失败
     }
 };
 
@@ -366,7 +366,7 @@ const fetchLogs = async () => {
         const result = await getAdminLogsApi(1, 20);
         logs.value = result.items || [];
     } catch (error) {
-        console.error('获取操作日志失败:', error);
+        // 获取操作日志失败
     }
 };
 

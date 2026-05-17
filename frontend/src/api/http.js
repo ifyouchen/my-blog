@@ -30,27 +30,7 @@ const dispatchWithCooldown = (eventName, detail, cooldownMs = 1500) => {
 };
 
 const logDevTrace = (type, detail = {}) => {
-    if (!import.meta.env.DEV) {
-        return;
-    }
-
-    const { traceId = '', path = '', status = '', message = '' } = detail;
-    const segments = [`[request:${type}]`];
-
-    if (path) {
-        segments.push(path);
-    }
-    if (status) {
-        segments.push(`status=${status}`);
-    }
-    if (traceId) {
-        segments.push(`traceId=${traceId}`);
-    }
-    if (message) {
-        segments.push(message);
-    }
-
-    console.error(segments.join(' | '));
+    // 日志已禁用
 };
 
 const resolveUrl = (path) => path.startsWith('http') ? path : `${API_BASE_URL}${path}`;

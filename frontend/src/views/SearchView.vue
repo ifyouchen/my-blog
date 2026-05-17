@@ -331,7 +331,7 @@ const fetchBootstrap = async () => {
             loadGuestRecentSearches();
         }
     } catch (e) {
-        console.error('Failed to fetch search bootstrap:', e);
+        // 搜索引导加载失败
     }
 };
 
@@ -438,7 +438,6 @@ const runSearch = async () => {
             }
         } catch (e) {
             // 保存搜索历史失败不影响搜索
-            console.warn('保存搜索历史失败:', e);
         }
     }
     syncRoute({ page: 1, keyword: keyword.value.trim() || undefined });
