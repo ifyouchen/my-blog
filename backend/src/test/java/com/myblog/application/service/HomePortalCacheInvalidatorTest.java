@@ -3,7 +3,9 @@ package com.myblog.application.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticleRecommendationsDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
+import com.myblog.application.query.ArticlePageCacheKey;
 import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import com.myblog.domain.model.aggregate.Article;
@@ -15,6 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,12 +36,8 @@ class HomePortalCacheInvalidatorTest {
         Cache<String, List<ArticleDTO>> featuredCache = Caffeine.newBuilder().build();
         Cache<Long, HomeStats> statsCache = Caffeine.newBuilder().build();
         Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedCache = Caffeine.newBuilder().build();
-        HomePortalCacheInvalidator invalidator = new HomePortalCacheInvalidator(
-            bootstrapCache,
-            featuredCache,
-            statsCache,
-            recommendedCache
-        );
+        HomePortalCacheInvalidator invalidator = newInvalidator(bootstrapCache, featuredCache, statsCache,
+            recommendedCache);
         bootstrapCache.put(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY, new HomeBootstrapDTO());
         featuredCache.put("1:5", Collections.<ArticleDTO>emptyList());
         RecommendArticleCacheKey recommendKey = RecommendArticleCacheKey.of(null, 1, 10);
@@ -57,12 +56,8 @@ class HomePortalCacheInvalidatorTest {
         Cache<String, List<ArticleDTO>> featuredCache = Caffeine.newBuilder().build();
         Cache<Long, HomeStats> statsCache = Caffeine.newBuilder().build();
         Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedCache = Caffeine.newBuilder().build();
-        HomePortalCacheInvalidator invalidator = new HomePortalCacheInvalidator(
-            bootstrapCache,
-            featuredCache,
-            statsCache,
-            recommendedCache
-        );
+        HomePortalCacheInvalidator invalidator = newInvalidator(bootstrapCache, featuredCache, statsCache,
+            recommendedCache);
         bootstrapCache.put(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY, new HomeBootstrapDTO());
         TransactionSynchronizationManager.initSynchronization();
 
@@ -81,12 +76,8 @@ class HomePortalCacheInvalidatorTest {
         Cache<String, List<ArticleDTO>> featuredCache = Caffeine.newBuilder().build();
         Cache<Long, HomeStats> statsCache = Caffeine.newBuilder().build();
         Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedCache = Caffeine.newBuilder().build();
-        HomePortalCacheInvalidator invalidator = new HomePortalCacheInvalidator(
-            bootstrapCache,
-            featuredCache,
-            statsCache,
-            recommendedCache
-        );
+        HomePortalCacheInvalidator invalidator = newInvalidator(bootstrapCache, featuredCache, statsCache,
+            recommendedCache);
         bootstrapCache.put(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY, new HomeBootstrapDTO());
         statsCache.put(HomeStatsAppService.HOME_STATS_KEY, new HomeStats(1, 2, 3));
 
@@ -102,12 +93,8 @@ class HomePortalCacheInvalidatorTest {
         Cache<String, List<ArticleDTO>> featuredCache = Caffeine.newBuilder().build();
         Cache<Long, HomeStats> statsCache = Caffeine.newBuilder().build();
         Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedCache = Caffeine.newBuilder().build();
-        HomePortalCacheInvalidator invalidator = new HomePortalCacheInvalidator(
-            bootstrapCache,
-            featuredCache,
-            statsCache,
-            recommendedCache
-        );
+        HomePortalCacheInvalidator invalidator = newInvalidator(bootstrapCache, featuredCache, statsCache,
+            recommendedCache);
         RecommendArticleCacheKey recommendKey = RecommendArticleCacheKey.of(null, 1, 10);
         bootstrapCache.put(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY, new HomeBootstrapDTO());
         recommendedCache.put(recommendKey, new PageResult<Article>(Collections.<Article>emptyList(), 1, 10, 0));
@@ -116,5 +103,26 @@ class HomePortalCacheInvalidatorTest {
 
         assertThat(bootstrapCache.getIfPresent(HomeBootstrapAppService.BOOTSTRAP_CACHE_KEY)).isNull();
         assertThat(recommendedCache.getIfPresent(recommendKey)).isNull();
+    }
+
+    private HomePortalCacheInvalidator newInvalidator(
+            Cache<String, HomeBootstrapDTO> bootstrapCache,
+            Cache<String, List<ArticleDTO>> featuredCache,
+            Cache<Long, HomeStats> statsCache,
+            Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedCache) {
+        Cache<ArticlePageCacheKey, PageResult<Article>> pageCache = Caffeine.newBuilder().build();
+        Cache<Long, ArticleDTO> detailCache = Caffeine.newBuilder().build();
+        Cache<String, ArticleRecommendationsDTO> recommendationsCache = Caffeine.newBuilder().build();
+        Cache<Long, Map<String, ArticleDTO>> neighborsCache = Caffeine.newBuilder().build();
+        return new HomePortalCacheInvalidator(
+            bootstrapCache,
+            featuredCache,
+            statsCache,
+            recommendedCache,
+            pageCache,
+            detailCache,
+            recommendationsCache,
+            neighborsCache
+        );
     }
 }

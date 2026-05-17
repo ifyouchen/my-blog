@@ -9,6 +9,8 @@ import com.myblog.application.dto.HomeBootstrapDTO;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
 import com.myblog.application.dto.TagDTO;
+import com.myblog.application.dto.ArticleRecommendationsDTO;
+import com.myblog.application.query.ArticlePageCacheKey;
 import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import com.myblog.domain.model.aggregate.Article;
@@ -95,6 +97,38 @@ public class CacheConfig {
         return Caffeine.newBuilder()
                 .maximumSize(512)
                 .expireAfterWrite(1, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<ArticlePageCacheKey, PageResult<Article>> publishedArticlePageCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(512)
+                .expireAfterWrite(45, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<Long, ArticleDTO> publicArticleDetailCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(512)
+                .expireAfterWrite(60, TimeUnit.SECONDS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, ArticleRecommendationsDTO> articleRecommendationsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(512)
+                .expireAfterWrite(2, TimeUnit.MINUTES)
+                .build();
+    }
+
+    @Bean
+    public Cache<Long, java.util.Map<String, ArticleDTO>> articleNeighborsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(512)
+                .expireAfterWrite(2, TimeUnit.MINUTES)
                 .build();
     }
 

@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.myblog.application.assembler.ArticleAssembler;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticleRecommendationsDTO;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.valueobject.UserId;
@@ -52,6 +53,7 @@ class RecommendationAppServiceTest {
     @Test
     void listWeeklyArticlesExcludesFocusAndRecommendFeedHead() {
         Cache<String, List<ArticleDTO>> featuredArticlesCache = Caffeine.newBuilder().build();
+        Cache<String, ArticleRecommendationsDTO> articleRecommendationsCache = Caffeine.newBuilder().build();
         RecommendationAppService service = new RecommendationAppService(
             userRepository,
             columnRepository,
@@ -59,7 +61,8 @@ class RecommendationAppServiceTest {
             columnSubscriptionRepository,
             userFollowRepository,
             articleAssembler,
-            featuredArticlesCache
+            featuredArticlesCache,
+            articleRecommendationsCache
         );
         when(articleRepository.findPublishedWithLimit(
             null,

@@ -50,6 +50,7 @@ public class RecommendationAppService {
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
     private final Cache<String, List<ArticleDTO>> featuredArticlesCache;
+    private final Cache<String, ArticleRecommendationsDTO> articleRecommendationsCache;
 
     public RecommendationAppService(UserRepository userRepository,
                                     ColumnRepository columnRepository,
@@ -58,7 +59,9 @@ public class RecommendationAppService {
                                     UserFollowRepository userFollowRepository,
                                     ArticleAssembler articleAssembler,
                                     @Qualifier("featuredArticlesCache")
-                                    Cache<String, List<ArticleDTO>> featuredArticlesCache) {
+                                    Cache<String, List<ArticleDTO>> featuredArticlesCache,
+                                    @Qualifier("articleRecommendationsCache")
+                                    Cache<String, ArticleRecommendationsDTO> articleRecommendationsCache) {
         this.userRepository = userRepository;
         this.columnRepository = columnRepository;
         this.articleRepository = articleRepository;
@@ -66,6 +69,7 @@ public class RecommendationAppService {
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
         this.featuredArticlesCache = featuredArticlesCache;
+        this.articleRecommendationsCache = articleRecommendationsCache;
     }
 
     /**
@@ -187,13 +191,18 @@ public class RecommendationAppService {
      * 文章详情页推荐分组。
      */
     public ArticleRecommendationsDTO getArticleRecommendations(Long articleId, int limit) {
+        int safeLimit = normalizeRecommendationLimit(limit);
+        String cacheKey = articleId + ":" + safeLimit;
+        ArticleRecommendationsDTO cached = articleRecommendationsCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             throw new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在");
         }
 
-        int safeLimit = normalizeRecommendationLimit(limit);
         int sectionLimit = Math.max(3, Math.min(6, (int) Math.ceil(safeLimit / 3.0)));
         Set<Long> seenIds = new HashSet<Long>();
         seenIds.add(articleId);
@@ -245,7 +254,9 @@ public class RecommendationAppService {
         }
         appendSection(sections, "related", "相关推荐", relatedItems);
 
-        return new ArticleRecommendationsDTO(sections);
+        ArticleRecommendationsDTO recommendations = new ArticleRecommendationsDTO(sections);
+        articleRecommendationsCache.put(cacheKey, recommendations);
+        return recommendations;
     }
 
     public void evictFeaturedArticles() {

@@ -10,6 +10,7 @@ import com.myblog.application.dto.ArticleVersionDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.application.event.ArticleViewedEvent;
+import com.myblog.application.query.ArticlePageCacheKey;
 import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.growth.application.service.UserPrivilegeAppService;
@@ -84,6 +85,9 @@ public class ArticleAppService {
     private final HomePortalCacheInvalidator homePortalCacheInvalidator;
     private final String defaultArticleCoverUrl;
     private final Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache;
+    private final Cache<ArticlePageCacheKey, PageResult<Article>> publishedArticlePageCache;
+    private final Cache<Long, ArticleDTO> publicArticleDetailCache;
+    private final Cache<Long, Map<String, ArticleDTO>> articleNeighborsCache;
     private final Set<RecommendArticleCacheKey> recommendedArticleCacheKeys = ConcurrentHashMap.newKeySet();
     private final ArticleContentAccessService articleContentAccessService;
     private final UserLevelAppService userLevelAppService;
@@ -102,6 +106,11 @@ public class ArticleAppService {
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl,
                              @Qualifier("recommendedArticleFeedCache")
                              Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache,
+                             @Qualifier("publishedArticlePageCache")
+                             Cache<ArticlePageCacheKey, PageResult<Article>> publishedArticlePageCache,
+                             @Qualifier("publicArticleDetailCache") Cache<Long, ArticleDTO> publicArticleDetailCache,
+                             @Qualifier("articleNeighborsCache")
+                             Cache<Long, Map<String, ArticleDTO>> articleNeighborsCache,
                              ArticleContentAccessService articleContentAccessService,
                              UserLevelAppService userLevelAppService,
                              UserPrivilegeAppService userPrivilegeAppService) {
@@ -118,6 +127,9 @@ public class ArticleAppService {
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
         this.recommendedArticleFeedCache = recommendedArticleFeedCache;
+        this.publishedArticlePageCache = publishedArticlePageCache;
+        this.publicArticleDetailCache = publicArticleDetailCache;
+        this.articleNeighborsCache = articleNeighborsCache;
         this.articleContentAccessService = articleContentAccessService;
         this.userLevelAppService = userLevelAppService;
         this.userPrivilegeAppService = userPrivilegeAppService;
@@ -155,6 +167,15 @@ public class ArticleAppService {
             );
             List<ArticleDTO> items = toDTOList(recommendedPage.getItems(), query.getCurrentUserId());
             return new PageResult<ArticleDTO>(items, page, pageSize, recommendedPage.getTotal());
+        }
+        if (isPublishedPageCacheable(query)) {
+            ArticlePageCacheKey key = ArticlePageCacheKey.of(query, useFulltext);
+            PageResult<Article> cachedPage = publishedArticlePageCache.getIfPresent(key);
+            if (cachedPage != null) {
+                List<ArticleDTO> items = toDTOList(cachedPage.getItems(), query.getCurrentUserId());
+                return new PageResult<ArticleDTO>(items, cachedPage.getPage(), cachedPage.getPageSize(),
+                    cachedPage.getTotal());
+            }
         }
 
         if (query.isFollowingOnly() && query.getCurrentUserId() != null) {
@@ -236,6 +257,10 @@ public class ArticleAppService {
         }
 
         List<ArticleDTO> items = toDTOList(articles, query.getCurrentUserId());
+        if (isPublishedPageCacheable(query)) {
+            ArticlePageCacheKey key = ArticlePageCacheKey.of(query, useFulltext);
+            publishedArticlePageCache.put(key, new PageResult<Article>(articles, page, pageSize, total));
+        }
         return new PageResult<ArticleDTO>(items, page, pageSize, total);
     }
 
@@ -276,6 +301,10 @@ public class ArticleAppService {
             && !needsEnhancedSearch
             && !StringUtils.hasText(query.getKeyword())
             && !StringUtils.hasText(query.getTag());
+    }
+
+    private boolean isPublishedPageCacheable(ArticlePageQuery query) {
+        return !query.isFollowingOnly();
     }
 
     /**
@@ -418,6 +447,13 @@ public class ArticleAppService {
      */
     @Transactional(readOnly = true)
     public ArticleDTO getArticleDetail(Long articleId, Long currentUserId, String currentUserRole) {
+        if (isAnonymousArticleDetailRequest(currentUserId, currentUserRole)) {
+            ArticleDTO cached = publicArticleDetailCache.getIfPresent(articleId);
+            if (cached != null) {
+                eventPublisher.publishEvent(new ArticleViewedEvent(articleId));
+                return copyArticle(cached);
+            }
+        }
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         if (!canAccessArticle(article, currentUserId, currentUserRole)) {
@@ -439,6 +475,10 @@ public class ArticleAppService {
         }
         dto.setUnlockReason(access.getReason());
 
+        if (isAnonymousArticleDetailRequest(currentUserId, currentUserRole)
+            && ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+            publicArticleDetailCache.put(articleId, copyArticle(dto));
+        }
         return dto;
     }
 
@@ -1135,6 +1175,79 @@ public class ArticleAppService {
         return dto;
     }
 
+    private boolean isAnonymousArticleDetailRequest(Long currentUserId, String currentUserRole) {
+        return currentUserId == null && !StringUtils.hasText(currentUserRole);
+    }
+
+    private ArticleDTO copyArticle(ArticleDTO source) {
+        ArticleDTO copy = new ArticleDTO();
+        copy.setId(source.getId());
+        copy.setTitle(source.getTitle());
+        copy.setSummary(source.getSummary());
+        copy.setContent(source.getContent());
+        copy.setWordCount(source.getWordCount());
+        copy.setCoverUrl(source.getCoverUrl());
+        copy.setCategory(source.getCategory());
+        copy.setTags(source.getTags() == null ? null : new ArrayList<String>(source.getTags()));
+        copy.setStatus(source.getStatus());
+        copy.setViewCount(source.getViewCount());
+        copy.setLikeCount(source.getLikeCount());
+        copy.setFavoriteCount(source.getFavoriteCount());
+        copy.setCommentCount(source.getCommentCount());
+        copy.setPublishedAt(source.getPublishedAt());
+        copy.setUpdatedAt(source.getUpdatedAt());
+        copy.setFavoritedAt(source.getFavoritedAt());
+        copy.setLiked(source.isLiked());
+        copy.setFavorited(source.isFavorited());
+        copy.setFeatured(source.isFeatured());
+        copy.setFeaturedAt(source.getFeaturedAt());
+        copy.setFeatureWeight(source.getFeatureWeight());
+        copy.setSlug(source.getSlug());
+        copy.setSeoTitle(source.getSeoTitle());
+        copy.setSeoDescription(source.getSeoDescription());
+        copy.setNeedUnlock(source.isNeedUnlock());
+        copy.setUnlockPointPrice(source.getUnlockPointPrice());
+        copy.setContentLocked(source.isContentLocked());
+        copy.setUnlockReason(source.getUnlockReason());
+        copy.setScheduledPublishAt(source.getScheduledPublishAt());
+        copy.setOfflineReason(source.getOfflineReason());
+        copy.setWarnFlag(source.isWarnFlag());
+        copy.setRecommendationApplicationId(source.getRecommendationApplicationId());
+        copy.setRecommendationApplicationStatus(source.getRecommendationApplicationStatus());
+        copy.setAuthor(copyUser(source.getAuthor()));
+        return copy;
+    }
+
+    private UserDTO copyUser(UserDTO source) {
+        if (source == null) {
+            return null;
+        }
+        UserDTO copy = new UserDTO();
+        copy.setId(source.getId());
+        copy.setUsername(source.getUsername());
+        copy.setEmail(source.getEmail());
+        copy.setNickname(source.getNickname());
+        copy.setAvatarUrl(source.getAvatarUrl());
+        copy.setBio(source.getBio());
+        copy.setWebsite(source.getWebsite());
+        copy.setGithub(source.getGithub());
+        copy.setTwitter(source.getTwitter());
+        copy.setLocation(source.getLocation());
+        copy.setLastLoginAt(source.getLastLoginAt());
+        copy.setLastLoginIp(source.getLastLoginIp());
+        copy.setRole(source.getRole());
+        copy.setStatus(source.getStatus());
+        copy.setFollowed(source.getFollowed());
+        copy.setFollowerCount(source.getFollowerCount());
+        copy.setArticleCount(source.getArticleCount());
+        copy.setTotalLikeCount(source.getTotalLikeCount());
+        copy.setCurrentLevel(source.getCurrentLevel());
+        copy.setPrivilegeCodes(source.getPrivilegeCodes() == null
+            ? null : new ArrayList<String>(source.getPrivilegeCodes()));
+        copy.setExclusiveBadgeEnabled(source.isExclusiveBadgeEnabled());
+        return copy;
+    }
+
     private void ensureCanEnablePaidArticle(Long userId, String currentUserRole) {
         if (UserRole.ADMIN.name().equals(currentUserRole)) {
             return;
@@ -1512,6 +1625,10 @@ public class ArticleAppService {
      * @return Map with keys "prev" and "next", values may be null
      */
     public java.util.Map<String, ArticleDTO> getArticleNeighbors(Long articleId) {
+        Map<String, ArticleDTO> cached = articleNeighborsCache.getIfPresent(articleId);
+        if (cached != null) {
+            return copyArticleMap(cached);
+        }
         java.util.Optional<com.myblog.domain.model.aggregate.Article> prevOpt =
             articleRepository.findPrevPublished(articleId);
         java.util.Optional<com.myblog.domain.model.aggregate.Article> nextOpt =
@@ -1519,6 +1636,14 @@ public class ArticleAppService {
         java.util.Map<String, ArticleDTO> result = new java.util.LinkedHashMap<>();
         result.put("prev", prevOpt.map(this::toNeighborDTO).orElse(null));
         result.put("next", nextOpt.map(this::toNeighborDTO).orElse(null));
+        articleNeighborsCache.put(articleId, copyArticleMap(result));
+        return result;
+    }
+
+    private Map<String, ArticleDTO> copyArticleMap(Map<String, ArticleDTO> source) {
+        Map<String, ArticleDTO> result = new LinkedHashMap<String, ArticleDTO>();
+        result.put("prev", source.get("prev") == null ? null : copyArticle(source.get("prev")));
+        result.put("next", source.get("next") == null ? null : copyArticle(source.get("next")));
         return result;
     }
 
