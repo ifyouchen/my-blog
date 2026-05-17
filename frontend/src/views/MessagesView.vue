@@ -263,7 +263,7 @@ const sendMessage = async () => {
             if (!uploaded?.url) {
                 throw new Error('图片上传失败');
             }
-            imageUrl = uploaded.url;
+            imageUrl = uploaded.mediumUrl || uploaded.url;
         }
 
         const sentMessages = [];

@@ -93,7 +93,7 @@ const uploadAdImage = async (event, targetForm, uploadingKey) => {
     state[uploadingKey] = true;
     try {
         const result = await uploadImageApi(file, 'cover');
-        targetForm.imageUrl = result.url || '';
+        targetForm.imageUrl = result.mediumUrl || result.url || '';
         toast.success('广告封面上传成功');
     } catch (error) {
         toast.error(error.message || '广告封面上传失败');

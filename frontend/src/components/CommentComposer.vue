@@ -49,7 +49,7 @@ const avatarSrc = computed(() => {
 
 <template>
     <div :class="['comment-composer', { compact }]" data-testid="comment-composer">
-        <img class="comment-composer-avatar" :src="avatarSrc" alt="用户头像" decoding="async">
+        <img class="comment-composer-avatar" :src="avatarSrc" alt="用户头像" loading="lazy" decoding="async">
         <div class="comment-composer-main">
             <textarea
                 :value="modelValue"

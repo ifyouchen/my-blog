@@ -240,8 +240,9 @@ const handleAvatarSelected = async (event) => {
     fieldFeedback.value = '';
     try {
         const result = await uploadImageApi(file, 'avatar');
-        draft.avatarUrl = result.url || '';
-        debouncedAvatarUrl.value = result.url || '';
+        const avatarUrl = result.thumbnailUrl || result.mediumUrl || result.url || '';
+        draft.avatarUrl = avatarUrl;
+        debouncedAvatarUrl.value = avatarUrl;
         avatarPreviewFailed.value = false;
         fieldFeedback.value = '图片已上传，保存资料后永久生效';
         fieldFeedbackType.value = 'success';

@@ -338,13 +338,17 @@ const handleMessagesRefresh = () => {
                                         :src="notification.actor.avatarUrl"
                                         class="notification-avatar"
                                         alt=""
-                                     decoding="async">
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
                                     <img
                                         v-else
                                         src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80"
                                         class="notification-avatar"
                                         alt=""
-                                     decoding="async">
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
                                     <div class="notification-content">
                                         <div class="notification-text">
                                             <span class="notification-actor">{{ notification.actor?.nickname || notification.actor?.username }}</span>
@@ -378,7 +382,7 @@ const handleMessagesRefresh = () => {
                                 :aria-expanded="userMenuOpen"
                                 aria-haspopup="true"
                             >
-                                <img :src="avatarUrl" alt="用户头像" decoding="async">
+                                <img :src="avatarUrl" alt="用户头像" loading="lazy" decoding="async">
                                 <span>{{ displayName }}</span>
                             </button>
                         </div>
@@ -427,7 +431,7 @@ const handleMessagesRefresh = () => {
 
             <!-- 已登录：用户信息区 -->
             <div v-if="isLoggedIn" class="mobile-user-info">
-                <img :src="avatarUrl" class="mobile-user-avatar" alt="用户头像" decoding="async">
+                <img :src="avatarUrl" class="mobile-user-avatar" alt="用户头像" loading="lazy" decoding="async">
                 <div class="mobile-user-detail">
                     <span class="mobile-user-name">{{ displayName }}</span>
                     <span v-if="unreadCount > 0" class="mobile-unread-hint">{{ displayUnreadCount }} 条未读通知</span>

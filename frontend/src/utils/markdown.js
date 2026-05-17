@@ -95,10 +95,11 @@ const createMarkdownRenderer = ({ copyableCode = false } = {}) => {
         const originalStyle = imageToken.attrGet('style') || '';
         const finalStyle = style + originalStyle;
 
+        const attrs = `src="${src}" alt="${actualAlt}" loading="lazy" decoding="async"`;
         if (finalStyle) {
-            return `<img src="${src}" alt="${actualAlt}" style="${finalStyle}">`;
+            return `<img ${attrs} style="${finalStyle}">`;
         }
-        return `<img src="${src}" alt="${actualAlt}">`;
+        return `<img ${attrs}>`;
     };
 
     return md;
