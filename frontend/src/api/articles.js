@@ -89,6 +89,12 @@ export const updateArticleUnlockRuleApi = async (articleId, { needUnlock, unlock
     }));
 };
 
+export const applyHomepageRecommendationApi = async (articleId) => {
+    return await request(`/articles/${articleId}/homepage-recommendation-apply`, {
+        method: 'POST'
+    });
+};
+
 export const deleteArticleApi = async (articleId) => {
     return await request(`/articles/${articleId}`, {
         method: 'DELETE'

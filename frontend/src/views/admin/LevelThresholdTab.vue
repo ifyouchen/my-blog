@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, reactive, ref} from 'vue';
+import {onMounted, ref} from 'vue';
 import {useToast} from '@/composables/useToast';
 import {
     getAdminLevelThresholdsApi,
@@ -12,6 +12,19 @@ const levelThresholds = ref([]);
 const thresholdLoading = ref(false);
 const thresholdSaving = ref(false);
 const thresholdError = ref('');
+
+const RECOMMENDED_THRESHOLDS = [
+    {level: 1, minExp: 0, levelName: '新手', description: '刚入门的博客读者'},
+    {level: 2, minExp: 100, levelName: '学徒', description: '已积累一定阅读经验'},
+    {level: 3, minExp: 300, levelName: '进阶', description: '活跃参与社区互动'},
+    {level: 4, minExp: 800, levelName: '达人', description: '持续输出高质量内容'},
+    {level: 5, minExp: 1800, levelName: '专家', description: '社区认可的内容创作者'},
+    {level: 6, minExp: 3500, levelName: '大师作者', description: '领域深度贡献者'},
+    {level: 7, minExp: 7000, levelName: '资深专家', description: '平台资深内容贡献者'},
+    {level: 8, minExp: 13000, levelName: '领域导师', description: '持续产出优质内容'},
+    {level: 9, minExp: 22000, levelName: '技术领袖', description: '具备社区影响力'},
+    {level: 10, minExp: 35000, levelName: '荣耀创作者', description: '长期杰出贡献者'},
+];
 
 const normalizeThresholdRow = (row = {}, index = 0) => ({
     level: Number(row.level || index + 1), minExp: Number(row.minExp || 0),
@@ -49,12 +62,28 @@ const removeThresholdRow = (index) => {
     levelThresholds.value.splice(index, 1);
 };
 
+const applyRecommendedThresholds = () => {
+    if (!confirm('确定应用推荐等级曲线吗？当前页面中的等级阈值会被替换，保存后生效。')) {
+        return;
+    }
+    const versionByLevel = new Map(levelThresholds.value.map((row) => [Number(row.level), Number(row.version || 0)]));
+    levelThresholds.value = RECOMMENDED_THRESHOLDS.map((row) => ({
+        ...row,
+        version: versionByLevel.get(row.level) || 0,
+    }));
+    thresholdError.value = '';
+};
+
 const validateThresholds = () => {
     if (!levelThresholds.value.length) return '至少保留一个等级阈值';
     const rows = [...levelThresholds.value].sort((a, b) => Number(a.level) - Number(b.level));
     let lastMinExp = -1;
+    const seenLevels = new Set();
     for (const row of rows) {
-        if (!row.level || Number(row.level) <= 0) return '等级必须大于 0';
+        const level = Number(row.level);
+        if (!level || level <= 0) return '等级必须大于 0';
+        if (seenLevels.has(level)) return `Lv.${level} 重复，请保持等级唯一`;
+        seenLevels.add(level);
         if (Number(row.minExp) < 0) return '最低经验不能小于 0';
         if (!String(row.levelName || '').trim()) return '等级名称不能为空';
         if (Number(row.minExp) < lastMinExp) return '最低经验需要随等级递增';
@@ -95,7 +124,7 @@ defineExpose({loadLevelThresholds});
     <section class="ag-section">
         <div class="ag-section-head">
             <h2 class="ag-section-title">等级阈值配置</h2>
-            <span class="ag-section-subtitle">最低经验值决定用户等级展示</span>
+            <span class="ag-section-subtitle">最低经验值决定用户等级展示，推荐曲线强调长期活跃和内容认可</span>
         </div>
         <div v-if="thresholdError" class="ag-error">{{ thresholdError }}</div>
         <div v-if="thresholdLoading" class="ag-table-empty">等级阈值加载中...</div>
@@ -127,6 +156,7 @@ defineExpose({loadLevelThresholds});
         </div>
         <div class="ag-action-row threshold-actions">
             <button type="button" class="ag-btn secondary" @click="addThresholdRow">新增等级</button>
+            <button type="button" class="ag-btn secondary" @click="applyRecommendedThresholds">应用推荐曲线</button>
             <button type="button" class="ag-btn primary" :disabled="thresholdSaving || thresholdLoading" @click="saveLevelThresholds">
                 {{ thresholdSaving ? '保存中...' : '保存等级阈值' }}
             </button>
