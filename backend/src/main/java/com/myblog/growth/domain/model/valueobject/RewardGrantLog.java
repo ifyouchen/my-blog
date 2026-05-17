@@ -21,7 +21,10 @@ public class RewardGrantLog {
     private LocalDateTime grantedAt;
     private String remark;
 
-    private RewardGrantLog() {
+    /**
+     * 无参构造，供持久化框架反射使用.
+     */
+    public RewardGrantLog() {
     }
 
     /**
@@ -49,9 +52,15 @@ public class RewardGrantLog {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
     public String getRewardType() { return rewardType; }
+    public void setRewardType(String rewardType) { this.rewardType = rewardType; }
     public Long getRewardId() { return rewardId; }
+    public void setRewardId(Long rewardId) { this.rewardId = rewardId; }
     public int getPointsGranted() { return pointsGranted; }
+    public void setPointsGranted(int pointsGranted) { this.pointsGranted = pointsGranted; }
     public LocalDateTime getGrantedAt() { return grantedAt; }
+    public void setGrantedAt(LocalDateTime grantedAt) { this.grantedAt = grantedAt; }
     public String getRemark() { return remark; }
+    public void setRemark(String remark) { this.remark = remark; }
 }

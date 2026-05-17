@@ -29,6 +29,22 @@
         LIMIT 1
     </select>
 
+    <select id="selectDeletedByLevel" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM level_reward_config
+        WHERE level = #{level}
+          AND deleted_at IS NOT NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM level_reward_config
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
     <select id="selectAllEnabled" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM level_reward_config
@@ -37,14 +53,53 @@
         ORDER BY level ASC
     </select>
 
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM level_reward_config
+        WHERE deleted_at IS NULL
+        ORDER BY level ASC
+    </select>
+
     <update id="updateById">
         UPDATE level_reward_config
-        SET reward_points = #{rewardPoints},
+        SET level         = #{level},
+            reward_points = #{rewardPoints},
             reward_title  = #{rewardTitle},
             description   = #{description},
             enabled       = #{enabled},
             version       = version + 1
         WHERE id = #{id}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO level_reward_config
+            (level, reward_points, reward_title, description, enabled)
+        VALUES
+            (#{level}, #{rewardPoints}, #{rewardTitle}, #{description}, #{enabled})
+    </insert>
+
+    <update id="restoreById">
+        UPDATE level_reward_config
+        SET level         = #{level},
+            reward_points = #{rewardPoints},
+            reward_title  = #{rewardTitle},
+            description   = #{description},
+            enabled       = #{enabled},
+            deleted_at    = NULL,
+            version       = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
+          AND deleted_at IS NOT NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE level_reward_config
+        SET deleted_at = NOW(),
+            version    = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
           AND deleted_at IS NULL
     </update>
 

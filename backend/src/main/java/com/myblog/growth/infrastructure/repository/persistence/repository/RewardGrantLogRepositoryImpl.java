@@ -36,4 +36,14 @@ public class RewardGrantLogRepositoryImpl implements RewardGrantLogRepository {
     public List<RewardGrantLog> findByUserId(Long userId) {
         return mapper.selectByUserId(userId);
     }
+
+    @Override
+    public long countForAdmin(Long userId, String rewardType) {
+        return mapper.countForAdmin(userId, rewardType);
+    }
+
+    @Override
+    public List<RewardGrantLog> findPageForAdmin(Long userId, String rewardType, int offset, int limit) {
+        return mapper.selectPageForAdmin(userId, rewardType, offset, limit);
+    }
 }

@@ -24,12 +24,48 @@ public class LevelRewardRepositoryImpl implements LevelRewardRepository {
     }
 
     @Override
+    public Optional<LevelRewardConfig> findById(Long id) {
+        return mapper.selectById(id);
+    }
+
+    @Override
     public Optional<LevelRewardConfig> findByLevel(int level) {
         return mapper.selectByLevel(level);
     }
 
     @Override
+    public Optional<LevelRewardConfig> findDeletedByLevel(int level) {
+        return mapper.selectDeletedByLevel(level);
+    }
+
+    @Override
     public List<LevelRewardConfig> findAllEnabled() {
         return mapper.selectAllEnabled();
+    }
+
+    @Override
+    public List<LevelRewardConfig> findAll() {
+        return mapper.selectAll();
+    }
+
+    @Override
+    public boolean update(LevelRewardConfig config) {
+        return mapper.updateById(config) > 0;
+    }
+
+    @Override
+    public Long insert(LevelRewardConfig config) {
+        mapper.insert(config);
+        return config.getId();
+    }
+
+    @Override
+    public boolean restore(LevelRewardConfig config) {
+        return mapper.restoreById(config) > 0;
+    }
+
+    @Override
+    public boolean softDelete(Long id, int version) {
+        return mapper.softDelete(id, version) > 0;
     }
 }

@@ -152,11 +152,13 @@ const doSignIn = async () => {
 
 // ── 积分流水 ─────────────────────────────────────────────────────
 const journalTab = ref('points'); // 'points' | 'exp' | 'revenue'
+const journalDisplayTab = ref('points');
 const journals = ref([]);
 const journalTotal = ref(0);
 const journalPage = ref(1);
 const journalSize = 15;
 const journalLoading = ref(false);
+const journalPendingTab = ref('');
 const journalError = ref('');
 const journalCache = ref({});
 
@@ -252,79 +254,105 @@ const revenueStatusMeta = (status) => REVENUE_STATUS_META[status] || {
 
 const getJournalCacheKey = (tab = journalTab.value, page = journalPage.value) => `${tab}:${page}`;
 
-const applyJournalData = (items, total) => {
+const applyJournalData = (tab, page, items, total) => {
+    journalDisplayTab.value = tab;
+    journalPage.value = page;
     journals.value = items;
     journalTotal.value = total;
 };
 
+const fetchJournalData = async (tab, page) => {
+    let nextItems = [];
+    let nextTotal = 0;
+    if (tab === 'points') {
+        const result = await getPointJournalsApi({page, size: journalSize});
+        nextItems = result.items || result.records || result || [];
+        nextTotal = result.total || nextItems.length;
+    } else if (tab === 'exp') {
+        const data = await getMyExpJournalsApi(50);
+        nextItems = Array.isArray(data) ? data : [];
+        nextTotal = nextItems.length;
+    } else if (tab === 'revenue') {
+        const result = await getMyRevenueApi({page, size: journalSize});
+        nextItems = result.items || result.records || result || [];
+        nextTotal = result.total || nextItems.length;
+    }
+    return {items: nextItems, total: nextTotal};
+};
+
 const loadJournals = async (options = {}) => {
-    const { force = false } = options;
-    const requestedTab = journalTab.value;
-    const requestedPage = journalPage.value;
+    const {
+        force = false,
+        tab = journalTab.value,
+        page = journalPage.value,
+        background = false,
+    } = options;
+    const requestedTab = tab;
+    const requestedPage = page;
     const cacheKey = getJournalCacheKey(requestedTab, requestedPage);
     if (!force && journalCache.value[cacheKey]) {
         const cached = journalCache.value[cacheKey];
-        applyJournalData(cached.items, cached.total);
-        journalError.value = '';
-        journalLoading.value = false;
+        if (!background) {
+            applyJournalData(requestedTab, requestedPage, cached.items, cached.total);
+            journalError.value = '';
+            journalLoading.value = false;
+            journalPendingTab.value = '';
+        }
         return;
     }
-    journalLoading.value = true;
-    journalError.value = '';
+    if (!background) {
+        journalLoading.value = true;
+        journalPendingTab.value = requestedTab;
+        journalError.value = '';
+    }
     try {
-        let nextItems = [];
-        let nextTotal = 0;
-        if (requestedTab === 'points') {
-            const result = await getPointJournalsApi({page: requestedPage, size: journalSize});
-            nextItems = result.items || result.records || result || [];
-            nextTotal = result.total || nextItems.length;
-        } else if (requestedTab === 'exp') {
-            const data = await getMyExpJournalsApi(50);
-            nextItems = Array.isArray(data) ? data : [];
-            nextTotal = nextItems.length;
-        } else if (requestedTab === 'revenue') {
-            const result = await getMyRevenueApi({page: requestedPage, size: journalSize});
-            nextItems = result.items || result.records || result || [];
-            nextTotal = result.total || nextItems.length;
-        }
+        const {items: nextItems, total: nextTotal} = await fetchJournalData(requestedTab, requestedPage);
         journalCache.value = {
             ...journalCache.value,
             [cacheKey]: {items: nextItems, total: nextTotal}
         };
-        if (journalTab.value === requestedTab && journalPage.value === requestedPage) {
-            applyJournalData(nextItems, nextTotal);
+        if (!background && journalTab.value === requestedTab) {
+            applyJournalData(requestedTab, requestedPage, nextItems, nextTotal);
         }
     } catch (e) {
-        if (journalTab.value === requestedTab && journalPage.value === requestedPage) {
+        if (!background && journalTab.value === requestedTab) {
             journalError.value = e.message || '加载失败';
-            applyJournalData([], 0);
+            applyJournalData(requestedTab, requestedPage, [], 0);
         }
     } finally {
-        if (journalTab.value === requestedTab && journalPage.value === requestedPage) {
+        if (!background && journalPendingTab.value === requestedTab) {
             journalLoading.value = false;
+            journalPendingTab.value = '';
         }
     }
 };
 
 const switchTab = (tab) => {
+    if (journalTab.value === tab && !journalLoading.value) return;
     journalTab.value = tab;
-    journalPage.value = 1;
-    loadJournals();
+    loadJournals({tab, page: 1});
+};
+
+const warmJournalCache = () => {
+    ['exp', 'revenue'].forEach((tab) => {
+        loadJournals({tab, page: 1, background: true}).catch(() => {});
+    });
 };
 
 const journalTotalPages = computed(() => Math.ceil(journalTotal.value / journalSize) || 1);
+const journalInitialLoading = computed(() =>
+    journalLoading.value && journalDisplayTab.value === journalTab.value && journals.value.length === 0
+);
 
 const prevPage = () => {
-    if (journalPage.value > 1) {
-        journalPage.value--;
-        loadJournals();
+    if (journalPage.value > 1 && !journalLoading.value) {
+        loadJournals({tab: journalTab.value, page: journalPage.value - 1});
     }
 };
 
 const nextPage = () => {
-    if (journalPage.value < journalTotalPages.value) {
-        journalPage.value++;
-        loadJournals();
+    if (journalPage.value < journalTotalPages.value && !journalLoading.value) {
+        loadJournals({tab: journalTab.value, page: journalPage.value + 1});
     }
 };
 
@@ -383,7 +411,8 @@ const isFutureDate = (dateStr) => {
 
 onMounted(async () => {
     await Promise.all([loadGrowth(), loadAccount(), loadCalendar(calendarMonth.value)]);
-    loadJournals();
+    await loadJournals({tab: 'points', page: 1});
+    warmJournalCache();
 });
 </script>
 
@@ -513,35 +542,41 @@ onMounted(async () => {
                 <div class="journal-tabs">
                     <button
                         type="button"
-                        :class="['tab-btn', {active: journalTab === 'points'}]"
+                        :class="['tab-btn', {
+                            active: journalTab === 'points',
+                            loading: journalLoading && journalPendingTab === 'points'
+                        }]"
                         @click="switchTab('points')"
                     >积分流水</button>
                     <button
                         type="button"
-                        :class="['tab-btn', {active: journalTab === 'exp'}]"
+                        :class="['tab-btn', {
+                            active: journalTab === 'exp',
+                            loading: journalLoading && journalPendingTab === 'exp'
+                        }]"
                         @click="switchTab('exp')"
                     >经验流水</button>
                     <button
                         type="button"
-                        :class="['tab-btn', {active: journalTab === 'revenue'}]"
+                        :class="['tab-btn', {
+                            active: journalTab === 'revenue',
+                            loading: journalLoading && journalPendingTab === 'revenue'
+                        }]"
                         @click="switchTab('revenue')"
                     >分账收益</button>
                 </div>
 
                 <div class="journal-content" :aria-busy="journalLoading">
-                    <div v-if="journalLoading" class="journal-loading">加载中...</div>
+                    <div v-if="journalInitialLoading" class="journal-loading">加载中...</div>
                     <div v-else-if="journalError" class="journal-error">{{ journalError }}</div>
                     <template v-else-if="journals.length > 0">
                         <table class="journal-table">
                             <thead>
-                                <tr v-if="journalTab !== 'revenue'">
+                                <tr v-if="journalDisplayTab !== 'revenue'">
                                     <th>类型</th>
-                                    <th v-if="journalTab === 'points'">变动</th>
-                                    <th v-if="journalTab === 'points'">余额</th>
-                                    <th v-if="journalTab === 'exp'">经验值</th>
-                                    <th v-if="journalTab === 'revenue'">总积分</th>
-                                    <th v-if="journalTab === 'revenue'">作者分成</th>
-                                    <th v-if="journalTab === 'revenue'">结算状态</th>
+                                    <th v-if="journalDisplayTab === 'points'">变动</th>
+                                    <th v-if="journalDisplayTab === 'points'">余额</th>
+                                    <th v-if="journalDisplayTab === 'exp'">经验值</th>
                                     <th>说明</th>
                                     <th>时间</th>
                                 </tr>
@@ -558,7 +593,7 @@ onMounted(async () => {
                             </thead>
                             <tbody>
                                 <!-- 积分流水 -->
-                                <template v-if="journalTab === 'points'">
+                                <template v-if="journalDisplayTab === 'points'">
                                     <tr v-for="item in journals" :key="item.id || item.bizNo">
                                         <td><span class="tag-chip">{{ sourceLabel(item.sourceType) }}</span></td>
                                         <td :class="['delta', item.delta > 0 ? 'plus' : 'minus']">
@@ -586,7 +621,7 @@ onMounted(async () => {
                                     </tr>
                                 </template>
                                 <!-- 经验流水 -->
-                                <template v-if="journalTab === 'exp'">
+                                <template v-if="journalDisplayTab === 'exp'">
                                     <tr v-for="item in journals" :key="item.id">
                                         <td><span class="tag-chip">{{ sourceLabel(item.eventType) }}</span></td>
                                         <td :class="['delta', 'plus']">+{{ item.delta ?? item.expAmount ?? 0 }}</td>
@@ -595,7 +630,7 @@ onMounted(async () => {
                                     </tr>
                                 </template>
                                 <!-- 分账收益 -->
-                                <template v-if="journalTab === 'revenue'">
+                                <template v-if="journalDisplayTab === 'revenue'">
                                     <tr v-for="item in journals" :key="item.id || item.orderNo">
                                         <td class="article-cell">
                                             <RouterLink
@@ -633,17 +668,24 @@ onMounted(async () => {
                         </table>
 
                         <!-- 分页 -->
-                        <div v-if="journalTab !== 'exp'" class="journal-pagination">
-                            <button type="button" :disabled="journalPage <= 1" @click="prevPage">上一页</button>
+                        <div v-if="journalDisplayTab !== 'exp'" class="journal-pagination">
+                            <button
+                                type="button"
+                                :disabled="journalLoading || journalPage <= 1"
+                                @click="prevPage"
+                            >上一页</button>
                             <span>第 {{ journalPage }} / {{ journalTotalPages }} 页</span>
                             <button
                                 type="button"
-                                :disabled="journalPage >= journalTotalPages"
+                                :disabled="journalLoading || journalPage >= journalTotalPages"
                                 @click="nextPage"
                             >下一页</button>
                         </div>
                     </template>
                     <div v-else class="journal-empty">暂无记录</div>
+                    <div v-if="journalLoading && !journalInitialLoading" class="journal-loading-overlay">
+                        加载中...
+                    </div>
                 </div>
             </section>
         </section>
@@ -993,9 +1035,14 @@ onMounted(async () => {
     border-bottom-color: var(--accent, #6c63ff);
 }
 
+.tab-btn.loading {
+    opacity: 0.72;
+}
+
 .tab-btn:not(.active):hover { color: var(--text); }
 
 .journal-content {
+    position: relative;
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -1012,6 +1059,24 @@ onMounted(async () => {
     justify-content: center;
     color: var(--text-muted);
     font-size: 14px;
+}
+
+.journal-loading-overlay {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 10px;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(239, 246, 255, 0.96);
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+    pointer-events: none;
 }
 
 .journal-error {

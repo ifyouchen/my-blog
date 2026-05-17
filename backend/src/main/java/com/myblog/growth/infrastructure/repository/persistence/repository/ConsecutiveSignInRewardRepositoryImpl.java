@@ -24,6 +24,11 @@ public class ConsecutiveSignInRewardRepositoryImpl implements ConsecutiveSignInR
     }
 
     @Override
+    public Optional<ConsecutiveSignInRewardConfig> findById(Long id) {
+        return mapper.selectById(id);
+    }
+
+    @Override
     public List<ConsecutiveSignInRewardConfig> findAllEnabled() {
         return mapper.selectAllEnabled();
     }
@@ -31,5 +36,26 @@ public class ConsecutiveSignInRewardRepositoryImpl implements ConsecutiveSignInR
     @Override
     public Optional<ConsecutiveSignInRewardConfig> findByConsecutiveDays(int consecutiveDays) {
         return mapper.selectByConsecutiveDays(consecutiveDays);
+    }
+
+    @Override
+    public List<ConsecutiveSignInRewardConfig> findAll() {
+        return mapper.selectAll();
+    }
+
+    @Override
+    public boolean update(ConsecutiveSignInRewardConfig config) {
+        return mapper.updateById(config) > 0;
+    }
+
+    @Override
+    public Long insert(ConsecutiveSignInRewardConfig config) {
+        mapper.insert(config);
+        return config.getId();
+    }
+
+    @Override
+    public boolean softDelete(Long id, int version) {
+        return mapper.softDelete(id, version) > 0;
     }
 }

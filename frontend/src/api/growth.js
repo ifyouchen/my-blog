@@ -227,6 +227,137 @@ export const getAdminRevenueSharesApi = (params = {}) => {
 export const retryRevenueShareSettlementApi = (orderNo) =>
     request(`/admin/revenue-shares/${encodeURIComponent(orderNo)}/retry`, {method: 'POST'});
 
+// ─────────────────────── 管理员接口：奖励配置 ─────────────────────
+
+/**
+ * 管理员查询等级奖励配置.
+ * @returns {Promise<Array>}
+ */
+export const getAdminLevelRewardsApi = () =>
+    request('/admin/rewards/level');
+
+/**
+ * 管理员新增等级奖励配置.
+ * @param {{level: number, rewardPoints: number, rewardTitle?: string, description?: string, enabled: boolean}} payload
+ * @returns {Promise<number>}
+ */
+export const createAdminLevelRewardApi = (payload) =>
+    request('/admin/rewards/level', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+
+/**
+ * 管理员更新等级奖励配置.
+ * @param {{id: number, level: number, rewardPoints: number, rewardTitle?: string, description?: string, enabled: boolean, version: number}} payload
+ * @returns {Promise<void>}
+ */
+export const updateAdminLevelRewardApi = (payload) =>
+    request(`/admin/rewards/level/${payload.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    });
+
+/**
+ * 管理员软删除等级奖励配置.
+ * @param {number} id 配置 ID
+ * @param {number} version 当前版本
+ * @returns {Promise<void>}
+ */
+export const deleteAdminLevelRewardApi = (id, version) =>
+    request(`/admin/rewards/level/${id}?version=${version}`, {method: 'DELETE'});
+
+/**
+ * 管理员查询连续签到奖励配置.
+ * @returns {Promise<Array>}
+ */
+export const getAdminConsecutiveRewardsApi = () =>
+    request('/admin/rewards/sign-in/consecutive');
+
+/**
+ * 管理员新增连续签到奖励配置.
+ * @param {{minDays: number, maxDays?: number|null, bonusPoints: number, rewardTier?: string, rewardDesc?: string, enabled: boolean}} payload
+ * @returns {Promise<number>}
+ */
+export const createAdminConsecutiveRewardApi = (payload) =>
+    request('/admin/rewards/sign-in/consecutive', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+
+/**
+ * 管理员更新连续签到奖励配置.
+ * @param {{id: number, minDays: number, maxDays?: number|null, bonusPoints: number, rewardTier?: string, rewardDesc?: string, enabled: boolean, version: number}} payload
+ * @returns {Promise<void>}
+ */
+export const updateAdminConsecutiveRewardApi = (payload) =>
+    request(`/admin/rewards/sign-in/consecutive/${payload.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    });
+
+/**
+ * 管理员软删除连续签到奖励配置.
+ * @param {number} id 配置 ID
+ * @param {number} version 当前版本
+ * @returns {Promise<void>}
+ */
+export const deleteAdminConsecutiveRewardApi = (id, version) =>
+    request(`/admin/rewards/sign-in/consecutive/${id}?version=${version}`, {method: 'DELETE'});
+
+/**
+ * 管理员查询累计签到里程碑配置.
+ * @returns {Promise<Array>}
+ */
+export const getAdminCumulativeRewardsApi = () =>
+    request('/admin/rewards/sign-in/cumulative');
+
+/**
+ * 管理员新增累计签到里程碑配置.
+ * @param {{milestoneDays: number, rewardPoints: number, rewardTitle?: string, badgeCode?: string, description?: string, enabled: boolean}} payload
+ * @returns {Promise<number>}
+ */
+export const createAdminCumulativeRewardApi = (payload) =>
+    request('/admin/rewards/sign-in/cumulative', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+
+/**
+ * 管理员更新累计签到里程碑配置.
+ * @param {{id: number, milestoneDays: number, rewardPoints: number, rewardTitle?: string, badgeCode?: string, description?: string, enabled: boolean, version: number}} payload
+ * @returns {Promise<void>}
+ */
+export const updateAdminCumulativeRewardApi = (payload) =>
+    request(`/admin/rewards/sign-in/cumulative/${payload.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    });
+
+/**
+ * 管理员软删除累计签到里程碑配置.
+ * @param {number} id 配置 ID
+ * @param {number} version 当前版本
+ * @returns {Promise<void>}
+ */
+export const deleteAdminCumulativeRewardApi = (id, version) =>
+    request(`/admin/rewards/sign-in/cumulative/${id}?version=${version}`, {method: 'DELETE'});
+
+/**
+ * 管理员分页查询奖励领取记录.
+ * @param {{userId?: number|string, rewardType?: string, page?: number, size?: number}} params
+ * @returns {Promise<PageResult>}
+ */
+export const getAdminRewardGrantLogsApi = (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.userId) query.set('userId', params.userId);
+    if (params.rewardType) query.set('rewardType', params.rewardType);
+    if (params.page) query.set('page', params.page);
+    if (params.size) query.set('size', params.size);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request(`/admin/rewards/grant-logs${suffix}`);
+};
+
 // ─────────────────────── 管理员接口：积分规则 ─────────────────────
 
 /**

@@ -21,11 +21,26 @@
         created_at, updated_at, version
     </sql>
 
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_consecutive_reward_config
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
     <select id="selectAllEnabled" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM sign_in_consecutive_reward_config
         WHERE enabled = 1
           AND deleted_at IS NULL
+        ORDER BY min_days ASC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_consecutive_reward_config
+        WHERE deleted_at IS NULL
         ORDER BY min_days ASC
     </select>
 
@@ -50,6 +65,23 @@
             enabled      = #{enabled},
             version      = version + 1
         WHERE id = #{id}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sign_in_consecutive_reward_config
+            (min_days, max_days, bonus_points, reward_tier, reward_desc, enabled)
+        VALUES
+            (#{minDays}, #{maxDays}, #{bonusPoints}, #{rewardTier}, #{rewardDesc}, #{enabled})
+    </insert>
+
+    <update id="softDelete">
+        UPDATE sign_in_consecutive_reward_config
+        SET deleted_at = NOW(),
+            version    = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
           AND deleted_at IS NULL
     </update>
 

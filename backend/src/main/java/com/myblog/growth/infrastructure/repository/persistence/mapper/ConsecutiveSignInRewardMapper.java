@@ -17,9 +17,19 @@ import java.util.Optional;
 public interface ConsecutiveSignInRewardMapper {
 
     /**
+     * 根据主键查询.
+     */
+    Optional<ConsecutiveSignInRewardConfig> selectById(@Param("id") Long id);
+
+    /**
      * 查询所有启用的配置.
      */
     List<ConsecutiveSignInRewardConfig> selectAllEnabled();
+
+    /**
+     * 查询全部未删除配置.
+     */
+    List<ConsecutiveSignInRewardConfig> selectAll();
 
     /**
      * 根据连续天数查找匹配的配置.
@@ -30,4 +40,14 @@ public interface ConsecutiveSignInRewardMapper {
      * 更新配置.
      */
     int updateById(ConsecutiveSignInRewardConfig config);
+
+    /**
+     * 插入配置.
+     */
+    int insert(ConsecutiveSignInRewardConfig config);
+
+    /**
+     * 软删除配置.
+     */
+    int softDelete(@Param("id") Long id, @Param("version") int version);
 }

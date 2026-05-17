@@ -3,9 +3,12 @@ import {onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import GrowthRuleTab from '@/views/admin/GrowthRuleTab.vue';
 import LevelThresholdTab from '@/views/admin/LevelThresholdTab.vue';
+import LevelRewardTab from '@/views/admin/LevelRewardTab.vue';
 import PointRuleTab from '@/views/admin/PointRuleTab.vue';
 import PointAccountTab from '@/views/admin/PointAccountTab.vue';
 import RevenueShareTab from '@/views/admin/RevenueShareTab.vue';
+import RewardGrantLogTab from '@/views/admin/RewardGrantLogTab.vue';
+import SignInRewardTab from '@/views/admin/SignInRewardTab.vue';
 import {getAdminGrowthRulesApi, getAdminPointRulesApi, getAdminRevenueSharesApi} from '@/api/growth';
 
 const route = useRoute();
@@ -15,8 +18,11 @@ const TABS = [
     {key: 'dashboard', label: '概览'},
     {key: 'rules', label: '经验规则'},
     {key: 'thresholds', label: '等级配置'},
+    {key: 'level-rewards', label: '等级奖励'},
+    {key: 'sign-in-rewards', label: '签到奖励'},
     {key: 'point-rules', label: '积分规则'},
     {key: 'points', label: '积分账户'},
+    {key: 'reward-logs', label: '奖励记录'},
     {key: 'revenue', label: '分账流水'},
 ];
 
@@ -143,11 +149,20 @@ onMounted(() => {
         <!-- ==================== 等级阈值 ==================== -->
         <LevelThresholdTab v-if="activeTab === 'thresholds'" />
 
+        <!-- ==================== 等级奖励 ==================== -->
+        <LevelRewardTab v-if="activeTab === 'level-rewards'" />
+
+        <!-- ==================== 签到奖励 ==================== -->
+        <SignInRewardTab v-if="activeTab === 'sign-in-rewards'" />
+
         <!-- ==================== 积分规则 ==================== -->
         <PointRuleTab v-if="activeTab === 'point-rules'" />
 
         <!-- ==================== 积分账户 ==================== -->
         <PointAccountTab v-if="activeTab === 'points'" />
+
+        <!-- ==================== 奖励记录 ==================== -->
+        <RewardGrantLogTab v-if="activeTab === 'reward-logs'" />
 
         <!-- ==================== 分账流水 ==================== -->
         <RevenueShareTab v-if="activeTab === 'revenue'" />

@@ -36,4 +36,24 @@ public interface RewardGrantLogRepository {
      * @return 领取记录列表
      */
     List<RewardGrantLog> findByUserId(Long userId);
+
+    /**
+     * 管理端分页总数查询.
+     *
+     * @param userId     用户ID（可选）
+     * @param rewardType 奖励类型（可选）
+     * @return 总数
+     */
+    long countForAdmin(Long userId, String rewardType);
+
+    /**
+     * 管理端分页查询.
+     *
+     * @param userId     用户ID（可选）
+     * @param rewardType 奖励类型（可选）
+     * @param offset     偏移量
+     * @param limit      每页数量
+     * @return 记录列表
+     */
+    List<RewardGrantLog> findPageForAdmin(Long userId, String rewardType, int offset, int limit);
 }

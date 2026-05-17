@@ -39,4 +39,20 @@
         ORDER BY granted_at DESC
     </select>
 
+    <select id="countForAdmin" resultType="long">
+        SELECT COUNT(*)
+        FROM user_reward_grant_log
+        WHERE (#{userId} IS NULL OR user_id = #{userId})
+          AND (#{rewardType} IS NULL OR #{rewardType} = '' OR reward_type = #{rewardType})
+    </select>
+
+    <select id="selectPageForAdmin" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_reward_grant_log
+        WHERE (#{userId} IS NULL OR user_id = #{userId})
+          AND (#{rewardType} IS NULL OR #{rewardType} = '' OR reward_type = #{rewardType})
+        ORDER BY granted_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
 </mapper>

@@ -21,11 +21,26 @@
         created_at, updated_at, version
     </sql>
 
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_cumulative_reward_config
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
     <select id="selectAllEnabled" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM sign_in_cumulative_reward_config
         WHERE enabled = 1
           AND deleted_at IS NULL
+        ORDER BY milestone_days ASC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_cumulative_reward_config
+        WHERE deleted_at IS NULL
         ORDER BY milestone_days ASC
     </select>
 
@@ -38,6 +53,14 @@
         ORDER BY milestone_days ASC
     </select>
 
+    <select id="selectDeletedByMilestoneDays" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sign_in_cumulative_reward_config
+        WHERE milestone_days = #{milestoneDays}
+          AND deleted_at IS NOT NULL
+        LIMIT 1
+    </select>
+
     <update id="updateById">
         UPDATE sign_in_cumulative_reward_config
         SET milestone_days = #{milestoneDays},
@@ -48,6 +71,38 @@
             enabled        = #{enabled},
             version        = version + 1
         WHERE id = #{id}
+          AND version = #{version}
+          AND deleted_at IS NULL
+    </update>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sign_in_cumulative_reward_config
+            (milestone_days, reward_points, reward_title, badge_code, description, enabled)
+        VALUES
+            (#{milestoneDays}, #{rewardPoints}, #{rewardTitle}, #{badgeCode}, #{description}, #{enabled})
+    </insert>
+
+    <update id="restoreById">
+        UPDATE sign_in_cumulative_reward_config
+        SET milestone_days = #{milestoneDays},
+            reward_points  = #{rewardPoints},
+            reward_title   = #{rewardTitle},
+            badge_code     = #{badgeCode},
+            description    = #{description},
+            enabled        = #{enabled},
+            deleted_at     = NULL,
+            version        = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
+          AND deleted_at IS NOT NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE sign_in_cumulative_reward_config
+        SET deleted_at = NOW(),
+            version    = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
           AND deleted_at IS NULL
     </update>
 

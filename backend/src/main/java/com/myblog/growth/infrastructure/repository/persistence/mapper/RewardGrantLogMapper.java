@@ -31,4 +31,17 @@ public interface RewardGrantLogMapper {
      * 查询用户的所有领取记录.
      */
     List<RewardGrantLog> selectByUserId(@Param("userId") Long userId);
+
+    /**
+     * 管理端总数查询.
+     */
+    long countForAdmin(@Param("userId") Long userId, @Param("rewardType") String rewardType);
+
+    /**
+     * 管理端分页查询.
+     */
+    List<RewardGrantLog> selectPageForAdmin(@Param("userId") Long userId,
+                                            @Param("rewardType") String rewardType,
+                                            @Param("offset") int offset,
+                                            @Param("limit") int limit);
 }
