@@ -1,6 +1,8 @@
 <script setup>
 import {computed, onMounted, reactive, ref} from 'vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import {useToast} from '@/composables/useToast';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 import {
     createAdminGrowthRuleApi,
     deleteAdminGrowthRuleApi,
@@ -11,6 +13,12 @@ import {formatAdminDateTime} from '@/views/admin/adminShared';
 import ADrawer from '@/components/ADrawer.vue';
 
 const toast = useToast();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const toLocalDateTimeInput = (value) => {
     if (!value) return '';
@@ -205,55 +213,64 @@ const saveGrowthRule = async () => {
 
 const deleteGrowthRule = async (row) => {
     if (!row.id || row.version === undefined) return;
-    if (!confirm(`确定要删除「${ruleEventLabel(row.eventType)} · ${ruleRoleLabel(row.role)}」规则吗？`)) {
-        return;
-    }
-    growthRulesError.value = '';
-    try {
-        await deleteAdminGrowthRuleApi(row.id, row.version);
-        toast.success('经验规则已删除');
-        await loadGrowthRules();
-    } catch (e) {
-        const msg = e.message || '删除失败';
-        if (msg.includes('OPTIMISTIC_LOCK') || msg.includes('version') || msg.includes('刷新')) {
-            growthRulesError.value = '删除失败：数据已被其他人修改，请刷新后重试';
-        } else {
-            growthRulesError.value = msg;
+    openConfirmDialog({
+        title: '删除经验规则',
+        message: `确定要删除「${ruleEventLabel(row.eventType)} · ${ruleRoleLabel(row.role)}」规则吗？`,
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            growthRulesError.value = '';
+            try {
+                await deleteAdminGrowthRuleApi(row.id, row.version);
+                toast.success('经验规则已删除');
+                await loadGrowthRules();
+            } catch (e) {
+                const msg = e.message || '删除失败';
+                if (msg.includes('OPTIMISTIC_LOCK') || msg.includes('version') || msg.includes('刷新')) {
+                    growthRulesError.value = '删除失败：数据已被其他人修改，请刷新后重试';
+                } else {
+                    growthRulesError.value = msg;
+                }
+                toast.error(growthRulesError.value);
+            }
         }
-        toast.error(growthRulesError.value);
-    }
+    });
 };
 
 const applyRecommendedRules = async () => {
-    if (!confirm('确定应用推荐经验方案吗？相同行为和角色的规则会被更新，缺失规则会自动新增。')) {
-        return;
-    }
-    growthRuleSaving.value = true;
-    growthRulesError.value = '';
-    try {
-        const latestByKey = new Map(
-            growthRules.value.map((rule) => [`${rule.eventType}:${rule.role}`, rule])
-        );
-        for (const preset of RECOMMENDED_RULES) {
-            const existing = latestByKey.get(`${preset.eventType}:${preset.role}`);
-            if (existing?.id) {
-                await updateAdminGrowthRuleApi({
-                    ...preset,
-                    id: existing.id,
-                    version: existing.version ?? 0,
-                });
-            } else {
-                await createAdminGrowthRuleApi(preset);
+    openConfirmDialog({
+        title: '应用推荐经验方案',
+        message: '相同行为和角色的规则会被更新，缺失规则会自动新增。',
+        confirmText: '应用方案',
+        onConfirm: async () => {
+            growthRuleSaving.value = true;
+            growthRulesError.value = '';
+            try {
+                const latestByKey = new Map(
+                    growthRules.value.map((rule) => [`${rule.eventType}:${rule.role}`, rule])
+                );
+                for (const preset of RECOMMENDED_RULES) {
+                    const existing = latestByKey.get(`${preset.eventType}:${preset.role}`);
+                    if (existing?.id) {
+                        await updateAdminGrowthRuleApi({
+                            ...preset,
+                            id: existing.id,
+                            version: existing.version ?? 0,
+                        });
+                    } else {
+                        await createAdminGrowthRuleApi(preset);
+                    }
+                }
+                toast.success('推荐经验方案已应用');
+                await loadGrowthRules();
+            } catch (e) {
+                growthRulesError.value = e.message || '推荐经验方案应用失败';
+                toast.error(growthRulesError.value);
+            } finally {
+                growthRuleSaving.value = false;
             }
         }
-        toast.success('推荐经验方案已应用');
-        await loadGrowthRules();
-    } catch (e) {
-        growthRulesError.value = e.message || '推荐经验方案应用失败';
-        toast.error(growthRulesError.value);
-    } finally {
-        growthRuleSaving.value = false;
-    }
+    });
 };
 
 // ── Actions ─────────────────────────────────────────────────────────
@@ -476,6 +493,18 @@ defineExpose({loadGrowthRules});
                 </button>
             </template>
         </ADrawer>
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
 

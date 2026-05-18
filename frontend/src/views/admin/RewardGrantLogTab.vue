@@ -2,6 +2,7 @@
 import {onMounted, reactive, ref} from 'vue';
 import {getAdminRewardGrantLogsApi} from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
+import AdminSelect from '@/components/admin/AdminSelect.vue';
 
 const REWARD_TYPE_OPTIONS = [
     {value: '', label: '全部奖励类型'},
@@ -75,11 +76,12 @@ onMounted(() => {
                 class="ag-input toolbar-input"
                 @keydown.enter="search"
             />
-            <select v-model="filters.rewardType" class="ag-input toolbar-select" @change="search">
-                <option v-for="option in REWARD_TYPE_OPTIONS" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                </option>
-            </select>
+            <AdminSelect
+                v-model="filters.rewardType"
+                class="toolbar-select"
+                :options="REWARD_TYPE_OPTIONS"
+                @change="search"
+            />
             <button type="button" class="ag-btn primary" :disabled="pageState.loading" @click="search">
                 {{ pageState.loading ? '加载中...' : '查询' }}
             </button>

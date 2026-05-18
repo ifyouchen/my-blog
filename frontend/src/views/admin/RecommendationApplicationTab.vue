@@ -5,6 +5,7 @@ import {
     getAdminRecommendationApplicationsApi,
     rejectAdminRecommendationApplicationApi
 } from '@/api/growth';
+import AdminSelect from '@/components/admin/AdminSelect.vue';
 
 const STATUS_OPTIONS = [
     { value: '', label: '全部状态' },
@@ -94,11 +95,7 @@ onMounted(loadApplications);
         <p class="ag-hint">审核通过后会直接沿用现有首页精选逻辑，不会新增第二套推荐渲染链路。</p>
 
         <div class="ag-query-row">
-            <select v-model="status" class="ag-input">
-                <option v-for="option in STATUS_OPTIONS" :key="option.value || 'all'" :value="option.value">
-                    {{ option.label }}
-                </option>
-            </select>
+            <AdminSelect v-model="status" :options="STATUS_OPTIONS" />
             <button type="button" class="ag-btn secondary" :disabled="loading" @click="loadApplications">
                 {{ loading ? '刷新中...' : '刷新列表' }}
             </button>

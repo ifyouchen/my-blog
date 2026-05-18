@@ -1,6 +1,8 @@
 <script setup>
 import {computed, onMounted, reactive, ref} from 'vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import {useToast} from '@/composables/useToast';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 import {
     createAdminPointRuleApi,
     deleteAdminPointRuleApi,
@@ -8,8 +10,15 @@ import {
     updateAdminPointRuleApi,
 } from '@/api/growth';
 import ADrawer from '@/components/ADrawer.vue';
+import AdminSelect from '@/components/admin/AdminSelect.vue';
 
 const toast = useToast();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const SOURCE_TYPE_OPTIONS = [
     {value: 'SIGN_IN', label: '签到基础积分'},
@@ -174,42 +183,55 @@ const applyTemplate = (tmpl) => {
 
 const restorePointRule = async (row) => {
     if (!row.id || row.version === undefined) return;
-    if (!confirm(`确定要恢复 ${sourceTypeLabel(row.sourceType)} 规则吗？`)) return;
-    pointRulesError.value = '';
-    try {
-        await createAdminPointRuleApi({
-            sourceType: row.sourceType,
-            pointAmount: row.pointAmount,
-            dailyLimit: row.dailyLimit,
-            enabled: row.enabled,
-            reason: '管理员恢复已删除规则',
-        });
-        toast.success('积分规则已恢复');
-        await loadPointRules();
-    } catch (e) {
-        const msg = e.message || '恢复失败';
-        pointRulesError.value = msg;
-        toast.error(msg);
-    }
+    openConfirmDialog({
+        title: '恢复积分规则',
+        message: `确定要恢复 ${sourceTypeLabel(row.sourceType)} 规则吗？`,
+        confirmText: '恢复',
+        onConfirm: async () => {
+            pointRulesError.value = '';
+            try {
+                await createAdminPointRuleApi({
+                    sourceType: row.sourceType,
+                    pointAmount: row.pointAmount,
+                    dailyLimit: row.dailyLimit,
+                    enabled: row.enabled,
+                    reason: '管理员恢复已删除规则',
+                });
+                toast.success('积分规则已恢复');
+                await loadPointRules();
+            } catch (e) {
+                const msg = e.message || '恢复失败';
+                pointRulesError.value = msg;
+                toast.error(msg);
+            }
+        }
+    });
 };
 
 const deletePointRule = async (row) => {
     if (!row.id || row.version === undefined) return;
-    if (!confirm(`确定要删除 ${sourceTypeLabel(row.sourceType)} 规则吗？`)) return;
-    pointRulesError.value = '';
-    try {
-        await deleteAdminPointRuleApi(row.id, row.version);
-        toast.success('积分规则已删除');
-        await loadPointRules();
-    } catch (e) {
-        const msg = e.message || '删除失败';
-        if (msg.includes('OPTIMISTIC_LOCK') || msg.includes('version') || msg.includes('刷新')) {
-            pointRulesError.value = '删除失败：数据已被其他人修改，请刷新后重试';
-        } else {
-            pointRulesError.value = msg;
+    openConfirmDialog({
+        title: '删除积分规则',
+        message: `确定要删除 ${sourceTypeLabel(row.sourceType)} 规则吗？`,
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            pointRulesError.value = '';
+            try {
+                await deleteAdminPointRuleApi(row.id, row.version);
+                toast.success('积分规则已删除');
+                await loadPointRules();
+            } catch (e) {
+                const msg = e.message || '删除失败';
+                if (msg.includes('OPTIMISTIC_LOCK') || msg.includes('version') || msg.includes('刷新')) {
+                    pointRulesError.value = '删除失败：数据已被其他人修改，请刷新后重试';
+                } else {
+                    pointRulesError.value = msg;
+                }
+                toast.error(pointRulesError.value);
+            }
         }
-        toast.error(pointRulesError.value);
-    }
+    });
 };
 
 onMounted(() => { loadPointRules(); });
@@ -293,9 +315,7 @@ defineExpose({loadPointRules});
             <div class="ag-form drawer-form">
                 <div class="form-row">
                     <label class="form-label">来源类型</label>
-                    <select v-model="pointRuleForm.sourceType" class="ag-input">
-                        <option v-for="option in SOURCE_TYPE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-                    </select>
+                    <AdminSelect v-model="pointRuleForm.sourceType" :options="SOURCE_TYPE_OPTIONS" />
                 </div>
                 <div class="form-row">
                     <label class="form-label">{{ pointAmountLabel }}</label>
@@ -331,6 +351,18 @@ defineExpose({loadPointRules});
                 </button>
             </template>
         </ADrawer>
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
 

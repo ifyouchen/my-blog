@@ -7,6 +7,7 @@ import {
     adminGetPointJournalsApi,
 } from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
+import AdminSelect from '@/components/admin/AdminSelect.vue';
 
 const toast = useToast();
 
@@ -156,11 +157,12 @@ const changeQueryType = () => {
     <section class="ag-section">
         <h2 class="ag-section-title">查询用户积分</h2>
         <div class="ag-query-row">
-            <select v-model="queryType" class="ag-input query-type-select" @change="changeQueryType">
-                <option v-for="option in QUERY_TYPE_OPTIONS" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                </option>
-            </select>
+            <AdminSelect
+                v-model="queryType"
+                class="query-type-select"
+                :options="QUERY_TYPE_OPTIONS"
+                @change="changeQueryType"
+            />
             <input
                 v-model="queryUserId"
                 type="text"
@@ -198,15 +200,12 @@ const changeQueryType = () => {
                     <h2 class="ag-section-title">积分流水</h2>
                     <p class="ag-hint">共 {{ journalsTotal }} 条记录，按创建时间倒序展示。</p>
                 </div>
-                <select v-model="journalSourceType" class="ag-input source-filter" @change="changeJournalSourceType">
-                    <option
-                        v-for="option in SOURCE_TYPE_OPTIONS"
-                        :key="option.value"
-                        :value="option.value"
-                    >
-                        {{ option.label }}
-                    </option>
-                </select>
+                <AdminSelect
+                    v-model="journalSourceType"
+                    class="source-filter"
+                    :options="SOURCE_TYPE_OPTIONS"
+                    @change="changeJournalSourceType"
+                />
             </div>
             <div v-if="journalsError" class="ag-error">{{ journalsError }}</div>
             <div v-if="journalsLoading" class="ag-table-empty">积分流水加载中...</div>

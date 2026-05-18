@@ -13,8 +13,16 @@ import {
 } from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
 import ADrawer from '@/components/ADrawer.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const toast = useToast();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const consecutiveRewards = ref([]);
 const cumulativeRewards = ref([]);
@@ -252,10 +260,7 @@ const saveReward = async () => {
     }
 };
 
-const deleteConsecutiveReward = async (row) => {
-    if (!confirm(`确定删除「${rangeLabel(row)}」连续签到奖励吗？该操作会停用并隐藏配置，不影响历史领取记录。`)) {
-        return;
-    }
+const doDeleteConsecutiveReward = async (row) => {
     deletingKey.value = `consecutive-${row.id}`;
     error.value = '';
     try {
@@ -270,10 +275,18 @@ const deleteConsecutiveReward = async (row) => {
     }
 };
 
-const deleteCumulativeReward = async (row) => {
-    if (!confirm(`确定删除「累计签到 ${row.milestoneDays} 天」里程碑吗？该操作会停用并隐藏配置，不影响历史领取记录。`)) {
-        return;
-    }
+const deleteConsecutiveReward = (row) => {
+    openConfirmDialog({
+        eyebrow: '删除确认',
+        title: `删除「${rangeLabel(row)}」连续签到奖励`,
+        message: '该操作会停用并隐藏配置，不影响历史领取记录。',
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: () => doDeleteConsecutiveReward(row)
+    });
+};
+
+const doDeleteCumulativeReward = async (row) => {
     deletingKey.value = `cumulative-${row.id}`;
     error.value = '';
     try {
@@ -286,6 +299,17 @@ const deleteCumulativeReward = async (row) => {
     } finally {
         deletingKey.value = '';
     }
+};
+
+const deleteCumulativeReward = (row) => {
+    openConfirmDialog({
+        eyebrow: '删除确认',
+        title: `删除「累计签到 ${row.milestoneDays} 天」里程碑`,
+        message: '该操作会停用并隐藏配置，不影响历史领取记录。',
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: () => doDeleteCumulativeReward(row)
+    });
 };
 
 const normalizeMax = (value) => value == null || value === '' ? null : Number(value);
@@ -571,6 +595,19 @@ onMounted(loadRewards);
                 </button>
             </template>
         </ADrawer>
+
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </div>
 </template>
 

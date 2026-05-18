@@ -1,5 +1,7 @@
 <script setup>
 import {onMounted, ref} from 'vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 import {useToast} from '@/composables/useToast';
 import {
     getAdminLevelThresholdsApi,
@@ -7,6 +9,12 @@ import {
 } from '@/api/growth';
 
 const toast = useToast();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const levelThresholds = ref([]);
 const thresholdLoading = ref(false);
@@ -63,15 +71,19 @@ const removeThresholdRow = (index) => {
 };
 
 const applyRecommendedThresholds = () => {
-    if (!confirm('确定应用推荐等级曲线吗？当前页面中的等级阈值会被替换，保存后生效。')) {
-        return;
-    }
-    const versionByLevel = new Map(levelThresholds.value.map((row) => [Number(row.level), Number(row.version || 0)]));
-    levelThresholds.value = RECOMMENDED_THRESHOLDS.map((row) => ({
-        ...row,
-        version: versionByLevel.get(row.level) || 0,
-    }));
-    thresholdError.value = '';
+    openConfirmDialog({
+        title: '应用推荐等级曲线',
+        message: '当前页面中的等级阈值会被推荐曲线替换，保存后生效。',
+        confirmText: '应用曲线',
+        onConfirm: () => {
+            const versionByLevel = new Map(levelThresholds.value.map((row) => [Number(row.level), Number(row.version || 0)]));
+            levelThresholds.value = RECOMMENDED_THRESHOLDS.map((row) => ({
+                ...row,
+                version: versionByLevel.get(row.level) || 0,
+            }));
+            thresholdError.value = '';
+        }
+    });
 };
 
 const validateThresholds = () => {
@@ -161,5 +173,17 @@ defineExpose({loadLevelThresholds});
                 {{ thresholdSaving ? '保存中...' : '保存等级阈值' }}
             </button>
         </div>
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>

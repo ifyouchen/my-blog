@@ -6,6 +6,7 @@ import {
     retryRevenueShareSettlementApi,
 } from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
+import AdminSelect from '@/components/admin/AdminSelect.vue';
 
 const toast = useToast();
 
@@ -18,6 +19,12 @@ const REVENUE_STATUS_META = {
     SETTLED: {label: '已入账', className: 'settled'},
     FAILED: {label: '失败待处理', className: 'failed'},
 };
+const REVENUE_STATUS_OPTIONS = [
+    {value: '', label: '全部状态'},
+    {value: 'PENDING', label: '待结算'},
+    {value: 'SETTLED', label: '已入账'},
+    {value: 'FAILED', label: '失败待处理'},
+];
 
 const revenueStatusMeta = (status) => REVENUE_STATUS_META[status] || {label: status || '未知', className: 'pending'};
 const revenueTotalPages = computed(() => Math.max(1, Math.ceil(revenueState.total / revenueState.pageSize)));
@@ -75,12 +82,11 @@ onMounted(() => { loadRevenueShares(); });
         </div>
         <div class="revenue-toolbar">
             <input v-model="revenueFilters.authorId" type="text" placeholder="作者 ID / 用户名 / 邮箱" class="ag-input revenue-author-input" @keydown.enter="searchRevenueShares" />
-            <select v-model="revenueFilters.settlementStatus" class="ag-input revenue-status-select">
-                <option value="">全部状态</option>
-                <option value="PENDING">待结算</option>
-                <option value="SETTLED">已入账</option>
-                <option value="FAILED">失败待处理</option>
-            </select>
+            <AdminSelect
+                v-model="revenueFilters.settlementStatus"
+                class="revenue-status-select"
+                :options="REVENUE_STATUS_OPTIONS"
+            />
             <button type="button" class="ag-btn primary" :disabled="revenueState.loading" @click="searchRevenueShares">
                 {{ revenueState.loading ? '查询中...' : '查询' }}
             </button>

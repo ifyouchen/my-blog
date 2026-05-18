@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, onUnmounted, watch} from 'vue';
+import {onMounted, onUnmounted} from 'vue';
 
 const props = defineProps({
   visible: Boolean,
@@ -39,21 +39,12 @@ const onKeydown = (e) => {
   if (e.key === 'Escape') doClose();
 };
 
-watch(() => props.visible, (v) => {
-  if (v) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = '';
-  }
-});
-
 onMounted(() => {
   document.addEventListener('keydown', onKeydown);
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown);
-  document.body.style.overflow = '';
 });
 </script>
 
@@ -94,6 +85,8 @@ onUnmounted(() => {
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .a-drawer {
@@ -102,6 +95,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  overscroll-behavior: contain;
 }
 
 .a-drawer-header {
@@ -143,6 +137,8 @@ onUnmounted(() => {
 .a-drawer-body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 20px;
 }
 

@@ -9,8 +9,16 @@ import {
 } from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
 import ADrawer from '@/components/ADrawer.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
 const toast = useToast();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 const rewards = ref([]);
 const loading = ref(false);
@@ -126,10 +134,7 @@ const saveReward = async () => {
     }
 };
 
-const deleteReward = async (row) => {
-    if (!confirm(`确定删除 Lv.${row.level} 的等级奖励吗？该操作会停用并隐藏配置，不影响历史领取记录。`)) {
-        return;
-    }
+const doDeleteReward = async (row) => {
     deletingId.value = row.id;
     error.value = '';
     try {
@@ -142,6 +147,17 @@ const deleteReward = async (row) => {
     } finally {
         deletingId.value = null;
     }
+};
+
+const deleteReward = (row) => {
+    openConfirmDialog({
+        eyebrow: '删除确认',
+        title: `删除 Lv.${row.level} 等级奖励`,
+        message: '该操作会停用并隐藏配置，不影响历史领取记录。',
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: () => doDeleteReward(row)
+    });
 };
 
 onMounted(loadRewards);
@@ -276,6 +292,19 @@ onMounted(loadRewards);
                 </button>
             </template>
         </ADrawer>
+
+        <ConfirmDialog
+            :visible="confirmDialog.visible"
+            :eyebrow="confirmDialog.eyebrow"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-text="confirmDialog.confirmText"
+            :cancel-text="confirmDialog.cancelText"
+            :tone="confirmDialog.tone"
+            :loading="confirmDialog.loading"
+            @close="closeConfirmDialog"
+            @confirm="executeConfirmDialog"
+        />
     </section>
 </template>
 
