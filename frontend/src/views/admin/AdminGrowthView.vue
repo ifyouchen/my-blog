@@ -164,8 +164,8 @@ onMounted(() => {
             </div>
         </section>
 
-        <KeepAlive>
-            <component :is="activeTabComponent" v-if="activeTabComponent" />
+        <KeepAlive v-else>
+            <component :is="activeTabComponent" :key="activeTab" />
         </KeepAlive>
     </div>
 </template>
