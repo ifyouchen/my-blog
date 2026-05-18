@@ -505,13 +505,49 @@ INSERT IGNORE INTO `point_rule_config` (`source_type`, `point_amount`, `daily_li
 ('UNLOCK_SHARE_RATIO', 50, 0, 1, 'system', '初始化 - 平台分账比例50%');
 
 -- 初始化连续签到奖励配置
-INSERT IGNORE INTO `sign_in_consecutive_reward_config` (`min_days`, `max_days`, `bonus_points`, `reward_tier`, `reward_desc`) VALUES
-(1, 2, 0, 'NORMAL', '继续加油'),
-(3, 4, 5, 'TRIPLE', '连续 3 天，额外 +5'),
-(5, 6, 8, 'TRIPLE', '连续 5 天，额外 +8'),
-(7, 13, 10, 'WEEK', '连续 7 天，额外 +10'),
-(14, 29, 20, 'BIWEEK', '连续 14 天，额外 +20'),
-(30, NULL, 50, 'MONTH', '连续 30 天，额外 +50');
+UPDATE `sign_in_consecutive_reward_config` duplicate_config
+JOIN (
+    SELECT current_config.id
+    FROM `sign_in_consecutive_reward_config` current_config
+    JOIN (
+        SELECT `min_days`, `max_days`, MIN(`id`) AS keep_id
+        FROM `sign_in_consecutive_reward_config`
+        WHERE `deleted_at` IS NULL
+        GROUP BY `min_days`, `max_days`
+        HAVING COUNT(*) > 1
+    ) kept_config
+      ON current_config.`min_days` = kept_config.`min_days`
+     AND current_config.`max_days` <=> kept_config.`max_days`
+     AND current_config.`id` <> kept_config.keep_id
+    WHERE current_config.`deleted_at` IS NULL
+) duplicates
+  ON duplicate_config.`id` = duplicates.`id`
+SET duplicate_config.`deleted_at` = NOW(),
+    duplicate_config.`updated_at` = NOW(),
+    duplicate_config.`version` = duplicate_config.`version` + 1
+WHERE duplicate_config.`deleted_at` IS NULL;
+
+INSERT INTO `sign_in_consecutive_reward_config`
+    (`min_days`, `max_days`, `bonus_points`, `reward_tier`, `reward_desc`)
+SELECT seed.min_days, seed.max_days, seed.bonus_points, seed.reward_tier, seed.reward_desc
+FROM (
+    SELECT 1 AS min_days, 2 AS max_days, 0 AS bonus_points, 'NORMAL' AS reward_tier, '继续加油' AS reward_desc
+    UNION ALL SELECT 3, 4, 5, 'TRIPLE', '连续 3 天，额外 +5'
+    UNION ALL SELECT 5, 6, 8, 'TRIPLE', '连续 5 天，额外 +8'
+    UNION ALL SELECT 7, 13, 10, 'WEEK', '连续 7 天，额外 +10'
+    UNION ALL SELECT 14, 29, 20, 'BIWEEK', '连续 14 天，额外 +20'
+    UNION ALL SELECT 30, NULL, 50, 'MONTH', '连续 30 天，额外 +50'
+) seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `sign_in_consecutive_reward_config` existing
+    WHERE existing.deleted_at IS NULL
+      AND existing.min_days = seed.min_days
+      AND (
+          existing.max_days = seed.max_days
+          OR (existing.max_days IS NULL AND seed.max_days IS NULL)
+      )
+);
 
 -- 初始化累计签到里程碑配置
 INSERT IGNORE INTO `sign_in_cumulative_reward_config` (`milestone_days`, `reward_points`, `reward_title`, `description`) VALUES

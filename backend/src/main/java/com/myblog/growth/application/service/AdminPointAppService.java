@@ -1,5 +1,7 @@
 package com.myblog.growth.application.service;
 
+import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.repository.UserRepository;
 import com.myblog.growth.domain.model.aggregate.PointAccount;
 import com.myblog.growth.domain.model.valueobject.PointJournal;
 import com.myblog.growth.domain.repository.PointAccountRepository;
@@ -50,6 +52,7 @@ public class AdminPointAppService {
     private final PointAccountRepository pointAccountRepository;
     private final PointJournalRepository pointJournalRepository;
     private final AdminPointAdjustLogMapper adminPointAdjustLogMapper;
+    private final UserRepository userRepository;
 
     /**
      * 构造注入依赖.
@@ -57,13 +60,16 @@ public class AdminPointAppService {
      * @param pointAccountRepository    积分账户 Repository
      * @param pointJournalRepository    积分流水 Repository
      * @param adminPointAdjustLogMapper 管理员调分日志 Mapper
+     * @param userRepository            用户 Repository
      */
     public AdminPointAppService(PointAccountRepository pointAccountRepository,
                                 PointJournalRepository pointJournalRepository,
-                                AdminPointAdjustLogMapper adminPointAdjustLogMapper) {
+                                AdminPointAdjustLogMapper adminPointAdjustLogMapper,
+                                UserRepository userRepository) {
         this.pointAccountRepository = pointAccountRepository;
         this.pointJournalRepository = pointJournalRepository;
         this.adminPointAdjustLogMapper = adminPointAdjustLogMapper;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -75,6 +81,18 @@ public class AdminPointAppService {
     public PointAccount getAccountByUserId(Long targetUserId) {
         return pointAccountRepository.findByUserId(targetUserId)
                 .orElseGet(() -> PointAccount.create(targetUserId));
+    }
+
+    /**
+     * 查询指定用户的积分账户（管理员视角）.
+     *
+     * @param targetUserId 被查询用户 ID
+     * @param userKeyword  用户名或邮箱
+     * @return 积分账户，若未开户则返回空账户 VO（余额为 0）
+     */
+    public PointAccount getAccount(String targetUserId, String userKeyword) {
+        Long resolvedUserId = resolveUserId(targetUserId, userKeyword);
+        return getAccountByUserId(resolvedUserId);
     }
 
     /**
@@ -180,6 +198,38 @@ public class AdminPointAppService {
         }
         throw new GrowthBusinessException(GrowthErrorCode.OPTIMISTIC_LOCK_CONFLICT,
                 "积分调整并发冲突，请稍后重试");
+    }
+
+    /**
+     * 解析后台查询中的用户标识.
+     *
+     * @param targetUserId 用户 ID 字符串
+     * @param userKeyword  用户名或邮箱
+     * @return 用户 ID
+     */
+    public Long resolveUserId(String targetUserId, String userKeyword) {
+        String trimmedUserId = targetUserId == null ? null : targetUserId.trim();
+        if (trimmedUserId != null && !trimmedUserId.isEmpty()) {
+            if (trimmedUserId.matches("\\d+")) {
+                Long parsedUserId = Long.valueOf(trimmedUserId);
+                if (parsedUserId <= 0) {
+                    throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "userId 不合法");
+                }
+                return parsedUserId;
+            }
+            return resolveUserIdByAccount(trimmedUserId);
+        }
+        if (userKeyword == null || userKeyword.trim().isEmpty()) {
+            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "请输入用户 ID、用户名或邮箱");
+        }
+        return resolveUserIdByAccount(userKeyword.trim());
+    }
+
+    private Long resolveUserIdByAccount(String account) {
+        User user = userRepository.findByAccount(account)
+                .orElseThrow(() -> new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID,
+                        "未找到该用户，请检查用户名或邮箱是否正确"));
+        return user.getId().getValue();
     }
 }
 

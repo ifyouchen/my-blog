@@ -41,17 +41,35 @@
 
     <select id="countForAdmin" resultType="long">
         SELECT COUNT(*)
-        FROM user_reward_grant_log
-        WHERE (#{userId} IS NULL OR user_id = #{userId})
-          AND (#{rewardType} IS NULL OR #{rewardType} = '' OR reward_type = #{rewardType})
+        FROM user_reward_grant_log log
+        <if test="userKeyword != null and userKeyword != ''">
+            INNER JOIN blog_user bu ON bu.id = log.user_id AND bu.deleted_at IS NULL
+        </if>
+        WHERE (#{userId} IS NULL OR log.user_id = #{userId})
+          <if test="userKeyword != null and userKeyword != ''">
+              AND (
+                  bu.username LIKE CONCAT('%', #{userKeyword}, '%')
+                  OR bu.email LIKE CONCAT('%', #{userKeyword}, '%')
+              )
+          </if>
+          AND (#{rewardType} IS NULL OR #{rewardType} = '' OR log.reward_type = #{rewardType})
     </select>
 
     <select id="selectPageForAdmin" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM user_reward_grant_log
-        WHERE (#{userId} IS NULL OR user_id = #{userId})
-          AND (#{rewardType} IS NULL OR #{rewardType} = '' OR reward_type = #{rewardType})
-        ORDER BY granted_at DESC, id DESC
+        SELECT log.id, log.user_id, log.reward_type, log.reward_id, log.points_granted, log.granted_at, log.remark
+        FROM user_reward_grant_log log
+        <if test="userKeyword != null and userKeyword != ''">
+            INNER JOIN blog_user bu ON bu.id = log.user_id AND bu.deleted_at IS NULL
+        </if>
+        WHERE (#{userId} IS NULL OR log.user_id = #{userId})
+          <if test="userKeyword != null and userKeyword != ''">
+              AND (
+                  bu.username LIKE CONCAT('%', #{userKeyword}, '%')
+                  OR bu.email LIKE CONCAT('%', #{userKeyword}, '%')
+              )
+          </if>
+          AND (#{rewardType} IS NULL OR #{rewardType} = '' OR log.reward_type = #{rewardType})
+        ORDER BY log.granted_at DESC, log.id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 

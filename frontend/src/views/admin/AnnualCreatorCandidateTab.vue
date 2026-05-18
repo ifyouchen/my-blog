@@ -12,11 +12,14 @@ const feedbackType = ref('success');
 const backfillLoading = ref(false);
 const targetUserId = ref('');
 const backfillResult = ref(null);
+const candidateKeyword = ref('');
 
 const loadCandidates = async () => {
     loading.value = true;
     try {
-        items.value = await getAdminAnnualCreatorCandidatesApi();
+        items.value = await getAdminAnnualCreatorCandidatesApi({
+            userKeyword: candidateKeyword.value.trim()
+        });
     } catch (error) {
         items.value = [];
         feedback.value = error.message || '加载年度候选失败';
@@ -64,6 +67,27 @@ onMounted(loadCandidates);
             <span class="ag-section-subtitle">查看已获得 Lv.8 年度候选资格的创作者</span>
         </div>
         <p class="ag-hint">这里展示真实 entitlement 候选池，同时提供注册奖励与等级权益补偿入口。</p>
+
+        <div class="candidate-toolbar">
+            <input
+                v-model.trim="candidateKeyword"
+                class="ag-input candidate-search"
+                type="text"
+                placeholder="用户名 / 邮箱"
+                @keydown.enter="loadCandidates"
+            >
+            <button type="button" class="ag-btn primary" :disabled="loading" @click="loadCandidates">
+                {{ loading ? '查询中...' : '查询候选' }}
+            </button>
+            <button
+                type="button"
+                class="ag-btn secondary"
+                :disabled="loading"
+                @click="candidateKeyword = ''; loadCandidates()"
+            >
+                重置
+            </button>
+        </div>
 
         <div class="ag-form annual-tools">
             <div class="form-row">
@@ -147,3 +171,29 @@ onMounted(loadCandidates);
         </div>
     </section>
 </template>
+
+<style scoped>
+.candidate-toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.candidate-search {
+    max-width: 240px;
+}
+
+@media (max-width: 760px) {
+    .candidate-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .candidate-search {
+        max-width: none;
+        width: 100%;
+    }
+}
+</style>

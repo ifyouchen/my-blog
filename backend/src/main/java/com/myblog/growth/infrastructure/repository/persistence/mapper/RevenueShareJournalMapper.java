@@ -63,12 +63,14 @@ public interface RevenueShareJournalMapper {
      * 管理端分页查询分账流水.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选）
      * @param limit            每页条数
      * @param offset           偏移量
      * @return 分账流水列表
      */
     List<RevenueShareJournalDO> selectAdminPage(@Param("authorId") Long authorId,
+                                                @Param("authorKeyword") String authorKeyword,
                                                 @Param("settlementStatus") String settlementStatus,
                                                 @Param("limit") int limit,
                                                 @Param("offset") int offset);
@@ -77,10 +79,12 @@ public interface RevenueShareJournalMapper {
      * 管理端统计分账流水总数.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选）
      * @return 总数
      */
     long countAdmin(@Param("authorId") Long authorId,
+                    @Param("authorKeyword") String authorKeyword,
                     @Param("settlementStatus") String settlementStatus);
 
     /**

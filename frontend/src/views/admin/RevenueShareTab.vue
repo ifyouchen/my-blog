@@ -27,8 +27,10 @@ const loadRevenueShares = async () => {
     revenueState.loading = true;
     revenueState.error = '';
     try {
+        const authorKeyword = String(revenueFilters.authorId || '').trim();
         const result = await getAdminRevenueSharesApi({
-            authorId: String(revenueFilters.authorId || '').trim(),
+            authorId: /^\d+$/.test(authorKeyword) ? authorKeyword : '',
+            authorKeyword: /^\d+$/.test(authorKeyword) ? '' : authorKeyword,
             settlementStatus: revenueFilters.settlementStatus,
             page: revenueState.page, size: revenueState.pageSize,
         });
@@ -72,7 +74,7 @@ onMounted(() => { loadRevenueShares(); });
             <span class="ag-section-subtitle">异步入账，失败可人工重试</span>
         </div>
         <div class="revenue-toolbar">
-            <input v-model="revenueFilters.authorId" type="text" placeholder="作者用户 ID" class="ag-input revenue-author-input" @keydown.enter="searchRevenueShares" />
+            <input v-model="revenueFilters.authorId" type="text" placeholder="作者 ID / 用户名 / 邮箱" class="ag-input revenue-author-input" @keydown.enter="searchRevenueShares" />
             <select v-model="revenueFilters.settlementStatus" class="ag-input revenue-status-select">
                 <option value="">全部状态</option>
                 <option value="PENDING">待结算</option>

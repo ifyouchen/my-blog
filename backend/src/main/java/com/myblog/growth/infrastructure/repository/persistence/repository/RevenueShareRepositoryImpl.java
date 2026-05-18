@@ -94,27 +94,33 @@ public class RevenueShareRepositoryImpl implements RevenueShareRepository {
      * 管理端分页查询分账流水.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选）
      * @param page             页码（从 1 开始）
      * @param size             每页条数
      * @return 分账流水 DO 列表
      */
     @Override
-    public List<RevenueShareJournal> findAdminPage(Long authorId, String settlementStatus, int page, int size) {
+    public List<RevenueShareJournal> findAdminPage(Long authorId,
+                                                   String authorKeyword,
+                                                   String settlementStatus,
+                                                   int page,
+                                                   int size) {
         int offset = (page - 1) * size;
-        return toDomainList(mapper.selectAdminPage(authorId, settlementStatus, size, offset));
+        return toDomainList(mapper.selectAdminPage(authorId, authorKeyword, settlementStatus, size, offset));
     }
 
     /**
      * 管理端统计分账流水总数.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选）
      * @return 总数
      */
     @Override
-    public long countAdmin(Long authorId, String settlementStatus) {
-        return mapper.countAdmin(authorId, settlementStatus);
+    public long countAdmin(Long authorId, String authorKeyword, String settlementStatus) {
+        return mapper.countAdmin(authorId, authorKeyword, settlementStatus);
     }
 
     /**

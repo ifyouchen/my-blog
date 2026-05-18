@@ -84,6 +84,7 @@ public class AdminRevenueController {
      * 管理端分页查询分账流水.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选：PENDING/SETTLED/FAILED）
      * @param page             页码（从 1 开始，默认 1）
      * @param size             每页条数（默认 20，最大 50）
@@ -92,6 +93,7 @@ public class AdminRevenueController {
     @GetMapping("/api/admin/revenue-shares")
     public Result<PageResult<RevenueShareAppService.RevenueShareVO>> pageRevenueShares(
             @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) String authorKeyword,
             @RequestParam(required = false) String settlementStatus,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -100,7 +102,7 @@ public class AdminRevenueController {
 
         requireAdmin();
         return Result.success(revenueShareAppService.pageAdminRevenue(
-                authorId, normalizeStatus(settlementStatus), safePage, safeSize));
+                authorId, normalizeKeyword(authorKeyword), normalizeStatus(settlementStatus), safePage, safeSize));
     }
 
     /**
@@ -128,6 +130,13 @@ public class AdminRevenueController {
             return null;
         }
         return settlementStatus.trim().toUpperCase();
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return keyword.trim();
     }
 }
 

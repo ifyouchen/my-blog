@@ -199,10 +199,14 @@ public class RevenueShareAppService {
     /**
      * 管理端分页查询分账流水.
      */
-    public PageResult<RevenueShareVO> pageAdminRevenue(Long authorId, String settlementStatus, int page, int size) {
-        long total = revenueShareRepository.countAdmin(authorId, settlementStatus);
+    public PageResult<RevenueShareVO> pageAdminRevenue(Long authorId,
+                                                       String authorKeyword,
+                                                       String settlementStatus,
+                                                       int page,
+                                                       int size) {
+        long total = revenueShareRepository.countAdmin(authorId, authorKeyword, settlementStatus);
         List<RevenueShareJournal> journals =
-                revenueShareRepository.findAdminPage(authorId, settlementStatus, page, size);
+                revenueShareRepository.findAdminPage(authorId, authorKeyword, settlementStatus, page, size);
         return new PageResult<>(toVOList(journals), page, size, total);
     }
 

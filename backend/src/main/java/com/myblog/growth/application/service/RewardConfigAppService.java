@@ -277,19 +277,26 @@ public class RewardConfigAppService {
     /**
      * 分页查询奖励领取记录.
      *
-     * @param userId     用户ID（可选）
-     * @param rewardType 奖励类型（可选）
-     * @param page       页码
-     * @param size       每页数量
+     * @param userId      用户ID（可选）
+     * @param userKeyword 用户名或邮箱（可选）
+     * @param rewardType  奖励类型（可选）
+     * @param page        页码
+     * @param size        每页数量
      * @return 分页结果
      */
-    public PageResult<AdminRewardGrantLogVO> pageGrantLogs(Long userId, String rewardType, int page, int size) {
+    public PageResult<AdminRewardGrantLogVO> pageGrantLogs(Long userId,
+                                                           String userKeyword,
+                                                           String rewardType,
+                                                           int page,
+                                                           int size) {
         int safePage = Math.max(1, page);
         int safeSize = Math.min(Math.max(1, size), 50);
+        String normalizedUserKeyword = normalizeKeyword(userKeyword);
         String normalizedRewardType = normalizeRewardType(rewardType);
         int offset = (safePage - 1) * safeSize;
-        long total = rewardGrantLogRepository.countForAdmin(userId, normalizedRewardType);
-        List<RewardGrantLog> logs = rewardGrantLogRepository.findPageForAdmin(userId, normalizedRewardType, offset, safeSize);
+        long total = rewardGrantLogRepository.countForAdmin(userId, normalizedUserKeyword, normalizedRewardType);
+        List<RewardGrantLog> logs = rewardGrantLogRepository.findPageForAdmin(
+                userId, normalizedUserKeyword, normalizedRewardType, offset, safeSize);
 
         Map<Long, LevelRewardConfig> levelRewardMap = levelRewardRepository.findAll().stream()
                 .collect(Collectors.toMap(LevelRewardConfig::getId, item -> item, (left, right) -> left, HashMap::new));
@@ -302,6 +309,13 @@ public class RewardConfigAppService {
                 .map(log -> toGrantLogVO(log, levelRewardMap, consecutiveMap, cumulativeMap))
                 .collect(Collectors.toList());
         return new PageResult<>(items, safePage, safeSize, total);
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return keyword.trim();
     }
 
     private AdminRewardGrantLogVO toGrantLogVO(RewardGrantLog log,

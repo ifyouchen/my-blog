@@ -190,6 +190,17 @@ public class RecommendationApplicationAppService {
      * @return 候选列表
      */
     public List<AnnualCreatorCandidateDTO> listAnnualCreatorCandidates() {
+        return listAnnualCreatorCandidates(null);
+    }
+
+    /**
+     * 查询年度创作者候选列表.
+     *
+     * @param userKeyword 用户名或邮箱（可选）
+     * @return 候选列表
+     */
+    public List<AnnualCreatorCandidateDTO> listAnnualCreatorCandidates(String userKeyword) {
+        String normalizedKeyword = userKeyword == null ? null : userKeyword.trim().toLowerCase();
         List<UserPrivilegeEntitlement> entitlements =
             userPrivilegeEntitlementRepository.findActiveByPrivilegeCode(GrowthPrivilegeCodes.ANNUAL_CREATOR_ELIGIBLE);
         List<Long> userIds = new ArrayList<Long>(entitlements.size());
@@ -209,6 +220,9 @@ public class RecommendationApplicationAppService {
             if (user == null) {
                 continue;
             }
+            if (!matchesUserKeyword(user, normalizedKeyword)) {
+                continue;
+            }
             GrowthAccount account = growthMap.get(userId);
             UserPrivilegeEntitlement entitlement = entitlementByUserId.get(userId);
             AnnualCreatorCandidateDTO dto = new AnnualCreatorCandidateDTO();
@@ -223,6 +237,17 @@ public class RecommendationApplicationAppService {
             items.add(dto);
         }
         return items;
+    }
+
+    private boolean matchesUserKeyword(User user, String userKeyword) {
+        if (userKeyword == null || userKeyword.isEmpty()) {
+            return true;
+        }
+        String username = user.getUsername() == null ? "" : user.getUsername().toLowerCase();
+        String email = user.getEmail() == null || user.getEmail().getValue() == null
+            ? ""
+            : user.getEmail().getValue().toLowerCase();
+        return username.contains(userKeyword) || email.contains(userKeyword);
     }
 
     private List<RecommendationApplicationDTO> toDTOList(List<ArticleRecommendationApplication> applications) {

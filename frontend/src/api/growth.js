@@ -184,20 +184,30 @@ export const adminAdjustPointsApi = (payload) =>
 
 /**
  * 查询指定用户的积分账户（管理员视角）.
- * @param {number} userId
+ * @param {number|string|{queryType?: string, value?: string}} user
  * @returns {Promise<{userId, balance, totalEarned, totalSpent}>}
  */
-export const adminGetPointAccountApi = (userId) =>
-    request(`/admin/points/account?userId=${userId}`);
+export const adminGetPointAccountApi = (user) => {
+    const query = new URLSearchParams();
+    const value = String(typeof user === 'object' ? user.value : user || '').trim();
+    const queryType = typeof user === 'object' ? user.queryType : '';
+    if (queryType === 'id' || (!queryType && /^\d+$/.test(value))) {
+        query.set('userId', value);
+    } else {
+        query.set('userKeyword', value);
+    }
+    return request(`/admin/points/account?${query.toString()}`);
+};
 
 /**
  * 管理员分页查询指定用户积分流水.
- * @param {{ userId: number|string, sourceType?: string, page?: number, size?: number }} params
+ * @param {{ userId?: number|string, userKeyword?: string, sourceType?: string, page?: number, size?: number }} params
  * @returns {Promise<PageResult>}
  */
 export const adminGetPointJournalsApi = (params = {}) => {
     const query = new URLSearchParams();
-    query.set('userId', params.userId);
+    if (params.userId) query.set('userId', params.userId);
+    if (params.userKeyword) query.set('userKeyword', params.userKeyword);
     if (params.sourceType) query.set('sourceType', params.sourceType);
     if (params.page) query.set('page', params.page);
     if (params.size) query.set('size', params.size);
@@ -206,12 +216,13 @@ export const adminGetPointJournalsApi = (params = {}) => {
 
 /**
  * 管理员分页查询分账流水.
- * @param {{ authorId?: number|string, settlementStatus?: string, page?: number, size?: number }} params
+ * @param {{ authorId?: number|string, authorKeyword?: string, settlementStatus?: string, page?: number, size?: number }} params
  * @returns {Promise<PageResult>}
  */
 export const getAdminRevenueSharesApi = (params = {}) => {
     const query = new URLSearchParams();
     if (params.authorId) query.set('authorId', params.authorId);
+    if (params.authorKeyword) query.set('authorKeyword', params.authorKeyword);
     if (params.settlementStatus) query.set('settlementStatus', params.settlementStatus);
     if (params.page) query.set('page', params.page);
     if (params.size) query.set('size', params.size);
@@ -345,12 +356,13 @@ export const deleteAdminCumulativeRewardApi = (id, version) =>
 
 /**
  * 管理员分页查询奖励领取记录.
- * @param {{userId?: number|string, rewardType?: string, page?: number, size?: number}} params
+ * @param {{userId?: number|string, userKeyword?: string, rewardType?: string, page?: number, size?: number}} params
  * @returns {Promise<PageResult>}
  */
 export const getAdminRewardGrantLogsApi = (params = {}) => {
     const query = new URLSearchParams();
     if (params.userId) query.set('userId', params.userId);
+    if (params.userKeyword) query.set('userKeyword', params.userKeyword);
     if (params.rewardType) query.set('rewardType', params.rewardType);
     if (params.page) query.set('page', params.page);
     if (params.size) query.set('size', params.size);
@@ -379,8 +391,12 @@ export const rejectAdminRecommendationApplicationApi = (id, reviewNote = '') =>
         body: { reviewNote }
     });
 
-export const getAdminAnnualCreatorCandidatesApi = () =>
-    request('/admin/growth/annual-creator-candidates');
+export const getAdminAnnualCreatorCandidatesApi = (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.userKeyword) query.set('userKeyword', params.userKeyword);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request(`/admin/growth/annual-creator-candidates${suffix}`);
+};
 
 export const backfillAdminGrowthRewardsApi = ({ mode = 'ALL', userId } = {}) =>
     request('/admin/growth/rewards/backfill', {

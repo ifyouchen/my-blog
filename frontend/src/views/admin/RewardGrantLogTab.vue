@@ -31,8 +31,10 @@ const loadLogs = async (page = 1) => {
     pageState.loading = true;
     pageState.error = '';
     try {
+        const userKeyword = filters.userId.trim();
         const result = await getAdminRewardGrantLogsApi({
-            userId: filters.userId.trim(),
+            userId: /^\d+$/.test(userKeyword) ? userKeyword : '',
+            userKeyword: /^\d+$/.test(userKeyword) ? '' : userKeyword,
             rewardType: filters.rewardType,
             page,
             size: pageState.size
@@ -69,7 +71,7 @@ onMounted(() => {
             <input
                 v-model="filters.userId"
                 type="text"
-                placeholder="按用户 ID 筛选"
+                placeholder="用户 ID / 用户名 / 邮箱"
                 class="ag-input toolbar-input"
                 @keydown.enter="search"
             />

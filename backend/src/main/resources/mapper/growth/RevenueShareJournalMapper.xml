@@ -105,29 +105,50 @@
 
     <!-- 管理端分页查询分账流水 -->
     <select id="selectAdminPage" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM revenue_share_journal
-        WHERE deleted_at IS NULL
+        SELECT journal.id, journal.order_no, journal.article_id, journal.author_id, journal.total_points,
+               journal.platform_points, journal.author_points, journal.share_ratio, journal.settlement_status,
+               journal.point_journal_biz_no, journal.settled_at, journal.retry_count, journal.last_error,
+               journal.created_at, journal.deleted_at, journal.version
+        FROM revenue_share_journal journal
+        <if test="authorKeyword != null and authorKeyword != ''">
+            INNER JOIN blog_user bu ON bu.id = journal.author_id AND bu.deleted_at IS NULL
+        </if>
+        WHERE journal.deleted_at IS NULL
           <if test="authorId != null">
-              AND author_id = #{authorId}
+              AND journal.author_id = #{authorId}
+          </if>
+          <if test="authorKeyword != null and authorKeyword != ''">
+              AND (
+                  bu.username LIKE CONCAT('%', #{authorKeyword}, '%')
+                  OR bu.email LIKE CONCAT('%', #{authorKeyword}, '%')
+              )
           </if>
           <if test="settlementStatus != null and settlementStatus != ''">
-              AND settlement_status = #{settlementStatus}
+              AND journal.settlement_status = #{settlementStatus}
           </if>
-        ORDER BY created_at DESC
+        ORDER BY journal.created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <!-- 管理端统计分账流水总数 -->
     <select id="countAdmin" resultType="long">
         SELECT COUNT(*)
-        FROM revenue_share_journal
-        WHERE deleted_at IS NULL
+        FROM revenue_share_journal journal
+        <if test="authorKeyword != null and authorKeyword != ''">
+            INNER JOIN blog_user bu ON bu.id = journal.author_id AND bu.deleted_at IS NULL
+        </if>
+        WHERE journal.deleted_at IS NULL
           <if test="authorId != null">
-              AND author_id = #{authorId}
+              AND journal.author_id = #{authorId}
+          </if>
+          <if test="authorKeyword != null and authorKeyword != ''">
+              AND (
+                  bu.username LIKE CONCAT('%', #{authorKeyword}, '%')
+                  OR bu.email LIKE CONCAT('%', #{authorKeyword}, '%')
+              )
           </if>
           <if test="settlementStatus != null and settlementStatus != ''">
-              AND settlement_status = #{settlementStatus}
+              AND journal.settlement_status = #{settlementStatus}
           </if>
     </select>
 

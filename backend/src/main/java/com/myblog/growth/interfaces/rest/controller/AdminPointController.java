@@ -57,16 +57,15 @@ public class AdminPointController {
     /**
      * 查询指定用户积分账户（管理员视角）.
      *
-     * @param userId 目标用户 ID
+     * @param userId      目标用户 ID
+     * @param userKeyword 用户名或邮箱
      * @return 积分账户 VO
      */
     @GetMapping("/account")
-    public Result<PointAccountVO> getAccount(@RequestParam Long userId) {
+    public Result<PointAccountVO> getAccount(@RequestParam(required = false) String userId,
+                                             @RequestParam(required = false) String userKeyword) {
         requireAdmin();
-        if (userId == null || userId <= 0) {
-            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "userId 不合法");
-        }
-        PointAccount account = adminPointAppService.getAccountByUserId(userId);
+        PointAccount account = adminPointAppService.getAccount(userId, userKeyword);
         PointAccountVO vo = new PointAccountVO();
         vo.setUserId(account.getUserId());
         vo.setBalance(account.getBalance());
@@ -78,26 +77,26 @@ public class AdminPointController {
     /**
      * 查询指定用户积分流水（管理员视角）.
      *
-     * @param userId     目标用户 ID
-     * @param sourceType 来源类型筛选（可选）
-     * @param page       页码（从 1 开始，默认 1）
-     * @param size       每页条数（默认 20，最大 50）
+     * @param userId      目标用户 ID
+     * @param userKeyword 用户名或邮箱
+     * @param sourceType  来源类型筛选（可选）
+     * @param page        页码（从 1 开始，默认 1）
+     * @param size        每页条数（默认 20，最大 50）
      * @return 积分流水分页结果
      */
     @GetMapping("/journals")
     public Result<PageResult<PointJournalVO>> getJournals(
-            @RequestParam Long userId,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String userKeyword,
             @RequestParam(required = false) String sourceType,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireAdmin();
-        if (userId == null || userId <= 0) {
-            throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "userId 不合法");
-        }
+        Long resolvedUserId = adminPointAppService.resolveUserId(userId, userKeyword);
         int safePage = Math.max(1, page);
         int safeSize = Math.min(Math.max(1, size), 50);
-        long total = pointAppService.countJournals(userId, sourceType);
-        List<PointJournal> journals = pointAppService.getJournals(userId, sourceType, safePage, safeSize);
+        long total = pointAppService.countJournals(resolvedUserId, sourceType);
+        List<PointJournal> journals = pointAppService.getJournals(resolvedUserId, sourceType, safePage, safeSize);
         List<PointJournalVO> voList = journals.stream()
                 .map(this::toJournalVO)
                 .collect(Collectors.toList());

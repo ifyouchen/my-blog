@@ -38,12 +38,16 @@ public class RewardGrantLogRepositoryImpl implements RewardGrantLogRepository {
     }
 
     @Override
-    public long countForAdmin(Long userId, String rewardType) {
-        return mapper.countForAdmin(userId, rewardType);
+    public long countForAdmin(Long userId, String userKeyword, String rewardType) {
+        return mapper.countForAdmin(userId, userKeyword, rewardType);
     }
 
     @Override
-    public List<RewardGrantLog> findPageForAdmin(Long userId, String rewardType, int offset, int limit) {
-        return mapper.selectPageForAdmin(userId, rewardType, offset, limit);
+    public List<RewardGrantLog> findPageForAdmin(Long userId,
+                                                 String userKeyword,
+                                                 String rewardType,
+                                                 int offset,
+                                                 int limit) {
+        return mapper.selectPageForAdmin(userId, userKeyword, rewardType, offset, limit);
     }
 }

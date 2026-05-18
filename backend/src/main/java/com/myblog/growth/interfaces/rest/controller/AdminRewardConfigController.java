@@ -205,20 +205,22 @@ public class AdminRewardConfigController {
     /**
      * 分页查询奖励领取记录.
      *
-     * @param userId     用户ID（可选）
-     * @param rewardType 奖励类型（可选）
-     * @param page       页码
-     * @param size       每页数量
+     * @param userId      用户ID（可选）
+     * @param userKeyword 用户名或邮箱（可选）
+     * @param rewardType  奖励类型（可选）
+     * @param page        页码
+     * @param size        每页数量
      * @return 分页记录
      */
     @GetMapping("/grant-logs")
     public Result<PageResult<AdminRewardGrantLogVO>> getGrantLogs(
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String userKeyword,
             @RequestParam(required = false) String rewardType,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireAdmin();
-        return Result.success(rewardConfigAppService.pageGrantLogs(userId, rewardType, page, size));
+        return Result.success(rewardConfigAppService.pageGrantLogs(userId, userKeyword, rewardType, page, size));
     }
 
     private void requireAdmin() {

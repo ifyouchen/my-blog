@@ -24,6 +24,12 @@ const SOURCE_TYPE_OPTIONS = [
 const sourceTypeLabel = (sourceType) =>
     SOURCE_TYPE_OPTIONS.find(option => option.value === sourceType)?.label || sourceType || '-';
 
+const QUERY_TYPE_OPTIONS = [
+    {value: 'id', label: '用户 ID'},
+    {value: 'username', label: '用户名/邮箱'},
+];
+
+const queryType = ref('id');
 const queryUserId = ref('');
 const queryResult = ref(null);
 const querying = ref(false);
@@ -40,7 +46,7 @@ const hasJournalPrev = () => journalsPage.value > 1;
 const hasJournalNext = () => journalsPage.value * journalsPageSize < journalsTotal.value;
 
 const loadJournals = async (page = 1) => {
-    const uid = String(queryUserId.value || '').trim();
+    const uid = queryResult.value?.userId;
     if (!uid) return;
     journalsLoading.value = true;
     journalsError.value = '';
@@ -65,14 +71,21 @@ const loadJournals = async (page = 1) => {
 
 const queryAccount = async () => {
     const uid = String(queryUserId.value || '').trim();
-    if (!uid) { queryError.value = '请输入用户 ID'; return; }
+    if (!uid) { queryError.value = queryType.value === 'id' ? '请输入用户 ID' : '请输入用户名或邮箱'; return; }
+    if (queryType.value === 'id' && !/^\d+$/.test(uid)) {
+        queryError.value = '用户 ID 只能输入数字';
+        return;
+    }
     querying.value = true;
     queryError.value = '';
     queryResult.value = null;
     journals.value = [];
     journalsTotal.value = 0;
     try {
-        queryResult.value = await adminGetPointAccountApi(uid);
+        queryResult.value = await adminGetPointAccountApi({
+            queryType: queryType.value,
+            value: uid
+        });
         await loadJournals(1);
     } catch (e) {
         queryError.value = e.message || '查询失败';
@@ -113,7 +126,7 @@ const doAdjust = async () => {
         adjustResult.value = result;
         adjustHistory.value.unshift({...payload, balanceAfter: result?.balanceAfter, time: new Date().toISOString()});
         toast.success(`积分调整成功！用户 ${result?.targetUserId} 余额：${result?.balanceAfter}`);
-        if (String(payload.targetUserId) === String(queryUserId.value || '').trim()) {
+        if (String(payload.targetUserId) === String(queryResult.value?.userId || queryUserId.value || '').trim()) {
             await queryAccount();
         }
         adjustForm.delta = '';
@@ -132,13 +145,29 @@ const changeJournalSourceType = () => {
         loadJournals(1);
     }
 };
+
+const changeQueryType = () => {
+    queryError.value = '';
+    journalsError.value = '';
+};
 </script>
 
 <template>
     <section class="ag-section">
         <h2 class="ag-section-title">查询用户积分</h2>
         <div class="ag-query-row">
-            <input v-model="queryUserId" type="text" placeholder="输入用户 ID" class="ag-input" @keydown.enter="queryAccount" />
+            <select v-model="queryType" class="ag-input query-type-select" @change="changeQueryType">
+                <option v-for="option in QUERY_TYPE_OPTIONS" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                </option>
+            </select>
+            <input
+                v-model="queryUserId"
+                type="text"
+                :placeholder="queryType === 'id' ? '输入用户 ID' : '输入用户名或邮箱'"
+                class="ag-input"
+                @keydown.enter="queryAccount"
+            />
             <button type="button" class="ag-btn primary" :disabled="querying" @click="queryAccount">
                 {{ querying ? '查询中...' : '查询' }}
             </button>
@@ -319,6 +348,11 @@ const changeJournalSourceType = () => {
     flex: 0 0 180px;
 }
 
+.query-type-select {
+    max-width: 150px;
+    flex: 0 0 150px;
+}
+
 .point-journal-table {
     min-width: 860px;
 }
@@ -337,6 +371,12 @@ const changeJournalSourceType = () => {
     }
 
     .source-filter {
+        max-width: none;
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .query-type-select {
         max-width: none;
         width: 100%;
         flex-basis: auto;

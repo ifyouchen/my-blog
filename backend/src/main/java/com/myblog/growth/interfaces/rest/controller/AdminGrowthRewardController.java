@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -39,12 +40,14 @@ public class AdminGrowthRewardController {
     /**
      * 查询年度创作者候选列表.
      *
+     * @param userKeyword 用户名或邮箱（可选）
      * @return 候选列表
      */
     @GetMapping("/annual-creator-candidates")
-    public Result<List<AnnualCreatorCandidateDTO>> getAnnualCreatorCandidates() {
+    public Result<List<AnnualCreatorCandidateDTO>> getAnnualCreatorCandidates(
+            @RequestParam(required = false) String userKeyword) {
         requireAdmin();
-        return Result.success(recommendationApplicationAppService.listAnnualCreatorCandidates());
+        return Result.success(recommendationApplicationAppService.listAnnualCreatorCandidates(userKeyword));
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.myblog.interfaces.rest.controller;
 
+import com.myblog.growth.shared.exception.GrowthBusinessException;
 import com.myblog.shared.exception.BusinessException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.Result;
@@ -33,6 +34,19 @@ public class GlobalExceptionHandler {
     public Result<Void> handleBusinessException(BusinessException exception) {
         LOGGER.warn("业务异常，code={}，message={}", exception.getCode(), exception.getMessage());
         return Result.fail(exception.getCode(), exception.getMessage());
+    }
+
+    /**
+     * 处理成长模块业务异常。
+     *
+     * @param exception 成长模块业务异常
+     * @return 失败响应
+     */
+    @ExceptionHandler(GrowthBusinessException.class)
+    public Result<Void> handleGrowthBusinessException(GrowthBusinessException exception) {
+        LOGGER.warn("成长模块业务异常，code={}，message={}",
+                exception.getErrorCode().getCode(), exception.getMessage());
+        return Result.fail(ErrorCode.PARAM_ERROR, exception.getMessage());
     }
 
     /**

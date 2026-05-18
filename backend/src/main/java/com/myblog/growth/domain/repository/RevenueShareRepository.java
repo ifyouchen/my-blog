@@ -66,21 +66,23 @@ public interface RevenueShareRepository {
      * 管理端分页查询分账流水.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选）
      * @param page             页码（从 1 开始）
      * @param size             每页条数
      * @return 分账流水列表
      */
-    List<RevenueShareJournal> findAdminPage(Long authorId, String settlementStatus, int page, int size);
+    List<RevenueShareJournal> findAdminPage(Long authorId, String authorKeyword, String settlementStatus, int page, int size);
 
     /**
      * 管理端统计分账流水总数.
      *
      * @param authorId         作者用户 ID（可选）
+     * @param authorKeyword    作者用户名或邮箱（可选）
      * @param settlementStatus 结算状态（可选）
      * @return 总数
      */
-    long countAdmin(Long authorId, String settlementStatus);
+    long countAdmin(Long authorId, String authorKeyword, String settlementStatus);
 
     /**
      * 分页查询作者分账流水.
