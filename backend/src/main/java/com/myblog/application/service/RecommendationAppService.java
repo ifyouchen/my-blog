@@ -49,6 +49,7 @@ public class RecommendationAppService {
     private final ColumnSubscriptionRepository columnSubscriptionRepository;
     private final UserFollowRepository userFollowRepository;
     private final ArticleAssembler articleAssembler;
+    private final UserLevelAppService userLevelAppService;
     private final Cache<String, List<ArticleDTO>> featuredArticlesCache;
     private final Cache<String, ArticleRecommendationsDTO> articleRecommendationsCache;
 
@@ -58,6 +59,7 @@ public class RecommendationAppService {
                                     ColumnSubscriptionRepository columnSubscriptionRepository,
                                     UserFollowRepository userFollowRepository,
                                     ArticleAssembler articleAssembler,
+                                    UserLevelAppService userLevelAppService,
                                     @Qualifier("featuredArticlesCache")
                                     Cache<String, List<ArticleDTO>> featuredArticlesCache,
                                     @Qualifier("articleRecommendationsCache")
@@ -68,6 +70,7 @@ public class RecommendationAppService {
         this.columnSubscriptionRepository = columnSubscriptionRepository;
         this.userFollowRepository = userFollowRepository;
         this.articleAssembler = articleAssembler;
+        this.userLevelAppService = userLevelAppService;
         this.featuredArticlesCache = featuredArticlesCache;
         this.articleRecommendationsCache = articleRecommendationsCache;
     }
@@ -107,6 +110,7 @@ public class RecommendationAppService {
             }
             items.add(dto);
         }
+        userLevelAppService.fillLevels(items);
         return items;
     }
 
@@ -144,6 +148,9 @@ public class RecommendationAppService {
             }
             items.add(articleAssembler.toDTO(article, author));
         }
+        userLevelAppService.fillLevels(items.stream()
+            .map(ArticleDTO::getAuthor)
+            .collect(java.util.stream.Collectors.toList()));
         featuredArticlesCache.put(cacheKey, items);
         return items;
     }
@@ -163,6 +170,9 @@ public class RecommendationAppService {
             }
             items.add(articleAssembler.toDTO(article, author));
         }
+        userLevelAppService.fillLevels(items.stream()
+            .map(ArticleDTO::getAuthor)
+            .collect(java.util.stream.Collectors.toList()));
         return items;
     }
 
@@ -311,6 +321,9 @@ public class RecommendationAppService {
                 break;
             }
         }
+        userLevelAppService.fillLevels(items.stream()
+            .map(ArticleDTO::getAuthor)
+            .collect(java.util.stream.Collectors.toList()));
         return items;
     }
 
@@ -328,6 +341,7 @@ public class RecommendationAppService {
             && columnSubscriptionRepository.exists(column.getId(), new UserId(currentUserId)));
         if (author != null) {
             dto.setAuthor(UserAssembler.toDTO(author));
+            userLevelAppService.fillLevel(dto.getAuthor());
         }
         return dto;
     }

@@ -3,6 +3,7 @@ package com.myblog.interfaces.rest.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.myblog.shared.dto.BadgeDisplayDTO;
 
 import java.util.List;
 
@@ -80,6 +81,9 @@ public class UserResponse {
 
     /** 是否显示专属徽章. */
     private boolean exclusiveBadgeEnabled;
+
+    /** 当前佩戴徽章. */
+    private BadgeDisplayDTO equippedBadge;
 
     /**
      * 获取用户ID.
@@ -457,5 +461,23 @@ public class UserResponse {
      */
     public void setExclusiveBadgeEnabled(boolean exclusiveBadgeEnabled) {
         this.exclusiveBadgeEnabled = exclusiveBadgeEnabled;
+    }
+
+    /**
+     * 获取当前佩戴徽章.
+     *
+     * @return 当前佩戴徽章
+     */
+    public BadgeDisplayDTO getEquippedBadge() {
+        return equippedBadge;
+    }
+
+    /**
+     * 设置当前佩戴徽章.
+     *
+     * @param equippedBadge 当前佩戴徽章
+     */
+    public void setEquippedBadge(BadgeDisplayDTO equippedBadge) {
+        this.equippedBadge = equippedBadge;
     }
 }

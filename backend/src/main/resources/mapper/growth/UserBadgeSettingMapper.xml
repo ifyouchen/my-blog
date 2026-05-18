@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.UserBadgeSettingMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.UserBadgeSetting">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="equipped_badge_code" property="equippedBadgeCode"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <resultMap id="EquippedBadgeRowMap"
+               type="com.myblog.growth.infrastructure.repository.persistence.mapper.UserBadgeSettingMapper$EquippedBadgeRow">
+        <result column="user_id" property="userId"/>
+        <association property="badge" javaType="com.myblog.growth.domain.model.valueobject.BadgeDefinition">
+            <id column="badge_id" property="id"/>
+            <result column="code" property="code"/>
+            <result column="type" property="type"/>
+            <result column="name" property="name"/>
+            <result column="description" property="description"/>
+            <result column="icon_key" property="iconKey"/>
+            <result column="tone" property="tone"/>
+            <result column="rarity" property="rarity"/>
+            <result column="sort_order" property="sortOrder"/>
+            <result column="enabled" property="enabled"/>
+            <result column="definition_created_at" property="createdAt"/>
+            <result column="definition_updated_at" property="updatedAt"/>
+            <result column="definition_version" property="version"/>
+        </association>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, equipped_badge_code, created_at, updated_at, version
+    </sql>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_badge_setting
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <insert id="upsertEquipped">
+        INSERT INTO user_badge_setting (user_id, equipped_badge_code)
+        VALUES (#{userId}, #{badgeCode})
+        ON DUPLICATE KEY UPDATE
+            equipped_badge_code = #{badgeCode},
+            updated_at = NOW(),
+            version = version + 1,
+            deleted_at = NULL
+    </insert>
+
+    <select id="selectEquippedDefinitionsByUserIds" resultMap="EquippedBadgeRowMap">
+        SELECT s.user_id,
+               d.id AS badge_id, d.code, d.type, d.name, d.description, d.icon_key, d.tone, d.rarity,
+               d.sort_order, d.enabled,
+               d.created_at AS definition_created_at,
+               d.updated_at AS definition_updated_at,
+               d.version AS definition_version
+        FROM user_badge_setting s
+        JOIN user_badge ub
+          ON ub.user_id = s.user_id
+         AND ub.badge_code = s.equipped_badge_code
+         AND ub.deleted_at IS NULL
+        JOIN badge_definition d
+          ON d.code = s.equipped_badge_code
+         AND d.enabled = 1
+         AND d.deleted_at IS NULL
+        WHERE s.user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+          AND s.equipped_badge_code IS NOT NULL
+          AND s.deleted_at IS NULL
+    </select>
+</mapper>

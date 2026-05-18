@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 /**
@@ -53,6 +55,17 @@ public class PointJournalRepositoryImpl implements PointJournalRepository {
             return Optional.empty();
         }
         return Optional.of(GrowthConverter.toPointJournalDomain(do_));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> findExistingBizNos(List<String> bizNos) {
+        if (bizNos == null || bizNos.isEmpty()) {
+            return new HashSet<String>();
+        }
+        return new HashSet<String>(mapper.selectExistingBizNos(bizNos));
     }
 
     /**

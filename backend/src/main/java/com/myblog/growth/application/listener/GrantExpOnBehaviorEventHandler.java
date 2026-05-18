@@ -54,7 +54,7 @@ public class GrantExpOnBehaviorEventHandler {
      *
      * @param event 文章点赞事件
      */
-    @Async
+    @Async("growthAsyncExecutor")
     @EventListener
     public void onArticleLiked(ArticleLikedEvent event) {
         // ArticleLikedEvent 只有 articleId 和 userId（=actorUserId），不含 authorUserId。
@@ -76,7 +76,7 @@ public class GrantExpOnBehaviorEventHandler {
      *
      * @param event 文章发布事件
      */
-    @Async
+    @Async("growthAsyncExecutor")
     @EventListener
     public void onArticlePublished(ArticlePublishedEvent event) {
         BehaviorExpEvent expEvent = BehaviorExpEvent.builder()
@@ -95,7 +95,7 @@ public class GrantExpOnBehaviorEventHandler {
      *
      * @param event 文章收藏事件
      */
-    @Async
+    @Async("growthAsyncExecutor")
     @EventListener
     public void onArticleFavorited(ArticleFavoritedEvent event) {
         BehaviorExpEvent expEvent = BehaviorExpEvent.builder()
@@ -117,7 +117,7 @@ public class GrantExpOnBehaviorEventHandler {
      *
      * @param event 评论创建事件
      */
-    @Async
+    @Async("growthAsyncExecutor")
     @EventListener
     public void onCommentCreated(CommentCreatedEvent event) {
         Long actorUserId = event.getCommentAuthorId();

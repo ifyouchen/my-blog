@@ -2,6 +2,7 @@
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import {ARTICLE_SORT_LATEST} from '@/constants/articleSort';
+import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import {DEFAULT_ARTICLE_COVER_URL} from '@/utils/media';
 
 const props = defineProps({
@@ -354,6 +355,7 @@ onBeforeUnmount(teardownLoadMoreObserver);
                         >
                             <img :src="article.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                             <span>{{ article.author.name }}</span>
+                            <UserEquippedBadge :badge="article.author.equippedBadge" compact />
                         </RouterLink>
                         <span>{{ article.stats.views }}</span>
                         <span>{{ article.stats.likes }}</span>

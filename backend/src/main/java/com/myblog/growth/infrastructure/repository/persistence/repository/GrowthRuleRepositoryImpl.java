@@ -1,10 +1,12 @@
 package com.myblog.growth.infrastructure.repository.persistence.repository;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.growth.domain.model.valueobject.GrowthRule;
 import com.myblog.growth.domain.repository.GrowthRuleRepository;
 import com.myblog.growth.infrastructure.repository.persistence.converter.GrowthConverter;
 import com.myblog.growth.infrastructure.repository.persistence.entity.GrowthRuleConfigDO;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.GrowthRuleConfigMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,14 +21,18 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
 
     /** 经验规则配置 MyBatis Mapper. */
     private final GrowthRuleConfigMapper mapper;
+    private final Cache<String, List<GrowthRule>> growthRulesCache;
 
     /**
      * 构造注入 Mapper.
      *
      * @param mapper 经验规则配置 Mapper
      */
-    public GrowthRuleRepositoryImpl(GrowthRuleConfigMapper mapper) {
+    public GrowthRuleRepositoryImpl(GrowthRuleConfigMapper mapper,
+                                    @Qualifier("growthRulesCache")
+                                    Cache<String, List<GrowthRule>> growthRulesCache) {
         this.mapper = mapper;
+        this.growthRulesCache = growthRulesCache;
     }
 
     /**
@@ -34,11 +40,9 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
      */
     @Override
     public Optional<GrowthRule> findByEventTypeAndRole(String eventType, String role) {
-        GrowthRuleConfigDO do_ = mapper.selectByEventTypeAndRole(eventType, role);
-        if (do_ == null) {
-            return Optional.empty();
-        }
-        return Optional.of(GrowthConverter.toDomain(do_));
+        return findAllEnabled().stream()
+                .filter(rule -> eventType.equals(rule.getEventType()) && role.equals(rule.getRole()))
+                .findFirst();
     }
 
     /**
@@ -46,9 +50,9 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
      */
     @Override
     public List<GrowthRule> findAllEnabled() {
-        return mapper.selectAllEnabled().stream()
+        return growthRulesCache.get("all-enabled", key -> mapper.selectAllEnabled().stream()
                 .map(GrowthConverter::toDomain)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     /**
@@ -58,6 +62,7 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
     public Long insert(GrowthRule rule) {
         GrowthRuleConfigDO do_ = GrowthConverter.toDO(rule);
         mapper.insert(do_);
+        growthRulesCache.invalidateAll();
         return do_.getId();
     }
 
@@ -67,7 +72,11 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
     @Override
     public int update(GrowthRule rule) {
         GrowthRuleConfigDO do_ = GrowthConverter.toDO(rule);
-        return mapper.updateCAS(do_);
+        int updated = mapper.updateCAS(do_);
+        if (updated > 0) {
+            growthRulesCache.invalidateAll();
+        }
+        return updated;
     }
 
     /**
@@ -75,7 +84,11 @@ public class GrowthRuleRepositoryImpl implements GrowthRuleRepository {
      */
     @Override
     public int softDelete(Long id, int version, String operator, String reason) {
-        return mapper.softDeleteCAS(id, version, operator, reason);
+        int deleted = mapper.softDeleteCAS(id, version, operator, reason);
+        if (deleted > 0) {
+            growthRulesCache.invalidateAll();
+        }
+        return deleted;
     }
 }
 

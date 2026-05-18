@@ -54,6 +54,7 @@ public class SignInAppService {
     private final ConsecutiveSignInRewardRepository consecutiveRewardRepository;
     private final CumulativeSignInRewardRepository cumulativeRewardRepository;
     private final RewardGrantLogRepository rewardGrantLogRepository;
+    private final BadgeAppService badgeAppService;
 
     public SignInAppService(SignInRecordRepositoryImpl signInRecordRepository,
                             SignInDomainService signInDomainService,
@@ -62,7 +63,8 @@ public class SignInAppService {
                             UserSignInStatsRepository userSignInStatsRepository,
                             ConsecutiveSignInRewardRepository consecutiveRewardRepository,
                             CumulativeSignInRewardRepository cumulativeRewardRepository,
-                            RewardGrantLogRepository rewardGrantLogRepository) {
+                            RewardGrantLogRepository rewardGrantLogRepository,
+                            BadgeAppService badgeAppService) {
         this.signInRecordRepository = signInRecordRepository;
         this.signInDomainService = signInDomainService;
         this.pointAppService = pointAppService;
@@ -71,6 +73,7 @@ public class SignInAppService {
         this.consecutiveRewardRepository = consecutiveRewardRepository;
         this.cumulativeRewardRepository = cumulativeRewardRepository;
         this.rewardGrantLogRepository = rewardGrantLogRepository;
+        this.badgeAppService = badgeAppService;
     }
 
     /**
@@ -412,6 +415,7 @@ public class SignInAppService {
                     userId, REWARD_TYPE_CUMULATIVE, config.getId(),
                     config.getRewardPoints(), "累计签到 " + config.getMilestoneDays() + " 天里程碑");
             rewardGrantLogRepository.save(grantLog);
+            badgeAppService.grantSignInBadge(userId, config.getBadgeCode(), config.getMilestoneDays());
 
             if (config.getRewardPoints() > 0) {
                 String bizNo = "milestone-" + userId + "-" + config.getMilestoneDays();

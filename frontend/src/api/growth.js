@@ -21,6 +21,14 @@ export const getMyGrowthApi = () => request('/growth/my');
 export const getMyExpJournalsApi = (limit = 20) =>
     request(`/growth/my/journals?limit=${limit}`);
 
+export const getMyBadgesApi = () => request('/badges/my');
+
+export const equipMyBadgeApi = (badgeCode) =>
+    request('/badges/my/equipped', {
+        method: 'PUT',
+        body: {badgeCode}
+    });
+
 // ─────────────────────── 积分账户 ────────────────────────────────
 
 /**

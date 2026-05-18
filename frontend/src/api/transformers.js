@@ -12,6 +12,7 @@ export const normalizeUser = (user) => ({
     currentLevel: Number(user.currentLevel || user.level || 1),
     privilegeCodes: Array.isArray(user.privilegeCodes) ? user.privilegeCodes : [],
     exclusiveBadgeEnabled: Boolean(user.exclusiveBadgeEnabled),
+    equippedBadge: user.equippedBadge || null,
     email: user.email,
     role: user.role,
     status: user.status,

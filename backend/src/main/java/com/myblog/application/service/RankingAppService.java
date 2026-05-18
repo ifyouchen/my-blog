@@ -644,6 +644,7 @@ public class RankingAppService {
         dto.setCurrentLevel(source.getCurrentLevel());
         dto.setPrivilegeCodes(source.getPrivilegeCodes());
         dto.setExclusiveBadgeEnabled(source.isExclusiveBadgeEnabled());
+        dto.setEquippedBadge(source.getEquippedBadge());
         return dto;
     }
 }

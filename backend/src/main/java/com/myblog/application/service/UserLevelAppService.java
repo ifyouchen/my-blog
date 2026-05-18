@@ -5,7 +5,9 @@ import com.myblog.growth.domain.model.aggregate.GrowthAccount;
 import com.myblog.growth.domain.repository.GrowthAccountRepository;
 import com.myblog.growth.domain.repository.UserPrivilegeEntitlementRepository;
 import com.myblog.growth.domain.model.valueobject.UserPrivilegeEntitlement;
+import com.myblog.growth.application.service.BadgeAppService;
 import com.myblog.growth.shared.constant.GrowthPrivilegeCodes;
+import com.myblog.shared.dto.BadgeDisplayDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,11 +25,14 @@ public class UserLevelAppService {
 
     private final GrowthAccountRepository growthAccountRepository;
     private final UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository;
+    private final BadgeAppService badgeAppService;
 
     public UserLevelAppService(GrowthAccountRepository growthAccountRepository,
-                               UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository) {
+                               UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository,
+                               BadgeAppService badgeAppService) {
         this.growthAccountRepository = growthAccountRepository;
         this.userPrivilegeEntitlementRepository = userPrivilegeEntitlementRepository;
+        this.badgeAppService = badgeAppService;
     }
 
     /**
@@ -49,6 +54,8 @@ public class UserLevelAppService {
         }
         user.setPrivilegeCodes(privilegeCodes);
         user.setExclusiveBadgeEnabled(privilegeCodes.contains(GrowthPrivilegeCodes.EXCLUSIVE_BADGE));
+        Map<Long, BadgeDisplayDTO> badgeMap = badgeAppService.findEquippedBadges(java.util.Collections.singletonList(user.getId()));
+        user.setEquippedBadge(badgeMap.get(user.getId()));
     }
 
     /**
@@ -79,6 +86,8 @@ public class UserLevelAppService {
             growthAccountRepository.findByUserIds(new ArrayList<Long>(userIds));
         Map<Long, List<UserPrivilegeEntitlement>> privilegeMap =
             userPrivilegeEntitlementRepository.findActiveByUserIds(new ArrayList<Long>(userIds));
+        Map<Long, BadgeDisplayDTO> equippedBadgeMap =
+            badgeAppService.findEquippedBadges(new ArrayList<Long>(userIds));
         for (UserDTO user : validUsers) {
             GrowthAccount account = accountMap.get(user.getId());
             user.setCurrentLevel(account == null ? 1 : Math.max(1, account.getCurrentLevel()));
@@ -91,6 +100,7 @@ public class UserLevelAppService {
             }
             user.setPrivilegeCodes(codes);
             user.setExclusiveBadgeEnabled(codes.contains(GrowthPrivilegeCodes.EXCLUSIVE_BADGE));
+            user.setEquippedBadge(equippedBadgeMap.get(user.getId()));
         }
     }
 }

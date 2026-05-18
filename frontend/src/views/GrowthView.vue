@@ -4,8 +4,13 @@ import {useHead} from '@unhead/vue';
 import {RouterLink} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import CreatorSidebar from '@/components/CreatorSidebar.vue';
+import BadgePicker from '@/components/BadgePicker.vue';
+import BadgeWall from '@/components/BadgeWall.vue';
+import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import {
+  equipMyBadgeApi,
   getMyExpJournalsApi,
+  getMyBadgesApi,
   getMyGrowthApi,
   getMyRevenueApi,
   getPointAccountApi,
@@ -17,7 +22,7 @@ import {useSession} from '@/stores/session';
 
 useHead({title: '经验积分 - DevNotes'});
 
-const {state: session} = useSession();
+const {state: session, updateCurrentUser} = useSession();
 
 // ── 成长账户（等级 / 经验） ──────────────────────────────────────
 const growth = ref(null);
@@ -262,6 +267,61 @@ const applyJournalData = (tab, page, items, total) => {
     journalTotal.value = total;
 };
 
+// ── 徽章 ─────────────────────────────────────────────────────────
+const badgeState = ref({
+    badges: [],
+    equippedBadge: null
+});
+const badgeLoading = ref(false);
+const badgeSaving = ref(false);
+const badgeError = ref('');
+
+const loadBadges = async () => {
+    badgeLoading.value = true;
+    badgeError.value = '';
+    try {
+        const result = await getMyBadgesApi();
+        badgeState.value = {
+            badges: result?.badges || [],
+            equippedBadge: result?.equippedBadge || null
+        };
+    } catch (e) {
+        badgeError.value = e.message || '徽章加载失败';
+    } finally {
+        badgeLoading.value = false;
+    }
+};
+
+const syncSessionEquippedBadge = (equippedBadge) => {
+    if (!session.user) {
+        return;
+    }
+    updateCurrentUser({
+        ...session.user,
+        equippedBadge: equippedBadge || null
+    });
+};
+
+const equipBadge = async (badgeCode) => {
+    if (badgeSaving.value) {
+        return;
+    }
+    badgeSaving.value = true;
+    badgeError.value = '';
+    try {
+        const result = await equipMyBadgeApi(badgeCode);
+        badgeState.value = {
+            badges: result?.badges || [],
+            equippedBadge: result?.equippedBadge || null
+        };
+        syncSessionEquippedBadge(badgeState.value.equippedBadge);
+    } catch (e) {
+        badgeError.value = e.message || '佩戴徽章失败';
+    } finally {
+        badgeSaving.value = false;
+    }
+};
+
 const fetchJournalData = async (tab, page) => {
     let nextItems = [];
     let nextTotal = 0;
@@ -477,7 +537,7 @@ const handleRewardDialogPointerUp = (event) => {
 };
 
 onMounted(async () => {
-    await Promise.all([loadGrowth(), loadAccount(), loadCalendar(calendarMonth.value)]);
+    await Promise.all([loadGrowth(), loadAccount(), loadBadges(), loadCalendar(calendarMonth.value)]);
     await loadJournals({tab: 'points', page: 1});
     warmJournalCache();
 });
@@ -559,6 +619,26 @@ onMounted(async () => {
                     <div v-else class="card-empty">暂无积分信息</div>
                 </div>
 
+                <!-- 徽章卡片 -->
+                <div class="growth-card badge-card">
+                    <div v-if="badgeLoading" class="card-skeleton"></div>
+                    <template v-else>
+                        <div class="badge-card-head">
+                            <div>
+                                <span class="stat-label">当前佩戴</span>
+                                <h3>我的徽章</h3>
+                            </div>
+                            <UserEquippedBadge :badge="badgeState.equippedBadge" />
+                        </div>
+                        <BadgePicker
+                            :badges="badgeState.badges"
+                            :saving="badgeSaving"
+                            @equip="equipBadge"
+                        />
+                        <p v-if="badgeError" class="badge-error">{{ badgeError }}</p>
+                    </template>
+                </div>
+
                 <!-- 签到卡片 -->
                 <div class="growth-card signin-card">
                     <div class="signin-header">
@@ -614,6 +694,17 @@ onMounted(async () => {
                     </button>
                 </div>
             </div>
+
+            <section class="badge-wall-section">
+                <div class="badge-wall-head">
+                    <div>
+                        <p class="eyebrow">成就收藏</p>
+                        <h2>徽章墙</h2>
+                    </div>
+                    <span>{{ badgeState.badges.filter((badge) => badge.owned).length }} / {{ badgeState.badges.length }}</span>
+                </div>
+                <BadgeWall :badges="badgeState.badges" />
+            </section>
 
             <!-- 流水记录区 -->
             <section class="journal-section">
@@ -1222,6 +1313,58 @@ onMounted(async () => {
     font-size: 16px;
     font-weight: 600;
     color: var(--text-strong);
+}
+
+/* ── 徽章 ───────────────────────────────────── */
+.badge-card {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 14px;
+}
+
+.badge-card-head,
+.badge-wall-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-width: 0;
+}
+
+.badge-card-head h3,
+.badge-wall-head h2,
+.badge-wall-head p {
+    margin: 0;
+}
+
+.badge-card-head h3,
+.badge-wall-head h2 {
+    color: var(--text-strong);
+    font-size: 16px;
+}
+
+.badge-error {
+    margin: 0;
+    color: #dc2626;
+    font-size: 12px;
+}
+
+.badge-wall-section {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+.badge-wall-head > span {
+    flex: none;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 800;
 }
 
 /* ── 签到卡片 ───────────────────────────────── */

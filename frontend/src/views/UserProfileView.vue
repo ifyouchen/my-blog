@@ -8,6 +8,7 @@ import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
+import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
 import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
@@ -423,6 +424,7 @@ onBeforeUnmount(teardownColumnObserver);
                 <div class="profile-badge-row">
                     <UserLevelBadge :level="profile.user.currentLevel" />
                     <UserPrivilegeBadge :privilege-codes="profile.user.privilegeCodes || []" />
+                    <UserEquippedBadge :badge="profile.user.equippedBadge" />
                 </div>
             </template>
             <template #actions>

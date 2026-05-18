@@ -30,6 +30,14 @@ public interface UserPointJournalMapper {
     UserPointJournalDO selectByBizNo(@Param("bizNo") String bizNo);
 
     /**
+     * 批量查询已存在的业务单号.
+     *
+     * @param bizNos 业务单号列表
+     * @return 已存在的业务单号列表
+     */
+    List<String> selectExistingBizNos(@Param("bizNos") List<String> bizNos);
+
+    /**
      * 查询用户近期积分流水（按创建时间倒序）.
      *
      * @param userId 用户 ID

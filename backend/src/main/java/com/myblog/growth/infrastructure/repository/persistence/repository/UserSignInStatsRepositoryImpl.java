@@ -5,6 +5,10 @@ import com.myblog.growth.domain.repository.UserSignInStatsRepository;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.UserSignInStatsMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -25,6 +29,18 @@ public class UserSignInStatsRepositoryImpl implements UserSignInStatsRepository 
     @Override
     public Optional<UserSignInStats> findByUserId(Long userId) {
         return mapper.selectByUserId(userId);
+    }
+
+    @Override
+    public Map<Long, UserSignInStats> findByUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, UserSignInStats> result = new HashMap<Long, UserSignInStats>();
+        for (UserSignInStats stats : mapper.selectByUserIds(userIds)) {
+            result.put(stats.getUserId(), stats);
+        }
+        return result;
     }
 
     @Override

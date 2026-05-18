@@ -1,20 +1,21 @@
 <script setup>
-import {onMounted, ref, watch} from 'vue';
+import {computed, defineAsyncComponent, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
-import GrowthRuleTab from '@/views/admin/GrowthRuleTab.vue';
-import LevelThresholdTab from '@/views/admin/LevelThresholdTab.vue';
-import LevelRewardTab from '@/views/admin/LevelRewardTab.vue';
-import PointRuleTab from '@/views/admin/PointRuleTab.vue';
-import PointAccountTab from '@/views/admin/PointAccountTab.vue';
-import RevenueShareTab from '@/views/admin/RevenueShareTab.vue';
-import RewardGrantLogTab from '@/views/admin/RewardGrantLogTab.vue';
-import RecommendationApplicationTab from '@/views/admin/RecommendationApplicationTab.vue';
-import AnnualCreatorCandidateTab from '@/views/admin/AnnualCreatorCandidateTab.vue';
-import SignInRewardTab from '@/views/admin/SignInRewardTab.vue';
 import {getAdminGrowthRulesApi, getAdminPointRulesApi, getAdminRevenueSharesApi} from '@/api/growth';
 
 const route = useRoute();
 const router = useRouter();
+
+const GrowthRuleTab = defineAsyncComponent(() => import('@/views/admin/GrowthRuleTab.vue'));
+const LevelThresholdTab = defineAsyncComponent(() => import('@/views/admin/LevelThresholdTab.vue'));
+const LevelRewardTab = defineAsyncComponent(() => import('@/views/admin/LevelRewardTab.vue'));
+const PointRuleTab = defineAsyncComponent(() => import('@/views/admin/PointRuleTab.vue'));
+const PointAccountTab = defineAsyncComponent(() => import('@/views/admin/PointAccountTab.vue'));
+const RevenueShareTab = defineAsyncComponent(() => import('@/views/admin/RevenueShareTab.vue'));
+const RewardGrantLogTab = defineAsyncComponent(() => import('@/views/admin/RewardGrantLogTab.vue'));
+const RecommendationApplicationTab = defineAsyncComponent(() => import('@/views/admin/RecommendationApplicationTab.vue'));
+const AnnualCreatorCandidateTab = defineAsyncComponent(() => import('@/views/admin/AnnualCreatorCandidateTab.vue'));
+const SignInRewardTab = defineAsyncComponent(() => import('@/views/admin/SignInRewardTab.vue'));
 
 const TABS = [
     {key: 'dashboard', label: '概览'},
@@ -31,6 +32,19 @@ const TABS = [
 ];
 
 const activeTab = ref('dashboard');
+const TAB_COMPONENTS = {
+    rules: GrowthRuleTab,
+    thresholds: LevelThresholdTab,
+    'level-rewards': LevelRewardTab,
+    'sign-in-rewards': SignInRewardTab,
+    'point-rules': PointRuleTab,
+    points: PointAccountTab,
+    'reward-logs': RewardGrantLogTab,
+    'recommendation-applications': RecommendationApplicationTab,
+    'annual-candidates': AnnualCreatorCandidateTab,
+    revenue: RevenueShareTab
+};
+const activeTabComponent = computed(() => TAB_COMPONENTS[activeTab.value] || null);
 
 watch(() => route.query.tab, (tab) => {
     if (tab && TABS.some(t => t.key === tab)) {
@@ -150,35 +164,9 @@ onMounted(() => {
             </div>
         </section>
 
-        <!-- ==================== 经验规则 ==================== -->
-        <GrowthRuleTab v-if="activeTab === 'rules'" />
-
-        <!-- ==================== 等级阈值 ==================== -->
-        <LevelThresholdTab v-if="activeTab === 'thresholds'" />
-
-        <!-- ==================== 等级奖励 ==================== -->
-        <LevelRewardTab v-if="activeTab === 'level-rewards'" />
-
-        <!-- ==================== 签到奖励 ==================== -->
-        <SignInRewardTab v-if="activeTab === 'sign-in-rewards'" />
-
-        <!-- ==================== 积分规则 ==================== -->
-        <PointRuleTab v-if="activeTab === 'point-rules'" />
-
-        <!-- ==================== 积分账户 ==================== -->
-        <PointAccountTab v-if="activeTab === 'points'" />
-
-        <!-- ==================== 奖励记录 ==================== -->
-        <RewardGrantLogTab v-if="activeTab === 'reward-logs'" />
-
-        <!-- ==================== 推荐申请 ==================== -->
-        <RecommendationApplicationTab v-if="activeTab === 'recommendation-applications'" />
-
-        <!-- ==================== 年度候选 ==================== -->
-        <AnnualCreatorCandidateTab v-if="activeTab === 'annual-candidates'" />
-
-        <!-- ==================== 分账流水 ==================== -->
-        <RevenueShareTab v-if="activeTab === 'revenue'" />
+        <KeepAlive>
+            <component :is="activeTabComponent" v-if="activeTabComponent" />
+        </KeepAlive>
     </div>
 </template>
 

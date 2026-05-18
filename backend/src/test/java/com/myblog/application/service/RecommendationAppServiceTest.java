@@ -50,6 +50,9 @@ class RecommendationAppServiceTest {
     @Mock
     private ArticleAssembler articleAssembler;
 
+    @Mock
+    private UserLevelAppService userLevelAppService;
+
     @Test
     void listWeeklyArticlesExcludesFocusAndRecommendFeedHead() {
         Cache<String, List<ArticleDTO>> featuredArticlesCache = Caffeine.newBuilder().build();
@@ -61,6 +64,7 @@ class RecommendationAppServiceTest {
             columnSubscriptionRepository,
             userFollowRepository,
             articleAssembler,
+            userLevelAppService,
             featuredArticlesCache,
             articleRecommendationsCache
         );

@@ -8,8 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -23,11 +25,14 @@ public class UserPrivilegeAppService {
 
     private final LevelPrivilegeRepository levelPrivilegeRepository;
     private final UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository;
+    private final BadgeAppService badgeAppService;
 
     public UserPrivilegeAppService(LevelPrivilegeRepository levelPrivilegeRepository,
-                                   UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository) {
+                                   UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository,
+                                   BadgeAppService badgeAppService) {
         this.levelPrivilegeRepository = levelPrivilegeRepository;
         this.userPrivilegeEntitlementRepository = userPrivilegeEntitlementRepository;
+        this.badgeAppService = badgeAppService;
     }
 
     /**
@@ -46,6 +51,10 @@ public class UserPrivilegeAppService {
             int inserted = userPrivilegeEntitlementRepository.insertIgnore(entitlement);
             if (inserted > 0) {
                 grantedCodes.add(config.getPrivilegeCode());
+                if (com.myblog.growth.shared.constant.GrowthPrivilegeCodes.ANNUAL_CREATOR_ELIGIBLE
+                        .equals(config.getPrivilegeCode())) {
+                    badgeAppService.grantAnnualCreatorCandidateBadge(userId);
+                }
             }
         }
         return grantedCodes;
@@ -63,6 +72,29 @@ public class UserPrivilegeAppService {
             codes.add(entitlement.getPrivilegeCode());
         }
         return new ArrayList<String>(codes);
+    }
+
+    /**
+     * 批量查询用户当前有效权益编码.
+     *
+     * @param userIds 用户ID列表
+     * @return 用户ID到权益编码列表的映射
+     */
+    public Map<Long, List<String>> listPrivilegeCodesByUserIds(List<Long> userIds) {
+        Map<Long, List<String>> result = new HashMap<Long, List<String>>();
+        if (userIds == null || userIds.isEmpty()) {
+            return result;
+        }
+        Map<Long, List<UserPrivilegeEntitlement>> entitlementMap =
+            userPrivilegeEntitlementRepository.findActiveByUserIds(userIds);
+        for (Map.Entry<Long, List<UserPrivilegeEntitlement>> entry : entitlementMap.entrySet()) {
+            Set<String> codes = new LinkedHashSet<String>();
+            for (UserPrivilegeEntitlement entitlement : entry.getValue()) {
+                codes.add(entitlement.getPrivilegeCode());
+            }
+            result.put(entry.getKey(), new ArrayList<String>(codes));
+        }
+        return result;
     }
 
     /**

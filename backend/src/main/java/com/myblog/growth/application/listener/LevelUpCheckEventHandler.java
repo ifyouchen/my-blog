@@ -1,6 +1,7 @@
 package com.myblog.growth.application.listener;
 
 import com.myblog.growth.application.event.LevelUpCheckEvent;
+import com.myblog.growth.application.service.BadgeAppService;
 import com.myblog.growth.application.service.PointAppService;
 import com.myblog.growth.application.service.UserPrivilegeAppService;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
@@ -51,6 +52,7 @@ public class LevelUpCheckEventHandler {
     private final RewardGrantLogRepository rewardGrantLogRepository;
     private final PointAppService pointAppService;
     private final UserPrivilegeAppService userPrivilegeAppService;
+    private final BadgeAppService badgeAppService;
 
     public LevelUpCheckEventHandler(GrowthAccountRepository growthAccountRepository,
                                      LevelThresholdRepository levelThresholdRepository,
@@ -58,7 +60,8 @@ public class LevelUpCheckEventHandler {
                                      LevelRewardRepository levelRewardRepository,
                                      RewardGrantLogRepository rewardGrantLogRepository,
                                      PointAppService pointAppService,
-                                     UserPrivilegeAppService userPrivilegeAppService) {
+                                     UserPrivilegeAppService userPrivilegeAppService,
+                                     BadgeAppService badgeAppService) {
         this.growthAccountRepository = growthAccountRepository;
         this.levelThresholdRepository = levelThresholdRepository;
         this.levelPolicyService = levelPolicyService;
@@ -66,6 +69,7 @@ public class LevelUpCheckEventHandler {
         this.rewardGrantLogRepository = rewardGrantLogRepository;
         this.pointAppService = pointAppService;
         this.userPrivilegeAppService = userPrivilegeAppService;
+        this.badgeAppService = badgeAppService;
     }
 
     @EventListener
@@ -94,6 +98,7 @@ public class LevelUpCheckEventHandler {
             int updated = growthAccountRepository.updateExpAndLevel(account);
             if (updated > 0) {
                 log.info("[等级升级] 用户升级成功。userId={}, newLevel={}, exp={}", userId, targetLevel, newExp);
+                badgeAppService.grantLevelBadges(userId, targetLevel);
                 grantLevelUpReward(userId, targetLevel);
                 userPrivilegeAppService.grantLevelPrivileges(userId, targetLevel);
             } else {

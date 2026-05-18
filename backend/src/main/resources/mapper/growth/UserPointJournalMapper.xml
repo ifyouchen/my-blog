@@ -41,6 +41,16 @@
         LIMIT 1
     </select>
 
+    <select id="selectExistingBizNos" resultType="string">
+        SELECT biz_no
+        FROM user_point_journal
+        WHERE biz_no IN
+        <foreach collection="bizNos" item="bizNo" open="(" separator="," close=")">
+            #{bizNo}
+        </foreach>
+          AND deleted_at IS NULL
+    </select>
+
     <!-- 查询用户近期积分流水（按创建时间倒序） -->
     <select id="selectRecentByUserId" resultMap="BaseResultMap">
         SELECT

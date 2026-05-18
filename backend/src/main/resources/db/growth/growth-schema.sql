@@ -314,8 +314,64 @@ CREATE TABLE IF NOT EXISTS `user_reward_grant_log` (
     `remark`         varchar(255)    NULL DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_user_reward` (`user_id`, `reward_type`, `reward_id`) USING BTREE,
-    INDEX `idx_user_type` (`user_id`, `reward_type`) USING BTREE
+    INDEX `idx_user_type` (`user_id`, `reward_type`) USING BTREE,
+    INDEX `idx_user_granted` (`user_id`, `granted_at`) USING BTREE,
+    INDEX `idx_reward_type_granted` (`reward_type`, `granted_at`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户奖励领取记录表';
+
+-- 徽章定义表
+CREATE TABLE IF NOT EXISTS `badge_definition` (
+    `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `code`        varchar(64)     NOT NULL COMMENT '徽章编码',
+    `type`        varchar(32)     NOT NULL COMMENT '徽章类型：LEVEL/SIGN/ANNUAL',
+    `name`        varchar(64)     NOT NULL COMMENT '徽章名称',
+    `description` varchar(255)    NULL DEFAULT NULL COMMENT '徽章描述',
+    `icon_key`    varchar(64)     NOT NULL DEFAULT '' COMMENT '前端图形键',
+    `tone`        varchar(32)     NOT NULL DEFAULT 'slate' COMMENT '视觉色调',
+    `rarity`      varchar(32)     NOT NULL DEFAULT 'COMMON' COMMENT '稀有度',
+    `sort_order`  int             NOT NULL DEFAULT 0 COMMENT '排序值',
+    `enabled`     tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`  datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`     int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_code` (`code`) USING BTREE,
+    INDEX `idx_type_sort` (`type`, `sort_order`, `deleted_at`) USING BTREE,
+    INDEX `idx_enabled_sort` (`enabled`, `sort_order`, `deleted_at`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='徽章定义表';
+
+-- 用户已拥有徽章表
+CREATE TABLE IF NOT EXISTS `user_badge` (
+    `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`     bigint unsigned NOT NULL COMMENT '用户ID',
+    `badge_code`  varchar(64)     NOT NULL COMMENT '徽章编码',
+    `source_type` varchar(32)     NOT NULL COMMENT '来源类型：LEVEL/SIGN_IN/PRIVILEGE/BACKFILL',
+    `source_id`   bigint unsigned NULL DEFAULT NULL COMMENT '来源ID',
+    `granted_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '授予时间',
+    `created_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`  datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`     int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_user_badge` (`user_id`, `badge_code`) USING BTREE,
+    INDEX `idx_badge_code` (`badge_code`, `deleted_at`) USING BTREE,
+    INDEX `idx_user_granted` (`user_id`, `granted_at`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户已拥有徽章表';
+
+-- 用户徽章佩戴设置表
+CREATE TABLE IF NOT EXISTS `user_badge_setting` (
+    `id`                  bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`             bigint unsigned NOT NULL COMMENT '用户ID',
+    `equipped_badge_code` varchar(64)     NULL DEFAULT NULL COMMENT '当前佩戴徽章编码',
+    `created_at`          datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`          datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`          datetime        NULL DEFAULT NULL COMMENT '软删除时间',
+    `version`             int             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_user` (`user_id`) USING BTREE,
+    INDEX `idx_equipped_badge` (`equipped_badge_code`, `deleted_at`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户徽章佩戴设置表';
 
 
 -- ========================
@@ -424,7 +480,9 @@ CREATE TABLE IF NOT EXISTS `revenue_share_journal` (
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_order_no` (`order_no`) USING BTREE,
     INDEX `idx_author_created` (`author_id`, `created_at`) USING BTREE,
-    INDEX `idx_settlement_status` (`settlement_status`, `retry_count`, `created_at`) USING BTREE
+    INDEX `idx_settlement_status` (`settlement_status`, `retry_count`, `created_at`) USING BTREE,
+    INDEX `idx_status_created` (`settlement_status`, `created_at`) USING BTREE,
+    INDEX `idx_author_status_created` (`author_id`, `settlement_status`, `created_at`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分账流水';
 
 -- 文章表新增字段（ALTER，不重建表）
@@ -468,6 +526,27 @@ INSERT IGNORE INTO `level_threshold_config` (`level`, `min_exp`, `level_name`, `
 (8, 13000, '领域导师', '持续产出优质内容',   1),
 (9, 22000, '技术领袖', '具备社区影响力',     1),
 (10, 35000, '荣耀创作者', '长期杰出贡献者',  1);
+
+-- 初始化徽章定义
+INSERT IGNORE INTO `badge_definition`
+    (`code`, `type`, `name`, `description`, `icon_key`, `tone`, `rarity`, `sort_order`, `enabled`)
+VALUES
+('LEVEL_1', 'LEVEL', '新手', '达到 Lv.1', 'level-1', 'mint', 'COMMON', 101, 1),
+('LEVEL_2', 'LEVEL', '学徒', '达到 Lv.2', 'level-2', 'sky', 'COMMON', 102, 1),
+('LEVEL_3', 'LEVEL', '进阶', '达到 Lv.3', 'level-3', 'indigo', 'COMMON', 103, 1),
+('LEVEL_4', 'LEVEL', '达人', '达到 Lv.4', 'level-4', 'amber', 'RARE', 104, 1),
+('LEVEL_5', 'LEVEL', '专家', '达到 Lv.5', 'level-5', 'rose', 'RARE', 105, 1),
+('LEVEL_6', 'LEVEL', '大师作者', '达到 Lv.6', 'level-6', 'violet', 'EPIC', 106, 1),
+('LEVEL_7', 'LEVEL', '资深专家', '达到 Lv.7', 'level-7', 'teal', 'EPIC', 107, 1),
+('LEVEL_8', 'LEVEL', '领域导师', '达到 Lv.8', 'level-8', 'gold', 'LEGENDARY', 108, 1),
+('LEVEL_9', 'LEVEL', '技术领袖', '达到 Lv.9', 'level-9', 'crimson', 'LEGENDARY', 109, 1),
+('LEVEL_10', 'LEVEL', '荣耀创作者', '达到 Lv.10', 'level-10', 'aurora', 'LEGENDARY', 110, 1),
+('SIGN_7', 'SIGN', '一周坚持者', '累计签到 7 天', 'sign-7', 'mint', 'COMMON', 201, 1),
+('SIGN_30', 'SIGN', '月度达人', '累计签到 30 天', 'sign-30', 'sky', 'RARE', 202, 1),
+('SIGN_100', 'SIGN', '百日挑战者', '累计签到 100 天', 'sign-100', 'teal', 'EPIC', 203, 1),
+('SIGN_200', 'SIGN', '半年坚持者', '累计签到 200 天', 'sign-200', 'amber', 'EPIC', 204, 1),
+('SIGN_365', 'SIGN', '年度创作者', '累计签到 365 天', 'sign-365', 'gold', 'LEGENDARY', 205, 1),
+('ANNUAL_CREATOR_CANDIDATE', 'ANNUAL', '年度创作者候选', '获得年度创作者候选资格', 'annual-candidate', 'crimson', 'LEGENDARY', 301, 1);
 
 -- 初始化经验规则
 INSERT INTO `growth_rule_config`
@@ -550,12 +629,27 @@ WHERE NOT EXISTS (
 );
 
 -- 初始化累计签到里程碑配置
-INSERT IGNORE INTO `sign_in_cumulative_reward_config` (`milestone_days`, `reward_points`, `reward_title`, `description`) VALUES
-(7, 20, '一周坚持者', '累计签到 7 天'),
-(30, 100, '月度达人', '累计签到 30 天'),
-(100, 500, '百日挑战者', '累计签到 100 天'),
-(200, 1000, '半年坚持者', '累计签到 200 天'),
-(365, 2000, '年度创作者', '累计签到 365 天');
+INSERT IGNORE INTO `sign_in_cumulative_reward_config`
+    (`milestone_days`, `reward_points`, `reward_title`, `badge_code`, `description`)
+VALUES
+(7, 20, '一周坚持者', 'SIGN_7', '累计签到 7 天'),
+(30, 100, '月度达人', 'SIGN_30', '累计签到 30 天'),
+(100, 500, '百日挑战者', 'SIGN_100', '累计签到 100 天'),
+(200, 1000, '半年坚持者', 'SIGN_200', '累计签到 200 天'),
+(365, 2000, '年度创作者', 'SIGN_365', '累计签到 365 天');
+
+UPDATE `sign_in_cumulative_reward_config`
+SET `badge_code` = CASE `milestone_days`
+    WHEN 7 THEN 'SIGN_7'
+    WHEN 30 THEN 'SIGN_30'
+    WHEN 100 THEN 'SIGN_100'
+    WHEN 200 THEN 'SIGN_200'
+    WHEN 365 THEN 'SIGN_365'
+    ELSE `badge_code`
+END
+WHERE `deleted_at` IS NULL
+  AND (`badge_code` IS NULL OR `badge_code` = '')
+  AND `milestone_days` IN (7, 30, 100, 200, 365);
 
 -- 初始化等级奖励配置
 INSERT IGNORE INTO `level_reward_config` (`level`, `reward_points`, `reward_title`, `description`) VALUES

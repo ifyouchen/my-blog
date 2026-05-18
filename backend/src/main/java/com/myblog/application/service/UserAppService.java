@@ -376,8 +376,15 @@ public class UserAppService {
      * @return 用户搜索结果分页
      */
     public PageResult<UserSearchDTO> searchUsers(String keyword, int page, int pageSize, Long currentUserId) {
-        List<User> users = userRepository.searchUsers(keyword, "followers", page, pageSize);
-        long total = userRepository.countSearchUsers(keyword);
+        String normalizedKeyword = normalizeKeyword(keyword);
+        List<User> users = findExactUserForSearch(normalizedKeyword);
+        long total;
+        if (users.isEmpty()) {
+            users = userRepository.searchUsers(normalizedKeyword, "followers", page, pageSize);
+            total = userRepository.countSearchUsers(normalizedKeyword);
+        } else {
+            total = 1;
+        }
 
         if (users.isEmpty()) {
             return new PageResult<>(new ArrayList<UserSearchDTO>(), page, pageSize, total);
@@ -416,6 +423,16 @@ public class UserAppService {
         }
 
         return new PageResult<>(dtos, page, pageSize, total);
+    }
+
+    private List<User> findExactUserForSearch(String keyword) {
+        if (keyword == null) {
+            return new ArrayList<User>();
+        }
+        return userRepository.findByAccount(keyword)
+            .filter(user -> com.myblog.shared.enums.UserStatus.NORMAL.equals(user.getStatus()))
+            .map(java.util.Collections::singletonList)
+            .orElseGet(ArrayList::new);
     }
 
     /**

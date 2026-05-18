@@ -14,6 +14,14 @@ import com.myblog.application.query.ArticlePageCacheKey;
 import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import com.myblog.domain.model.aggregate.Article;
+import com.myblog.growth.domain.model.valueobject.BadgeDefinition;
+import com.myblog.growth.domain.model.valueobject.ConsecutiveSignInRewardConfig;
+import com.myblog.growth.domain.model.valueobject.CumulativeSignInRewardConfig;
+import com.myblog.growth.domain.model.valueobject.GrowthRule;
+import com.myblog.growth.domain.model.valueobject.LevelPrivilegeConfig;
+import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
+import com.myblog.growth.domain.model.valueobject.LevelThreshold;
+import com.myblog.growth.domain.model.valueobject.PointRule;
 import com.myblog.shared.result.PageResult;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -166,6 +174,70 @@ public class CacheConfig {
     }
 
     @Bean
+    public Cache<String, List<LevelThreshold>> levelThresholdsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(8)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<LevelRewardConfig>> levelRewardsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(16)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<LevelPrivilegeConfig>> levelPrivilegesCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(32)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<GrowthRule>> growthRulesCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(64)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<PointRule>> pointRulesCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(64)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<ConsecutiveSignInRewardConfig>> consecutiveSignInRewardsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(16)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<CumulativeSignInRewardConfig>> cumulativeSignInRewardsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(16)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
+    public Cache<String, List<BadgeDefinition>> badgeDefinitionsCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(16)
+                .expireAfterWrite(12, TimeUnit.HOURS)
+                .build();
+    }
+
+    @Bean
     public Cache<Integer, List<String>> hotKeywordsCache() {
         return Caffeine.newBuilder()
                 .expireAfterWrite(5, TimeUnit.MINUTES)
@@ -199,6 +271,25 @@ public class CacheConfig {
         // 队列满时由调用线程执行，避免丢失任务
         executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         // 应用关闭时等待正在执行的任务完成
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * 成长模块异步线程池。
+     *
+     * <p>用于异步监听、分账补偿和批量补偿任务，避免与通用异步任务互相挤占。</p>
+     */
+    @Bean(name = "growthAsyncExecutor")
+    public Executor growthAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(3);
+        executor.setMaxPoolSize(6);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("growth-async-");
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
         executor.initialize();

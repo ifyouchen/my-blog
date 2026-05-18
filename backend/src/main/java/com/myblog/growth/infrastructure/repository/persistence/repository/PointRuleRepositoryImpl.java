@@ -1,10 +1,12 @@
 package com.myblog.growth.infrastructure.repository.persistence.repository;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.growth.domain.model.valueobject.PointRule;
 import com.myblog.growth.domain.repository.PointRuleRepository;
 import com.myblog.growth.infrastructure.repository.persistence.converter.GrowthConverter;
 import com.myblog.growth.infrastructure.repository.persistence.entity.PointRuleConfigDO;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.PointRuleConfigMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,22 +24,27 @@ import java.util.stream.Collectors;
 public class PointRuleRepositoryImpl implements PointRuleRepository {
 
     private final PointRuleConfigMapper mapper;
+    private final Cache<String, List<PointRule>> pointRulesCache;
 
-    public PointRuleRepositoryImpl(PointRuleConfigMapper mapper) {
+    public PointRuleRepositoryImpl(PointRuleConfigMapper mapper,
+                                   @Qualifier("pointRulesCache")
+                                   Cache<String, List<PointRule>> pointRulesCache) {
         this.mapper = mapper;
+        this.pointRulesCache = pointRulesCache;
     }
 
     @Override
     public Optional<PointRule> findBySourceType(String sourceType) {
-        PointRuleConfigDO do_ = mapper.selectBySourceType(sourceType);
-        return do_ == null ? Optional.empty() : Optional.of(GrowthConverter.toPointRuleDomain(do_));
+        return findAllEnabled().stream()
+                .filter(rule -> sourceType.equals(rule.getSourceType()))
+                .findFirst();
     }
 
     @Override
     public List<PointRule> findAllEnabled() {
-        return mapper.selectAllEnabled().stream()
+        return pointRulesCache.get("all-enabled", key -> mapper.selectAllEnabled().stream()
                 .map(GrowthConverter::toPointRuleDomain)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     @Override
@@ -69,23 +76,36 @@ public class PointRuleRepositoryImpl implements PointRuleRepository {
     public Long save(PointRule rule) {
         PointRuleConfigDO do_ = GrowthConverter.toPointRuleDO(rule);
         mapper.insert(do_);
+        pointRulesCache.invalidateAll();
         return do_.getId();
     }
 
     @Override
     public boolean update(PointRule rule) {
         PointRuleConfigDO do_ = GrowthConverter.toPointRuleDO(rule);
-        return mapper.updateCAS(do_) > 0;
+        boolean updated = mapper.updateCAS(do_) > 0;
+        if (updated) {
+            pointRulesCache.invalidateAll();
+        }
+        return updated;
     }
 
     @Override
     public boolean softDelete(Long id, int version, String operator, String reason) {
-        return mapper.softDeleteCAS(id, version, operator, reason) > 0;
+        boolean deleted = mapper.softDeleteCAS(id, version, operator, reason) > 0;
+        if (deleted) {
+            pointRulesCache.invalidateAll();
+        }
+        return deleted;
     }
 
     @Override
     public boolean restore(PointRule rule) {
         PointRuleConfigDO do_ = GrowthConverter.toPointRuleDO(rule);
-        return mapper.restoreCAS(do_) > 0;
+        boolean restored = mapper.restoreCAS(do_) > 0;
+        if (restored) {
+            pointRulesCache.invalidateAll();
+        }
+        return restored;
     }
 }

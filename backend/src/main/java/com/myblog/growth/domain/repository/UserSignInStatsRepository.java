@@ -2,6 +2,8 @@ package com.myblog.growth.domain.repository;
 
 import com.myblog.growth.domain.model.valueobject.UserSignInStats;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -19,6 +21,14 @@ public interface UserSignInStatsRepository {
      * @return 签到统计（可能为空）
      */
     Optional<UserSignInStats> findByUserId(Long userId);
+
+    /**
+     * 批量查询签到统计.
+     *
+     * @param userIds 用户ID列表
+     * @return 用户ID到签到统计的映射
+     */
+    Map<Long, UserSignInStats> findByUserIds(List<Long> userIds);
 
     /**
      * 保存新的签到统计.

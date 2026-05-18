@@ -1,0 +1,113 @@
+<script setup>
+import {computed} from 'vue';
+
+const props = defineProps({
+    badge: {
+        type: Object,
+        default: null
+    },
+    compact: {
+        type: Boolean,
+        default: false
+    }
+});
+
+const visible = computed(() => Boolean(props.badge?.code));
+const toneClass = computed(() => `tone-${props.badge?.tone || 'slate'}`);
+const title = computed(() => props.badge?.name || '');
+const iconText = computed(() => {
+    const code = String(props.badge?.code || '');
+    if (code.startsWith('LEVEL_')) return 'L';
+    if (code.startsWith('SIGN_')) return 'S';
+    if (code.includes('ANNUAL')) return 'A';
+    return 'B';
+});
+</script>
+
+<template>
+    <span
+        v-if="visible"
+        class="user-equipped-badge"
+        :class="[toneClass, { compact }]"
+        :title="title"
+        :aria-label="`佩戴徽章：${title}`"
+    >
+        <span class="badge-gem" aria-hidden="true">{{ iconText }}</span>
+        <span class="badge-name">{{ title }}</span>
+    </span>
+</template>
+
+<style scoped>
+.user-equipped-badge {
+    --badge-from: #f8fafc;
+    --badge-to: #e2e8f0;
+    --badge-ink: #334155;
+    --badge-border: #cbd5e1;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 160px;
+    height: 22px;
+    padding: 0 8px 0 5px;
+    color: var(--badge-ink);
+    background: linear-gradient(135deg, var(--badge-from), var(--badge-to));
+    border: 1px solid var(--badge-border);
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
+    vertical-align: middle;
+    flex: 0 0 auto;
+}
+
+.badge-gem {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: #fff;
+    background: var(--badge-ink);
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 900;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    flex: 0 0 auto;
+}
+
+.badge-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-equipped-badge.compact {
+    max-width: 124px;
+    height: 18px;
+    padding: 0 6px 0 4px;
+    gap: 4px;
+    font-size: 10px;
+    border-radius: 4px;
+}
+
+.compact .badge-gem {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    font-size: 8px;
+}
+
+.tone-mint { --badge-from: #ecfdf5; --badge-to: #d1fae5; --badge-ink: #047857; --badge-border: #a7f3d0; }
+.tone-sky { --badge-from: #eff6ff; --badge-to: #dbeafe; --badge-ink: #1d4ed8; --badge-border: #bfdbfe; }
+.tone-indigo { --badge-from: #eef2ff; --badge-to: #e0e7ff; --badge-ink: #4f46e5; --badge-border: #c7d2fe; }
+.tone-amber { --badge-from: #fffbeb; --badge-to: #fef3c7; --badge-ink: #b45309; --badge-border: #fde68a; }
+.tone-rose { --badge-from: #fff1f2; --badge-to: #ffe4e6; --badge-ink: #be123c; --badge-border: #fecdd3; }
+.tone-violet { --badge-from: #f5f3ff; --badge-to: #ede9fe; --badge-ink: #6d28d9; --badge-border: #ddd6fe; }
+.tone-teal { --badge-from: #f0fdfa; --badge-to: #ccfbf1; --badge-ink: #0f766e; --badge-border: #99f6e4; }
+.tone-gold { --badge-from: #fff7ed; --badge-to: #fef3c7; --badge-ink: #92400e; --badge-border: #fbbf24; }
+.tone-crimson { --badge-from: #fef2f2; --badge-to: #fee2e2; --badge-ink: #991b1b; --badge-border: #fecaca; }
+.tone-aurora { --badge-from: #f0f9ff; --badge-to: #fae8ff; --badge-ink: #7e22ce; --badge-border: #e9d5ff; }
+</style>

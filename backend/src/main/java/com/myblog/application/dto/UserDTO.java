@@ -1,5 +1,7 @@
 package com.myblog.application.dto;
 
+import com.myblog.shared.dto.BadgeDisplayDTO;
+
 import java.util.List;
 
 /**
@@ -31,6 +33,7 @@ public class UserDTO {
     private int currentLevel;
     private List<String> privilegeCodes;
     private boolean exclusiveBadgeEnabled;
+    private BadgeDisplayDTO equippedBadge;
 
     /**
      * 获取用户 ID。
@@ -408,5 +411,23 @@ public class UserDTO {
      */
     public void setExclusiveBadgeEnabled(boolean exclusiveBadgeEnabled) {
         this.exclusiveBadgeEnabled = exclusiveBadgeEnabled;
+    }
+
+    /**
+     * 获取当前佩戴徽章。
+     *
+     * @return 当前佩戴徽章
+     */
+    public BadgeDisplayDTO getEquippedBadge() {
+        return equippedBadge;
+    }
+
+    /**
+     * 设置当前佩戴徽章。
+     *
+     * @param equippedBadge 当前佩戴徽章
+     */
+    public void setEquippedBadge(BadgeDisplayDTO equippedBadge) {
+        this.equippedBadge = equippedBadge;
     }
 }

@@ -41,7 +41,7 @@ public class GrantPointOnArticlePublishedListener {
     /**
      * 文章发布时发放 PUBLISH 积分奖励.
      */
-    @Async
+    @Async("growthAsyncExecutor")
     @EventListener
     public void onArticlePublished(ArticlePublishedEvent event) {
         try {

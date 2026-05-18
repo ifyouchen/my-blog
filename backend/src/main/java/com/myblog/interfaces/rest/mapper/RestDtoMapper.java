@@ -177,6 +177,7 @@ public class RestDtoMapper {
         response.setCurrentLevel(Math.max(1, dto.getCurrentLevel()));
         response.setPrivilegeCodes(dto.getPrivilegeCodes());
         response.setExclusiveBadgeEnabled(dto.isExclusiveBadgeEnabled());
+        response.setEquippedBadge(dto.getEquippedBadge());
         return response;
     }
 

@@ -3,6 +3,7 @@ import {computed, inject, ref, watch} from 'vue';
 import CommentComposer from '@/components/CommentComposer.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
+import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import {
   createCommentApi,
@@ -404,6 +405,7 @@ function goReplyPage(step) {
                         :user="localComment.user"
                         name-class="comment-author-name"
                     />
+                    <UserEquippedBadge :badge="localComment.user?.equippedBadge" compact />
                     <span v-if="localComment.author" class="comment-badge author">作者</span>
                     <span v-if="localComment.pinned" class="comment-badge pinned">置顶</span>
                     <span class="comment-root-time">{{ localComment.time }}</span>
@@ -469,6 +471,7 @@ function goReplyPage(step) {
                                     :user="reply.user"
                                     name-class="comment-author-name"
                                 />
+                                <UserEquippedBadge :badge="reply.user?.equippedBadge" compact />
                                 <span v-if="reply.author" class="comment-badge author">作者</span>
                                 <span class="comment-root-time">{{ reply.time }}</span>
                             </div>

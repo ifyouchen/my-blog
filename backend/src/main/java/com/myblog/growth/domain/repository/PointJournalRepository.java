@@ -4,6 +4,7 @@ import com.myblog.growth.domain.model.valueobject.PointJournal;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 积分流水 Repository 接口.
@@ -25,6 +26,14 @@ public interface PointJournalRepository {
      * @return 积分流水，不存在时为空
      */
     Optional<PointJournal> findByBizNo(String bizNo);
+
+    /**
+     * 批量查询已存在的业务单号.
+     *
+     * @param bizNos 业务单号列表
+     * @return 已存在的业务单号集合
+     */
+    Set<String> findExistingBizNos(List<String> bizNos);
 
     /**
      * 查询用户近期积分流水（按创建时间倒序）.

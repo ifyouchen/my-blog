@@ -1,8 +1,10 @@
 package com.myblog.growth.infrastructure.repository.persistence.repository;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.growth.domain.model.valueobject.CumulativeSignInRewardConfig;
 import com.myblog.growth.domain.repository.CumulativeSignInRewardRepository;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.CumulativeSignInRewardMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,9 +20,13 @@ import java.util.Optional;
 public class CumulativeSignInRewardRepositoryImpl implements CumulativeSignInRewardRepository {
 
     private final CumulativeSignInRewardMapper mapper;
+    private final Cache<String, List<CumulativeSignInRewardConfig>> cumulativeSignInRewardsCache;
 
-    public CumulativeSignInRewardRepositoryImpl(CumulativeSignInRewardMapper mapper) {
+    public CumulativeSignInRewardRepositoryImpl(CumulativeSignInRewardMapper mapper,
+                                                @Qualifier("cumulativeSignInRewardsCache")
+                                                Cache<String, List<CumulativeSignInRewardConfig>> cumulativeSignInRewardsCache) {
         this.mapper = mapper;
+        this.cumulativeSignInRewardsCache = cumulativeSignInRewardsCache;
     }
 
     @Override
@@ -30,7 +36,7 @@ public class CumulativeSignInRewardRepositoryImpl implements CumulativeSignInRew
 
     @Override
     public List<CumulativeSignInRewardConfig> findAllEnabled() {
-        return mapper.selectAllEnabled();
+        return cumulativeSignInRewardsCache.get("all-enabled", key -> mapper.selectAllEnabled());
     }
 
     @Override
@@ -50,22 +56,35 @@ public class CumulativeSignInRewardRepositoryImpl implements CumulativeSignInRew
 
     @Override
     public boolean update(CumulativeSignInRewardConfig config) {
-        return mapper.updateById(config) > 0;
+        boolean updated = mapper.updateById(config) > 0;
+        if (updated) {
+            cumulativeSignInRewardsCache.invalidateAll();
+        }
+        return updated;
     }
 
     @Override
     public Long insert(CumulativeSignInRewardConfig config) {
         mapper.insert(config);
+        cumulativeSignInRewardsCache.invalidateAll();
         return config.getId();
     }
 
     @Override
     public boolean restore(CumulativeSignInRewardConfig config) {
-        return mapper.restoreById(config) > 0;
+        boolean restored = mapper.restoreById(config) > 0;
+        if (restored) {
+            cumulativeSignInRewardsCache.invalidateAll();
+        }
+        return restored;
     }
 
     @Override
     public boolean softDelete(Long id, int version) {
-        return mapper.softDelete(id, version) > 0;
+        boolean deleted = mapper.softDelete(id, version) > 0;
+        if (deleted) {
+            cumulativeSignInRewardsCache.invalidateAll();
+        }
+        return deleted;
     }
 }

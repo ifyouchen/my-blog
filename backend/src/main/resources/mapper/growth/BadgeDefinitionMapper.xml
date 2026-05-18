@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.BadgeDefinitionMapper">
+
+    <resultMap id="BaseResultMap" type="com.myblog.growth.domain.model.valueobject.BadgeDefinition">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="type" property="type"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="icon_key" property="iconKey"/>
+        <result column="tone" property="tone"/>
+        <result column="rarity" property="rarity"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="enabled" property="enabled"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, code, type, name, description, icon_key, tone, rarity, sort_order,
+        enabled, created_at, updated_at, version
+    </sql>
+
+    <select id="selectAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM badge_definition
+        WHERE enabled = 1
+          AND deleted_at IS NULL
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectEnabledByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM badge_definition
+        WHERE code = #{code}
+          AND enabled = 1
+          AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+    <select id="selectEnabledByCodes" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM badge_definition
+        WHERE code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">
+            #{code}
+        </foreach>
+          AND enabled = 1
+          AND deleted_at IS NULL
+        ORDER BY sort_order ASC, id ASC
+    </select>
+</mapper>

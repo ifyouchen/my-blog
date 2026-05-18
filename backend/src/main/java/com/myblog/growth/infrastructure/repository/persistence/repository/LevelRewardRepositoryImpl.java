@@ -1,8 +1,10 @@
 package com.myblog.growth.infrastructure.repository.persistence.repository;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.repository.LevelRewardRepository;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.LevelRewardMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,9 +20,13 @@ import java.util.Optional;
 public class LevelRewardRepositoryImpl implements LevelRewardRepository {
 
     private final LevelRewardMapper mapper;
+    private final Cache<String, List<LevelRewardConfig>> levelRewardsCache;
 
-    public LevelRewardRepositoryImpl(LevelRewardMapper mapper) {
+    public LevelRewardRepositoryImpl(LevelRewardMapper mapper,
+                                     @Qualifier("levelRewardsCache")
+                                     Cache<String, List<LevelRewardConfig>> levelRewardsCache) {
         this.mapper = mapper;
+        this.levelRewardsCache = levelRewardsCache;
     }
 
     @Override
@@ -30,7 +36,9 @@ public class LevelRewardRepositoryImpl implements LevelRewardRepository {
 
     @Override
     public Optional<LevelRewardConfig> findByLevel(int level) {
-        return mapper.selectByLevel(level);
+        return findAllEnabled().stream()
+                .filter(item -> item.getLevel() == level)
+                .findFirst();
     }
 
     @Override
@@ -40,7 +48,7 @@ public class LevelRewardRepositoryImpl implements LevelRewardRepository {
 
     @Override
     public List<LevelRewardConfig> findAllEnabled() {
-        return mapper.selectAllEnabled();
+        return levelRewardsCache.get("all-enabled", key -> mapper.selectAllEnabled());
     }
 
     @Override
@@ -50,22 +58,35 @@ public class LevelRewardRepositoryImpl implements LevelRewardRepository {
 
     @Override
     public boolean update(LevelRewardConfig config) {
-        return mapper.updateById(config) > 0;
+        boolean updated = mapper.updateById(config) > 0;
+        if (updated) {
+            levelRewardsCache.invalidateAll();
+        }
+        return updated;
     }
 
     @Override
     public Long insert(LevelRewardConfig config) {
         mapper.insert(config);
+        levelRewardsCache.invalidateAll();
         return config.getId();
     }
 
     @Override
     public boolean restore(LevelRewardConfig config) {
-        return mapper.restoreById(config) > 0;
+        boolean restored = mapper.restoreById(config) > 0;
+        if (restored) {
+            levelRewardsCache.invalidateAll();
+        }
+        return restored;
     }
 
     @Override
     public boolean softDelete(Long id, int version) {
-        return mapper.softDelete(id, version) > 0;
+        boolean deleted = mapper.softDelete(id, version) > 0;
+        if (deleted) {
+            levelRewardsCache.invalidateAll();
+        }
+        return deleted;
     }
 }

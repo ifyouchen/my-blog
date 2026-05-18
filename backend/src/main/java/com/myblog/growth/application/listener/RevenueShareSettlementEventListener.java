@@ -36,7 +36,7 @@ public class RevenueShareSettlementEventListener {
      *
      * @param event 分账流水创建事件
      */
-    @Async
+    @Async("growthAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRevenueShareCreated(RevenueShareCreatedEvent event) {
         try {
