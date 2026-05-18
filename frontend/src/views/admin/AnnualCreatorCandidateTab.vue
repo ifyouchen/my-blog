@@ -66,7 +66,7 @@ onMounted(loadCandidates);
             <h2 class="ag-section-title">年度创作者候选</h2>
             <span class="ag-section-subtitle">查看已获得 Lv.8 年度候选资格的创作者</span>
         </div>
-        <p class="ag-hint">这里展示真实 entitlement 候选池，同时提供注册奖励与等级权益补偿入口。</p>
+        <p class="ag-hint">这里展示真实 entitlement 候选池，同时提供注册奖励、等级权益与徽章补偿入口。</p>
 
         <div class="candidate-toolbar">
             <input
@@ -135,6 +135,10 @@ onMounted(loadCandidates);
             <div class="result-item">
                 <span class="result-label">补齐等级权益</span>
                 <strong class="result-val highlight">{{ backfillResult.privilegeFixed || 0 }}</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">补发徽章</span>
+                <strong class="result-val highlight">{{ backfillResult.badgeFixed || 0 }}</strong>
             </div>
         </div>
 

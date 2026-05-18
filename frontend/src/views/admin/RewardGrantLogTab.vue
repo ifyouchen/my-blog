@@ -1,6 +1,9 @@
 <script setup>
 import {onMounted, reactive, ref} from 'vue';
-import {getAdminRewardGrantLogsApi} from '@/api/growth';
+import {
+    backfillAdminGrowthRewardsApi,
+    getAdminRewardGrantLogsApi
+} from '@/api/growth';
 import {formatAdminDateTime} from '@/views/admin/adminShared';
 import AdminSelect from '@/components/admin/AdminSelect.vue';
 
@@ -14,6 +17,13 @@ const REWARD_TYPE_OPTIONS = [
 const filters = reactive({
     userId: '',
     rewardType: ''
+});
+const backfillState = reactive({
+    userId: '',
+    loading: false,
+    feedback: '',
+    feedbackType: 'success',
+    result: null
 });
 
 const pageState = reactive({
@@ -56,6 +66,37 @@ const search = () => {
     loadLogs(1);
 };
 
+const runBackfill = async (mode) => {
+    if (backfillState.loading) {
+        return;
+    }
+    const targetUserId = String(backfillState.userId || '').trim();
+    if (mode === 'USER' && !targetUserId) {
+        backfillState.feedback = '请先输入需要补偿的用户 ID';
+        backfillState.feedbackType = 'error';
+        return;
+    }
+    backfillState.loading = true;
+    backfillState.feedback = '';
+    try {
+        backfillState.result = await backfillAdminGrowthRewardsApi({
+            mode,
+            userId: mode === 'USER' ? Number(targetUserId) : undefined
+        });
+        backfillState.feedback = mode === 'ALL'
+            ? '全量补偿已执行完成'
+            : `用户 ${targetUserId} 补偿已执行完成`;
+        backfillState.feedbackType = 'success';
+        await loadLogs(1);
+    } catch (error) {
+        backfillState.result = null;
+        backfillState.feedback = error.message || '补偿执行失败';
+        backfillState.feedbackType = 'error';
+    } finally {
+        backfillState.loading = false;
+    }
+};
+
 onMounted(() => {
     loadLogs(1);
 });
@@ -66,6 +107,71 @@ onMounted(() => {
         <div class="ag-section-head">
             <h2 class="ag-section-title">奖励领取记录</h2>
             <span class="ag-section-subtitle">查看哪些用户已经拿到等级奖励或签到里程碑奖励</span>
+        </div>
+
+        <div class="backfill-panel">
+            <div class="backfill-copy">
+                <strong>成长奖励与徽章补偿</strong>
+                <p>用于老用户补齐注册奖励、等级权益、等级徽章、签到徽章和年度候选徽章，重复执行不会重复写入。</p>
+            </div>
+            <div class="backfill-actions">
+                <button
+                    type="button"
+                    class="ag-btn primary"
+                    :disabled="backfillState.loading"
+                    @click="runBackfill('ALL')"
+                >
+                    {{ backfillState.loading ? '执行中...' : '全量补偿' }}
+                </button>
+                <div class="input-with-btn backfill-user-action">
+                    <input
+                        v-model.trim="backfillState.userId"
+                        class="ag-input"
+                        type="number"
+                        min="1"
+                        placeholder="输入用户 ID"
+                        @keydown.enter="runBackfill('USER')"
+                    >
+                    <button
+                        type="button"
+                        class="ag-btn secondary"
+                        :disabled="backfillState.loading"
+                        @click="runBackfill('USER')"
+                    >
+                        按用户补偿
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <p
+            v-if="backfillState.feedback"
+            :class="backfillState.feedbackType === 'error' ? 'ag-error' : 'ag-success'"
+        >
+            {{ backfillState.feedback }}
+        </p>
+
+        <div v-if="backfillState.result" class="ag-result-card backfill-result">
+            <div class="result-item">
+                <span class="result-label">模式</span>
+                <strong class="result-val">{{ backfillState.result.mode }}</strong>
+            </div>
+            <div v-if="backfillState.result.userId" class="result-item">
+                <span class="result-label">用户 ID</span>
+                <strong class="result-val">{{ backfillState.result.userId }}</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">注册奖励</span>
+                <strong class="result-val highlight">{{ backfillState.result.registerBonusFixed || 0 }}</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">等级权益</span>
+                <strong class="result-val highlight">{{ backfillState.result.privilegeFixed || 0 }}</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">徽章</span>
+                <strong class="result-val highlight">{{ backfillState.result.badgeFixed || 0 }}</strong>
+            </div>
         </div>
 
         <div class="toolbar">
@@ -159,6 +265,50 @@ onMounted(() => {
     max-width: 180px;
 }
 
+.backfill-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.backfill-copy {
+    min-width: 0;
+}
+
+.backfill-copy strong {
+    display: block;
+    color: #111827;
+    font-size: 14px;
+}
+
+.backfill-copy p {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.backfill-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.backfill-user-action {
+    width: 300px;
+}
+
+.backfill-result {
+    margin-bottom: 14px;
+}
+
 .reward-log-table {
     min-width: 880px;
 }
@@ -177,6 +327,15 @@ onMounted(() => {
     .toolbar-input,
     .toolbar-select {
         max-width: none;
+        width: 100%;
+    }
+
+    .backfill-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .backfill-actions,
+    .backfill-user-action {
         width: 100%;
     }
 }
