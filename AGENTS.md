@@ -14,6 +14,7 @@ cd backend
 mvn spring-boot:run              # Start backend (auto-creates my_blog DB + tables)
 mvn spring-boot:run -Dspring-boot.run.profiles=memory  # Use in-memory repository instead
 mvn test                         # Run backend unit tests
+mvn -q -DskipTests compile       # Fast backend compile check
 ```
 
 ### Frontend
@@ -27,10 +28,21 @@ npm run test:e2e                   # Playwright e2e tests
 npm run test:e2e:headed            # Playwright e2e tests with browser UI
 ```
 
+## Agent Workflow
+- Read this file first, then inspect the local code before changing behavior.
+- Prefer small, focused patches that follow the current package/component style.
+- Do not revert user changes or unrelated dirty worktree files.
+- After backend changes, run at least `mvn -q -DskipTests compile`; run `mvn test` when domain/application logic changes.
+- After frontend changes, run `npm run build`; run targeted Playwright e2e when routes or visible workflows change.
+- For full local verification, start backend on `8080` and frontend on `5173`, then exercise the affected route through the browser.
+- Keep generated artifacts, caches, logs, and uploads out of commits unless explicitly requested.
+
 ## Default Infrastructure
 - MySQL: `localhost:3306/my_blog`, user `root`, password `123456`
 - Redis: `192.168.80.128:6379`, password `123456`
 - Mail: SMTP (QQ), configured in `application.yml`
+- Environment overrides are supported for MySQL, Redis, mail, and frontend base URL in `application.yml`.
+- Uploads default to backend `uploads/`; logs default to `backend/logs/application.log`.
 
 ## Architecture Constraints (DDD)
 
@@ -60,11 +72,17 @@ com.myblog/
   application/command/          - Command objects (write)
   application/query/            - Query objects (read)
   application/assembler/        - DTO <-> Domain converters
+  application/event/            - Application/domain event objects
+  application/listener/         - Event handlers and side-effect orchestration
+  application/port/             - Ports for external capabilities such as mail
   domain/model/aggregate/       - Aggregate roots
   domain/model/valueobject/     - Value objects
   domain/service/               - Domain services
   domain/repository/            - Repository interfaces
-  infrastructure/repository/    - MyBatis mappers, DO entities, repository impls
+  infrastructure/repository/persistence/
+    entity/                     - DO persistence objects
+    mapper/                     - MyBatis mapper interfaces
+    repository/                 - Repository implementations
   infrastructure/security/      - JWT, AuthContext
   shared/enums/                 - ArticleStatus, UserRole, UserStatus
   shared/exception/             - BusinessException, DomainException
@@ -78,13 +96,29 @@ frontend/src/
   api/          - Axios API modules
   components/   - Reusable Vue components
   views/        - Page components (HomeView, LoginView, etc.)
-  stores/       - Pinia state stores
+  stores/       - Composition API reactive stores (no Pinia dependency currently)
   router/       - Vue Router config
   composables/  - Composition API reusable logic
   constants/    - Application constants
   styles/       - Global CSS
   utils/        - Utility functions
 ```
+
+## Frontend Conventions
+- Use `@` alias for `frontend/src`.
+- API modules live in `frontend/src/api/` and should return unwrapped response `data` where existing modules do so.
+- Auth state is managed by `frontend/src/stores/session.js`; protected routes use `meta.requiresAuth`.
+- Admin routes additionally use `meta.requiresAdmin` and redirect non-admin users to `/403`.
+- Keep page-level route views in `views/`; reuse shared UI through `components/` and workflow logic through `composables/`.
+- Existing editor stack is TipTap + lowlight/highlight.js + DOMPurify; preserve sanitization for rendered or imported HTML.
+
+## Backend Implementation Notes
+- Controllers should depend on application services and REST mappers only.
+- REST mappers convert request DTOs into `Command`/`Query`; application services return domain values or response-ready DTOs via assemblers.
+- Repository interfaces belong in `domain/repository`; MyBatis implementations belong under `infrastructure/repository/persistence/repository`.
+- MyBatis XML files are under `backend/src/main/resources/mapper/` and `mapper/growth/`.
+- Application events/listeners are used for notifications, stats, growth rewards, and revenue settlement side effects.
+- Public APIs should return `Result<T>` or `PageResult<T>` consistently through existing helpers.
 
 ## Database Conventions
 - All tables: `utf8mb4` charset, InnoDB engine
@@ -106,6 +140,13 @@ frontend/src/
 - Passwords hashed with BCrypt
 - File uploads: max 20MB per file, 22MB per request
 
+## Current Functional Areas
+- Core content: articles, drafts, versions, categories, tags, comments, likes, favorites, reading history.
+- Discovery: home bootstrap, search, rankings, recommendations, topics, columns, following feed.
+- User features: profile, profile settings, notifications, private messages, follows, article export.
+- Admin features: overview, users, articles, comments, reports, taxonomy, columns, topics, ads, announcements, sensitive words, logs.
+- Growth module: points, sign-in, badges, levels, privileges, invite rewards, article unlock, revenue share, growth admin config.
+
 ## Code Style
 - 4 spaces indentation (no tabs)
 - Max 120 chars per line
@@ -118,7 +159,12 @@ frontend/src/
 - Backend entry: `backend/src/main/resources/application.yml`
 - Backend main class: `backend/src/main/java/com/myblog/MyBlogApplication.java`
 - DB schema auto-init: `backend/src/main/resources/db/schema.sql`
+- Growth DB schema: `backend/src/main/resources/db/growth/growth-schema.sql`
+- Seed data: `backend/src/main/resources/db/initdata.sql` and `backend/src/main/resources/db/articles/*.sql`
+- MyBatis mapper XML: `backend/src/main/resources/mapper/`
 - Frontend entry: `frontend/src/main.js`
+- Frontend router: `frontend/src/router/index.js`
+- Frontend session store: `frontend/src/stores/session.js`
 - Vite proxy config: `frontend/vite.config.js`
 - Dev guidelines: `docs/10-开发规范.md`
 
@@ -138,10 +184,53 @@ frontend/src/
 - `/` - Home
 - `/login` - Login
 - `/register` - Register
+- `/auth/forgot-password` - Forgot password
+- `/auth/reset-password` - Reset password
+- `/403` - Access denied
 - `/articles/:id` - Article detail
 - `/editor/new` - New article (TipTap editor)
+- `/editor/:id` - Edit article
 - `/users/:id` - User profile
+- `/following` - Following feed
+- `/columns` - Columns
+- `/columns/:id` - Column detail
+- `/topics` - Topics
+- `/topics/:id` - Topic detail
+- `/explore` - Explore
+- `/categories/:id` - Category detail
+- `/tags/:id` - Tag detail
+- `/ranking` - Ranking
 - `/search` - Search results
+- `/messages/:conversationId?` - Messages
+- `/notifications` - Notifications
+- `/history` - Reading history
+- `/dashboard/overview` - Creator dashboard overview
 - `/dashboard/articles` - My articles
 - `/dashboard/favorites` - My favorites
-- `/admin` - Admin panel
+- `/dashboard/columns` - My columns
+- `/dashboard/growth` - Growth dashboard
+- `/settings/profile` - Profile settings
+- `/admin` - Admin layout, redirects to `/admin/overview`
+- `/admin/overview` - Admin overview
+- `/admin/users` - User management
+- `/admin/articles` - Article management
+- `/admin/comments` - Comment management
+- `/admin/reports` - Report handling
+- `/admin/categories` - Category management
+- `/admin/tags` - Tag management
+- `/admin/columns` - Column management
+- `/admin/topics` - Topic management
+- `/admin/ads` - Ad management
+- `/admin/announcements` - Announcement management
+- `/admin/sensitive-words` - Sensitive word management
+- `/admin/logs` - Admin logs
+- `/admin/growth` - Growth and points admin
+
+## Important API Groups
+- Auth/users: `/api/auth/*`, `/api/users/*`, `/api/users/me`
+- Articles: `/api/articles`, `/api/articles/{id}`, likes/favorites/comments under `/api/articles/{articleId}/...`
+- Home/discovery: `/api/home/*`, `/api/search/*`, `/api/rankings/*`, `/api/recommendations/*`
+- Taxonomy/content organization: `/api/categories/*`, `/api/tags/*`, `/api/topics/*`, `/api/columns/*`
+- Dashboard/admin: `/api/dashboard/*`, `/api/admin/*`
+- Realtime-style streams: `/api/notifications/stream`, `/api/messages/stream`
+- Growth: `/api/growth/*`, `/api/points/*`, `/api/badges/*`, `/api/admin/growth/*`, `/api/admin/points/*`, `/api/admin/rewards/*`
