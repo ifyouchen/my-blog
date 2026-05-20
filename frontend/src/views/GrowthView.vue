@@ -302,6 +302,20 @@ const syncSessionEquippedBadge = (equippedBadge) => {
     });
 };
 
+const FEED_CACHE_PREFIX = 'my-blog:infinite-article-feed:';
+function clearFeedCache() {
+    try {
+        const keys = Object.keys(sessionStorage);
+        keys.forEach(key => {
+            if (key.startsWith(FEED_CACHE_PREFIX)) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    } catch {
+        // Ignore storage errors
+    }
+}
+
 const equipBadge = async (badgeCode) => {
     if (badgeSaving.value) {
         return;
@@ -315,6 +329,7 @@ const equipBadge = async (badgeCode) => {
             equippedBadge: result?.equippedBadge || null
         };
         syncSessionEquippedBadge(badgeState.value.equippedBadge);
+        clearFeedCache();
     } catch (e) {
         badgeError.value = e.message || '佩戴徽章失败';
     } finally {
@@ -448,7 +463,7 @@ const nextLevelExpTarget = computed(() => currentExp.value + expToNextLevel.valu
 const levelRewards = computed(() => Array.isArray(growth.value?.levelRewards) ? growth.value.levelRewards : []);
 const LEVEL_PRIVILEGE_LABELS = {
     PAID_ARTICLE_PUBLISH: '解锁付费文章发布权限',
-    EXCLUSIVE_BADGE: '解锁专属徽章',
+    EXCLUSIVE_BADGE: '等级徽章已包含身份标识',
     HOMEPAGE_RECOMMEND_ELIGIBLE: '解锁首页推荐申请资格',
     ANNUAL_CREATOR_ELIGIBLE: '获得年度创作者候选资格',
 };

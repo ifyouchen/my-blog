@@ -10,7 +10,6 @@ import ReportDialog from '@/components/ReportDialog.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
-import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {getUserArticlesApi} from '@/api/articles';
 import {getUserHotArticlesApi, getUserProfileApi} from '@/api/auth';
@@ -423,7 +422,6 @@ onBeforeUnmount(teardownColumnObserver);
             <template #badge>
                 <div class="profile-badge-row">
                     <UserLevelBadge :level="profile.user.currentLevel" />
-                    <UserPrivilegeBadge :privilege-codes="profile.user.privilegeCodes || []" />
                     <UserEquippedBadge :badge="profile.user.equippedBadge" />
                 </div>
             </template>

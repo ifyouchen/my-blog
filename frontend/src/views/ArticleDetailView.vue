@@ -16,7 +16,6 @@ import ReportDialog from '@/components/ReportDialog.vue';
 import AdBanner from '@/components/AdBanner.vue';
 import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
-import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
 import {useSession} from '@/stores/session';
 import ArticleLockBadge from '@/components/ArticleLockBadge.vue';
 import ArticleUnlockModal from '@/components/ArticleUnlockModal.vue';
@@ -1003,7 +1002,6 @@ watch(tocDrawerOpen, (open) => {
                                     <div class="byline-name-row">
                                         <strong class="byline-name">{{ article.author.name }}</strong>
                                         <UserLevelBadge :level="article.author.currentLevel" compact />
-                                        <UserPrivilegeBadge :privilege-codes="article.author.privilegeCodes || []" compact />
                                         <UserEquippedBadge :badge="article.author.equippedBadge" compact />
                                     </div>
                                     <span class="byline-meta">

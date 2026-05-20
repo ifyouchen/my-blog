@@ -11,7 +11,7 @@ import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
-import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
+
 import {getCategoriesApi} from '@/api/categories';
 import {getArticleRankingsApi, getAuthorRankingsApi} from '@/api/rankings';
 import {useSession} from '@/stores/session';
@@ -335,7 +335,6 @@ onMounted(fetchCategories);
                                         <img :src="article.author.avatar" alt="作者头像" loading="lazy" decoding="async">
                                         <span>{{ article.author.name }}</span>
                                         <UserLevelBadge :level="article.author.currentLevel" compact />
-                                        <UserPrivilegeBadge :privilege-codes="article.author.privilegeCodes || []" compact />
                                         <UserEquippedBadge :badge="article.author.equippedBadge" compact />
                                     </RouterLink>
                                     <div class="ranking-post-stats">
@@ -369,7 +368,6 @@ onMounted(fetchCategories);
                                 <div class="ranking-author-name-row">
                                     <RouterLink :to="`/users/${author.user.id}`">{{ author.user.name }}</RouterLink>
                                     <UserLevelBadge :level="author.user.currentLevel" compact />
-                                    <UserPrivilegeBadge :privilege-codes="author.user.privilegeCodes || []" compact />
                                     <UserEquippedBadge :badge="author.user.equippedBadge" compact />
                                 </div>
                                 <p>

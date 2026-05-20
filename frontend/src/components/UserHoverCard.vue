@@ -2,7 +2,7 @@
 import {computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref} from 'vue';
 import {getUserProfileApi} from '@/api/auth';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
-import UserPrivilegeBadge from '@/components/UserPrivilegeBadge.vue';
+
 
 const profileCache = new Map();
 const pendingProfileRequests = new Map();
@@ -208,7 +208,6 @@ onBeforeUnmount(() => {
             <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
             <span class="user-hover-card-name-text">{{ displayName }}</span>
             <UserLevelBadge :level="displayLevel" compact />
-            <UserPrivilegeBadge :privilege-codes="displayUser.privilegeCodes || props.user?.privilegeCodes || []" compact />
         </RouterLink>
         <span
             v-else
@@ -218,7 +217,6 @@ onBeforeUnmount(() => {
             <span v-if="namePrefix" class="user-hover-card-prefix">{{ namePrefix }}</span>
             <span class="user-hover-card-name-text">{{ displayName }}</span>
             <UserLevelBadge :level="displayLevel" compact />
-            <UserPrivilegeBadge :privilege-codes="displayUser.privilegeCodes || props.user?.privilegeCodes || []" compact />
         </span>
 
         <span
@@ -234,7 +232,6 @@ onBeforeUnmount(() => {
                     <span class="user-hover-panel-name-row">
                         <RouterLink class="user-hover-panel-name" :to="profilePath">{{ displayName }}</RouterLink>
                         <UserLevelBadge :level="displayLevel" compact />
-                        <UserPrivilegeBadge :privilege-codes="displayUser.privilegeCodes || props.user?.privilegeCodes || []" compact />
                     </span>
                     <small v-if="displayUser.username">@{{ displayUser.username }}</small>
                     <small v-else>内容创作者</small>
