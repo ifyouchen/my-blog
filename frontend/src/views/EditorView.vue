@@ -951,6 +951,7 @@ async function persistArticle(status, options = {}) {
         clearStoredDraft(previousStorageKey);
         recoveryInfo.value = null;
         if (status === 'PUBLISHED') {
+            clearFeedCache();
             publishedArticle.value = article;
             statusMessage.value = `发布成功，文章 ID：${article.id}`;
             feedbackType.value = 'success';
