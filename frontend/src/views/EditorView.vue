@@ -25,6 +25,20 @@ import {resolveMediaUrl} from '@/utils/media';
 import {findArticleWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
 
+const FEED_CACHE_PREFIX = 'my-blog:infinite-article-feed:';
+function clearFeedCache() {
+    try {
+        const keys = Object.keys(sessionStorage);
+        keys.forEach(key => {
+            if (key.startsWith(FEED_CACHE_PREFIX)) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    } catch {
+        // Ignore storage errors
+    }
+}
+
 const DRAFT_STORAGE_PREFIX = 'my-blog-editor-draft';
 const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg';
 const AUTO_SAVE_DELAY_MS = 15000;
@@ -62,7 +76,7 @@ const CATEGORY_GROUP_RULES = [
     }
 ];
 const CATEGORY_GROUP_ORDER = [...CATEGORY_GROUP_RULES.map((group) => group.name), '其他'];
-const DEFAULT_EXPANDED_CATEGORY_GROUPS = ['数据库', '后端开发'];
+const DEFAULT_EXPANDED_CATEGORY_GROUPS = [];
 
 const defaultDraft = {
     title: '',
@@ -455,8 +469,8 @@ const seoHealthChecks = computed(() => {
             hint: titleLen === 0 ? '未设置，将使用文章标题' : `${titleLen} 字符` },
         { key: 'description', label: 'SEO 描述', ok: descLen > 0 && descLen <= 160,
             hint: descLen === 0 ? '未设置，将使用摘要或正文开头' : `${descLen} 字符` },
-        { key: 'slug', label: 'URL Slug', ok: Boolean(draft.slug),
-            hint: draft.slug ? draft.slug : '未设置，将使用文章 ID' },
+        { key: 'slug', label: 'URL Slug', ok: true,
+            hint: draft.slug ? draft.slug : '可选，不填则使用文章 ID，避免同名文章冲突' },
         { key: 'headings', label: '小标题结构', ok: hasHeadings,
             hint: hasHeadings ? '包含小标题' : '建议使用 ## 小标题组织内容' },
         { key: 'images', label: '配图', ok: hasImages,
@@ -530,12 +544,6 @@ function createDraftSnapshot(currentDraft) {
         scheduledPublishAt: currentDraft.scheduledPublishAt || ''
     });
 }
-
-watch(() => draft.title, (newTitle) => {
-    if (!draft.slug && newTitle) {
-        draft.slug = generateSlug(newTitle);
-    }
-});
 
 function parseTags(sourceTags) {
     const source = Array.isArray(sourceTags) ? sourceTags : String(sourceTags || '').split(',');
@@ -958,7 +966,10 @@ async function persistArticle(status, options = {}) {
         return article;
     } catch (error) {
         persistLocalDraft();
-        statusMessage.value = error.message || `${actionText}失败`;
+        const message = error.message || `${actionText}失败`;
+        statusMessage.value = message.includes('URL Slug')
+            ? `${message}。如果不需要自定义链接，可以清空右侧 SEO 设置里的 URL Slug 后再提交。`
+            : message;
         feedbackType.value = 'error';
         return null;
     } finally {

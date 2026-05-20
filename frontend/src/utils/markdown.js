@@ -176,6 +176,7 @@ const normalizeStyleValue = (property = '', value = '') => {
     if (hasUnsafeCssToken(value)) return '';
     switch (property.trim().toLowerCase()) {
         case 'color':
+        case 'background-color':
             return normalizeTextColor(value);
         case 'font-size':
             return normalizeFontSize(value);
@@ -240,7 +241,7 @@ const sanitizeHtmlStyles = (html = '') => {
 };
 
 const sanitize = (html) => sanitizeHtmlStyles(DOMPurify.sanitize(html, {
-    ADD_ATTR: ['target', 'rel', 'data-language', 'style'],
+    ADD_ATTR: ['target', 'rel', 'data-language', 'style', 'colwidth'],
     ADD_TAGS: ['u'],
     WHOLE_DOCUMENT: false
 }));
@@ -354,9 +355,22 @@ export const editorJsonToMarkdown = (json) => {
 
     const getTextStyle = (attrs = {}) => buildStyleAttribute([
         ['color', attrs.color],
+        ['background-color', attrs.backgroundColor],
         ['font-size', attrs.fontSize],
         ['font-family', attrs.fontFamily]
     ]);
+
+    const escapeHtml = (value = '') => String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const getCellWidth = (attrs = {}) => {
+        const width = Array.isArray(attrs.colwidth) ? attrs.colwidth.find(Boolean) : attrs.colwidth;
+        const numericWidth = Number(width);
+        return Number.isFinite(numericWidth) && numericWidth > 0 ? Math.round(numericWidth) : 0;
+    };
 
     const indentLines = (content = '', depth = 0) => {
         const indent = '  '.repeat(depth);
@@ -463,7 +477,34 @@ export const editorJsonToMarkdown = (json) => {
             return normalizeBlock('---');
         }
         if (node.type === 'table') {
-            const rows = (node.content || []).map(processNode).filter(Boolean);
+            const tableRows = node.content || [];
+            const hasHeaderRow = Boolean(tableRows[0]?.content?.every(cell => cell.type === 'tableHeader'));
+            const hasColumnWidth = tableRows.some(row => (row.content || [])
+                .some(cell => getCellWidth(cell.attrs || {}) > 0));
+            if (!hasHeaderRow || hasColumnWidth) {
+                const tableWidth = hasColumnWidth ? Math.max(...tableRows.map((row) => {
+                    return (row.content || []).reduce((sum, cell) => {
+                        return sum + (getCellWidth(cell.attrs || {}) || 80);
+                    }, 0);
+                }), 0) : 0;
+                const tableStyle = tableWidth ? ` style="width:${tableWidth}px"` : '';
+                const htmlRows = tableRows.map((row) => {
+                    const cells = (row.content || []).map((cell) => {
+                        const tag = cell.type === 'tableHeader' ? 'th' : 'td';
+                        const width = getCellWidth(cell.attrs || {});
+                        const style = width ? ` style="width:${width}px"` : '';
+                        const colwidth = width ? ` colwidth="${width}"` : '';
+                        const cellText = (cell.content || [])
+                            .map((child) => processNode(child, { inline: true }))
+                            .join('')
+                            .trim();
+                        return `<${tag}${style}${colwidth}>${cellText ? escapeHtml(cellText) : '&nbsp;'}</${tag}>`;
+                    }).join('');
+                    return `<tr>${cells}</tr>`;
+                }).join('');
+                return normalizeBlock(`<table${tableStyle}><tbody>${htmlRows}</tbody></table>`);
+            }
+            const rows = tableRows.map(processNode).filter(Boolean);
             if (!rows.length) return '';
             // Find max column count from the first row
             const colCount = rows[0].columns;

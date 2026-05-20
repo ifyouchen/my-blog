@@ -3,11 +3,15 @@ package com.myblog.growth.application.service;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.growth.domain.model.aggregate.GrowthAccount;
+import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelPrivilegeConfig;
+import com.myblog.growth.domain.model.valueobject.RewardGrantLog;
 import com.myblog.growth.domain.model.valueobject.UserSignInStats;
 import com.myblog.growth.domain.repository.GrowthAccountRepository;
+import com.myblog.growth.domain.repository.LevelRewardRepository;
 import com.myblog.growth.domain.repository.LevelPrivilegeRepository;
 import com.myblog.growth.domain.repository.PointJournalRepository;
+import com.myblog.growth.domain.repository.RewardGrantLogRepository;
 import com.myblog.growth.domain.repository.UserSignInStatsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,11 +32,16 @@ import java.util.Set;
 @Service
 public class GrowthRewardBackfillAppService {
 
+    private static final String REWARD_TYPE_LEVEL_UP = "LEVEL_UP";
+    private static final String SOURCE_LEVEL_UP = "LEVEL_UP";
+
     private final UserRepository userRepository;
     private final GrowthAccountRepository growthAccountRepository;
     private final PointAppService pointAppService;
     private final UserPrivilegeAppService userPrivilegeAppService;
     private final LevelPrivilegeRepository levelPrivilegeRepository;
+    private final LevelRewardRepository levelRewardRepository;
+    private final RewardGrantLogRepository rewardGrantLogRepository;
     private final PointJournalRepository pointJournalRepository;
     private final UserSignInStatsRepository userSignInStatsRepository;
     private final BadgeAppService badgeAppService;
@@ -42,6 +51,8 @@ public class GrowthRewardBackfillAppService {
                                           PointAppService pointAppService,
                                           UserPrivilegeAppService userPrivilegeAppService,
                                           LevelPrivilegeRepository levelPrivilegeRepository,
+                                          LevelRewardRepository levelRewardRepository,
+                                          RewardGrantLogRepository rewardGrantLogRepository,
                                           PointJournalRepository pointJournalRepository,
                                           UserSignInStatsRepository userSignInStatsRepository,
                                           BadgeAppService badgeAppService) {
@@ -50,6 +61,8 @@ public class GrowthRewardBackfillAppService {
         this.pointAppService = pointAppService;
         this.userPrivilegeAppService = userPrivilegeAppService;
         this.levelPrivilegeRepository = levelPrivilegeRepository;
+        this.levelRewardRepository = levelRewardRepository;
+        this.rewardGrantLogRepository = rewardGrantLogRepository;
         this.pointJournalRepository = pointJournalRepository;
         this.userSignInStatsRepository = userSignInStatsRepository;
         this.badgeAppService = badgeAppService;
@@ -63,9 +76,11 @@ public class GrowthRewardBackfillAppService {
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> backfillAll() {
         int registerBonusFixed = 0;
+        int levelRewardFixed = 0;
         int privilegeFixed = 0;
         int badgeFixed = 0;
         List<LevelPrivilegeConfig> privilegeConfigs = levelPrivilegeRepository.findAllEnabled();
+        List<LevelRewardConfig> levelRewardConfigs = levelRewardRepository.findAllEnabled();
         List<User> users = userRepository.findAll();
         List<Long> userIds = new ArrayList<Long>();
         List<String> registerBizNos = new ArrayList<String>();
@@ -85,18 +100,21 @@ public class GrowthRewardBackfillAppService {
             int totalSignDays = signStats == null ? 0 : signStats.getTotalSignDays();
             Map<String, Integer> result = backfillUserInternal(
                 userId,
+                levelRewardConfigs,
                 privilegeConfigs,
                 existingRegisterBizNos.contains("REGISTER:" + userId),
                 currentLevel,
                 totalSignDays,
                 privilegeCodesMap.get(userId));
             registerBonusFixed += result.get("registerBonusFixed");
+            levelRewardFixed += result.get("levelRewardFixed");
             privilegeFixed += result.get("privilegeFixed");
             badgeFixed += result.get("badgeFixed");
         }
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put("mode", "ALL");
         result.put("registerBonusFixed", registerBonusFixed);
+        result.put("levelRewardFixed", levelRewardFixed);
         result.put("privilegeFixed", privilegeFixed);
         result.put("badgeFixed", badgeFixed);
         return result;
@@ -110,7 +128,10 @@ public class GrowthRewardBackfillAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> backfillUser(Long userId) {
-        Map<String, Integer> counters = backfillUserInternal(userId, levelPrivilegeRepository.findAllEnabled());
+        Map<String, Integer> counters = backfillUserInternal(
+            userId,
+            levelRewardRepository.findAllEnabled(),
+            levelPrivilegeRepository.findAllEnabled());
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put("mode", "USER");
         result.put("userId", userId);
@@ -118,7 +139,9 @@ public class GrowthRewardBackfillAppService {
         return result;
     }
 
-    private Map<String, Integer> backfillUserInternal(Long userId, List<LevelPrivilegeConfig> privilegeConfigs) {
+    private Map<String, Integer> backfillUserInternal(Long userId,
+                                                      List<LevelRewardConfig> levelRewardConfigs,
+                                                      List<LevelPrivilegeConfig> privilegeConfigs) {
         int currentLevel = growthAccountRepository.findByUserId(userId)
             .map(GrowthAccount::getCurrentLevel)
             .orElse(1);
@@ -127,6 +150,7 @@ public class GrowthRewardBackfillAppService {
             .orElse(0);
         return backfillUserInternal(
             userId,
+            levelRewardConfigs,
             privilegeConfigs,
             hasRegisterBonus(userId),
             currentLevel,
@@ -135,30 +159,76 @@ public class GrowthRewardBackfillAppService {
     }
 
     private Map<String, Integer> backfillUserInternal(Long userId,
+                                                      List<LevelRewardConfig> levelRewardConfigs,
                                                       List<LevelPrivilegeConfig> privilegeConfigs,
                                                       boolean hasRegisterBonus,
                                                       int currentLevel,
                                                       int totalSignDays,
                                                       List<String> privilegeCodes) {
         int registerBonusFixed = 0;
+        int levelRewardFixed = 0;
         int privilegeFixed = 0;
         int badgeFixed = 0;
         if (!hasRegisterBonus) {
             pointAppService.addPoints(userId, 10, "REGISTER_BONUS", "REGISTER:" + userId, "注册奖励", "SYSTEM");
             registerBonusFixed = 1;
         }
+        levelRewardFixed = backfillLevelRewards(userId, currentLevel, levelRewardConfigs);
         Set<Integer> processedLevels = new LinkedHashSet<Integer>();
         for (LevelPrivilegeConfig privilegeConfig : privilegeConfigs) {
             if (privilegeConfig.getLevel() <= currentLevel && processedLevels.add(privilegeConfig.getLevel())) {
                 privilegeFixed += userPrivilegeAppService.grantLevelPrivileges(userId, privilegeConfig.getLevel()).size();
             }
         }
-        badgeFixed = badgeAppService.backfillBadges(userId, currentLevel, totalSignDays, privilegeCodes);
+        List<String> latestPrivilegeCodes = privilegeFixed > 0
+            ? userPrivilegeAppService.listPrivilegeCodes(userId)
+            : privilegeCodes;
+        badgeFixed = badgeAppService.backfillBadges(userId, currentLevel, totalSignDays, latestPrivilegeCodes);
         Map<String, Integer> result = new LinkedHashMap<String, Integer>();
         result.put("registerBonusFixed", registerBonusFixed);
+        result.put("levelRewardFixed", levelRewardFixed);
         result.put("privilegeFixed", privilegeFixed);
         result.put("badgeFixed", badgeFixed);
         return result;
+    }
+
+    private int backfillLevelRewards(Long userId, int currentLevel, List<LevelRewardConfig> levelRewardConfigs) {
+        int fixed = 0;
+        if (levelRewardConfigs == null || levelRewardConfigs.isEmpty()) {
+            return fixed;
+        }
+        for (LevelRewardConfig config : levelRewardConfigs) {
+            if (config.getLevel() > currentLevel || config.getRewardPoints() <= 0) {
+                continue;
+            }
+            String bizNo = buildLevelRewardBizNo(userId, config.getLevel());
+            boolean pointJournalExists = pointJournalRepository.findByBizNo(bizNo).isPresent();
+            if (!pointJournalExists) {
+                pointAppService.addPoints(
+                    userId,
+                    config.getRewardPoints(),
+                    SOURCE_LEVEL_UP,
+                    bizNo,
+                    "升级到 " + config.getLevel() + " 级（" + config.getRewardTitle() + "）奖励",
+                    null);
+                fixed++;
+            }
+            if (!rewardGrantLogRepository.existsByUserAndReward(userId, REWARD_TYPE_LEVEL_UP, config.getId())) {
+                RewardGrantLog grantLog = RewardGrantLog.create(
+                    userId,
+                    REWARD_TYPE_LEVEL_UP,
+                    config.getId(),
+                    config.getRewardPoints(),
+                    "升级到 " + config.getLevel() + " 级奖励");
+                rewardGrantLogRepository.save(grantLog);
+                fixed++;
+            }
+        }
+        return fixed;
+    }
+
+    private String buildLevelRewardBizNo(Long userId, int level) {
+        return "levelup-" + userId + "-" + level;
     }
 
     private boolean hasRegisterBonus(Long userId) {

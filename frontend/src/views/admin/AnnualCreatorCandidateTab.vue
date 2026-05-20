@@ -133,6 +133,10 @@ onMounted(loadCandidates);
                 <strong class="result-val highlight">{{ backfillResult.registerBonusFixed || 0 }}</strong>
             </div>
             <div class="result-item">
+                <span class="result-label">补发等级奖励</span>
+                <strong class="result-val highlight">{{ backfillResult.levelRewardFixed || 0 }}</strong>
+            </div>
+            <div class="result-item">
                 <span class="result-label">补齐等级权益</span>
                 <strong class="result-val highlight">{{ backfillResult.privilegeFixed || 0 }}</strong>
             </div>

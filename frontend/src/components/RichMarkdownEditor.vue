@@ -37,12 +37,42 @@ const lowlight = createBlogLowlight();
 const editorStateVersion = ref(0);
 const editorRoot = ref(null);
 const contextMenuRef = ref(null);
+const toolbarColorPaletteRef = ref(null);
+const bubbleColorPaletteRef = ref(null);
 const imageInputRef = ref(null);
 const imageUploading = ref(false);
 const uploadError = ref('');
 const dragOver = ref(false);
+const activeColorPalette = ref('');
+const savedTextSelection = ref(null);
 
 const DEFAULT_TEXT_COLOR = '#2c3e50';
+const TEXT_COLOR_OPTIONS = [
+    { label: '默认', value: DEFAULT_TEXT_COLOR },
+    { label: '灰色', value: '#86909c' },
+    { label: '红色', value: '#f53f3f' },
+    { label: '橙色', value: '#f77234' },
+    { label: '黄色', value: '#f7ba1e' },
+    { label: '绿色', value: '#00a870' },
+    { label: '蓝色', value: '#245bdb' },
+    { label: '紫色', value: '#722ed1' }
+];
+const BACKGROUND_COLOR_OPTIONS = [
+    { label: '浅灰', value: '#f2f3f5' },
+    { label: '浅红', value: '#fbbfbc' },
+    { label: '浅橙', value: '#fed4a4' },
+    { label: '浅黄', value: '#fff67a' },
+    { label: '浅绿', value: '#b7edb1' },
+    { label: '浅蓝', value: '#bedaff' },
+    { label: '浅紫', value: '#d8c3ff' },
+    { label: '灰色', value: '#c9cdd4' },
+    { label: '红色', value: '#f76964' },
+    { label: '橙色', value: '#ff9a2e' },
+    { label: '黄色', value: '#fadc19' },
+    { label: '绿色', value: '#5ac84f' },
+    { label: '蓝色', value: '#8bb1ff' },
+    { label: '紫色', value: '#b38cff' }
+];
 const FONT_FAMILY_OPTIONS = [
     { label: '默认字体', value: '' },
     { label: '微软雅黑', value: "'Microsoft YaHei', 'PingFang SC', sans-serif" },
@@ -236,6 +266,14 @@ const richTextStyleExtension = TextStyle.extend({
                     return color ? { style: `color:${color}` } : {};
                 }
             },
+            backgroundColor: {
+                default: null,
+                parseHTML: element => normalizeTextColor(element.style.backgroundColor),
+                renderHTML: attributes => {
+                    const backgroundColor = normalizeTextColor(attributes.backgroundColor);
+                    return backgroundColor ? { style: `background-color:${backgroundColor}` } : {};
+                }
+            },
             fontSize: {
                 default: null,
                 parseHTML: element => normalizeFontSize(element.style.fontSize),
@@ -357,6 +395,29 @@ const setSlashMenuPosition = (editorInstance) => {
     }
 };
 
+const rememberTextSelection = ({ allowEmpty = false } = {}) => {
+    if (!editor.value || editor.value.isActive('codeBlock')) {
+        return;
+    }
+    const { from, to, empty } = editor.value.state.selection;
+    if (empty && !allowEmpty) {
+        return;
+    }
+    savedTextSelection.value = { from, to };
+};
+
+const restoreTextSelection = () => {
+    if (!editor.value || !savedTextSelection.value) {
+        return;
+    }
+    const { from, to } = savedTextSelection.value;
+    const maxPosition = editor.value.state.doc.content.size;
+    if (from < 0 || to < from || to > maxPosition) {
+        return;
+    }
+    editor.value.commands.setTextSelection({ from, to });
+};
+
 const syncSlashMenu = (editorInstance) => {
     const context = getParagraphContext(editorInstance);
     if (!context) {
@@ -423,6 +484,19 @@ const applyTableShortcut = (editorInstance) => {
         rows: 3,
         cols: 3,
         withHeaderRow: true
+    }).run();
+    closeSlashMenu();
+    return true;
+};
+
+const applyPlainTableShortcut = (editorInstance) => {
+    if (!clearCurrentParagraph(editorInstance)) {
+        return false;
+    }
+    editorInstance.chain().focus().insertTable({
+        rows: 3,
+        cols: 3,
+        withHeaderRow: false
     }).run();
     closeSlashMenu();
     return true;
@@ -495,6 +569,13 @@ const editorCommands = [
         description: '插入 3 x 3 表格',
         keywords: ['table', '表格'],
         run: applyTableShortcut
+    },
+    {
+        id: 'table-no-header',
+        label: '无表头表格',
+        description: '插入不带表头的 3 x 3 表格',
+        keywords: ['table', '表格', '无表头'],
+        run: applyPlainTableShortcut
     },
     {
         id: 'code-block',
@@ -590,7 +671,10 @@ const editor = useEditor({
             }
         }),
         Table.configure({
-            resizable: true
+            resizable: true,
+            handleWidth: 6,
+            cellMinWidth: 80,
+            lastColumnResizable: true
         }),
         TableRow,
         TableHeader,
@@ -721,6 +805,7 @@ const editor = useEditor({
     },
     onSelectionUpdate({ editor: currentEditor }) {
         refreshEditorState();
+        rememberTextSelection();
         syncSlashMenu(currentEditor);
     }
 });
@@ -728,6 +813,7 @@ const editor = useEditor({
 onBeforeUnmount(() => {
     closeSlashMenu();
     closeContextMenu();
+    closeColorPalette();
     document.removeEventListener('mousedown', handleGlobalPointerDown);
     window.removeEventListener('keydown', handleGlobalKeyDown);
     window.removeEventListener('scroll', handleGlobalScroll, true);
@@ -793,11 +879,11 @@ const cancelLink = () => {
     linkDialog.open = false;
 };
 
-const insertTable = () => {
+const insertTable = (withHeaderRow = true) => {
     editor.value?.chain().focus().insertTable({
         rows: 3,
         cols: 3,
-        withHeaderRow: true
+        withHeaderRow
     }).run();
 };
 
@@ -1037,6 +1123,14 @@ const activeTextColor = computed(() => {
     return normalizeTextColor(getTextStyleAttributes().color || '');
 });
 
+const activeBackgroundColor = computed(() => {
+    editorStateVersion.value;
+    return normalizeTextColor(getTextStyleAttributes().backgroundColor || '');
+});
+
+const isToolbarColorPaletteOpen = computed(() => activeColorPalette.value === 'toolbar');
+const isBubbleColorPaletteOpen = computed(() => activeColorPalette.value === 'bubble');
+
 const activeLineHeight = computed(() => {
     editorStateVersion.value;
     const paragraphLineHeight = editor.value?.getAttributes('paragraph')?.lineHeight || '';
@@ -1048,9 +1142,11 @@ const applyTextStyleAttributes = (attrs = {}) => {
     if (!editor.value || editor.value.isActive('codeBlock')) {
         return;
     }
+    restoreTextSelection();
     const current = getTextStyleAttributes();
     const next = {
         color: normalizeTextColor(current.color || ''),
+        backgroundColor: normalizeTextColor(current.backgroundColor || ''),
         fontSize: normalizeFontSize(current.fontSize || ''),
         fontFamily: normalizeFontFamily(current.fontFamily || ''),
         ...attrs
@@ -1080,10 +1176,37 @@ const applyFontSize = (value) => {
 
 const applyTextColor = (value) => {
     applyTextStyleAttributes({ color: normalizeTextColor(value) });
+    closeColorPalette();
+};
+
+const applyBackgroundColor = (value) => {
+    applyTextStyleAttributes({ backgroundColor: normalizeTextColor(value) });
+    closeColorPalette();
 };
 
 const clearTextColor = () => {
     applyTextStyleAttributes({ color: '' });
+};
+
+const clearBackgroundColor = () => {
+    applyTextStyleAttributes({ backgroundColor: '' });
+    closeColorPalette();
+};
+
+const resetColorPalette = () => {
+    applyTextStyleAttributes({ color: '', backgroundColor: '' });
+    closeColorPalette();
+};
+
+const toggleColorPalette = (source = 'toolbar') => {
+    if (!isRichStyleAvailable.value) {
+        return;
+    }
+    activeColorPalette.value = activeColorPalette.value === source ? '' : source;
+};
+
+const closeColorPalette = () => {
+    activeColorPalette.value = '';
 };
 
 const clearTextStyle = () => {
@@ -1098,6 +1221,7 @@ const applyLineHeight = (value) => {
     if (!editor.value || editor.value.isActive('codeBlock')) {
         return;
     }
+    restoreTextSelection();
     const lineHeight = normalizeLineHeight(value) || null;
     const nodeType = editor.value.isActive('heading') ? 'heading' : 'paragraph';
     editor.value.chain().focus().updateAttributes(nodeType, { lineHeight }).run();
@@ -1106,6 +1230,31 @@ const applyLineHeight = (value) => {
 
 const isInTable = computed(() => {
     return editorStateVersion.value >= 0 && Boolean(editor.value?.isActive('table'));
+});
+
+const tableHasHeaderRow = computed(() => {
+    editorStateVersion.value;
+    if (!editor.value?.isActive('table')) {
+        return false;
+    }
+    const { $from } = editor.value.state.selection;
+    for (let depth = $from.depth; depth > 0; depth--) {
+        const node = $from.node(depth);
+        if (node.type.name !== 'table') {
+            continue;
+        }
+        const firstRow = node.firstChild;
+        if (!firstRow?.childCount) {
+            return false;
+        }
+        for (let index = 0; index < firstRow.childCount; index++) {
+            if (firstRow.child(index).type.name !== 'tableHeader') {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 });
 
 const toolbarGroups = computed(() => {
@@ -1258,7 +1407,13 @@ const toolbarGroups = computed(() => {
                     id: 'table',
                     label: '表格',
                     active: false,
-                    run: insertTable
+                    run: () => insertTable(true)
+                },
+                {
+                    id: 'table-no-header',
+                    label: '无表头表格',
+                    active: false,
+                    run: () => insertTable(false)
                 },
                 {
                     id: 'insert-image',
@@ -1380,6 +1535,7 @@ const itemShortcuts = {
     'blockquote': 'Ctrl+Shift+B',
     'code-block': 'Ctrl+Alt+C',
     'table': '/',
+    'table-no-header': '/',
     'insert-image': '/',
 };
 
@@ -1409,6 +1565,7 @@ const itemIcons = {
     'link': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6.88 3.88a3 3 0 0 1 4.24 0l1 1a3 3 0 0 1-4.24 4.24l-.5-.5.94-.94.5.5a1.5 1.5 0 0 0 2.12-2.12l-1-1a1.5 1.5 0 0 0-2.12 0l-.5.5-.94-.94.5-.5z"/><path d="M4.88 6.88a3 3 0 0 1 4.24 0l.5.5-.94.94-.5-.5a1.5 1.5 0 0 0-2.12 2.12l1 1a1.5 1.5 0 0 0 2.12 0l.5-.5.94.94-.5.5a3 3 0 0 1-4.24-4.24l-1-1a3 3 0 0 1 0-4.24V6.88z"/></svg>',
     'divider': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 7.5h12v1H2z"/></svg>',
     'table': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v3h4V3H3zm5 0v3h4V3H8zM3 7v3h4V7H3zm5 0v3h4V7H8zM3 11v2h4v-2H3zm5 0v2h4v-2H8z"/></svg>',
+    'table-no-header': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v10H2V3zm1 1v3h4V4H3zm5 0v3h4V4H8zM3 8v4h4V8H3zm5 0v4h4V8H8z"/></svg>',
     'insert-image': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v10h10V3H3zm2 3a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm7 6H4l3-4 2 2.5L11 8l2 4z"/></svg>',
     'insert-image-link': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v10h10V3H3zm3 3h4v1H6V6zm0 2h7v1H6V8zm0 2h5v1H6v-1z"/></svg>',
     'code-block': '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5.85 4.85L2.7 8l3.15 3.15-1.06 1.06L.59 8.7a1 1 0 0 1 0-1.4l4.2-4.2 1.06 1.06zm4.3 0l3.15 3.15-3.15 3.15 1.06 1.06 4.2-4.2a1 1 0 0 0 0-1.4l-4.2-4.2-1.06 1.06z"/></svg>',
@@ -1523,10 +1680,15 @@ const handleEditorContextMenu = (event) => {
 };
 
 const handleGlobalPointerDown = (event) => {
+    const target = event.target;
+    const insideColorPalette = toolbarColorPaletteRef.value?.contains(target)
+        || bubbleColorPaletteRef.value?.contains(target);
+    if (activeColorPalette.value && !insideColorPalette) {
+        closeColorPalette();
+    }
     if (!contextMenuState.open) {
         return;
     }
-    const target = event.target;
     if (contextMenuRef.value?.contains(target)) {
         return;
     }
@@ -1536,10 +1698,15 @@ const handleGlobalPointerDown = (event) => {
 const handleGlobalKeyDown = (event) => {
     if (event.key === 'Escape') {
         closeContextMenu();
+        closeColorPalette();
     }
 };
 
 const handleGlobalScroll = (event) => {
+    if (toolbarColorPaletteRef.value?.contains(event.target) || bubbleColorPaletteRef.value?.contains(event.target)) {
+        return;
+    }
+    closeColorPalette();
     if (contextMenuRef.value?.contains(event.target)) {
         return;
     }
@@ -1574,7 +1741,7 @@ const handleGlobalScroll = (event) => {
                         :disabled="!isRichStyleAvailable"
                         title="字体"
                         aria-label="字体"
-                        @mousedown.stop
+                        @mousedown.stop="rememberTextSelection({ allowEmpty: true })"
                         @change="applyFontFamily($event.target.value)"
                     >
                         <option
@@ -1592,7 +1759,7 @@ const handleGlobalScroll = (event) => {
                         :disabled="!isRichStyleAvailable"
                         title="字号"
                         aria-label="字号"
-                        @mousedown.stop
+                        @mousedown.stop="rememberTextSelection({ allowEmpty: true })"
                         @change="applyFontSize($event.target.value)"
                     >
                         <option
@@ -1610,7 +1777,7 @@ const handleGlobalScroll = (event) => {
                         :disabled="!isRichStyleAvailable"
                         title="行距"
                         aria-label="行距"
-                        @mousedown.stop
+                        @mousedown.stop="rememberTextSelection({ allowEmpty: true })"
                         @change="applyLineHeight($event.target.value)"
                     >
                         <option
@@ -1621,24 +1788,90 @@ const handleGlobalScroll = (event) => {
                             {{ option.label }}
                         </option>
                     </select>
-                    <label
-                        class="editor-color-control"
-                        title="文字颜色"
-                        aria-label="文字颜色"
+                    <div
+                        ref="toolbarColorPaletteRef"
+                        class="editor-color-picker"
                     >
-                        <span
-                            class="editor-color-swatch"
-                            :style="{ backgroundColor: activeTextColor || DEFAULT_TEXT_COLOR }"
-                        ></span>
-                        <input
-                            type="color"
+                        <button
+                            type="button"
+                            class="editor-color-trigger"
                             data-testid="editor-text-color-input"
-                            :value="activeTextColor || DEFAULT_TEXT_COLOR"
+                            title="文字颜色"
+                            aria-label="文字颜色"
+                            :aria-expanded="isToolbarColorPaletteOpen"
                             :disabled="!isRichStyleAvailable"
-                            @mousedown.stop
-                            @input="applyTextColor($event.target.value)"
+                            @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                            @click="toggleColorPalette('toolbar')"
                         >
-                    </label>
+                            <span
+                                class="editor-color-letter"
+                                :style="{ color: activeTextColor || DEFAULT_TEXT_COLOR }"
+                            >A</span>
+                            <span
+                                class="editor-color-indicator"
+                                :style="{ backgroundColor: activeTextColor || DEFAULT_TEXT_COLOR }"
+                            ></span>
+                        </button>
+                        <div
+                            v-if="isToolbarColorPaletteOpen"
+                            class="editor-color-popover"
+                            role="dialog"
+                            aria-label="颜色选择"
+                        >
+                            <section class="editor-color-section">
+                                <p class="editor-color-title">字体颜色</p>
+                                <div class="editor-color-grid editor-color-grid--text">
+                                    <button
+                                        v-for="option in TEXT_COLOR_OPTIONS"
+                                        :key="option.value"
+                                        type="button"
+                                        class="editor-color-option editor-color-option--text"
+                                        :class="{ active: (activeTextColor || DEFAULT_TEXT_COLOR) === option.value }"
+                                        :title="option.label"
+                                        :aria-label="`字体颜色：${option.label}`"
+                                        @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                        @click="applyTextColor(option.value)"
+                                    >
+                                        <span :style="{ color: option.value }">A</span>
+                                    </button>
+                                </div>
+                            </section>
+                            <section class="editor-color-section">
+                                <p class="editor-color-title">背景颜色</p>
+                                <div class="editor-color-grid editor-color-grid--background">
+                                    <button
+                                        type="button"
+                                        class="editor-color-option editor-color-option--none"
+                                        :class="{ active: !activeBackgroundColor }"
+                                        title="无背景色"
+                                        aria-label="无背景色"
+                                        @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                        @click="clearBackgroundColor"
+                                    ></button>
+                                    <button
+                                        v-for="option in BACKGROUND_COLOR_OPTIONS"
+                                        :key="option.value"
+                                        type="button"
+                                        class="editor-color-option editor-color-option--background"
+                                        :class="{ active: activeBackgroundColor === option.value }"
+                                        :style="{ backgroundColor: option.value }"
+                                        :title="option.label"
+                                        :aria-label="`背景颜色：${option.label}`"
+                                        @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                        @click="applyBackgroundColor(option.value)"
+                                    ></button>
+                                </div>
+                            </section>
+                            <button
+                                type="button"
+                                class="editor-color-reset"
+                                @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                @click="resetColorPalette"
+                            >
+                                恢复默认
+                            </button>
+                        </div>
+                    </div>
                     <button
                         type="button"
                         class="editor-style-clear"
@@ -1696,7 +1929,19 @@ const handleGlobalScroll = (event) => {
                 <button type="button" class="table-toolbar-btn" title="右侧插入列" @mousedown.prevent="keepEditorFocus" @click="addColumnAfter"><span v-html="itemIconsHtml('add-col-after')"></span></button>
                 <button type="button" class="table-toolbar-btn" title="删除列" @mousedown.prevent="keepEditorFocus" @click="deleteColumn"><span v-html="itemIconsHtml('delete-col')"></span></button>
                 <span class="table-toolbar-divider"></span>
-                <button type="button" class="table-toolbar-btn" title="切换表头" @mousedown.prevent="keepEditorFocus" @click="toggleHeaderRow"><span v-html="itemIconsHtml('toggle-header-row')"></span></button>
+                <button
+                    type="button"
+                    class="table-header-toggle"
+                    :class="{ active: tableHasHeaderRow }"
+                    :title="tableHasHeaderRow ? '关闭表头' : '启用表头'"
+                    :aria-pressed="tableHasHeaderRow"
+                    @mousedown.prevent="keepEditorFocus"
+                    @click="toggleHeaderRow"
+                >
+                    <span v-html="itemIconsHtml('toggle-header-row')"></span>
+                    <span>表头</span>
+                    <strong>{{ tableHasHeaderRow ? '开' : '关' }}</strong>
+                </button>
                 <span class="table-toolbar-divider"></span>
                 <button type="button" class="table-toolbar-btn table-toolbar-btn--danger" title="删除表格" @mousedown.prevent="keepEditorFocus" @click="deleteTable"><span v-html="itemIconsHtml('delete-table')"></span></button>
             </div>
@@ -1791,23 +2036,89 @@ const handleGlobalScroll = (event) => {
                     @click="toggleCode"
                 ><span v-html="itemIconsHtml('code')"></span></button>
                 <span class="bubble-menu-sep"></span>
-                <label
-                    class="bubble-color-control"
-                    title="文字颜色"
-                    aria-label="文字颜色"
+                <div
+                    ref="bubbleColorPaletteRef"
+                    class="editor-color-picker editor-color-picker--bubble"
                 >
-                    <span
-                        class="bubble-color-swatch"
-                        :style="{ backgroundColor: activeTextColor || DEFAULT_TEXT_COLOR }"
-                    ></span>
-                    <input
-                        type="color"
-                        :value="activeTextColor || DEFAULT_TEXT_COLOR"
+                    <button
+                        type="button"
+                        class="editor-color-trigger bubble-menu-btn"
+                        title="文字颜色"
+                        aria-label="文字颜色"
+                        :aria-expanded="isBubbleColorPaletteOpen"
                         :disabled="!isRichStyleAvailable"
-                        @mousedown.stop
-                        @input="applyTextColor($event.target.value)"
+                        @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                        @click="toggleColorPalette('bubble')"
                     >
-                </label>
+                        <span
+                            class="editor-color-letter"
+                            :style="{ color: activeTextColor || DEFAULT_TEXT_COLOR }"
+                        >A</span>
+                        <span
+                            class="editor-color-indicator"
+                            :style="{ backgroundColor: activeTextColor || DEFAULT_TEXT_COLOR }"
+                        ></span>
+                    </button>
+                    <div
+                        v-if="isBubbleColorPaletteOpen"
+                        class="editor-color-popover editor-color-popover--bubble"
+                        role="dialog"
+                        aria-label="颜色选择"
+                    >
+                        <section class="editor-color-section">
+                            <p class="editor-color-title">字体颜色</p>
+                            <div class="editor-color-grid editor-color-grid--text">
+                                <button
+                                    v-for="option in TEXT_COLOR_OPTIONS"
+                                    :key="option.value"
+                                    type="button"
+                                    class="editor-color-option editor-color-option--text"
+                                    :class="{ active: (activeTextColor || DEFAULT_TEXT_COLOR) === option.value }"
+                                    :title="option.label"
+                                    :aria-label="`字体颜色：${option.label}`"
+                                    @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                    @click="applyTextColor(option.value)"
+                                >
+                                    <span :style="{ color: option.value }">A</span>
+                                </button>
+                            </div>
+                        </section>
+                        <section class="editor-color-section">
+                            <p class="editor-color-title">背景颜色</p>
+                            <div class="editor-color-grid editor-color-grid--background">
+                                <button
+                                    type="button"
+                                    class="editor-color-option editor-color-option--none"
+                                    :class="{ active: !activeBackgroundColor }"
+                                    title="无背景色"
+                                    aria-label="无背景色"
+                                    @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                    @click="clearBackgroundColor"
+                                ></button>
+                                <button
+                                    v-for="option in BACKGROUND_COLOR_OPTIONS"
+                                    :key="option.value"
+                                    type="button"
+                                    class="editor-color-option editor-color-option--background"
+                                    :class="{ active: activeBackgroundColor === option.value }"
+                                    :style="{ backgroundColor: option.value }"
+                                    :title="option.label"
+                                    :aria-label="`背景颜色：${option.label}`"
+                                    @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                                    @click="applyBackgroundColor(option.value)"
+                                ></button>
+                            </div>
+                        </section>
+                        <button
+                            type="button"
+                            class="editor-color-reset"
+                            @mousedown.prevent="rememberTextSelection({ allowEmpty: true })"
+                            @click="resetColorPalette"
+                        >
+                            恢复默认
+                        </button>
+                    </div>
+                </div>
                 <button
                     type="button"
                     class="bubble-menu-btn"

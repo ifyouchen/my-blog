@@ -165,6 +165,10 @@ onMounted(() => {
                 <strong class="result-val highlight">{{ backfillState.result.registerBonusFixed || 0 }}</strong>
             </div>
             <div class="result-item">
+                <span class="result-label">等级奖励</span>
+                <strong class="result-val highlight">{{ backfillState.result.levelRewardFixed || 0 }}</strong>
+            </div>
+            <div class="result-item">
                 <span class="result-label">等级权益</span>
                 <strong class="result-val highlight">{{ backfillState.result.privilegeFixed || 0 }}</strong>
             </div>
