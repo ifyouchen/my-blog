@@ -169,7 +169,9 @@ public class AuthAppService {
     public UserDTO getUser(Long userId) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
-        return UserAssembler.toDTO(user);
+        UserDTO dto = UserAssembler.toDTO(user);
+        userLevelAppService.fillLevel(dto);
+        return dto;
     }
 
     private String normalizeEmail(String email) {

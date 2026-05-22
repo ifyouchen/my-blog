@@ -1,5 +1,7 @@
 package com.myblog.domain.model.valueobject;
 
+import com.myblog.shared.exception.DomainException;
+import com.myblog.shared.exception.ErrorCode;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -20,7 +22,7 @@ public class ArticleId implements Serializable {
      */
     public ArticleId(Long value) {
         if (value == null || value <= 0L) {
-            throw new IllegalArgumentException("文章ID不能为空");
+            throw new DomainException(ErrorCode.PARAM_ERROR, "文章ID不能为空");
         }
         this.value = value;
     }

@@ -414,7 +414,12 @@ public class SignInAppService {
             RewardGrantLog grantLog = RewardGrantLog.create(
                     userId, REWARD_TYPE_CUMULATIVE, config.getId(),
                     config.getRewardPoints(), "累计签到 " + config.getMilestoneDays() + " 天里程碑");
-            rewardGrantLogRepository.save(grantLog);
+            try {
+                rewardGrantLogRepository.save(grantLog);
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                log.info("[里程碑] 并发重复跳过。userId={}, milestoneDays={}", userId, config.getMilestoneDays());
+                continue;
+            }
             badgeAppService.grantSignInBadge(userId, config.getBadgeCode(), config.getMilestoneDays());
 
             if (config.getRewardPoints() > 0) {

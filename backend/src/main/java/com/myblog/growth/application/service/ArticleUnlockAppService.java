@@ -47,19 +47,22 @@ public class ArticleUnlockAppService {
     private final PointAppService pointAppService;
     private final RevenueShareAppService revenueShareAppService;
     private final ApplicationEventPublisher eventPublisher;
+    private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     public ArticleUnlockAppService(ArticleUnlockInfoRepository articleUnlockInfoRepository,
                                    UnlockOrderRepository unlockOrderRepository,
                                    UnlockRelationRepository unlockRelationRepository,
                                    PointAppService pointAppService,
                                    RevenueShareAppService revenueShareAppService,
-                                   ApplicationEventPublisher eventPublisher) {
+                                   ApplicationEventPublisher eventPublisher,
+                                   org.springframework.transaction.support.TransactionTemplate transactionTemplate) {
         this.articleUnlockInfoRepository = articleUnlockInfoRepository;
         this.unlockOrderRepository = unlockOrderRepository;
         this.unlockRelationRepository = unlockRelationRepository;
         this.pointAppService = pointAppService;
         this.revenueShareAppService = revenueShareAppService;
         this.eventPublisher = eventPublisher;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -194,7 +197,15 @@ public class ArticleUnlockAppService {
             balanceAfter = pointAppService.deductPoints(userId, pointsCost, "UNLOCK", orderNo,
                     "解锁文章[" + articleId + "]", null);
         } catch (Exception e) {
-            unlockOrderRepository.markFailed(orderNo, e.getMessage());
+            try {
+                transactionTemplate.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                transactionTemplate.execute(status -> {
+                    unlockOrderRepository.markFailed(orderNo, e.getMessage());
+                    return null;
+                });
+            } catch (Exception inner) {
+                log.error("[解锁] 标记订单失败记录也失败了，orderNo={}", orderNo, inner);
+            }
             throw e;
         }
 

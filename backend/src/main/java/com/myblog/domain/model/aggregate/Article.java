@@ -82,6 +82,9 @@ public class Article {
         article.coverUrl = coverUrl;
         article.category = normalizeText(category);
         article.tags = tags == null ? new ArrayList<String>() : new ArrayList<String>(tags);
+        if (status == ArticleStatus.OFFLINE || status == ArticleStatus.DELETED) {
+            throw new DomainException(ErrorCode.PARAM_ERROR, "文章不能以" + status + "状态创建");
+        }
         article.status = status == null ? ArticleStatus.DRAFT : status;
         article.viewCount = 0;
         article.likeCount = 0;
