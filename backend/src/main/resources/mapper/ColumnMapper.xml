@@ -84,11 +84,6 @@
         LIMIT #{limit}
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 2000) + 1
-        FROM blog_column
-    </select>
-
     <select id="countById" resultType="int">
         SELECT COUNT(1)
         FROM blog_column

@@ -80,12 +80,6 @@
         </if>
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 0) + 1
-        FROM blog_tag
-        WHERE id &lt; 10000000000
-    </select>
-
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.TagDO">
         INSERT INTO blog_tag
         <trim prefix="(" suffix=")" suffixOverrides=",">

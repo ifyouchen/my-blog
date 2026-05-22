@@ -20,7 +20,6 @@ import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -38,7 +37,6 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Component
-@Async
 public class NotificationEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
@@ -95,12 +93,13 @@ public class NotificationEventListener {
                 return;
             }
 
+            String payloadJson = buildArticlePayload(article, event.getUserId());
             CreateNotificationCommand command = new CreateNotificationCommand();
             command.setReceiverUserId(article.getAuthorId().getValue());
             command.setActorUserId(event.getUserId());
             command.setType(NotificationType.ARTICLE_LIKE);
             command.setArticleId(event.getArticleId());
-            command.setPayloadJson(buildArticlePayload(event.getArticleId(), event.getUserId()));
+            command.setPayloadJson(payloadJson);
 
             notificationAppService.createNotification(command);
             log.info("{} | {} 处理点赞事件 | 入参({}) | 结果(type=ARTICLE_LIKE, articleId={}, fromUser={}, toUser={}) | {}",
@@ -141,12 +140,13 @@ public class NotificationEventListener {
                 return;
             }
 
+            String payloadJson = buildArticlePayload(article, event.getUserId());
             CreateNotificationCommand command = new CreateNotificationCommand();
             command.setReceiverUserId(article.getAuthorId().getValue());
             command.setActorUserId(event.getUserId());
             command.setType(NotificationType.ARTICLE_FAVORITE);
             command.setArticleId(event.getArticleId());
-            command.setPayloadJson(buildArticlePayload(event.getArticleId(), event.getUserId()));
+            command.setPayloadJson(payloadJson);
 
             notificationAppService.createNotification(command);
             log.info("{} | {} 处理收藏事件 | 入参({}) | 结果(type=ARTICLE_FAVORITE, articleId={}, fromUser={}) | {}", BizLogHelper.trace(), who, params,
@@ -311,6 +311,7 @@ public class NotificationEventListener {
                     BizLogHelper.result("文章不存在"), BizLogHelper.elapsed(_start));
                 return;
             }
+            Article article = articleOpt.get();
 
             Long authorId = event.getAuthorId();
             List<Long> followerIds = userFollowRepository.findFollowerUserIds(new UserId(authorId));
@@ -320,6 +321,8 @@ public class NotificationEventListener {
                     BizLogHelper.result("没有粉丝，跳过通知"), BizLogHelper.elapsed(_start));
                 return;
             }
+
+            String payloadJson = buildArticlePayload(article, authorId);
 
             int successCount = 0;
             for (Long followerId : followerIds) {
@@ -332,7 +335,7 @@ public class NotificationEventListener {
                     command.setActorUserId(authorId);
                     command.setType(NotificationType.ARTICLE_PUBLISH);
                     command.setArticleId(event.getArticleId());
-                    command.setPayloadJson(buildArticlePayload(event.getArticleId(), authorId));
+                    command.setPayloadJson(payloadJson);
 
                     notificationAppService.createNotification(command);
                     successCount++;
@@ -350,14 +353,10 @@ public class NotificationEventListener {
         }
     }
 
-    private String buildArticlePayload(Long articleId, Long actorUserId) {
+    private String buildArticlePayload(Article article, Long actorUserId) {
         try {
             Map<String, Object> payload = new HashMap<>();
-            Optional<Article> articleOpt = articleRepository.findById(new ArticleId(articleId));
-            if (articleOpt.isPresent()) {
-                Article article = articleOpt.get();
-                payload.put("articleTitle", article.getTitle());
-            }
+            payload.put("articleTitle", article.getTitle());
             Optional<User> actorOpt = userRepository.findById(new UserId(actorUserId));
             if (actorOpt.isPresent()) {
                 User actor = actorOpt.get();

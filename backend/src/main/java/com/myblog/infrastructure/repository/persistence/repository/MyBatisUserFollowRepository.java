@@ -23,14 +23,17 @@ import java.util.Optional;
 public class MyBatisUserFollowRepository implements UserFollowRepository {
 
     private final UserFollowMapper userFollowMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建用户关注 MyBatis 仓储。
      *
      * @param userFollowMapper 用户关注 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisUserFollowRepository(UserFollowMapper userFollowMapper) {
+    public MyBatisUserFollowRepository(UserFollowMapper userFollowMapper, IdGenerator idGenerator) {
         this.userFollowMapper = userFollowMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -80,7 +83,7 @@ public class MyBatisUserFollowRepository implements UserFollowRepository {
      */
     @Override
     public Long nextId() {
-        return userFollowMapper.selectNextId();
+        return idGenerator.nextId("blog_user_follow");
     }
 
     /**

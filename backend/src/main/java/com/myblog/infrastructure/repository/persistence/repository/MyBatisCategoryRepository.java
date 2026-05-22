@@ -24,14 +24,17 @@ import java.util.Optional;
 public class MyBatisCategoryRepository implements CategoryRepository {
 
     private final CategoryMapper categoryMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建分类 MyBatis 仓储。
      *
      * @param categoryMapper 分类 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisCategoryRepository(CategoryMapper categoryMapper) {
+    public MyBatisCategoryRepository(CategoryMapper categoryMapper, IdGenerator idGenerator) {
         this.categoryMapper = categoryMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -130,6 +133,6 @@ public class MyBatisCategoryRepository implements CategoryRepository {
      */
     @Override
     public Long nextId() {
-        return categoryMapper.selectNextId();
+        return idGenerator.nextId("blog_category");
     }
 }

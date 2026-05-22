@@ -23,14 +23,17 @@ import java.util.Optional;
 public class MyBatisCommentLikeRepository implements CommentLikeRepository {
 
     private final CommentLikeMapper commentLikeMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建评论点赞 MyBatis 仓储。
      *
      * @param commentLikeMapper 评论点赞 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisCommentLikeRepository(CommentLikeMapper commentLikeMapper) {
+    public MyBatisCommentLikeRepository(CommentLikeMapper commentLikeMapper, IdGenerator idGenerator) {
         this.commentLikeMapper = commentLikeMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -111,6 +114,6 @@ public class MyBatisCommentLikeRepository implements CommentLikeRepository {
      */
     @Override
     public Long nextId() {
-        return commentLikeMapper.selectNextId();
+        return idGenerator.nextId("blog_comment_like");
     }
 }

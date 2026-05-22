@@ -112,12 +112,6 @@
         WHERE id = #{id}
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 100) + 1
-        FROM blog_article_favorite
-        WHERE id &lt; 10000000000
-    </select>
-
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO">
         INSERT INTO blog_article_favorite
         (id, article_id, user_id, created_at, updated_at)

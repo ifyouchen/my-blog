@@ -21,14 +21,17 @@ import java.util.Optional;
 public class MyBatisMessageRepository implements MessageRepository {
 
     private final MessageMapper messageMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建消息 MyBatis 仓储。
      *
      * @param messageMapper 消息 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisMessageRepository(MessageMapper messageMapper) {
+    public MyBatisMessageRepository(MessageMapper messageMapper, IdGenerator idGenerator) {
         this.messageMapper = messageMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -130,6 +133,6 @@ public class MyBatisMessageRepository implements MessageRepository {
      */
     @Override
     public Long nextId() {
-        return messageMapper.selectNextId();
+        return idGenerator.nextId("blog_message");
     }
 }

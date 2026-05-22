@@ -17,7 +17,6 @@ import com.myblog.domain.repository.CommentRepository;
 import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
@@ -36,7 +35,6 @@ import java.util.Optional;
  * </p>
  */
 @Component
-@Async
 public class ArticleStatsEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(ArticleStatsEventListener.class);
@@ -68,7 +66,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(0L),
                 BizLogHelper.params("articleId", event.getArticleId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -87,7 +86,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(event.getUserId()),
                 BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -106,7 +106,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(event.getUserId()),
                 BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -125,7 +126,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(event.getUserId()),
                 BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -144,7 +146,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(event.getUserId()),
                 BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -180,7 +183,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(0L),
                 BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -199,7 +203,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(0L),
                 BizLogHelper.params("articleId", event.getArticleId(), "decrement", event.getDecrement()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -217,7 +222,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(event.getUserId()),
                 BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 
@@ -235,7 +241,8 @@ public class ArticleStatsEventListener {
                 BizLogHelper.trace(),
                 BizLogHelper.who(event.getUserId()),
                 BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()));
+                BizLogHelper.result("失败: " + e.getMessage()),
+                e);
         }
     }
 }

@@ -344,8 +344,7 @@ public class ArticleController {
             + ".zip";
         response.setContentType("application/zip");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-        byte[] data = articleAppService.exportMyArticlesZip(userId);
-        response.getOutputStream().write(data);
+        articleAppService.exportMyArticlesZip(userId, response.getOutputStream());
         response.getOutputStream().flush();
     }
 

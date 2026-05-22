@@ -17,14 +17,17 @@ import java.util.List;
 public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepository {
 
     private final UserSearchHistoryMapper userSearchHistoryMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建用户搜索历史 MyBatis 仓储。
      *
      * @param userSearchHistoryMapper 用户搜索历史 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisUserSearchHistoryRepository(UserSearchHistoryMapper userSearchHistoryMapper) {
+    public MyBatisUserSearchHistoryRepository(UserSearchHistoryMapper userSearchHistoryMapper, IdGenerator idGenerator) {
         this.userSearchHistoryMapper = userSearchHistoryMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -123,6 +126,6 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
      */
     @Override
     public Long nextId() {
-        return userSearchHistoryMapper.selectNextId();
+        return idGenerator.nextId("blog_user_search_history");
     }
 }

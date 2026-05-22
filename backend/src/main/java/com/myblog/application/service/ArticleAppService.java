@@ -494,9 +494,15 @@ public class ArticleAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         int safeLimit = (limit > 0 && limit <= 20) ? limit : 5;
         List<Article> related = articleRepository.findRelated(article.getCategory(), articleId, safeLimit);
+        List<Long> authorIds = related.stream()
+            .map(a -> a.getAuthorId().getValue())
+            .distinct()
+            .collect(java.util.stream.Collectors.toList());
+        java.util.Map<Long, User> authorMap = userRepository.findByIds(authorIds).stream()
+            .collect(java.util.stream.Collectors.toMap(u -> u.getId().getValue(), u -> u, (a, b) -> a));
         List<ArticleDTO> items = new ArrayList<>(related.size());
         for (Article rel : related) {
-            User author = userRepository.findById(rel.getAuthorId()).orElse(null);
+            User author = authorMap.get(rel.getAuthorId().getValue());
             if (author != null) {
                 items.add(articleAssembler.toDTO(rel, author));
             }
@@ -573,6 +579,7 @@ public class ArticleAppService {
      * @param currentUserRole 当前用户角色
      * @return 文章详情
      */
+    @Transactional(readOnly = true)
     public ArticleDTO getArticleForEdit(Long articleId, Long userId, String currentUserRole) {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
@@ -1048,6 +1055,7 @@ public class ArticleAppService {
      */
     private SanitizedArticleContent sanitizeArticleContent(String title, String summary,
                                                            String content, String action) {
+        // FIXME: detectBlockWords and detectWarnWords scan the same text independently — consider a single-pass scan
         String sensitiveText = buildArticleSensitiveText(title, summary, content);
         List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
         if (!blockHits.isEmpty()) {
@@ -1577,10 +1585,9 @@ public class ArticleAppService {
      * @param userId 用户 ID
      * @return ZIP 字节数组
      */
-    public byte[] exportMyArticlesZip(Long userId) {
+    public void exportMyArticlesZip(Long userId, java.io.OutputStream outputStream) {
         List<Article> articles = articleRepository.findByAuthorId(userId);
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(outputStream)) {
             for (Article article : articles) {
                 String safeName = article.getTitle() == null ? "untitled" : article.getTitle()
                     .replaceAll("[/\\\\:*?\"<>|]", "_").trim();
@@ -1595,7 +1602,6 @@ public class ArticleAppService {
         } catch (java.io.IOException e) {
             throw new RuntimeException("生成 ZIP 失败", e);
         }
-        return baos.toByteArray();
     }
 
     /**

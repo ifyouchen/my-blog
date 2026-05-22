@@ -26,14 +26,17 @@ import java.util.Optional;
 public class MyBatisTopicRepository implements TopicRepository {
 
     private final TopicMapper topicMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建专题 MyBatis 仓储。
      *
      * @param topicMapper 专题 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisTopicRepository(TopicMapper topicMapper) {
+    public MyBatisTopicRepository(TopicMapper topicMapper, IdGenerator idGenerator) {
         this.topicMapper = topicMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -98,7 +101,7 @@ public class MyBatisTopicRepository implements TopicRepository {
      */
     @Override
     public Long nextId() {
-        return topicMapper.selectNextId();
+        return idGenerator.nextId("blog_topic");
     }
 
     /**

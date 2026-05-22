@@ -75,11 +75,6 @@
         </if>
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 0) + 1
-        FROM blog_sensitive_word
-    </select>
-
     <insert id="insertOrUpdate" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO blog_sensitive_word (id, word, category, level, created_at, updated_at, version)
         VALUES (#{id}, #{word}, #{category}, #{level}, NOW(), NOW(), 0)

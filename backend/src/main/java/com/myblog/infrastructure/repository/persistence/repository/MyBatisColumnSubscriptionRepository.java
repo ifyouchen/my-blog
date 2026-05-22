@@ -21,14 +21,17 @@ import java.util.Optional;
 public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRepository {
 
     private final ColumnSubscriptionMapper columnSubscriptionMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建专栏订阅 MyBatis 仓储。
      *
      * @param columnSubscriptionMapper 专栏订阅 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisColumnSubscriptionRepository(ColumnSubscriptionMapper columnSubscriptionMapper) {
+    public MyBatisColumnSubscriptionRepository(ColumnSubscriptionMapper columnSubscriptionMapper, IdGenerator idGenerator) {
         this.columnSubscriptionMapper = columnSubscriptionMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -95,7 +98,7 @@ public class MyBatisColumnSubscriptionRepository implements ColumnSubscriptionRe
      */
     @Override
     public Long nextId() {
-        return columnSubscriptionMapper.selectNextId();
+        return idGenerator.nextId("blog_column_subscription");
     }
 
     /**

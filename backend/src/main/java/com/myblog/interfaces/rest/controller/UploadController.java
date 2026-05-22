@@ -124,6 +124,7 @@ public class UploadController {
         validateImageFile(file, scope);
 
         String extension = resolveImageExtension(file);
+        validateFileMagicBytes(file, extension);
         LocalDate today = LocalDate.now();
         String relativeFolder = MONTH_FORMATTER.format(today);
         String fileName = UUID.randomUUID().toString().replace("-", "") + extension;
@@ -243,11 +244,63 @@ public class UploadController {
         }
 
         boolean validType = ALLOWED_ATTACHMENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))
-            || ALLOWED_ATTACHMENT_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT));
+            && ALLOWED_ATTACHMENT_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT));
 
         if (!validType) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR,
                 "不支持的文件类型，仅支持：pdf、doc、docx、xls、xlsx、ppt、pptx、zip、txt、md");
+        }
+
+        validateFileMagicBytes(file, extension);
+    }
+
+    /**
+     * 校验文件魔数，防止文件内容与扩展名不匹配。
+     *
+     * @param file      上传的文件
+     * @param extension 文件扩展名（含点号）
+     */
+    private void validateFileMagicBytes(MultipartFile file, String extension) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = new byte[8];
+            int read = is.read(header);
+            if (read < 4) {
+                throw new ApplicationException(ErrorCode.PARAM_ERROR, "文件内容无效");
+            }
+            boolean valid = false;
+            switch (extension) {
+                case ".jpg":
+                case ".jpeg":
+                    valid = header[0] == (byte) 0xFF && header[1] == (byte) 0xD8;
+                    break;
+                case ".png":
+                    valid = header[0] == (byte) 0x89 && header[1] == (byte) 0x50
+                        && header[2] == (byte) 0x4E && header[3] == (byte) 0x47;
+                    break;
+                case ".gif":
+                    valid = header[0] == (byte) 0x47 && header[1] == (byte) 0x49
+                        && header[2] == (byte) 0x46;
+                    break;
+                case ".webp":
+                    valid = header[0] == (byte) 0x52 && header[1] == (byte) 0x49
+                        && header[2] == (byte) 0x46 && header[3] == (byte) 0x46;
+                    break;
+                case ".pdf":
+                    valid = header[0] == (byte) 0x25 && header[1] == (byte) 0x50
+                        && header[2] == (byte) 0x44 && header[3] == (byte) 0x46;
+                    break;
+                case ".zip":
+                    valid = (header[0] == (byte) 0x50 && header[1] == (byte) 0x4B
+                        && header[2] == (byte) 0x03 && header[3] == (byte) 0x04);
+                    break;
+                default:
+                    valid = true;
+            }
+            if (!valid) {
+                throw new ApplicationException(ErrorCode.PARAM_ERROR, "文件内容与扩展名不匹配");
+            }
+        } catch (IOException e) {
+            throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "文件验证失败");
         }
     }
 

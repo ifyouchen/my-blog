@@ -538,12 +538,6 @@
         WHERE id = #{id}
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 100) + 1
-        FROM blog_article
-        WHERE id &lt; 10000000000
-    </select>
-
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ArticleDO">
         INSERT INTO blog_article
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -767,12 +761,7 @@
         <if test="keyword != null and keyword != ''">
             <choose>
                 <when test="useFulltext == true">
-                    AND (
-                        MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
-                        OR a.title LIKE CONCAT('%', #{keyword}, '%')
-                        OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                        OR a.content LIKE CONCAT('%', #{keyword}, '%')
-                    )
+                    AND MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
                 </when>
                 <otherwise>
                     AND (

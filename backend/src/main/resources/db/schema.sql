@@ -801,6 +801,51 @@ CREATE TABLE `blog_user_ad_dismissal` (
   COMMENT = '用户广告关闭记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- id_sequence (线程安全ID生成器)
+-- ----------------------------
+DROP TABLE IF EXISTS `id_sequence`;
+CREATE TABLE `id_sequence` (
+    `name`       varchar(50)     NOT NULL COMMENT '序列名称（表名）',
+    `next_id`    bigint unsigned NOT NULL DEFAULT 100 COMMENT '下一个可用ID',
+    PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='全局ID生成器（基于MySQL原子UPDATE+LAST_INSERT_ID）';
+
+-- 初始化所有序列（以当前最大ID为起点）
+INSERT IGNORE INTO `id_sequence` (`name`, `next_id`) VALUES
+('blog_article',              9004),
+('blog_article_version',      1),
+('blog_article_favorite',     1),
+('blog_article_like',         1),
+('blog_article_tag',          19),
+('blog_article_view',         1),
+('blog_admin_log',            1),
+('blog_user',                 1004),
+('blog_user_follow',          1),
+('blog_user_search_history',  1),
+('blog_category',             11),
+('blog_tag',                  11),
+('blog_comment',              1),
+('blog_comment_like',         1),
+('blog_column',               2004),
+('blog_column_article',       7),
+('blog_column_subscription',  1),
+('blog_conversation',         1),
+('blog_message',              1),
+('blog_notification',         1),
+('blog_report',               1),
+('blog_sensitive_word',       1),
+('blog_topic',                1),
+('blog_topic_article',        1),
+('blog_learning_progress',    1),
+('blog_ad_slot',              1),
+('blog_ad_campaign',          1),
+('blog_ad_event',             1),
+('blog_announcement',         1),
+('blog_invite_code',          1),
+('blog_article_daily_stats',  1),
+('blog_creator_daily_stats',  1);
+
+-- ----------------------------
 -- Init data
 -- ----------------------------
 INSERT INTO `blog_ad_slot` (`code`, `name`, `description`, `enabled`) VALUES

@@ -21,14 +21,17 @@ import java.util.Optional;
 public class MyBatisNotificationRepository implements NotificationRepository {
 
     private final NotificationMapper notificationMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建通知 MyBatis 仓储。
      *
      * @param notificationMapper 通知 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisNotificationRepository(NotificationMapper notificationMapper) {
+    public MyBatisNotificationRepository(NotificationMapper notificationMapper, IdGenerator idGenerator) {
         this.notificationMapper = notificationMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -145,6 +148,6 @@ public class MyBatisNotificationRepository implements NotificationRepository {
      */
     @Override
     public Long nextId() {
-        return notificationMapper.selectNextId();
+        return idGenerator.nextId("blog_notification");
     }
 }

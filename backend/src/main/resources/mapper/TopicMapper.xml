@@ -55,11 +55,6 @@
         AND status = 'PUBLISHED'
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 100) + 1
-        FROM blog_topic
-    </select>
-
     <select id="countById" resultType="int">
         SELECT COUNT(1)
         FROM blog_topic

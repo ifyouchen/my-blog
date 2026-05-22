@@ -22,14 +22,17 @@ import java.util.List;
 public class MyBatisAdminLogRepository implements AdminLogRepository {
 
     private final AdminLogMapper adminLogMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建管理员操作日志仓储。
      *
      * @param adminLogMapper 日志 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisAdminLogRepository(AdminLogMapper adminLogMapper) {
+    public MyBatisAdminLogRepository(AdminLogMapper adminLogMapper, IdGenerator idGenerator) {
         this.adminLogMapper = adminLogMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -88,6 +91,6 @@ public class MyBatisAdminLogRepository implements AdminLogRepository {
      */
     @Override
     public Long nextId() {
-        return adminLogMapper.selectNextId();
+        return idGenerator.nextId("blog_admin_log");
     }
 }

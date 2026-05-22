@@ -29,14 +29,17 @@ import java.util.Set;
 public class MyBatisArticleFavoriteRepository implements ArticleFavoriteRepository {
 
     private final ArticleFavoriteMapper articleFavoriteMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建文章收藏 MyBatis 仓储。
      *
      * @param articleFavoriteMapper 文章收藏 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisArticleFavoriteRepository(ArticleFavoriteMapper articleFavoriteMapper) {
+    public MyBatisArticleFavoriteRepository(ArticleFavoriteMapper articleFavoriteMapper, IdGenerator idGenerator) {
         this.articleFavoriteMapper = articleFavoriteMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -110,7 +113,7 @@ public class MyBatisArticleFavoriteRepository implements ArticleFavoriteReposito
      */
     @Override
     public Long nextId() {
-        return articleFavoriteMapper.selectNextId();
+        return idGenerator.nextId("blog_article_favorite");
     }
 
     /**

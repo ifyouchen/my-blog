@@ -81,7 +81,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(ls F:\\\\\\\\software\\\\\\\\IdeaProject\\\\\\\\my-blog\\\\\\\\docs\\\\\\\\经验与积分 *)",
-      "Bash(npx vue-tsc *)"
+      "Bash(npx vue-tsc *)",
+      "Bash(xargs wc *)"
     ]
   }
 }

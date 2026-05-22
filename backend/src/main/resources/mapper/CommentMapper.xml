@@ -260,12 +260,6 @@
         AND deleted_at IS NULL
     </update>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 100) + 1
-        FROM blog_comment
-        WHERE id &lt; 10000000000
-    </select>
-
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentDO">
         INSERT INTO blog_comment
         (id, article_id, user_id, root_comment_id, parent_id, content, status, like_count, pinned, pinned_at, created_at, updated_at)
@@ -288,6 +282,7 @@
             updated_at = #{updatedAt},
             version = version + 1
         WHERE id = #{id}
+        AND version = #{version}
         AND deleted_at IS NULL
     </update>
 

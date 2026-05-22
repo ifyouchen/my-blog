@@ -29,14 +29,17 @@ import java.util.Optional;
 public class MyBatisUserRepository implements UserRepository {
 
     private final UserMapper userMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建用户 MyBatis 仓储。
      *
      * @param userMapper 用户 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisUserRepository(UserMapper userMapper) {
+    public MyBatisUserRepository(UserMapper userMapper, IdGenerator idGenerator) {
         this.userMapper = userMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -225,7 +228,7 @@ public class MyBatisUserRepository implements UserRepository {
      */
     @Override
     public Long nextId() {
-        return userMapper.selectNextId();
+        return idGenerator.nextId("blog_user");
     }
 
     @Override

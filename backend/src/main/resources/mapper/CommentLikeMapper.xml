@@ -58,12 +58,6 @@
         WHERE id = #{id}
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 100) + 1
-        FROM blog_comment_like
-        WHERE id &lt; 10000000000
-    </select>
-
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CommentLikeDO">
         INSERT INTO blog_comment_like
         (id, comment_id, user_id, created_at, updated_at)

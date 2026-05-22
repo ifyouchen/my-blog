@@ -71,9 +71,4 @@
         WHERE <include refid="Admin_Log_Filter"/>
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 100) + 1
-        FROM blog_admin_log
-        WHERE id &lt; 10000000000
-    </select>
 </mapper>

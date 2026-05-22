@@ -1,6 +1,7 @@
 package com.myblog.infrastructure.config;
 
 import com.myblog.infrastructure.security.JwtAuthenticationInterceptor;
+import com.myblog.interfaces.rest.interceptor.RateLimitInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -21,16 +22,20 @@ import java.nio.file.Paths;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtAuthenticationInterceptor jwtAuthenticationInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
     private final String uploadDir;
 
     /**
      * 创建 Web MVC 配置。
      *
      * @param jwtAuthenticationInterceptor JWT 认证拦截器
+     * @param rateLimitInterceptor         速率限制拦截器
      */
     public WebMvcConfig(JwtAuthenticationInterceptor jwtAuthenticationInterceptor,
+                        RateLimitInterceptor rateLimitInterceptor,
                         @Value("${my-blog.upload-dir:uploads}") String uploadDir) {
         this.jwtAuthenticationInterceptor = jwtAuthenticationInterceptor;
+        this.rateLimitInterceptor = rateLimitInterceptor;
         this.uploadDir = uploadDir;
     }
 
@@ -41,6 +46,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(rateLimitInterceptor).addPathPatterns("/api/**");
         registry.addInterceptor(jwtAuthenticationInterceptor)
             .addPathPatterns("/api/**")
             .excludePathPatterns(

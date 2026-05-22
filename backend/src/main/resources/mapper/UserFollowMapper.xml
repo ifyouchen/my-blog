@@ -94,12 +94,6 @@
         ORDER BY created_at DESC, id DESC
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 1000) + 1
-        FROM blog_user_follow
-        WHERE id &lt; 10000000000
-    </select>
-
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.UserFollowDO">
         INSERT INTO blog_user_follow (
             id, follower_user_id, following_user_id, created_at, updated_at, deleted_at, version

@@ -28,9 +28,11 @@ import java.util.Set;
 public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
 
     private final ArticleLikeMapper articleLikeMapper;
+    private final IdGenerator idGenerator;
 
-    public MyBatisArticleLikeRepository(ArticleLikeMapper articleLikeMapper) {
+    public MyBatisArticleLikeRepository(ArticleLikeMapper articleLikeMapper, IdGenerator idGenerator) {
         this.articleLikeMapper = articleLikeMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -105,7 +107,7 @@ public class MyBatisArticleLikeRepository implements ArticleLikeRepository {
      */
     @Override
     public Long nextId() {
-        return articleLikeMapper.selectNextId();
+        return idGenerator.nextId("blog_article_like");
     }
 
     /**

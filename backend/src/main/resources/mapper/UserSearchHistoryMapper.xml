@@ -95,9 +95,4 @@
         WHERE id = #{id}
     </select>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 0) + 1
-        FROM blog_user_search_history
-        WHERE id &lt; 10000000000
-    </select>
 </mapper>

@@ -18,14 +18,17 @@ import java.time.LocalDateTime;
 public class MyBatisLearningProgressRepository implements LearningProgressRepository {
 
     private final LearningProgressMapper learningProgressMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建学习进度 MyBatis 仓储。
      *
      * @param learningProgressMapper 学习进度 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisLearningProgressRepository(LearningProgressMapper learningProgressMapper) {
+    public MyBatisLearningProgressRepository(LearningProgressMapper learningProgressMapper, IdGenerator idGenerator) {
         this.learningProgressMapper = learningProgressMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -72,6 +75,6 @@ public class MyBatisLearningProgressRepository implements LearningProgressReposi
      */
     @Override
     public Long nextId() {
-        return learningProgressMapper.selectNextId();
+        return idGenerator.nextId("blog_learning_progress");
     }
 }

@@ -58,9 +58,4 @@
         AND deleted_at IS NULL
     </update>
 
-    <select id="selectNextId" resultType="long">
-        SELECT COALESCE(MAX(id), 0) + 1
-        FROM blog_learning_progress
-        WHERE id &lt; 10000000000
-    </select>
 </mapper>

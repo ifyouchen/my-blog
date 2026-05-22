@@ -29,14 +29,17 @@ import java.util.Optional;
 public class MyBatisReportRepository implements ReportRepository {
 
     private final ReportMapper reportMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建举报 MyBatis 仓储。
      *
      * @param reportMapper 举报 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisReportRepository(ReportMapper reportMapper) {
+    public MyBatisReportRepository(ReportMapper reportMapper, IdGenerator idGenerator) {
         this.reportMapper = reportMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -134,6 +137,6 @@ public class MyBatisReportRepository implements ReportRepository {
      */
     @Override
     public Long nextId() {
-        return reportMapper.selectNextId();
+        return idGenerator.nextId("blog_report");
     }
 }

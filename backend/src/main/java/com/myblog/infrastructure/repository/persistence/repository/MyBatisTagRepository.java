@@ -24,14 +24,17 @@ import java.util.Optional;
 public class MyBatisTagRepository implements TagRepository {
 
     private final TagMapper tagMapper;
+    private final IdGenerator idGenerator;
 
     /**
      * 创建标签 MyBatis 仓储。
      *
      * @param tagMapper 标签 Mapper
+     * @param idGenerator 全局 ID 生成器
      */
-    public MyBatisTagRepository(TagMapper tagMapper) {
+    public MyBatisTagRepository(TagMapper tagMapper, IdGenerator idGenerator) {
         this.tagMapper = tagMapper;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -132,7 +135,7 @@ public class MyBatisTagRepository implements TagRepository {
      */
     @Override
     public Long nextId() {
-        return tagMapper.selectNextId();
+        return idGenerator.nextId("blog_tag");
     }
 
     /**
