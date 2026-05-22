@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myblog.infrastructure.repository.persistence.mapper.IdGeneratorMapper">
+    <update id="updateNextId">
+        UPDATE id_sequence SET next_id = LAST_INSERT_ID(next_id + 1) WHERE name = #{name}
+    </update>
+    <select id="selectNextId" resultType="long">
+        SELECT LAST_INSERT_ID()
+    </select>
+</mapper>
