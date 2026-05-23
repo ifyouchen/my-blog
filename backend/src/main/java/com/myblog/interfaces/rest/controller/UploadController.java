@@ -1,10 +1,10 @@
 package com.myblog.interfaces.rest.controller;
 
+import com.myblog.application.port.FileStorage;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.Result;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,12 +20,10 @@ import javax.imageio.stream.ImageOutputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -40,7 +38,7 @@ import java.util.UUID;
  * 文件上传控制器。
  * <p>
  * 提供图片和附件的上传接口，支持头像、封面、正文图片、私信图片及通用附件上传。
- * 上传文件按年月目录归档存储，文件名使用 UUID 随机生成以防止命名冲突。
+ * 上传文件存储于腾讯云对象存储（COS），文件名使用 UUID 随机生成以防止命名冲突。
  * </p>
  *
  * @author Codex
@@ -96,11 +94,10 @@ public class UploadController {
         ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".zip", ".txt", ".md"
     ));
 
-    /** 文件上传根目录（绝对路径）。 */
-    private final Path uploadRoot;
+    private final FileStorage fileStorage;
 
-    public UploadController(@Value("${my-blog.upload-dir:uploads}") String uploadDir) {
-        this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+    public UploadController(FileStorage fileStorage) {
+        this.fileStorage = fileStorage;
     }
 
     /**
@@ -112,7 +109,7 @@ public class UploadController {
      */
     @PostMapping("/images")
     public Result<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file,
-                                                   @RequestParam(defaultValue = "cover") String scope) {
+                                                    @RequestParam(defaultValue = "cover") String scope) {
         Long userId = AuthContext.getRequiredUserId();
         if (userId == null) {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
@@ -125,27 +122,51 @@ public class UploadController {
 
         String extension = resolveImageExtension(file);
         validateFileMagicBytes(file, extension);
-        LocalDate today = LocalDate.now();
-        String relativeFolder = MONTH_FORMATTER.format(today);
-        String fileName = UUID.randomUUID().toString().replace("-", "") + extension;
-        Path targetDir = uploadRoot.resolve(relativeFolder).normalize();
-        Path targetFile = targetDir.resolve(fileName);
+        String key = buildObjectKey(extension);
+        String contentType = resolveImageContentType(extension);
 
         try {
-            Files.createDirectories(targetDir);
-            saveOptimizedImage(file, scope, extension, targetFile);
+            byte[] originalBytes = file.getBytes();
+            String url;
+            String thumbnailUrl = null;
+            String mediumUrl = null;
+
+            if (canOptimize(extension)) {
+                BufferedImage source = ImageIO.read(new ByteArrayInputStream(originalBytes));
+                if (source != null) {
+                    BufferedImage resized = resizeIfNeeded(source, resolveMaxSide(scope));
+                    byte[] processed = encodeImage(resized, extension);
+                    url = fileStorage.upload(key, new ByteArrayInputStream(processed), contentType, processed.length);
+
+                    String thumbKey = buildVariantKey(key, "-thumb");
+                    BufferedImage thumb = resizeIfNeeded(source, THUMBNAIL_MAX_SIDE);
+                    byte[] thumbBytes = encodeImage(thumb, extension);
+                    fileStorage.upload(thumbKey, new ByteArrayInputStream(thumbBytes), contentType, thumbBytes.length);
+                    thumbnailUrl = fileStorage.getUrl(thumbKey);
+
+                    String mediumKey = buildVariantKey(key, "-medium");
+                    BufferedImage medium = resizeIfNeeded(source, MEDIUM_MAX_SIDE);
+                    byte[] mediumBytes = encodeImage(medium, extension);
+                    fileStorage.upload(mediumKey, new ByteArrayInputStream(mediumBytes), contentType, mediumBytes.length);
+                    mediumUrl = fileStorage.getUrl(mediumKey);
+                } else {
+                    url = fileStorage.upload(key, new ByteArrayInputStream(originalBytes), contentType, originalBytes.length);
+                }
+            } else {
+                url = fileStorage.upload(key, new ByteArrayInputStream(originalBytes), contentType, originalBytes.length);
+            }
+
+            Map<String, String> data = new HashMap<>();
+            data.put("url", url);
+            data.put("originalUrl", url);
+            if (thumbnailUrl != null) {
+                data.put("thumbnailUrl", thumbnailUrl);
+                data.put("mediumUrl", mediumUrl);
+            }
+            return Result.success(data);
         } catch (IOException exception) {
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "图片上传失败");
         }
-
-        Map<String, String> data = new HashMap<>();
-        String fileUrl = "/api/uploads/files/" + relativeFolder + "/" + fileName;
-        data.put("url", fileUrl);
-        data.put("originalUrl", fileUrl);
-        if (canOptimize(extension)) {
-            putVariantUrls(data, relativeFolder, fileName);
-        }
-        return Result.success(data);
     }
 
     /**
@@ -172,26 +193,22 @@ public class UploadController {
             extension = originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase(Locale.ROOT);
         }
 
-        LocalDate today = LocalDate.now();
-        String relativeFolder = MONTH_FORMATTER.format(today);
-        String fileName = UUID.randomUUID().toString().replace("-", "") + extension;
-        Path targetDir = uploadRoot.resolve(relativeFolder).normalize();
-        Path targetFile = targetDir.resolve(fileName);
-
-        try {
-            Files.createDirectories(targetDir);
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
-            }
+        String key = buildObjectKey(extension);
+        String url;
+        try (InputStream inputStream = file.getInputStream()) {
+            url = fileStorage.upload(key, inputStream, file.getContentType(), file.getSize());
         } catch (IOException exception) {
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "文件上传失败");
         }
 
         Map<String, String> data = new HashMap<>();
-        data.put("url", "/api/uploads/files/" + relativeFolder + "/" + fileName);
-        data.put("filename", StringUtils.hasText(originalFilename) ? originalFilename : fileName);
+        data.put("url", url);
+        data.put("filename", StringUtils.hasText(originalFilename) ? originalFilename
+            : key.substring(key.lastIndexOf('/') + 1));
         return Result.success(data);
     }
+
+    // ========== Validation ==========
 
     /**
      * 校验图片文件的合法性（类型和大小）。
@@ -304,116 +321,38 @@ public class UploadController {
         }
     }
 
-    /**
-     * 解析图片扩展名，优先从原始文件名提取，否则根据 Content-Type 推断。
-     *
-     * @param file 上传的文件
-     * @return 扩展名（含点号，如 {@code .jpg}）
-     */
-    private String resolveImageExtension(MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        if (StringUtils.hasText(originalFilename) && originalFilename.contains(".")) {
-            return originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase(Locale.ROOT);
-        }
-        String contentType = file.getContentType();
-        if ("image/png".equalsIgnoreCase(contentType)) {
-            return ".png";
-        }
-        if ("image/gif".equalsIgnoreCase(contentType)) {
-            return ".gif";
-        }
-        if ("image/webp".equalsIgnoreCase(contentType)) {
-            return ".webp";
-        }
-        return ".jpg";
-    }
+    // ========== Image Processing ==========
 
     /**
-     * 保存优化后的图片。
-     *
-     * @param file 上传文件
-     * @param scope 图片用途
-     * @param extension 文件扩展名
-     * @param targetFile 目标文件
-     * @throws IOException 保存失败时抛出
+     * 将 BufferedImage 编码为字节数组，JPEG 使用有损压缩，PNG 使用无损编码。
      */
-    private void saveOptimizedImage(MultipartFile file, String scope, String extension, Path targetFile)
-        throws IOException {
-        if (!canOptimize(extension)) {
-            copyOriginal(file, targetFile);
-            return;
-        }
-        BufferedImage source;
-        try (InputStream inputStream = file.getInputStream()) {
-            source = ImageIO.read(inputStream);
-        }
-        if (source == null) {
-            copyOriginal(file, targetFile);
-            return;
-        }
-        BufferedImage output = resizeIfNeeded(source, resolveMaxSide(scope));
+    private byte[] encodeImage(BufferedImage source, String extension) throws IOException {
         if (isJpeg(extension)) {
-            writeJpeg(output, targetFile);
-            saveImageVariants(output, targetFile, extension);
-            return;
+            return encodeJpeg(source);
         }
-        ImageIO.write(output, "png", targetFile.toFile());
-        saveImageVariants(output, targetFile, extension);
+        return encodePng(source);
     }
 
-    private void saveImageVariants(BufferedImage source, Path targetFile, String extension) throws IOException {
-        writeVariant(source, targetFile, extension, "-thumb", THUMBNAIL_MAX_SIDE);
-        writeVariant(source, targetFile, extension, "-medium", MEDIUM_MAX_SIDE);
-    }
-
-    private void writeVariant(BufferedImage source, Path targetFile, String extension, String suffix, int maxSide)
-        throws IOException {
-        Path variantFile = resolveVariantFile(targetFile, suffix);
-        BufferedImage variant = resizeIfNeeded(source, maxSide);
-        if (isJpeg(extension)) {
-            writeJpeg(variant, variantFile);
-            return;
+    private byte[] encodeJpeg(BufferedImage source) throws IOException {
+        BufferedImage rgb = toRgb(source);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(JPEG_QUALITY);
+        try (ImageOutputStream output = ImageIO.createImageOutputStream(baos)) {
+            writer.setOutput(output);
+            writer.write(null, new IIOImage(rgb, null, null), param);
+        } finally {
+            writer.dispose();
         }
-        ImageIO.write(variant, "png", variantFile.toFile());
+        return baos.toByteArray();
     }
 
-    private void putVariantUrls(Map<String, String> data, String relativeFolder, String fileName) {
-        String baseUrl = "/api/uploads/files/" + relativeFolder + "/";
-        data.put("thumbnailUrl", baseUrl + buildVariantFileName(fileName, "-thumb"));
-        data.put("mediumUrl", baseUrl + buildVariantFileName(fileName, "-medium"));
-    }
-
-    private Path resolveVariantFile(Path targetFile, String suffix) {
-        return targetFile.resolveSibling(buildVariantFileName(targetFile.getFileName().toString(), suffix));
-    }
-
-    private String buildVariantFileName(String fileName, String suffix) {
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex < 0) {
-            return fileName + suffix;
-        }
-        return fileName.substring(0, dotIndex) + suffix + fileName.substring(dotIndex);
-    }
-
-    private boolean canOptimize(String extension) {
-        return isJpeg(extension) || ".png".equalsIgnoreCase(extension);
-    }
-
-    private boolean isJpeg(String extension) {
-        return ".jpg".equalsIgnoreCase(extension) || ".jpeg".equalsIgnoreCase(extension);
-    }
-
-    private int resolveMaxSide(String scope) {
-        if ("avatar".equalsIgnoreCase(scope)) {
-            return AVATAR_MAX_SIDE;
-        }
-        if ("content".equalsIgnoreCase(scope)) {
-            return CONTENT_IMAGE_MAX_SIDE;
-        }
-        if ("message".equalsIgnoreCase(scope)) {
-            return MESSAGE_IMAGE_MAX_SIDE;
-        }
-        return COVER_MAX_SIDE;
+    private byte[] encodePng(BufferedImage source) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(source, "png", baos);
+        return baos.toByteArray();
     }
 
     private BufferedImage resizeIfNeeded(BufferedImage source, int maxSide) {
@@ -436,20 +375,6 @@ public class UploadController {
         return resized;
     }
 
-    private void writeJpeg(BufferedImage source, Path targetFile) throws IOException {
-        BufferedImage rgb = toRgb(source);
-        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
-        ImageWriteParam param = writer.getDefaultWriteParam();
-        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-        param.setCompressionQuality(JPEG_QUALITY);
-        try (ImageOutputStream output = ImageIO.createImageOutputStream(targetFile.toFile())) {
-            writer.setOutput(output);
-            writer.write(null, new IIOImage(rgb, null, null), param);
-        } finally {
-            writer.dispose();
-        }
-    }
-
     private BufferedImage toRgb(BufferedImage source) {
         if (source.getType() == BufferedImage.TYPE_INT_RGB) {
             return source;
@@ -461,9 +386,75 @@ public class UploadController {
         return rgb;
     }
 
-    private void copyOriginal(MultipartFile file, Path targetFile) throws IOException {
-        try (InputStream inputStream = file.getInputStream()) {
-            Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+    private int resolveMaxSide(String scope) {
+        if ("avatar".equalsIgnoreCase(scope)) {
+            return AVATAR_MAX_SIDE;
         }
+        if ("content".equalsIgnoreCase(scope)) {
+            return CONTENT_IMAGE_MAX_SIDE;
+        }
+        if ("message".equalsIgnoreCase(scope)) {
+            return MESSAGE_IMAGE_MAX_SIDE;
+        }
+        return COVER_MAX_SIDE;
+    }
+
+    private boolean canOptimize(String extension) {
+        return isJpeg(extension) || ".png".equalsIgnoreCase(extension);
+    }
+
+    private boolean isJpeg(String extension) {
+        return ".jpg".equalsIgnoreCase(extension) || ".jpeg".equalsIgnoreCase(extension);
+    }
+
+    // ========== Key / URL Helpers ==========
+
+    /**
+     * 解析图片扩展名，优先从原始文件名提取，否则根据 Content-Type 推断。
+     */
+    private String resolveImageExtension(MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        if (StringUtils.hasText(originalFilename) && originalFilename.contains(".")) {
+            return originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase(Locale.ROOT);
+        }
+        String contentType = file.getContentType();
+        if ("image/png".equalsIgnoreCase(contentType)) {
+            return ".png";
+        }
+        if ("image/gif".equalsIgnoreCase(contentType)) {
+            return ".gif";
+        }
+        if ("image/webp".equalsIgnoreCase(contentType)) {
+            return ".webp";
+        }
+        return ".jpg";
+    }
+
+    private String buildObjectKey(String extension) {
+        return MONTH_FORMATTER.format(LocalDate.now()) + "/" + UUID.randomUUID().toString().replace("-", "") + extension;
+    }
+
+    private String buildVariantKey(String key, String suffix) {
+        int dotIndex = key.lastIndexOf('.');
+        if (dotIndex < 0) {
+            return key + suffix;
+        }
+        return key.substring(0, dotIndex) + suffix + key.substring(dotIndex);
+    }
+
+    private String resolveImageContentType(String extension) {
+        if (".jpg".equalsIgnoreCase(extension) || ".jpeg".equalsIgnoreCase(extension)) {
+            return "image/jpeg";
+        }
+        if (".png".equalsIgnoreCase(extension)) {
+            return "image/png";
+        }
+        if (".gif".equalsIgnoreCase(extension)) {
+            return "image/gif";
+        }
+        if (".webp".equalsIgnoreCase(extension)) {
+            return "image/webp";
+        }
+        return "application/octet-stream";
     }
 }
