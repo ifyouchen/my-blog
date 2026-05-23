@@ -21,7 +21,6 @@ import {
 import HomePortalHero from '@/components/HomePortalHero.vue';
 import HomeSidebar from '@/components/HomeSidebar.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
-import TopicStrip from '@/components/TopicStrip.vue';
 import {useLoginModal} from '@/composables/useLoginModal';
 import {useSession} from '@/stores/session';
 import {track} from '@/utils/track';
@@ -57,6 +56,8 @@ const activeSort = ref(ARTICLE_SORT_RECOMMEND);
 const activeCategory = ref('');
 const activeGroup = ref('');
 const bootstrapLoaded = ref(false);
+const taxonomyDrawerOpen = ref(false);
+const selectedDrawerGroup = ref('');
 
 const HOME_FEED_CHANNELS = [
     { key: 'recommend', label: '推荐', feedTab: 'recommend', sort: ARTICLE_SORT_RECOMMEND },
@@ -184,6 +185,37 @@ const feedTitle = computed(() => {
 const feedEyebrow = computed(() => activeGroup.value || activeCategory.value || '全部内容');
 const sidebarTopicItems = computed(() => sidebarTopics.value.slice(0, 5));
 const sidebarColumnItems = computed(() => sidebarColumns.value.slice(0, 4));
+const categoryGroupList = computed(() =>
+    Object.entries(categoryGroups.value || {}).map(([name, items]) => ({
+        name,
+        items: Array.isArray(items) ? items : []
+    }))
+);
+const drawerCategories = computed(() => {
+    const group = categoryGroupList.value.find((item) => item.name === selectedDrawerGroup.value);
+    return group ? group.items : [];
+});
+const activeTaxonomyLabel = computed(() => {
+    if (activeGroup.value && activeCategory.value) {
+        return `${activeGroup.value} / ${activeCategory.value}`;
+    }
+    if (activeGroup.value) {
+        return activeGroup.value;
+    }
+    if (activeCategory.value) {
+        return activeCategory.value;
+    }
+    return '全部分类';
+});
+const activeTaxonomyHint = computed(() => {
+    if (activeGroup.value && activeCategory.value) {
+        return '当前小分类';
+    }
+    if (activeGroup.value) {
+        return '当前分类组';
+    }
+    return '当前范围';
+});
 
 const buildPortalArticles = (focus = null, weekly = [], featured = []) => {
     const seenIds = new Set();
@@ -297,6 +329,62 @@ const loadHomeBootstrap = async () => {
 
 const normalizeCategory = (category) => (category && category !== '全部' ? category : '');
 const normalizeGroup = (group) => (group && group !== '全部' ? group : '');
+
+const syncSelectedDrawerGroup = () => {
+    if (activeGroup.value && categoryGroupList.value.some((item) => item.name === activeGroup.value)) {
+        selectedDrawerGroup.value = activeGroup.value;
+        return;
+    }
+    if (!selectedDrawerGroup.value && categoryGroupList.value.length) {
+        selectedDrawerGroup.value = categoryGroupList.value[0].name;
+    }
+};
+
+const openTaxonomyDrawer = () => {
+    syncSelectedDrawerGroup();
+    taxonomyDrawerOpen.value = true;
+};
+
+const closeTaxonomyDrawer = () => {
+    taxonomyDrawerOpen.value = false;
+};
+
+const selectAllTaxonomy = async () => {
+    taxonomyDrawerOpen.value = false;
+    await router.push({
+        query: {
+            ...route.query,
+            group: undefined,
+            category: undefined,
+            page: undefined
+        }
+    });
+};
+
+const selectGroupTaxonomy = async (groupName) => {
+    selectedDrawerGroup.value = groupName;
+    taxonomyDrawerOpen.value = false;
+    await router.push({
+        query: {
+            ...route.query,
+            group: groupName || undefined,
+            category: undefined,
+            page: undefined
+        }
+    });
+};
+
+const selectCategoryTaxonomy = async (groupName, categoryName) => {
+    taxonomyDrawerOpen.value = false;
+    await router.push({
+        query: {
+            ...route.query,
+            group: groupName || undefined,
+            category: categoryName || undefined,
+            page: undefined
+        }
+    });
+};
 
 const setPortalArticlesOnce = (items = []) => {
     const nextItems = (items || []).filter(Boolean).slice(0, 5);
@@ -483,6 +571,10 @@ watch(
     { immediate: true }
 );
 
+watch([activeGroup, categoryGroupList], () => {
+    syncSelectedDrawerGroup();
+});
+
 onMounted(() => {
     recentArticles.value = readRecentArticles();
     loadHomeBootstrap();
@@ -524,10 +616,23 @@ onBeforeRouteLeave(() => {
             :loading="!bootstrapLoaded"
             @article-click="(payload) => track('home_featured_article_clicked', payload)"
         />
-        <section class="home-channel-bar" aria-label="频道导航" data-testid="home-channel-bar">
-            <TopicStrip :category-groups="categoryGroups" :loading="!bootstrapLoaded" />
-        </section>
         <section class="home-feed-toolbar" aria-label="内容频道">
+            <div class="feed-taxonomy-control">
+                <button
+                    class="taxonomy-trigger"
+                    type="button"
+                    aria-haspopup="dialog"
+                    :aria-expanded="taxonomyDrawerOpen"
+                    @click="openTaxonomyDrawer"
+                >
+                    分类
+                </button>
+                <p class="feed-result-hint">
+                    <span>{{ activeTaxonomyHint }}</span>
+                    <strong>{{ activeTaxonomyLabel }}</strong>
+                    <em>{{ total }}</em>
+                </p>
+            </div>
             <div class="feed-tabs" role="tablist" aria-label="文章通道">
                 <button
                     v-for="channel in HOME_FEED_CHANNELS"
@@ -539,10 +644,77 @@ onBeforeRouteLeave(() => {
                     @click="switchFeedChannel(channel)"
                 >{{ channel.label }}</button>
             </div>
-            <p class="feed-result-hint">
-                {{ activeFeedChannel.label }} · {{ activeCategory || '全部' }}（{{ total }}）
-            </p>
         </section>
+        <div
+            v-if="taxonomyDrawerOpen"
+            class="taxonomy-drawer-backdrop"
+            role="presentation"
+            @click="closeTaxonomyDrawer"
+        ></div>
+        <aside
+            v-if="taxonomyDrawerOpen"
+            class="taxonomy-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="选择文章分类"
+        >
+            <div class="taxonomy-drawer-head">
+                <div>
+                    <p class="taxonomy-drawer-eyebrow">文章分类</p>
+                    <h3>{{ activeTaxonomyLabel }}</h3>
+                </div>
+                <button type="button" class="taxonomy-drawer-close" aria-label="关闭分类选择" @click="closeTaxonomyDrawer">×</button>
+            </div>
+            <button
+                type="button"
+                class="taxonomy-all-option"
+                :class="{ active: !activeGroup && !activeCategory }"
+                @click="selectAllTaxonomy"
+            >
+                <strong>全部分类</strong>
+                <span>查看所有文章</span>
+            </button>
+            <div v-if="categoryGroupList.length" class="taxonomy-drawer-body">
+                <nav class="taxonomy-group-list" aria-label="分类组">
+                    <button
+                        v-for="group in categoryGroupList"
+                        :key="group.name"
+                        type="button"
+                        :class="{ active: selectedDrawerGroup === group.name }"
+                        @click="selectedDrawerGroup = group.name"
+                    >
+                        <span>{{ group.name }}</span>
+                        <em>{{ group.items.length }}</em>
+                    </button>
+                </nav>
+                <section class="taxonomy-category-panel" aria-label="小分类">
+                    <div class="taxonomy-category-panel-head">
+                        <div>
+                            <p>分类组</p>
+                            <h4>{{ selectedDrawerGroup }}</h4>
+                        </div>
+                        <button type="button" @click="selectGroupTaxonomy(selectedDrawerGroup)">
+                            查看本组全部
+                        </button>
+                    </div>
+                    <div v-if="drawerCategories.length" class="taxonomy-category-grid">
+                        <button
+                            v-for="cat in drawerCategories"
+                            :key="cat.id || cat.name"
+                            type="button"
+                            :class="{ active: activeCategory === cat.name }"
+                            @click="selectCategoryTaxonomy(selectedDrawerGroup, cat.name)"
+                        >
+                            {{ cat.name }}
+                        </button>
+                    </div>
+                    <p v-else class="taxonomy-empty">该分类组暂无启用小分类</p>
+                </section>
+            </div>
+            <p v-else class="taxonomy-empty taxonomy-empty-standalone">
+                暂无分类组，请稍后刷新或联系管理员维护分类。
+            </p>
+        </aside>
         <div class="content-grid home-main-grid">
             <ArticleFeed
                 :articles="articles"
@@ -586,10 +758,61 @@ onBeforeRouteLeave(() => {
     margin-bottom: 4px;
 }
 
+.feed-taxonomy-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.taxonomy-trigger {
+    min-height: 38px;
+    padding: 0 16px;
+    color: var(--brand-strong);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+
+.taxonomy-trigger:hover {
+    background: var(--surface);
+    transform: translateY(-1px);
+}
+
 .feed-result-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
-    font-size: 12px;
     color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.feed-result-hint strong {
+    max-width: 260px;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 14px;
+    text-overflow: ellipsis;
+}
+
+.feed-result-hint em {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    color: var(--brand-strong);
+    font-style: normal;
+    font-weight: 700;
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
 }
 
 .feed-tabs button {
@@ -615,13 +838,9 @@ onBeforeRouteLeave(() => {
     background: var(--surface-soft);
 }
 
-.home-channel-bar {
-    margin-bottom: 8px;
-}
-
 .home-feed-toolbar {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 12px;
@@ -631,6 +850,204 @@ onBeforeRouteLeave(() => {
 
 .home-main-grid {
     align-items: start;
+}
+
+.taxonomy-drawer-backdrop {
+    position: fixed;
+    top: 61px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    background: rgba(15, 23, 42, 0.36);
+}
+
+.taxonomy-drawer {
+    position: fixed;
+    top: 61px;
+    bottom: 0;
+    left: 0;
+    z-index: 81;
+    display: flex;
+    flex-direction: column;
+    width: min(760px, calc(100vw - 32px));
+    padding: 24px;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    box-shadow: 24px 0 48px rgba(15, 23, 42, 0.18);
+}
+
+.taxonomy-drawer-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.taxonomy-drawer-eyebrow,
+.taxonomy-category-panel-head p {
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.taxonomy-drawer-head h3,
+.taxonomy-category-panel-head h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.taxonomy-drawer-close {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    color: var(--muted);
+    cursor: pointer;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 24px;
+    line-height: 1;
+}
+
+.taxonomy-all-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.taxonomy-all-option strong {
+    color: var(--text);
+    font-size: 16px;
+}
+
+.taxonomy-all-option span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.taxonomy-all-option.active,
+.taxonomy-group-list button.active,
+.taxonomy-category-grid button.active {
+    color: var(--brand-strong);
+    background: var(--brand-soft);
+    border-color: var(--brand);
+}
+
+.taxonomy-drawer-body {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 16px;
+    min-height: 0;
+}
+
+.taxonomy-group-list {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+}
+
+.taxonomy-group-list button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 12px;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.taxonomy-group-list span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.taxonomy-group-list em {
+    color: var(--muted);
+    font-size: 12px;
+    font-style: normal;
+}
+
+.taxonomy-category-panel {
+    min-width: 0;
+    padding: 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.taxonomy-category-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.taxonomy-category-panel-head button {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 12px;
+    color: var(--brand-strong);
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
+.taxonomy-category-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.taxonomy-category-grid button {
+    min-height: 40px;
+    padding: 0 12px;
+    overflow: hidden;
+    color: var(--text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.taxonomy-empty {
+    margin: 0;
+    padding: 18px;
+    color: var(--muted);
+    text-align: center;
+    background: var(--surface-soft);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.taxonomy-empty-standalone {
+    margin-top: 12px;
 }
 
 .announcement-banners {
@@ -690,14 +1107,28 @@ onBeforeRouteLeave(() => {
 }
 
 @media (max-width: 720px) {
-    .home-channel-bar {
-        margin-bottom: 6px;
-    }
-
     .home-feed-toolbar {
         align-items: flex-start;
         flex-direction: column;
         gap: 6px;
+    }
+
+    .feed-taxonomy-control {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .feed-result-hint {
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    .feed-result-hint span {
+        display: none;
+    }
+
+    .feed-result-hint strong {
+        max-width: min(52vw, 220px);
     }
 
     .feed-tabs {
@@ -712,6 +1143,59 @@ onBeforeRouteLeave(() => {
 
     .feed-tabs button {
         flex: 0 0 auto;
+    }
+
+    .taxonomy-drawer {
+        top: auto;
+        right: 0;
+        left: 0;
+        width: 100%;
+        max-height: 88vh;
+        padding: 18px;
+        border-top: 1px solid var(--line);
+        border-right: 0;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -18px 36px rgba(15, 23, 42, 0.18);
+    }
+
+    .taxonomy-drawer-backdrop {
+        top: 0;
+    }
+
+    .taxonomy-drawer-head h3 {
+        font-size: 18px;
+    }
+
+    .taxonomy-drawer-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .taxonomy-group-list {
+        display: flex;
+        gap: 8px;
+        margin: 0 -18px;
+        padding: 0 18px 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .taxonomy-group-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .taxonomy-group-list button {
+        flex: 0 0 auto;
+        min-width: 112px;
+    }
+
+    .taxonomy-category-panel {
+        padding: 14px;
+    }
+
+    .taxonomy-category-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 </style>

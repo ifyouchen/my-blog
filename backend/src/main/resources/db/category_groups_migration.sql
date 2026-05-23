@@ -1,5 +1,4 @@
 SET NAMES utf8mb4;
-USE `my_blog`;
 
 -- Assign group_name to all existing categories based on their content area
 -- Run this AFTER all article seed files have been imported

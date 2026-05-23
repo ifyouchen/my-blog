@@ -36,6 +36,7 @@ spring:
       data-locations:
         - classpath:db/initdata.sql
         - classpath*:db/articles/*.sql
+        - classpath:db/category_groups_migration.sql
   task:
     scheduling:
       pool:

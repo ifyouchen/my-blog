@@ -421,7 +421,7 @@ loadGroups();
                     </template>
                 </div>
             </div>
-            <p v-else class="backend-state-text">暂无分类组</p>
+            <p v-else class="backend-state-text">暂无分类组，请先新增分类组或执行初始化迁移</p>
         </div>
 
         <div class="admin-toolbar">

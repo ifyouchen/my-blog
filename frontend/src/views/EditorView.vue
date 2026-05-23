@@ -1431,7 +1431,7 @@ onUnmounted(() => {
                         </div>
                     </section>
                     <p v-if="!groupedCategoryOptions.length" class="editor-category-empty">
-                        没有匹配的分类，可以使用自定义分类。
+                        没有匹配的启用分类，请调整搜索词或在后台维护分类。
                     </p>
                 </div>
                 <p v-if="unavailableCategory" class="editor-category-hint">
