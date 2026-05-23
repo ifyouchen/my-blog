@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -153,6 +155,32 @@ public class CategoryAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "分类不存在"));
         category.delete();
         categoryRepository.save(category);
+        invalidateCategoryCache();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getCategoryGroups() {
+        return categoryRepository.findDistinctGroups();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void renameGroup(String oldName, String newName) {
+        if (oldName == null || oldName.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "原大类名称不能为空");
+        }
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "新大类名称不能为空");
+        }
+        categoryRepository.renameGroup(oldName.trim(), newName.trim());
+        invalidateCategoryCache();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteGroup(String groupName) {
+        if (groupName == null || groupName.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "大类名称不能为空");
+        }
+        categoryRepository.clearGroup(groupName.trim());
         invalidateCategoryCache();
     }
 

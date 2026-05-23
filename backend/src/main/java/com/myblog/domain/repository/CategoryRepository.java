@@ -4,6 +4,7 @@ import com.myblog.domain.model.aggregate.Category;
 import com.myblog.domain.model.valueobject.CategoryId;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -71,4 +72,10 @@ public interface CategoryRepository {
      * @return 分类 ID
      */
     Long nextId();
+
+    List<Map<String, Object>> findDistinctGroups();
+
+    void renameGroup(String oldName, String newName);
+
+    void clearGroup(String groupName);
 }

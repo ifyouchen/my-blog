@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -134,5 +135,20 @@ public class MyBatisCategoryRepository implements CategoryRepository {
     @Override
     public Long nextId() {
         return idGenerator.nextId("blog_category");
+    }
+
+    @Override
+    public List<Map<String, Object>> findDistinctGroups() {
+        return categoryMapper.selectDistinctGroups();
+    }
+
+    @Override
+    public void renameGroup(String oldName, String newName) {
+        categoryMapper.renameGroup(oldName, newName);
+    }
+
+    @Override
+    public void clearGroup(String groupName) {
+        categoryMapper.clearGroup(groupName);
     }
 }

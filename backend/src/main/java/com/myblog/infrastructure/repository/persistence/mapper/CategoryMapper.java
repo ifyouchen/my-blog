@@ -4,6 +4,7 @@ import com.myblog.infrastructure.repository.persistence.entity.CategoryDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 分类 MyBatis Mapper。
@@ -96,4 +97,10 @@ public interface CategoryMapper {
      * @return 影响行数
      */
     int update(CategoryDO categoryDO);
+
+    List<Map<String, Object>> selectDistinctGroups();
+
+    int renameGroup(@Param("oldName") String oldName, @Param("newName") String newName);
+
+    int clearGroup(@Param("groupName") String groupName);
 }

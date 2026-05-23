@@ -160,6 +160,24 @@ export const deleteCategoryApi = async (categoryId) => {
     });
 };
 
+export const getCategoryGroupsApi = async () => {
+    return await request('/admin/category-groups');
+};
+
+export const renameCategoryGroupApi = async (oldName, newName) => {
+    return await request('/admin/category-groups', {
+        method: 'PUT',
+        body: { oldName, newName }
+    });
+};
+
+export const deleteCategoryGroupApi = async (name) => {
+    return await request('/admin/category-groups', {
+        method: 'DELETE',
+        body: { name }
+    });
+};
+
 export const getTagsApi = async (enabled = null) => {
     const params = enabled !== null ? `?enabled=${enabled}` : '';
     return await request(`/tags${params}`);

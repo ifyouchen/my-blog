@@ -44,39 +44,6 @@ const DEFAULT_ARTICLE_COVER_URL = '/api/uploads/files/default/article-cover.svg'
 const AUTO_SAVE_DELAY_MS = 15000;
 const MIN_UNLOCK_POINT_PRICE = 10;
 const MAX_UNLOCK_POINT_PRICE = 1000000;
-const CATEGORY_GROUP_RULES = [
-    {
-        name: '数据库',
-        keywords: ['数据库', 'database', 'mysql', 'redis', 'nosql', 'mongodb', 'mongo', 'sql', 'postgres',
-            'postgresql', 'oracle', 'elasticsearch', 'elastic', 'jdbc']
-    },
-    {
-        name: '后端开发',
-        keywords: ['后端', 'java', 'spring', 'springboot', 'mybatis', 'jpa', 'jvm', 'go', 'python', 'api', '服务端']
-    },
-    {
-        name: '前端开发',
-        keywords: ['前端', 'vue', 'react', 'javascript', 'typescript', 'html', 'css', 'node', 'vite']
-    },
-    {
-        name: 'AI 与数据',
-        keywords: ['ai', 'agent', '人工智能', '机器学习', '深度学习', 'llm', '大模型', '数据分析']
-    },
-    {
-        name: '架构与工程',
-        keywords: ['架构', '系统设计', '分布式', '微服务', '设计模式', '工程', '中间件']
-    },
-    {
-        name: '计算机基础',
-        keywords: ['算法', '数据结构', '网络', '操作系统', '计算机基础', '线性表', '链表', '矩阵']
-    },
-    {
-        name: '运维云原生',
-        keywords: ['运维', 'devops', 'docker', 'kubernetes', 'k8s', 'linux', '云原生', 'nginx', '部署']
-    }
-];
-const CATEGORY_GROUP_ORDER = [...CATEGORY_GROUP_RULES.map((group) => group.name), '其他'];
-const DEFAULT_EXPANDED_CATEGORY_GROUPS = [];
 
 const defaultDraft = {
     title: '',
@@ -120,50 +87,41 @@ const validationErrors = ref([]);
 const publishLoading = ref(false);
 const publishedArticle = ref(null);
 const feedbackType = ref('info');
-const categoryOptions = ref(topics.slice(1));
+const categoryOptions = ref(topics.slice(1).map(name => ({ name, groupName: '' })));
 const tagOptions = ref([]);
 const customCategoryInput = ref('');
 const showCustomCategory = ref(false);
 const categorySearchKeyword = ref('');
-const expandedCategoryGroups = ref(new Set(DEFAULT_EXPANDED_CATEGORY_GROUPS));
+const expandedCategoryGroups = ref(new Set());
 const isCustomCategory = computed(() =>
-    draft.category !== '' && !categoryOptions.value.includes(draft.category)
+    draft.category !== '' && !categoryOptions.value.some(c => c.name === draft.category)
 );
 
 const normalizeCategoryText = (value) => String(value || '').trim().toLowerCase();
 
-const resolveCategoryGroupName = (categoryName) => {
-    const normalized = normalizeCategoryText(categoryName);
-    if (!normalized) {
-        return '其他';
-    }
-    const matchedGroup = CATEGORY_GROUP_RULES.find((group) =>
-        group.keywords.some((keyword) => normalized.includes(normalizeCategoryText(keyword)))
-    );
-    return matchedGroup?.name || '其他';
-};
-
-const selectedCategoryGroupName = computed(() => (
-    draft.category && categoryOptions.value.includes(draft.category)
-        ? resolveCategoryGroupName(draft.category)
-        : ''
-));
+const selectedCategoryGroupName = computed(() => {
+    if (!draft.category) return '';
+    const cat = categoryOptions.value.find(c => c.name === draft.category);
+    return cat?.groupName || '';
+});
 
 const groupedCategoryOptions = computed(() => {
     const keyword = normalizeCategoryText(categorySearchKeyword.value);
-    const groupedMap = new Map(CATEGORY_GROUP_ORDER.map((name) => [name, []]));
+    const groupedMap = new Map();
+    const groupOrder = [];
     categoryOptions.value.forEach((category) => {
-        if (keyword && !normalizeCategoryText(category).includes(keyword)) {
+        if (keyword && !normalizeCategoryText(category.name).includes(keyword)) {
             return;
         }
-        const groupName = resolveCategoryGroupName(category);
+        const groupName = category.groupName || '其他';
         if (!groupedMap.has(groupName)) {
             groupedMap.set(groupName, []);
+            groupOrder.push(groupName);
         }
         groupedMap.get(groupName).push(category);
     });
-    return CATEGORY_GROUP_ORDER
-        .map((name) => ({ name, items: groupedMap.get(name) || [] }))
+    return groupOrder
+        .map((name) => ({ name, items: groupedMap.get(name) }))
         .filter((group) => group.items.length > 0);
 });
 
@@ -184,11 +142,10 @@ const toggleCategoryGroup = (groupName) => {
 };
 
 const selectPresetCategory = (topic) => {
-    draft.category = topic;
+    draft.category = topic.name;
     customCategoryInput.value = '';
     showCustomCategory.value = false;
-    const groupName = resolveCategoryGroupName(topic);
-    expandedCategoryGroups.value = new Set([...expandedCategoryGroups.value, groupName]);
+    expandedCategoryGroups.value = new Set([...expandedCategoryGroups.value, topic.groupName || '其他']);
 };
 
 const selectOther = () => {
@@ -588,18 +545,18 @@ function applyDraft(source = {}) {
     draft.content = source.content || '';
     const sourceCategory = source.category || '';
     draft.category = sourceCategory;
-    // 若分类不在预设列表，同步到自定义输入框并展开
-    if (sourceCategory && !categoryOptions.value.includes(sourceCategory)) {
+    const sourceCategoryObj = categoryOptions.value.find(c => c.name === sourceCategory);
+    if (sourceCategory && !sourceCategoryObj) {
         customCategoryInput.value = sourceCategory;
         showCustomCategory.value = true;
     } else {
         customCategoryInput.value = '';
         showCustomCategory.value = false;
     }
-    if (sourceCategory && categoryOptions.value.includes(sourceCategory)) {
+    if (sourceCategoryObj) {
         expandedCategoryGroups.value = new Set([
             ...expandedCategoryGroups.value,
-            resolveCategoryGroupName(sourceCategory)
+            sourceCategoryObj.groupName || '其他'
         ]);
     }
     draft.tags = Array.isArray(source.tags) ? source.tags.join(', ') : (source.tags || '');
@@ -720,13 +677,13 @@ async function fetchMetadata() {
             getTagsApi(true)
         ]);
         if (categories?.length) {
-            categoryOptions.value = categories.map((item) => item.name);
+            categoryOptions.value = categories.map((item) => ({ name: item.name, groupName: item.groupName || '' }));
         }
         if (tags?.length) {
             tagOptions.value = tags.map((item) => item.name);
         }
     } catch (error) {
-        categoryOptions.value = topics.slice(1);
+        categoryOptions.value = topics.slice(1).map(name => ({ name, groupName: '' }));
         tagOptions.value = [];
     }
 }
@@ -770,7 +727,7 @@ async function fetchArticle() {
             title: article.title || '',
             summary: article.summary || '',
             content: article.rawContent || '',
-            category: article.category || categoryOptions.value[0] || '',
+            category: article.category || categoryOptions.value[0]?.name || '',
             tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
             coverUrl: article.coverUrl || defaultDraft.coverUrl,
             slug: article.slug || '',
@@ -1485,12 +1442,12 @@ onUnmounted(() => {
                         <div v-show="isCategoryGroupOpen(group.name)" class="editor-category-pills">
                             <button
                                 v-for="topic in group.items"
-                                :key="topic"
+                                :key="topic.name"
                                 type="button"
-                                :class="['editor-category-pill', { active: draft.category === topic }]"
+                                :class="['editor-category-pill', { active: draft.category === topic.name }]"
                                 @click="selectPresetCategory(topic)"
                             >
-                                {{ topic }}
+                                {{ topic.name }}
                             </button>
                         </div>
                     </section>

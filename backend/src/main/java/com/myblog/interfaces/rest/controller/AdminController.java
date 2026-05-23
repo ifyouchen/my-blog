@@ -39,6 +39,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -283,6 +284,33 @@ public class AdminController {
             null,
             httpServletRequest
         ));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
+    @GetMapping("/category-groups")
+    public Result<List<Map<String, Object>>> getCategoryGroups() {
+        ensureAdmin();
+        return Result.success(categoryAppService.getCategoryGroups());
+    }
+
+    @PutMapping("/category-groups")
+    public Result<Map<String, Object>> renameCategoryGroup(@RequestBody Map<String, String> request) {
+        ensureAdmin();
+        String oldName = request.get("oldName");
+        String newName = request.get("newName");
+        categoryAppService.renameGroup(oldName, newName);
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("renamed", true);
+        return Result.success(result);
+    }
+
+    @DeleteMapping("/category-groups")
+    public Result<Map<String, Object>> deleteCategoryGroup(@RequestBody Map<String, String> request) {
+        ensureAdmin();
+        String name = request.get("name");
+        categoryAppService.deleteGroup(name);
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("deleted", true);
         return Result.success(result);

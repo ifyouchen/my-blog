@@ -77,16 +77,17 @@
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         INSERT INTO blog_category
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            id, name, description, sort_order, enabled, created_at, updated_at,
+            id, name, group_name, description, sort_order, enabled, created_at, updated_at,
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
-            #{id}, #{name}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt},
+            #{id}, #{name}, #{groupName}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt},
         </trim>
     </insert>
 
     <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         UPDATE blog_category
         SET name = #{name},
+            group_name = #{groupName},
             description = #{description},
             sort_order = #{sortOrder},
             enabled = #{enabled},
@@ -99,14 +100,41 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         INSERT INTO blog_category
-        (id, name, description, sort_order, enabled, created_at, updated_at)
+        (id, name, group_name, description, sort_order, enabled, created_at, updated_at)
         VALUES
-        (#{id}, #{name}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt})
+        (#{id}, #{name}, #{groupName}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
             name = #{name},
+            group_name = #{groupName},
             description = #{description},
             sort_order = #{sortOrder},
             enabled = #{enabled},
             updated_at = #{updatedAt}
     </insert>
+
+    <select id="selectDistinctGroups" resultType="map">
+        SELECT group_name AS `name`, COUNT(1) AS categoryCount
+        FROM blog_category
+        WHERE deleted_at IS NULL
+        AND group_name IS NOT NULL
+        AND group_name != ''
+        GROUP BY group_name
+        ORDER BY group_name ASC
+    </select>
+
+    <update id="renameGroup">
+        UPDATE blog_category
+        SET group_name = #{newName},
+            updated_at = NOW()
+        WHERE group_name = #{oldName}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="clearGroup">
+        UPDATE blog_category
+        SET group_name = NULL,
+            updated_at = NOW()
+        WHERE group_name = #{groupName}
+        AND deleted_at IS NULL
+    </update>
 </mapper>
