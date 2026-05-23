@@ -75,7 +75,7 @@ public class MyBatisArticleRepository implements ArticleRepository {
      */
     @Override
     public List<Article> findPublished(String keyword, String category, String tag, String sort) {
-        return toDomainList(articleMapper.selectPublished(keyword, category, tag, sort, null, null));
+        return toDomainList(articleMapper.selectPublished(keyword, category, null, tag, sort, null, null));
     }
 
     /**
@@ -91,7 +91,12 @@ public class MyBatisArticleRepository implements ArticleRepository {
      */
     @Override
     public List<Article> findPublishedWithLimit(String keyword, String category, String tag, String sort, Integer limit, Integer offset) {
-        return toDomainList(articleMapper.selectPublished(keyword, category, tag, sort, limit, offset));
+        return toDomainList(articleMapper.selectPublished(keyword, category, null, tag, sort, limit, offset));
+    }
+
+    @Override
+    public List<Article> findPublishedWithLimit(String keyword, String category, String categoryGroup, String tag, String sort, Integer limit, Integer offset) {
+        return toDomainList(articleMapper.selectPublished(keyword, category, categoryGroup, tag, sort, limit, offset));
     }
 
     /**
@@ -117,7 +122,12 @@ public class MyBatisArticleRepository implements ArticleRepository {
      */
     @Override
     public long countPublished(String keyword, String category, String tag, String sort) {
-        return articleMapper.countPublished(keyword, category, tag, sort);
+        return articleMapper.countPublished(keyword, category, null, tag, sort);
+    }
+
+    @Override
+    public long countPublished(String keyword, String category, String categoryGroup, String tag, String sort) {
+        return articleMapper.countPublished(keyword, category, categoryGroup, tag, sort);
     }
 
     /**

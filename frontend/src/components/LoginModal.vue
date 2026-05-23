@@ -27,29 +27,11 @@ const account = ref('');
 const password = ref('');
 const error = ref('');
 const loading = ref(false);
-let overlayPointerDownOnSelf = false;
-
 const close = () => {
     account.value = '';
     password.value = '';
     error.value = '';
     emit('close');
-};
-
-const onOverlayPointerDown = (event) => {
-    overlayPointerDownOnSelf = event.target === event.currentTarget;
-};
-
-const resetOverlayPointer = () => {
-    overlayPointerDownOnSelf = false;
-};
-
-const onOverlayPointerUp = (event) => {
-    const shouldClose = overlayPointerDownOnSelf && event.target === event.currentTarget;
-    resetOverlayPointer();
-    if (shouldClose) {
-        close();
-    }
 };
 
 const handleLogin = async () => {
@@ -82,9 +64,7 @@ const goToRegister = () => {
             v-if="visible"
             class="modal-overlay"
             data-testid="login-modal"
-            @pointerdown="onOverlayPointerDown"
-            @pointerup="onOverlayPointerUp"
-            @pointercancel="resetOverlayPointer"
+            @click.self="close"
             @keydown.esc="close"
         >
             <div class="modal-content">

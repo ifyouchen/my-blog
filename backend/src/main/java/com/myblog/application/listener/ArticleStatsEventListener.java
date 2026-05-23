@@ -9,7 +9,6 @@ import com.myblog.application.event.CommentCreatedEvent;
 import com.myblog.application.event.CommentDeletedEvent;
 import com.myblog.application.event.CommentLikedEvent;
 import com.myblog.application.event.CommentUnlikedEvent;
-import com.myblog.application.service.HomePortalCacheInvalidator;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.repository.ArticleRepository;
@@ -17,10 +16,8 @@ import com.myblog.domain.repository.CommentRepository;
 import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Optional;
 
@@ -39,210 +36,110 @@ public class ArticleStatsEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(ArticleStatsEventListener.class);
 
-    private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
-    private final HomePortalCacheInvalidator homePortalCacheInvalidator;
+    private final StatsAsyncHandler statsAsyncHandler;
 
-    public ArticleStatsEventListener(ArticleRepository articleRepository,
-                                     CommentRepository commentRepository,
-                                     HomePortalCacheInvalidator homePortalCacheInvalidator) {
-        this.articleRepository = articleRepository;
+    public ArticleStatsEventListener(CommentRepository commentRepository,
+                                     StatsAsyncHandler statsAsyncHandler) {
         this.commentRepository = commentRepository;
-        this.homePortalCacheInvalidator = homePortalCacheInvalidator;
+        this.statsAsyncHandler = statsAsyncHandler;
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onArticleViewed(ArticleViewedEvent event) {
         log.debug("{} | {} 处理浏览事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(0L),
             BizLogHelper.params("articleId", event.getArticleId()));
-        try {
-            articleRepository.incrementViewCount(event.getArticleId());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理浏览事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(0L),
-                BizLogHelper.params("articleId", event.getArticleId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.incrementViewCount(event.getArticleId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onArticleLiked(ArticleLikedEvent event) {
         log.debug("{} | {} 处理点赞事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(event.getUserId()),
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
-        try {
-            articleRepository.incrementLikeCount(event.getArticleId());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理点赞事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(event.getUserId()),
-                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.incrementLikeCount(event.getArticleId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onArticleUnliked(ArticleUnlikedEvent event) {
         log.debug("{} | {} 处理取消点赞事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(event.getUserId()),
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
-        try {
-            articleRepository.decrementLikeCount(event.getArticleId());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理取消点赞事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(event.getUserId()),
-                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.decrementLikeCount(event.getArticleId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onArticleFavorited(ArticleFavoritedEvent event) {
         log.debug("{} | {} 处理收藏事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(event.getUserId()),
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
-        try {
-            articleRepository.incrementFavoriteCount(event.getArticleId());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理收藏事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(event.getUserId()),
-                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.incrementFavoriteCount(event.getArticleId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onArticleUnfavorited(ArticleUnfavoritedEvent event) {
         log.debug("{} | {} 处理取消收藏事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(event.getUserId()),
             BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()));
-        try {
-            articleRepository.decrementFavoriteCount(event.getArticleId());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理取消收藏事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(event.getUserId()),
-                BizLogHelper.params("articleId", event.getArticleId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.decrementFavoriteCount(event.getArticleId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onCommentCreated(CommentCreatedEvent event) {
         log.debug("{} | {} 处理评论事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(0L),
             BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()));
-        try {
-            Optional<Comment> commentOpt = commentRepository.findByIdForAdmin(new CommentId(event.getCommentId()));
-            if (!commentOpt.isPresent()) {
-                log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({})",
-                    BizLogHelper.trace(),
-                    BizLogHelper.who(0L),
-                    BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
-                    BizLogHelper.result("评论不存在"));
-                return;
-            }
-            if (!commentOpt.get().isPublished()) {
-                log.debug("{} | {} 处理评论事件 | 入参({}) | 结果({})",
-                    BizLogHelper.trace(),
-                    BizLogHelper.who(0L),
-                    BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
-                    BizLogHelper.result("评论未发布，跳过计数"));
-                return;
-            }
-            articleRepository.incrementCommentCount(event.getArticleId());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理评论事件 | 入参({}) | 结果({})",
+        Optional<Comment> commentOpt = commentRepository.findByIdForAdmin(new CommentId(event.getCommentId()));
+        if (!commentOpt.isPresent()) {
+            log.warn("{} | {} 处理评论事件 | 入参({}) | 结果({})",
                 BizLogHelper.trace(),
                 BizLogHelper.who(0L),
                 BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
+                BizLogHelper.result("评论不存在"));
+            return;
         }
+        if (!commentOpt.get().isPublished()) {
+            log.debug("{} | {} 处理评论事件 | 入参({}) | 结果({})",
+                BizLogHelper.trace(),
+                BizLogHelper.who(0L),
+                BizLogHelper.params("articleId", event.getArticleId(), "commentId", event.getCommentId()),
+                BizLogHelper.result("评论未发布，跳过计数"));
+            return;
+        }
+        statsAsyncHandler.incrementCommentCount(event.getArticleId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onCommentDeleted(CommentDeletedEvent event) {
         log.debug("{} | {} 处理删除评论事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(0L),
             BizLogHelper.params("articleId", event.getArticleId(), "decrement", event.getDecrement()));
-        try {
-            articleRepository.decrementCommentCount(event.getArticleId(), event.getDecrement());
-            homePortalCacheInvalidator.evictRecommendedArticles();
-        } catch (Exception e) {
-            log.error("{} | {} 处理删除评论事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(0L),
-                BizLogHelper.params("articleId", event.getArticleId(), "decrement", event.getDecrement()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.decrementCommentCount(event.getArticleId(), event.getDecrement());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onCommentLiked(CommentLikedEvent event) {
         log.debug("{} | {} 处理评论点赞事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(event.getUserId()),
             BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()));
-        try {
-            commentRepository.incrementLikeCount(event.getCommentId());
-        } catch (Exception e) {
-            log.error("{} | {} 处理评论点赞事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(event.getUserId()),
-                BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.incrementCommentLikeCount(event.getCommentId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(rollbackFor = Exception.class)
+    @EventListener
     public void onCommentUnliked(CommentUnlikedEvent event) {
         log.debug("{} | {} 处理评论取消点赞事件 | 入参({})",
             BizLogHelper.trace(),
             BizLogHelper.who(event.getUserId()),
             BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()));
-        try {
-            commentRepository.decrementLikeCount(event.getCommentId());
-        } catch (Exception e) {
-            log.error("{} | {} 处理评论取消点赞事件 | 入参({}) | 结果({})",
-                BizLogHelper.trace(),
-                BizLogHelper.who(event.getUserId()),
-                BizLogHelper.params("commentId", event.getCommentId(), "userId", event.getUserId()),
-                BizLogHelper.result("失败: " + e.getMessage()),
-                e);
-        }
+        statsAsyncHandler.decrementCommentLikeCount(event.getCommentId());
     }
 }

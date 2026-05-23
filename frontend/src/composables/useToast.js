@@ -2,10 +2,14 @@ import { ref } from 'vue';
 
 const toasts = ref([]);
 let toastId = 0;
+const MAX_TOASTS = 20;
 
 const showToast = (message, type = 'info', duration = 3000) => {
     const id = ++toastId;
     toasts.value.push({ id, message, type });
+    if (toasts.value.length > MAX_TOASTS) {
+        toasts.value.splice(0, toasts.value.length - MAX_TOASTS);
+    }
     if (duration > 0) {
         setTimeout(() => {
             removeToast(id);

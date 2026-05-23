@@ -5,7 +5,10 @@ export const normalizeUser = (user) => ({
     username: user.username,
     name: user.nickname || user.username,
     nickname: user.nickname || user.username,
-    avatar: user.avatar || user.avatarUrl || '',
+    avatar: resolveMediaUrl(
+        user.avatar || user.avatarUrl,
+        'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'
+    ),
     followerCount: user.followerCount || 0,
     articleCount: user.articleCount || 0,
     totalLikeCount: user.totalLikeCount || 0,
@@ -24,10 +27,6 @@ export const normalizeUser = (user) => ({
     lastLoginAt: user.lastLoginAt || '',
     lastLoginIp: user.lastLoginIp || '',
     followed: Boolean(user.followed),
-    avatar: resolveMediaUrl(
-        user.avatar || user.avatarUrl,
-        'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80'
-    ),
     avatarUrl: user.avatarUrl || user.avatar,
     createdAt: user.createdAt
 });

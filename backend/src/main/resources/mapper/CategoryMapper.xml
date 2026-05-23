@@ -6,6 +6,7 @@
     <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
+        <result column="group_name" property="groupName"/>
         <result column="description" property="description"/>
         <result column="sort_order" property="sortOrder"/>
         <result column="enabled" property="enabled"/>
@@ -16,7 +17,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, name, description, sort_order, enabled, created_at, updated_at, deleted_at, version
+        id, name, group_name, description, sort_order, enabled, created_at, updated_at, deleted_at, version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">

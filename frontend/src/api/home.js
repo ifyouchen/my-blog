@@ -14,6 +14,7 @@ export const getHomeBootstrapApi = async () => {
     return {
         stats: data?.stats || null,
         categories: data?.categories || [],
+        categoryGroups: data?.categoryGroups || {},
         recommendedColumns: (data?.recommendedColumns || []).map(normalizeColumn),
         authorRankings: (data?.authorRankings || []).map(normalizeAuthorRanking),
         featuredArticles: (data?.featuredArticles || []).map(normalizeArticle),

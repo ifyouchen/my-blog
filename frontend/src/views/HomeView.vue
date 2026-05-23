@@ -55,6 +55,7 @@ const sidebarTopics = ref([]);
 const sidebarColumns = ref([]);
 const activeSort = ref(ARTICLE_SORT_RECOMMEND);
 const activeCategory = ref('');
+const activeGroup = ref('');
 const bootstrapLoaded = ref(false);
 
 const HOME_FEED_CHANNELS = [
@@ -63,39 +64,9 @@ const HOME_FEED_CHANNELS = [
     { key: 'hot', label: '热门', feedTab: 'recommend', sort: ARTICLE_SORT_HOT }
 ];
 
-const HOME_TOPIC_CACHE_KEY = 'home-topic-items-v1';
 const RECENT_READING_KEY = 'my-blog:recent-reading';
-const DEFAULT_TOPIC_ITEMS = ['全部'];
 
-const buildTopicItems = (categories = []) => {
-    const categoryNames = categories.map((item) => item.name).filter(Boolean);
-    return [...new Set([...DEFAULT_TOPIC_ITEMS, ...categoryNames])];
-};
-
-const readCachedTopicItems = () => {
-    try {
-        const cached = JSON.parse(localStorage.getItem(HOME_TOPIC_CACHE_KEY) || '[]');
-        if (!Array.isArray(cached)) {
-            return DEFAULT_TOPIC_ITEMS;
-        }
-        const items = cached
-            .filter((item) => typeof item === 'string' && item.trim())
-            .map((item) => item.trim());
-        return items.length ? [...new Set([...DEFAULT_TOPIC_ITEMS, ...items])] : DEFAULT_TOPIC_ITEMS;
-    } catch {
-        return DEFAULT_TOPIC_ITEMS;
-    }
-};
-
-const writeCachedTopicItems = (items) => {
-    if (items.length > 1) {
-        localStorage.setItem(HOME_TOPIC_CACHE_KEY, JSON.stringify(items));
-    } else {
-        localStorage.removeItem(HOME_TOPIC_CACHE_KEY);
-    }
-};
-
-const topicItems = ref(readCachedTopicItems());
+const categoryGroups = ref({});
 const readRecentArticles = () => {
     try {
         const cached = JSON.parse(localStorage.getItem(RECENT_READING_KEY) || '[]');
@@ -209,7 +180,7 @@ const feedTitle = computed(() => {
     if (activeFeedChannelKey.value === 'hot') return '热门文章';
     return '推荐阅读';
 });
-const feedEyebrow = computed(() => activeCategory.value || '全部内容');
+const feedEyebrow = computed(() => activeGroup.value || activeCategory.value || '全部内容');
 const sidebarTopicItems = computed(() => sidebarTopics.value.slice(0, 5));
 const sidebarColumnItems = computed(() => sidebarColumns.value.slice(0, 4));
 
@@ -272,6 +243,7 @@ const switchFeedChannel = async (channel) => {
         query: {
             ...route.query,
             category: activeCategory.value || undefined,
+            group: activeGroup.value || undefined,
             sort: getChannelSortQueryValue(channel, targetSort),
             page: undefined,
             feedTab: undefined
@@ -300,9 +272,7 @@ const loadHomeBootstrap = async () => {
                 totalColumns: bootstrap.stats.totalColumns || 0
             };
         }
-        const nextTopicItems = buildTopicItems(bootstrap?.categories || []);
-        topicItems.value = nextTopicItems;
-        writeCachedTopicItems(nextTopicItems);
+        categoryGroups.value = bootstrap?.categoryGroups || {};
         featuredArticles.value = buildPortalArticles(
             bootstrap?.todayFocus,
             bootstrap?.weeklyArticles || [],
@@ -317,7 +287,6 @@ const loadHomeBootstrap = async () => {
         sidebarTopics.value = bootstrap?.hotTopics || [];
         sidebarColumns.value = bootstrap?.recommendedColumns || [];
     } catch (error) {
-        topicItems.value = topicItems.value.length ? topicItems.value : DEFAULT_TOPIC_ITEMS;
         sidebarColumns.value = [];
         sidebarTopics.value = [];
     } finally {
@@ -326,6 +295,7 @@ const loadHomeBootstrap = async () => {
 };
 
 const normalizeCategory = (category) => (category && category !== '全部' ? category : '');
+const normalizeGroup = (group) => (group && group !== '全部' ? group : '');
 
 const setPortalArticlesOnce = (items = []) => {
     const nextItems = (items || []).filter(Boolean).slice(0, 5);
@@ -355,8 +325,9 @@ const setPortalFallbackArticles = (items = [], { tab, sort, category } = {}) => 
 const buildFeedCacheKey = (
     tab = feedTab.value,
     sort = activeSort.value,
-    category = activeCategory.value
-) => `home:${tab}:${normalizeArticleSort(sort)}:${normalizeCategory(category) || 'all'}`;
+    category = activeCategory.value,
+    group = activeGroup.value
+) => `home:${tab}:${normalizeArticleSort(sort)}:${normalizeCategory(category) || 'all'}:${normalizeGroup(group) || 'all'}`;
 
 const getFeedCacheOptions = (
     tab = feedTab.value,
@@ -432,9 +403,10 @@ const loadArticles = async ({ sort, category } = {}) => {
     resetStableRequest();
     resetFeed();
     const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
+    const normalizedGroup = normalizeGroup(activeGroup.value);
     const apiCall = isFollowing
         ? () => getFollowingFeedApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory})
-        : () => listArticlesApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory});
+        : () => listArticlesApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory, group: normalizedGroup || undefined});
     const response = await runStableRequest(apiCall, {
         silent: hasLoadedOnce.value,
         initialErrorMessage: '文章列表加载失败，请稍后重试',
@@ -447,6 +419,7 @@ const loadArticles = async ({ sort, category } = {}) => {
     const pageResult = response.result || {};
     activeSort.value = targetSort;
     activeCategory.value = normalizedCategory;
+    const groupToSave = normalizeGroup(activeGroup.value);
     applyPageResult(pageResult);
     setPortalFallbackArticles(pageResult.items || articles.value, {
         tab: feedTab.value,
@@ -459,10 +432,11 @@ const loadArticles = async ({ sort, category } = {}) => {
 
 const loadMoreArticles = async () => {
     const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
+    const normalizedGroup = normalizeGroup(activeGroup.value);
     const response = await loadMore(
         (page) => isFollowing
             ? getFollowingFeedApi({page, pageSize, sort: activeSort.value, category: activeCategory.value})
-            : listArticlesApi({page, pageSize, sort: activeSort.value, category: activeCategory.value}),
+            : listArticlesApi({page, pageSize, sort: activeSort.value, category: activeCategory.value, group: normalizedGroup || undefined}),
         { errorMessage: '文章列表加载失败，请稍后重试' }
     );
     if (response?.result) {
@@ -479,6 +453,7 @@ const changeSort = async (sort) => {
         query: {
             ...route.query,
             category: activeCategory.value || undefined,
+            group: activeGroup.value || undefined,
             sort: getSortQueryValue(feedTab.value, targetSort),
             page: undefined
         }
@@ -486,8 +461,8 @@ const changeSort = async (sort) => {
 };
 
 watch(
-    () => [route.query.sort, route.query.category, route.query.feedTab],
-    ([sort, category, queryFeedTab]) => {
+    () => [route.query.sort, route.query.category, route.query.group, route.query.feedTab],
+    ([sort, category, group, queryFeedTab]) => {
         const nextFeedTab = VALID_FEED_TABS.includes(queryFeedTab) ? queryFeedTab : resolveDefaultFeedTab();
 
         // sync feedTab from query
@@ -495,6 +470,7 @@ watch(
             feedTab.value = nextFeedTab;
         }
 
+        activeGroup.value = String(group || '');
         loadArticles({
             sort: normalizeArticleSort(sort || resolveDefaultSort(nextFeedTab)),
             category: String(category || '')
@@ -545,7 +521,7 @@ onBeforeRouteLeave(() => {
             @article-click="(payload) => track('home_featured_article_clicked', payload)"
         />
         <section class="home-channel-bar" aria-label="频道导航" data-testid="home-channel-bar">
-            <TopicStrip :topics="topicItems" :loading="!bootstrapLoaded" />
+            <TopicStrip :category-groups="categoryGroups" :loading="!bootstrapLoaded" />
         </section>
         <section class="home-feed-toolbar" aria-label="内容频道">
             <div class="feed-tabs" role="tablist" aria-label="文章通道">

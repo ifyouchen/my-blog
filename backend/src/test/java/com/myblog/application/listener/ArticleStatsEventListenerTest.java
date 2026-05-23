@@ -1,12 +1,10 @@
 package com.myblog.application.listener;
 
 import com.myblog.application.event.CommentCreatedEvent;
-import com.myblog.application.service.HomePortalCacheInvalidator;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.model.valueobject.UserId;
-import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.CommentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,13 +22,10 @@ import static org.mockito.Mockito.when;
 class ArticleStatsEventListenerTest {
 
     @Mock
-    private ArticleRepository articleRepository;
-
-    @Mock
     private CommentRepository commentRepository;
 
     @Mock
-    private HomePortalCacheInvalidator homePortalCacheInvalidator;
+    private StatsAsyncHandler statsAsyncHandler;
 
     @Test
     void onCommentCreatedIncrementsCountForPublishedComment() {
@@ -40,8 +35,7 @@ class ArticleStatsEventListenerTest {
 
         listener().onCommentCreated(new CommentCreatedEvent(1595L, 100L, 1L));
 
-        verify(articleRepository).incrementCommentCount(100L);
-        verify(homePortalCacheInvalidator).evictRecommendedArticles();
+        verify(statsAsyncHandler).incrementCommentCount(100L);
     }
 
     @Test
@@ -51,12 +45,11 @@ class ArticleStatsEventListenerTest {
 
         listener().onCommentCreated(new CommentCreatedEvent(1595L, 100L, 1L));
 
-        verify(articleRepository, never()).incrementCommentCount(100L);
-        verify(homePortalCacheInvalidator, never()).evictRecommendedArticles();
+        verify(statsAsyncHandler, never()).incrementCommentCount(100L);
     }
 
     private ArticleStatsEventListener listener() {
-        return new ArticleStatsEventListener(articleRepository, commentRepository, homePortalCacheInvalidator);
+        return new ArticleStatsEventListener(commentRepository, statsAsyncHandler);
     }
 
     private Comment comment(Long commentId, Long articleId, Long userId) {

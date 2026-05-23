@@ -239,6 +239,14 @@
         <if test="category != null and category != ''">
             AND category = #{category}
         </if>
+        <if test="categoryGroup != null and categoryGroup != ''">
+            AND category IN (
+                SELECT name
+                FROM blog_category
+                WHERE group_name = #{categoryGroup}
+                AND deleted_at IS NULL
+            )
+        </if>
         <if test="tag != null and tag != ''">
             AND id IN (
                 SELECT article_id
@@ -734,6 +742,14 @@
         </if>
         <if test="category != null and category != ''">
             AND category = #{category}
+        </if>
+        <if test="categoryGroup != null and categoryGroup != ''">
+            AND category IN (
+                SELECT name
+                FROM blog_category
+                WHERE group_name = #{categoryGroup}
+                AND deleted_at IS NULL
+            )
         </if>
         <if test="tag != null and tag != ''">
             AND id IN (

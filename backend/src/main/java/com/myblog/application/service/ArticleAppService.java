@@ -240,20 +240,40 @@ public class ArticleAppService {
                 useFulltext
             );
         } else {
-            articles = articleRepository.findPublishedWithLimit(
-                query.getKeyword(),
-                query.getCategory(),
-                query.getTag(),
-                query.getSort(),
-                pageSize,
-                offset
-            );
-            total = articleRepository.countPublished(
-                query.getKeyword(),
-                query.getCategory(),
-                query.getTag(),
-                query.getSort()
-            );
+            String categoryGroup = query.getCategoryGroup();
+            if (StringUtils.hasText(categoryGroup)) {
+                articles = articleRepository.findPublishedWithLimit(
+                    query.getKeyword(),
+                    query.getCategory(),
+                    categoryGroup,
+                    query.getTag(),
+                    query.getSort(),
+                    pageSize,
+                    offset
+                );
+                total = articleRepository.countPublished(
+                    query.getKeyword(),
+                    query.getCategory(),
+                    categoryGroup,
+                    query.getTag(),
+                    query.getSort()
+                );
+            } else {
+                articles = articleRepository.findPublishedWithLimit(
+                    query.getKeyword(),
+                    query.getCategory(),
+                    query.getTag(),
+                    query.getSort(),
+                    pageSize,
+                    offset
+                );
+                total = articleRepository.countPublished(
+                    query.getKeyword(),
+                    query.getCategory(),
+                    query.getTag(),
+                    query.getSort()
+                );
+            }
         }
 
         List<ArticleDTO> items = toDTOList(articles, query.getCurrentUserId());

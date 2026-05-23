@@ -33,6 +33,7 @@ const {
 const form = reactive({
     name: '',
     description: '',
+    groupName: '',
     sortOrder: 0
 });
 
@@ -44,7 +45,8 @@ const state = reactive({
     editForm: {
         name: '',
         description: '',
-        sortOrder: 0,
+        groupName: '',
+    sortOrder: 0,
         enabled: true
     }
 });

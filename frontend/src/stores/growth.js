@@ -129,6 +129,23 @@ const invalidateUnlockCache = (articleId) => {
     delete state.unlockStatusCache[articleId];
 };
 
+/**
+ * 清除所有缓存（登出时调用）.
+ */
+const clearCaches = () => {
+    state.account = null;
+    state.calendarCache = {};
+    state.unlockStatusCache = {};
+    state.unlockingMap = {};
+};
+
+// 监听登出事件，自动清理缓存
+const AUTH_CLEAR_KEY = 'my-blog-growth-auth-clear-registered';
+if (typeof window !== 'undefined' && !window[AUTH_CLEAR_KEY]) {
+    window.addEventListener('my-blog-auth-expired', clearCaches);
+    window[AUTH_CLEAR_KEY] = true;
+}
+
 // ─────────────────────── 导出 ─────────────────────────────────────
 
 export const useGrowthStore = () => ({
@@ -139,5 +156,6 @@ export const useGrowthStore = () => ({
     fetchUnlockStatus,
     unlockArticle,
     invalidateUnlockCache,
+    clearCaches,
 });
 

@@ -133,9 +133,10 @@ public class CategoryController {
                                               @Nullable HttpServletRequest httpServletRequest) {
         ensureAdmin();
         String name = (String) request.get("name");
+        String groupName = (String) request.get("groupName");
         String description = (String) request.get("description");
         Integer sortOrder = request.get("sortOrder") != null ? (Integer) request.get("sortOrder") : 0;
-        CategoryDTO categoryDTO = categoryAppService.createCategory(name, description, sortOrder);
+        CategoryDTO categoryDTO = categoryAppService.createCategory(name, groupName, description, sortOrder);
         adminLogAppService.recordOperation(buildLogCommand(
             "CREATE_CATEGORY",
             "CATEGORY",
@@ -162,10 +163,11 @@ public class CategoryController {
         ensureAdmin();
         CategoryDTO beforeCategory = categoryAppService.getCategory(id);
         String name = (String) request.get("name");
+        String groupName = (String) request.get("groupName");
         String description = (String) request.get("description");
         Integer sortOrder = request.get("sortOrder") != null ? (Integer) request.get("sortOrder") : 0;
         Boolean enabled = request.get("enabled") != null ? (Boolean) request.get("enabled") : true;
-        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, description, sortOrder, enabled);
+        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, groupName, description, sortOrder, enabled);
         adminLogAppService.recordOperation(buildLogCommand(
             "UPDATE_CATEGORY",
             "CATEGORY",

@@ -5,9 +5,9 @@ import { RouterLink, useRoute } from 'vue-router';
 const SKELETON_WIDTHS = ['76px', '92px', '70px', '86px', '64px', '80px'];
 
 const props = defineProps({
-    topics: {
-        type: Array,
-        default: () => []
+    categoryGroups: {
+        type: Object,
+        default: () => ({})
     },
     loading: {
         type: Boolean,
@@ -17,23 +17,30 @@ const props = defineProps({
 
 const route = useRoute();
 const expanded = ref(false);
-const activeTopic = computed(() => String(route.query.category || '全部'));
-const visibleTopics = computed(() => props.topics.length ? props.topics : ['全部']);
-const showSkeleton = computed(() => props.loading && props.topics.length <= 1);
-const hasMoreTopics = computed(() => visibleTopics.value.length > 8);
 
-watch([activeTopic, visibleTopics], ([topic, topics]) => {
-    const activeIndex = topics.indexOf(topic);
+const groupNames = computed(() => {
+    const names = Object.keys(props.categoryGroups);
+    return names.length ? ['全部', ...names] : ['全部'];
+});
+
+const activeGroup = computed(() => String(route.query.group || '全部'));
+
+const showSkeleton = computed(() => props.loading && !Object.keys(props.categoryGroups).length);
+
+const hasMoreGroups = computed(() => groupNames.value.length > 8);
+
+watch([activeGroup, groupNames], ([group, groups]) => {
+    const activeIndex = groups.indexOf(group);
     if (activeIndex >= 8) {
         expanded.value = true;
     }
 });
 
-const buildTopicRoute = (topic) => {
+const buildGroupRoute = (group) => {
     const nextFeedTab = route.query.feedTab === 'following' ? 'following' : undefined;
-    return topic === '全部'
+    return group === '全部'
         ? { path: '/', query: { sort: route.query.sort, feedTab: nextFeedTab, page: undefined } }
-        : { path: '/', query: { category: topic, sort: route.query.sort, feedTab: nextFeedTab, page: undefined } };
+        : { path: '/', query: { group, sort: route.query.sort, feedTab: nextFeedTab, page: undefined, category: undefined } };
 };
 </script>
 
@@ -42,8 +49,8 @@ const buildTopicRoute = (topic) => {
         <template v-if="showSkeleton">
             <RouterLink
                 class="topic"
-                :class="{ active: activeTopic === '全部' }"
-                :to="buildTopicRoute('全部')"
+                :class="{ active: activeGroup === '全部' }"
+                :to="buildGroupRoute('全部')"
             >
                 全部
             </RouterLink>
@@ -58,16 +65,16 @@ const buildTopicRoute = (topic) => {
         <template v-else>
             <div class="topic-list" :class="{ expanded }">
             <RouterLink
-                v-for="topic in visibleTopics"
-                :key="topic"
+                v-for="group in groupNames"
+                :key="group"
                 class="topic"
-                :class="{ active: activeTopic === topic }"
-                :to="buildTopicRoute(topic)"
+                :class="{ active: activeGroup === group }"
+                :to="buildGroupRoute(group)"
             >
-                {{ topic }}
+                {{ group }}
             </RouterLink>
             <button
-                v-if="hasMoreTopics"
+                v-if="hasMoreGroups"
                 class="topic-more-toggle"
                 type="button"
                 @click="expanded = !expanded"

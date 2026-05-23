@@ -50,6 +50,8 @@ public interface ArticleRepository {
      */
     List<Article> findPublishedWithLimit(String keyword, String category, String tag, String sort, Integer limit, Integer offset);
 
+    List<Article> findPublishedWithLimit(String keyword, String category, String categoryGroup, String tag, String sort, Integer limit, Integer offset);
+
     /**
      * 查询排行榜文章。
      *
@@ -69,6 +71,8 @@ public interface ArticleRepository {
      * @return 已发布文章数量
      */
     long countPublished(String keyword, String category, String tag, String sort);
+
+    long countPublished(String keyword, String category, String categoryGroup, String tag, String sort);
 
     /**
      * 查询作者自己的文章列表。

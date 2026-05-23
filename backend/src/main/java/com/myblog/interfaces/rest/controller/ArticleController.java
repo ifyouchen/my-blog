@@ -91,6 +91,7 @@ public class ArticleController {
                                                             @RequestParam(defaultValue = "10") int pageSize,
                                                             @RequestParam(required = false) String keyword,
                                                             @RequestParam(required = false) String category,
+                                                            @RequestParam(required = false) String group,
                                                             @RequestParam(required = false) String tag,
                                                             @RequestParam(defaultValue = "latest") String sort,
                                                             @RequestParam(required = false) String authorKeyword,
@@ -99,6 +100,7 @@ public class ArticleController {
                                                             @RequestParam(defaultValue = "false")
                                                             boolean followingOnly) {
         ArticlePageQuery query = new ArticlePageQuery(page, pageSize, keyword, category, tag, sort);
+        query.setCategoryGroup(group);
         query.setAuthorKeyword(authorKeyword);
         query.setDateFrom(dateFrom);
         query.setDateTo(dateTo);

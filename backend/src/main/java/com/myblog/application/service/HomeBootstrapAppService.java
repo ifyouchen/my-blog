@@ -12,7 +12,10 @@ import com.myblog.application.service.HomeStatsAppService.HomeStats;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -107,9 +110,11 @@ public class HomeBootstrapAppService {
 
         // 等待所有完成并组装结果
         List<ArticleDTO> featuredArticles = featuredFuture.join();
+        List<CategoryDTO> categories = categoriesFuture.join();
         HomeBootstrapDTO bootstrap = new HomeBootstrapDTO();
         bootstrap.setStats(statsFuture.join());
-        bootstrap.setCategories(categoriesFuture.join());
+        bootstrap.setCategories(categories);
+        bootstrap.setCategoryGroups(buildCategoryGroups(categories));
         bootstrap.setRecommendedColumns(columnsFuture.join());
         bootstrap.setAuthorRankings(normalizeAuthorRankings(rankingsFuture.join()));
         bootstrap.setFeaturedArticles(featuredArticles);
@@ -131,5 +136,17 @@ public class HomeBootstrapAppService {
             item.setFollowed(false);
         }
         return items;
+    }
+
+    static Map<String, List<CategoryDTO>> buildCategoryGroups(List<CategoryDTO> categories) {
+        Map<String, List<CategoryDTO>> groups = new LinkedHashMap<>();
+        for (CategoryDTO cat : categories) {
+            String group = cat.getGroupName();
+            if (group == null || group.isEmpty()) {
+                continue;
+            }
+            groups.computeIfAbsent(group, k -> new ArrayList<>()).add(cat);
+        }
+        return groups;
     }
 }

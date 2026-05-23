@@ -23,6 +23,11 @@ public class Category {
     private String name;
 
     /**
+     * 所属大类
+     */
+    private String groupName;
+
+    /**
      * 分类描述
      */
     private String description;
@@ -84,6 +89,15 @@ public class Category {
     }
 
     /**
+     * 创建分类聚合根（含所属大类）。
+     */
+    public static Category create(Long id, String name, String groupName, String description, Integer sortOrder) {
+        Category category = create(id, name, description, sortOrder);
+        category.groupName = groupName;
+        return category;
+    }
+
+    /**
      * 从持久化数据还原分类聚合根。
      *
      * @param id          分类 ID
@@ -100,9 +114,16 @@ public class Category {
     public static Category restore(Long id, String name, String description, Integer sortOrder,
                                     Boolean enabled, LocalDateTime createdAt, LocalDateTime updatedAt,
                                     LocalDateTime deletedAt, Integer version) {
+        return restore(id, name, null, description, sortOrder, enabled, createdAt, updatedAt, deletedAt, version);
+    }
+
+    public static Category restore(Long id, String name, String groupName, String description, Integer sortOrder,
+                                    Boolean enabled, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                    LocalDateTime deletedAt, Integer version) {
         Category category = new Category();
         category.id = new CategoryId(id);
         category.name = name;
+        category.groupName = groupName;
         category.description = description;
         category.sortOrder = sortOrder;
         category.enabled = enabled;
@@ -121,8 +142,9 @@ public class Category {
      * @param sortOrder   新排序权重
      * @param enabled     是否启用
      */
-    public void update(String name, String description, Integer sortOrder, Boolean enabled) {
+    public void update(String name, String groupName, String description, Integer sortOrder, Boolean enabled) {
         this.name = name;
+        this.groupName = groupName;
         this.description = description;
         this.sortOrder = sortOrder;
         this.enabled = enabled;
@@ -164,6 +186,15 @@ public class Category {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     * 获取所属大类。
+     *
+     * @return 所属大类
+     */
+    public String getGroupName() {
+        return groupName;
     }
 
     /**

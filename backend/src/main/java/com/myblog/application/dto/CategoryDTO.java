@@ -14,6 +14,8 @@ public class CategoryDTO {
     private Long id;
     /** 分类名称 */
     private String name;
+    /** 所属大类 */
+    private String groupName;
     /** 分类描述 */
     private String description;
     /** 排序值 */
@@ -52,20 +54,18 @@ public class CategoryDTO {
         return name;
     }
 
-    /**
-     * 设置分类名称。
-     *
-     * @param name 分类名称
-     */
     public void setName(String name) {
         this.name = name;
     }
 
-    /**
-     * 获取分类描述。
-     *
-     * @return 分类描述
-     */
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
     public String getDescription() {
         return description;
     }

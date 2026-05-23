@@ -81,6 +81,7 @@ public interface ArticleMapper {
      */
     List<ArticleDO> selectPublished(@Param("keyword") String keyword,
                                     @Param("category") String category,
+                                    @Param("categoryGroup") String categoryGroup,
                                     @Param("tag") String tag,
                                     @Param("sort") String sort,
                                     @Param("limit") Integer limit,
@@ -108,6 +109,7 @@ public interface ArticleMapper {
      */
     long countPublished(@Param("keyword") String keyword,
                         @Param("category") String category,
+                        @Param("categoryGroup") String categoryGroup,
                         @Param("tag") String tag,
                         @Param("sort") String sort);
 

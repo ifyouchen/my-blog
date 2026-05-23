@@ -17,6 +17,7 @@ public class ArticlePageQuery {
     private int pageSize;
     private String keyword;
     private String category;
+    private String categoryGroup;
     private String tag;
     private String sort;
     private String authorKeyword;
@@ -78,6 +79,24 @@ public class ArticlePageQuery {
      */
     public String getCategory() {
         return category;
+    }
+
+    /**
+     * 获取分类大类筛选条件。
+     *
+     * @return 分类大类
+     */
+    public String getCategoryGroup() {
+        return categoryGroup;
+    }
+
+    /**
+     * 设置分类大类筛选条件。
+     *
+     * @param categoryGroup 分类大类
+     */
+    public void setCategoryGroup(String categoryGroup) {
+        this.categoryGroup = categoryGroup;
     }
 
     /**

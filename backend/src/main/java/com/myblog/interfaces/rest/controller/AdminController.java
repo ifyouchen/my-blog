@@ -214,8 +214,9 @@ public class AdminController {
         ensureAdmin();
         String name = (String) request.get("name");
         String description = (String) request.get("description");
+        String groupName = (String) request.get("groupName");
         Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
-        CategoryDTO categoryDTO = categoryAppService.createCategory(name, description, sortOrder);
+        CategoryDTO categoryDTO = categoryAppService.createCategory(name, groupName, description, sortOrder);
         adminLogAppService.recordOperation(buildLogCommand(
             "CREATE_CATEGORY",
             "CATEGORY",
@@ -244,9 +245,10 @@ public class AdminController {
         CategoryDTO beforeCategory = categoryAppService.getCategory(id);
         String name = (String) request.get("name");
         String description = (String) request.get("description");
+        String groupName = (String) request.get("groupName");
         Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
         Boolean enabled = parseBoolean(request.get("enabled"), true);
-        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, description, sortOrder, enabled);
+        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, groupName, description, sortOrder, enabled);
         adminLogAppService.recordOperation(buildLogCommand(
             "UPDATE_CATEGORY",
             "CATEGORY",

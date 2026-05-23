@@ -98,7 +98,7 @@ public class CategoryAppService {
      * @throws ApplicationException 分类名称已存在时抛出
      */
     @Transactional(rollbackFor = Exception.class)
-    public CategoryDTO createCategory(String name, String description, Integer sortOrder) {
+    public CategoryDTO createCategory(String name, String groupName, String description, Integer sortOrder) {
         if (categoryRepository.existsByName(name, null)) {
             throw new ApplicationException(ErrorCode.CONFLICT, "分类名称已存在");
         }
@@ -106,6 +106,7 @@ public class CategoryAppService {
         Category category = Category.create(
             categoryRepository.nextId(),
             name,
+            groupName,
             description,
             sortOrder != null ? sortOrder : 0
         );
@@ -126,7 +127,7 @@ public class CategoryAppService {
      * @throws ApplicationException 分类不存在或名称重复时抛出
      */
     @Transactional(rollbackFor = Exception.class)
-    public CategoryDTO updateCategory(Long id, String name, String description, Integer sortOrder, Boolean enabled) {
+    public CategoryDTO updateCategory(Long id, String name, String groupName, String description, Integer sortOrder, Boolean enabled) {
         Category category = categoryRepository.findById(new CategoryId(id))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "分类不存在"));
 
@@ -134,7 +135,7 @@ public class CategoryAppService {
             throw new ApplicationException(ErrorCode.CONFLICT, "分类名称已存在");
         }
 
-        category.update(name, description, sortOrder, enabled);
+        category.update(name, groupName, description, sortOrder, enabled);
         categoryRepository.save(category);
         invalidateCategoryCache();
         return toDTO(category);
@@ -197,6 +198,7 @@ public class CategoryAppService {
         CategoryDTO dto = new CategoryDTO();
         dto.setId(source.getId());
         dto.setName(source.getName());
+        dto.setGroupName(source.getGroupName());
         dto.setDescription(source.getDescription());
         dto.setSortOrder(source.getSortOrder());
         dto.setEnabled(source.getEnabled());
@@ -215,6 +217,7 @@ public class CategoryAppService {
         CategoryDTO dto = new CategoryDTO();
         dto.setId(category.getId().getValue());
         dto.setName(category.getName());
+        dto.setGroupName(category.getGroupName());
         dto.setDescription(category.getDescription());
         dto.setSortOrder(category.getSortOrder());
         dto.setEnabled(category.getEnabled());

@@ -296,4 +296,23 @@ public class CacheConfig {
         return executor;
     }
 
+    /**
+     * 统计计数异步线程池。
+     *
+     * <p>用于异步处理浏览、点赞、收藏、评论等计数更新。</p>
+     */
+    @Bean(name = "statsAsyncExecutor")
+    public Executor statsAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(1000);
+        executor.setThreadNamePrefix("stats-async-");
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+        return executor;
+    }
+
 }

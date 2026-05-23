@@ -6,6 +6,7 @@ import com.myblog.application.dto.TopicDTO;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 首页启动数据响应.
@@ -22,6 +23,9 @@ public class HomeBootstrapResponse {
 
     /** 分类列表. */
     private List<CategoryDTO> categories;
+
+    /** 分类大类映射（groupName → 分类列表）. */
+    private Map<String, List<CategoryDTO>> categoryGroups;
 
     /** 推荐专栏列表. */
     private List<ColumnResponse> recommendedColumns;
@@ -84,6 +88,24 @@ public class HomeBootstrapResponse {
      */
     public void setCategories(List<CategoryDTO> categories) {
         this.categories = categories;
+    }
+
+    /**
+     * 获取分类大类映射.
+     *
+     * @return 分类大类映射
+     */
+    public Map<String, List<CategoryDTO>> getCategoryGroups() {
+        return categoryGroups;
+    }
+
+    /**
+     * 设置分类大类映射.
+     *
+     * @param categoryGroups 分类大类映射
+     */
+    public void setCategoryGroups(Map<String, List<CategoryDTO>> categoryGroups) {
+        this.categoryGroups = categoryGroups;
     }
 
     /**

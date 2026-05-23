@@ -21,6 +21,11 @@ public class CategoryDO {
     private String name;
 
     /**
+     * 所属大类
+     */
+    private String groupName;
+
+    /**
      * 分类描述
      */
     private String description;
@@ -89,6 +94,24 @@ public class CategoryDO {
      */
     public void setName(String name) {
         this.name = name;
+    }
+
+    /**
+     * 获取所属大类。
+     *
+     * @return 所属大类
+     */
+    public String getGroupName() {
+        return groupName;
+    }
+
+    /**
+     * 设置所属大类。
+     *
+     * @param groupName 所属大类
+     */
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
     }
 
     /**

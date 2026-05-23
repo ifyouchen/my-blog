@@ -76,6 +76,7 @@ public class HomeController {
         HomeBootstrapResponse response = new HomeBootstrapResponse();
         response.setStats(dto.getStats());
         response.setCategories(dto.getCategories());
+        response.setCategoryGroups(dto.getCategoryGroups());
         response.setRecommendedColumns(toColumnResponses(dto.getRecommendedColumns()));
         response.setAuthorRankings(toAuthorRankingResponses(dto.getAuthorRankings()));
         response.setFeaturedArticles(toArticleResponses(dto.getFeaturedArticles()));

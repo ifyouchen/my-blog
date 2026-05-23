@@ -1168,13 +1168,20 @@ watch(
     }
 );
 
-watch(draft, () => {
-    if (!pageLoading.value && !hydratingDraft.value) {
-        persistLocalDraft();
-        schedulePublishValidation();
-        scheduleAutoSave();
+watch(
+    () => [
+        draft.title, draft.summary, draft.content, draft.category, draft.tags,
+        draft.coverUrl, draft.slug, draft.seoTitle, draft.seoDescription,
+        draft.needUnlock, draft.unlockPointPrice, draft.scheduledPublishAt
+    ],
+    () => {
+        if (!pageLoading.value && !hydratingDraft.value) {
+            persistLocalDraft();
+            schedulePublishValidation();
+            scheduleAutoSave();
+        }
     }
-}, { deep: true });
+);
 
 onBeforeRouteLeave((to) => {
     if (allowRouteLeave.value || !hasUnsavedChanges.value) {

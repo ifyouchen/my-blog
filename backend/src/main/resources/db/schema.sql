@@ -48,6 +48,7 @@ DROP TABLE IF EXISTS `blog_category`;
 CREATE TABLE `blog_category` (
     `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `name`        varchar(50)     NOT NULL COMMENT '分类名称',
+    `group_name`  varchar(50)     NULL DEFAULT NULL COMMENT '所属大类（如 Java 体系、数据库）',
     `description` varchar(255)    NULL DEFAULT NULL COMMENT '分类说明',
     `sort_order`  int             NOT NULL DEFAULT 0 COMMENT '排序值',
     `enabled`     tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用：1-启用 0-禁用',
