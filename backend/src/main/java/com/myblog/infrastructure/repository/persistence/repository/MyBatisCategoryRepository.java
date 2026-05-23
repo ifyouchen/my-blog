@@ -78,11 +78,12 @@ public class MyBatisCategoryRepository implements CategoryRepository {
      * @return 分类列表
      */
     @Override
-    public List<Category> findPage(Boolean enabled, int page, int pageSize) {
+    public List<Category> findPage(Boolean enabled, Long groupId, String keyword, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int offset = (currentPage - 1) * currentPageSize;
-        List<CategoryDO> categoryDOList = categoryMapper.selectPage(enabled, offset, currentPageSize);
+        List<CategoryDO> categoryDOList = categoryMapper.selectPage(enabled, groupId, keyword, offset,
+            currentPageSize);
         List<Category> categories = new ArrayList<>(categoryDOList.size());
         for (CategoryDO categoryDO : categoryDOList) {
             categories.add(CategoryPersistenceConverter.toDomain(categoryDO));
@@ -97,8 +98,8 @@ public class MyBatisCategoryRepository implements CategoryRepository {
      * @return 分类总数
      */
     @Override
-    public long count(Boolean enabled) {
-        return categoryMapper.countAll(enabled);
+    public long count(Boolean enabled, Long groupId, String keyword) {
+        return categoryMapper.countAll(enabled, groupId, keyword);
     }
 
     /**
@@ -112,6 +113,28 @@ public class MyBatisCategoryRepository implements CategoryRepository {
     public boolean existsByName(String name, CategoryId excludeId) {
         Long excludeIdValue = excludeId != null ? excludeId.getValue() : null;
         return categoryMapper.countByName(name, excludeIdValue) > 0;
+    }
+
+    /**
+     * 判断启用分类名称是否存在，且所属分类组也启用。
+     *
+     * @param name 分类名称
+     * @return 是否存在
+     */
+    @Override
+    public boolean existsEnabledByName(String name) {
+        return categoryMapper.countEnabledByName(name) > 0;
+    }
+
+    /**
+     * 统计指定分类组下的小分类数量。
+     *
+     * @param groupId 分类组 ID
+     * @return 小分类数量
+     */
+    @Override
+    public long countByGroupId(Long groupId) {
+        return categoryMapper.countByGroupId(groupId);
     }
 
     /**

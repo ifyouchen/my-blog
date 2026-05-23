@@ -3,6 +3,7 @@ package com.myblog.interfaces.rest.controller;
 import com.myblog.application.command.RecordAdminLogCommand;
 import com.myblog.application.dto.AnnouncementDTO;
 import com.myblog.application.dto.CategoryDTO;
+import com.myblog.application.dto.CategoryGroupDTO;
 import com.myblog.application.dto.ColumnDTO;
 import com.myblog.application.dto.TagDTO;
 import com.myblog.application.dto.TopicDTO;
@@ -10,6 +11,7 @@ import com.myblog.application.service.AdminAppService;
 import com.myblog.application.service.AdminLogAppService;
 import com.myblog.application.service.AnnouncementAppService;
 import com.myblog.application.service.CategoryAppService;
+import com.myblog.application.service.CategoryGroupAppService;
 import com.myblog.application.service.ColumnAppService;
 import com.myblog.application.service.SensitiveWordAppService;
 import com.myblog.application.service.TagAppService;
@@ -60,6 +62,7 @@ public class AdminController {
     private final AdminAppService adminAppService;
     private final AdminLogAppService adminLogAppService;
     private final CategoryAppService categoryAppService;
+    private final CategoryGroupAppService categoryGroupAppService;
     private final TagAppService tagAppService;
     private final ColumnAppService columnAppService;
     private final TopicAppService topicAppService;
@@ -68,12 +71,14 @@ public class AdminController {
 
     public AdminController(AdminAppService adminAppService, AdminLogAppService adminLogAppService,
                            CategoryAppService categoryAppService, TagAppService tagAppService,
+                           CategoryGroupAppService categoryGroupAppService,
                            ColumnAppService columnAppService, TopicAppService topicAppService,
                            AnnouncementAppService announcementAppService,
                            SensitiveWordAppService sensitiveWordAppService) {
         this.adminAppService = adminAppService;
         this.adminLogAppService = adminLogAppService;
         this.categoryAppService = categoryAppService;
+        this.categoryGroupAppService = categoryGroupAppService;
         this.tagAppService = tagAppService;
         this.columnAppService = columnAppService;
         this.topicAppService = topicAppService;
@@ -178,9 +183,11 @@ public class AdminController {
     public Result<PageResult<CategoryDTO>> getCategories(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) Boolean enabled) {
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) Long groupId,
+            @RequestParam(required = false) String keyword) {
         ensureAdmin();
-        return Result.success(categoryAppService.getCategoryPage(page, pageSize, enabled));
+        return Result.success(categoryAppService.getCategoryPage(page, pageSize, enabled, groupId, keyword));
     }
 
     /**
@@ -215,9 +222,9 @@ public class AdminController {
         ensureAdmin();
         String name = (String) request.get("name");
         String description = (String) request.get("description");
-        String groupName = (String) request.get("groupName");
+        Long groupId = parseLong(request.get("groupId"), null);
         Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
-        CategoryDTO categoryDTO = categoryAppService.createCategory(name, groupName, description, sortOrder);
+        CategoryDTO categoryDTO = categoryAppService.createCategory(name, groupId, description, sortOrder);
         adminLogAppService.recordOperation(buildLogCommand(
             "CREATE_CATEGORY",
             "CATEGORY",
@@ -246,10 +253,10 @@ public class AdminController {
         CategoryDTO beforeCategory = categoryAppService.getCategory(id);
         String name = (String) request.get("name");
         String description = (String) request.get("description");
-        String groupName = (String) request.get("groupName");
+        Long groupId = parseLong(request.get("groupId"), null);
         Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
         Boolean enabled = parseBoolean(request.get("enabled"), true);
-        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, groupName, description, sortOrder, enabled);
+        CategoryDTO categoryDTO = categoryAppService.updateCategory(id, name, groupId, description, sortOrder, enabled);
         adminLogAppService.recordOperation(buildLogCommand(
             "UPDATE_CATEGORY",
             "CATEGORY",
@@ -290,27 +297,99 @@ public class AdminController {
     }
 
     @GetMapping("/category-groups")
-    public Result<List<Map<String, Object>>> getCategoryGroups() {
+    public Result<List<CategoryGroupDTO>> getCategoryGroups(@RequestParam(required = false) Boolean enabled) {
         ensureAdmin();
-        return Result.success(categoryAppService.getCategoryGroups());
+        return Result.success(categoryGroupAppService.listGroups(enabled));
     }
 
-    @PutMapping("/category-groups")
-    public Result<Map<String, Object>> renameCategoryGroup(@RequestBody Map<String, String> request) {
+    @PostMapping("/category-groups")
+    public Result<CategoryGroupDTO> createCategoryGroup(@RequestBody Map<String, Object> request,
+                                                        @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        CategoryGroupDTO groupDTO = categoryGroupAppService.createGroup(
+            (String) request.get("name"),
+            (String) request.get("description"),
+            parseInteger(request.get("sortOrder"), 0)
+        );
+        adminLogAppService.recordOperation(buildLogCommand(
+            "CREATE_CATEGORY_GROUP",
+            "CATEGORY_GROUP",
+            groupDTO.getId(),
+            "创建分类组 " + groupDTO.getName(),
+            null,
+            toCategoryGroupSnapshot(groupDTO),
+            httpServletRequest
+        ));
+        return Result.success(groupDTO);
+    }
+
+    @PutMapping("/category-groups/{id}")
+    public Result<CategoryGroupDTO> updateCategoryGroup(@PathVariable Long id,
+                                                        @RequestBody Map<String, Object> request,
+                                                        @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        CategoryGroupDTO beforeGroup = categoryGroupAppService.getGroup(id);
+        CategoryGroupDTO groupDTO = categoryGroupAppService.updateGroup(
+            id,
+            (String) request.get("name"),
+            (String) request.get("description"),
+            parseInteger(request.get("sortOrder"), 0),
+            parseBoolean(request.get("enabled"), true)
+        );
+        adminLogAppService.recordOperation(buildLogCommand(
+            "UPDATE_CATEGORY_GROUP",
+            "CATEGORY_GROUP",
+            groupDTO.getId(),
+            "更新分类组 " + groupDTO.getName() + "，enabled=" + groupDTO.getEnabled(),
+            toCategoryGroupSnapshot(beforeGroup),
+            toCategoryGroupSnapshot(groupDTO),
+            httpServletRequest
+        ));
+        return Result.success(groupDTO);
+    }
+
+    @DeleteMapping("/category-groups/{id}")
+    public Result<Map<String, Object>> deleteCategoryGroup(@PathVariable Long id,
+                                                           @Nullable HttpServletRequest httpServletRequest) {
+        ensureAdmin();
+        CategoryGroupDTO beforeGroup = categoryGroupAppService.getGroup(id);
+        categoryGroupAppService.deleteGroup(id);
+        adminLogAppService.recordOperation(buildLogCommand(
+            "DELETE_CATEGORY_GROUP",
+            "CATEGORY_GROUP",
+            id,
+            "删除分类组 " + beforeGroup.getName(),
+            toCategoryGroupSnapshot(beforeGroup),
+            null,
+            httpServletRequest
+        ));
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("deleted", true);
+        return Result.success(result);
+    }
+
+    @GetMapping("/tag-groups")
+    public Result<List<Map<String, Object>>> getTagGroups() {
+        ensureAdmin();
+        return Result.success(tagAppService.getTagGroups());
+    }
+
+    @PutMapping("/tag-groups")
+    public Result<Map<String, Object>> renameTagGroup(@RequestBody Map<String, String> request) {
         ensureAdmin();
         String oldName = request.get("oldName");
         String newName = request.get("newName");
-        categoryAppService.renameGroup(oldName, newName);
+        tagAppService.renameGroup(oldName, newName);
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("renamed", true);
         return Result.success(result);
     }
 
-    @DeleteMapping("/category-groups")
-    public Result<Map<String, Object>> deleteCategoryGroup(@RequestBody Map<String, String> request) {
+    @DeleteMapping("/tag-groups")
+    public Result<Map<String, Object>> deleteTagGroup(@RequestBody Map<String, String> request) {
         ensureAdmin();
         String name = request.get("name");
-        categoryAppService.deleteGroup(name);
+        tagAppService.deleteGroup(name);
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("deleted", true);
         return Result.success(result);
@@ -1274,9 +1353,28 @@ public class AdminController {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", categoryDTO.getId());
         snapshot.put("name", categoryDTO.getName());
+        snapshot.put("groupId", categoryDTO.getGroupId());
+        snapshot.put("groupName", categoryDTO.getGroupName());
         snapshot.put("description", categoryDTO.getDescription());
         snapshot.put("sortOrder", categoryDTO.getSortOrder());
         snapshot.put("enabled", categoryDTO.getEnabled());
+        return snapshot;
+    }
+
+    /**
+     * 构建分类组快照。
+     *
+     * @param groupDTO 分类组 DTO
+     * @return 快照数据
+     */
+    private Map<String, Object> toCategoryGroupSnapshot(CategoryGroupDTO groupDTO) {
+        Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
+        snapshot.put("id", groupDTO.getId());
+        snapshot.put("name", groupDTO.getName());
+        snapshot.put("description", groupDTO.getDescription());
+        snapshot.put("sortOrder", groupDTO.getSortOrder());
+        snapshot.put("enabled", groupDTO.getEnabled());
+        snapshot.put("categoryCount", groupDTO.getCategoryCount());
         return snapshot;
     }
 
@@ -1291,6 +1389,7 @@ public class AdminController {
         snapshot.put("id", tagDTO.getId());
         snapshot.put("name", tagDTO.getName());
         snapshot.put("description", tagDTO.getDescription());
+        snapshot.put("groupName", tagDTO.getGroupName());
         snapshot.put("enabled", tagDTO.getEnabled());
         return snapshot;
     }

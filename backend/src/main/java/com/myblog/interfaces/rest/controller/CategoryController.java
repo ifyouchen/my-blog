@@ -79,7 +79,7 @@ public class CategoryController {
      */
     @GetMapping
     public Result<List<CategoryDTO>> getCategories(@RequestParam(required = false) Boolean enabled) {
-        return Result.success(categoryAppService.getCategories(enabled));
+        return Result.success(categoryAppService.getCategories(enabled == null ? Boolean.TRUE : enabled));
     }
 
     /**
@@ -267,6 +267,8 @@ public class CategoryController {
         Map<String, Object> snapshot = new LinkedHashMap<String, Object>();
         snapshot.put("id", categoryDTO.getId());
         snapshot.put("name", categoryDTO.getName());
+        snapshot.put("groupId", categoryDTO.getGroupId());
+        snapshot.put("groupName", categoryDTO.getGroupName());
         snapshot.put("description", categoryDTO.getDescription());
         snapshot.put("sortOrder", categoryDTO.getSortOrder());
         snapshot.put("enabled", categoryDTO.getEnabled());

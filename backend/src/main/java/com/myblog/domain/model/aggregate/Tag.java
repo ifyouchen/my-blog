@@ -28,6 +28,11 @@ public class Tag {
     private String description;
 
     /**
+     * 所属大类
+     */
+    private String groupName;
+
+    /**
      * 是否启用
      */
     private Boolean enabled;
@@ -68,6 +73,7 @@ public class Tag {
         tag.id = new TagId(id);
         tag.name = name;
         tag.description = description;
+        tag.groupName = null;
         tag.enabled = true;
         tag.createdAt = LocalDateTime.now();
         tag.updatedAt = tag.createdAt;
@@ -92,10 +98,20 @@ public class Tag {
     public static Tag restore(Long id, String name, String description, Boolean enabled,
                              LocalDateTime createdAt, LocalDateTime updatedAt,
                              LocalDateTime deletedAt, Integer version) {
+        return restore(id, name, description, null, enabled, createdAt, updatedAt, deletedAt, version);
+    }
+
+    /**
+     * 从持久化数据还原标签聚合根（含 groupName）。
+     */
+    public static Tag restore(Long id, String name, String description, String groupName, Boolean enabled,
+                             LocalDateTime createdAt, LocalDateTime updatedAt,
+                             LocalDateTime deletedAt, Integer version) {
         Tag tag = new Tag();
         tag.id = new TagId(id);
         tag.name = name;
         tag.description = description;
+        tag.groupName = groupName;
         tag.enabled = enabled;
         tag.createdAt = createdAt;
         tag.updatedAt = updatedAt;
@@ -114,6 +130,23 @@ public class Tag {
     public void update(String name, String description, Boolean enabled) {
         this.name = name;
         this.description = description;
+        this.enabled = enabled;
+        this.updatedAt = LocalDateTime.now();
+        this.version = this.version + 1;
+    }
+
+    /**
+     * 更新标签信息（含 groupName）。
+     *
+     * @param name        新标签名称
+     * @param description 新标签描述
+     * @param groupName   所属大类
+     * @param enabled     是否启用
+     */
+    public void update(String name, String description, String groupName, Boolean enabled) {
+        this.name = name;
+        this.description = description;
+        this.groupName = groupName;
         this.enabled = enabled;
         this.updatedAt = LocalDateTime.now();
         this.version = this.version + 1;
@@ -162,6 +195,15 @@ public class Tag {
      */
     public String getDescription() {
         return description;
+    }
+
+    /**
+     * 获取所属大类。
+     *
+     * @return 所属大类
+     */
+    public String getGroupName() {
+        return groupName;
     }
 
     /**

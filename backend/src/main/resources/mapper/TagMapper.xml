@@ -7,6 +7,7 @@
         <id column="id" property="id"/>
         <result column="name" property="name"/>
         <result column="description" property="description"/>
+        <result column="group_name" property="groupName"/>
         <result column="enabled" property="enabled"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
@@ -15,7 +16,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, name, description, enabled, created_at, updated_at, deleted_at, version
+        id, name, description, group_name, enabled, created_at, updated_at, deleted_at, version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -83,10 +84,10 @@
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.TagDO">
         INSERT INTO blog_tag
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            id, name, description, enabled, created_at, updated_at,
+            id, name, description, group_name, enabled, created_at, updated_at,
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
-            #{id}, #{name}, #{description}, #{enabled}, #{createdAt}, #{updatedAt},
+            #{id}, #{name}, #{description}, #{groupName}, #{enabled}, #{createdAt}, #{updatedAt},
         </trim>
     </insert>
 
@@ -94,6 +95,7 @@
         UPDATE blog_tag
         SET name = #{name},
             description = #{description},
+            group_name = #{groupName},
             enabled = #{enabled},
             updated_at = #{updatedAt},
             version = version + 1
@@ -113,13 +115,41 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.TagDO">
         INSERT INTO blog_tag
-        (id, name, description, enabled, created_at, updated_at)
+        (id, name, description, group_name, enabled, created_at, updated_at)
         VALUES
-        (#{id}, #{name}, #{description}, #{enabled}, #{createdAt}, #{updatedAt})
+        (#{id}, #{name}, #{description}, #{groupName}, #{enabled}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
             name = #{name},
             description = #{description},
+            group_name = #{groupName},
             enabled = #{enabled},
             updated_at = #{updatedAt}
     </insert>
+
+    <select id="selectDistinctGroups" resultType="map">
+        SELECT group_name AS `name`, COUNT(1) AS tagCount,
+               GROUP_CONCAT(name ORDER BY name ASC SEPARATOR ', ') AS tagNames
+        FROM blog_tag
+        WHERE deleted_at IS NULL
+        AND group_name IS NOT NULL
+        AND group_name != ''
+        GROUP BY group_name
+        ORDER BY group_name ASC
+    </select>
+
+    <update id="renameGroup">
+        UPDATE blog_tag
+        SET group_name = #{newName},
+            updated_at = NOW()
+        WHERE group_name = #{oldName}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="clearGroup">
+        UPDATE blog_tag
+        SET group_name = NULL,
+            updated_at = NOW()
+        WHERE group_name = #{groupName}
+        AND deleted_at IS NULL
+    </update>
 </mapper>

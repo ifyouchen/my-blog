@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -152,5 +153,20 @@ public class MyBatisTagRepository implements TagRepository {
             tags.add(TagPersistenceConverter.toDomain(tagDO));
         }
         return tags;
+    }
+
+    @Override
+    public List<Map<String, Object>> findDistinctGroups() {
+        return tagMapper.selectDistinctGroups();
+    }
+
+    @Override
+    public void renameGroup(String oldName, String newName) {
+        tagMapper.renameGroup(oldName, newName);
+    }
+
+    @Override
+    public void clearGroup(String groupName) {
+        tagMapper.clearGroup(groupName);
     }
 }

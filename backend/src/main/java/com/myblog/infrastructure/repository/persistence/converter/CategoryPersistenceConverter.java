@@ -25,6 +25,7 @@ public class CategoryPersistenceConverter {
         return Category.restore(
             categoryDO.getId(),
             categoryDO.getName(),
+            categoryDO.getGroupId(),
             categoryDO.getGroupName(),
             categoryDO.getDescription(),
             categoryDO.getSortOrder(),
@@ -49,6 +50,7 @@ public class CategoryPersistenceConverter {
         CategoryDO categoryDO = new CategoryDO();
         categoryDO.setId(category.getId().getValue());
         categoryDO.setName(category.getName());
+        categoryDO.setGroupId(category.getGroupId());
         categoryDO.setGroupName(category.getGroupName());
         categoryDO.setDescription(category.getDescription());
         categoryDO.setSortOrder(category.getSortOrder());

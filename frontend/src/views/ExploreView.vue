@@ -55,13 +55,24 @@ const loadData = async () => {
 
 const primaryTrending = computed(() => trendingArticles.value[0] || null);
 const restTrending = computed(() => trendingArticles.value.slice(1));
-const visibleCategories = computed(() => (
-    showAllCategories.value ? categories.value : categories.value.slice(0, 8)
+const categoryGroups = computed(() => {
+    const groups = new Map();
+    categories.value.forEach((category) => {
+        const groupName = category.groupName || '其他';
+        if (!groups.has(groupName)) {
+            groups.set(groupName, []);
+        }
+        groups.get(groupName).push(category);
+    });
+    return Array.from(groups.entries()).map(([name, items]) => ({ name, items }));
+});
+const visibleCategoryGroups = computed(() => (
+    showAllCategories.value ? categoryGroups.value : categoryGroups.value.slice(0, 4)
 ));
 const visibleTags = computed(() => (
     showAllTags.value ? hotTags.value : hotTags.value.slice(0, 18)
 ));
-const hasMoreCategories = computed(() => categories.value.length > visibleCategories.value.length);
+const hasMoreCategories = computed(() => categoryGroups.value.length > visibleCategoryGroups.value.length);
 const hasMoreTags = computed(() => hotTags.value.length > visibleTags.value.length);
 
 const goToCategory = (category) => {
@@ -221,17 +232,29 @@ onMounted(loadData);
                     <div v-if="loading" class="explore-category-grid">
                         <div v-for="i in 8" :key="i" class="explore-category-card explore-skeleton"></div>
                     </div>
-                    <div v-else-if="categories.length" class="explore-category-grid">
-                        <button
-                            v-for="cat in visibleCategories"
-                            :key="cat.id"
-                            class="explore-category-card"
-                            type="button"
-                            @click="goToCategory(cat)"
+                    <div v-else-if="categories.length" class="explore-category-map">
+                        <section
+                            v-for="group in visibleCategoryGroups"
+                            :key="group.name"
+                            class="explore-category-group"
                         >
-                            <span class="explore-category-name">{{ cat.name }}</span>
-                            <span v-if="cat.description" class="explore-category-desc">{{ cat.description }}</span>
-                        </button>
+                            <div class="explore-category-group-head">
+                                <strong>{{ group.name }}</strong>
+                                <span>{{ group.items.length }} 个分类</span>
+                            </div>
+                            <div class="explore-category-grid">
+                                <button
+                                    v-for="cat in group.items"
+                                    :key="cat.id"
+                                    class="explore-category-card"
+                                    type="button"
+                                    @click="goToCategory(cat)"
+                                >
+                                    <span class="explore-category-name">{{ cat.name }}</span>
+                                    <span v-if="cat.description" class="explore-category-desc">{{ cat.description }}</span>
+                                </button>
+                            </div>
+                        </section>
                         <button
                             v-if="hasMoreCategories || showAllCategories"
                             type="button"
@@ -643,6 +666,34 @@ onMounted(loadData);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 10px;
+}
+
+.explore-category-map {
+    display: grid;
+    gap: 12px;
+}
+
+.explore-category-group {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.explore-category-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.explore-category-group-head strong {
+    color: var(--text-strong);
+    font-size: 15px;
+}
+
+.explore-category-group-head span {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .explore-category-card,

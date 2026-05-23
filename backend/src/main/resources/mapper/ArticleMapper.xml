@@ -241,10 +241,14 @@
         </if>
         <if test="categoryGroup != null and categoryGroup != ''">
             AND category IN (
-                SELECT name
-                FROM blog_category
-                WHERE group_name = #{categoryGroup}
-                AND deleted_at IS NULL
+                SELECT c.name
+                FROM blog_category c
+                INNER JOIN blog_category_group g ON c.group_id = g.id
+                    AND g.deleted_at IS NULL
+                    AND g.enabled = 1
+                WHERE g.name = #{categoryGroup}
+                AND c.enabled = 1
+                AND c.deleted_at IS NULL
             )
         </if>
         <if test="tag != null and tag != ''">
@@ -745,10 +749,14 @@
         </if>
         <if test="categoryGroup != null and categoryGroup != ''">
             AND category IN (
-                SELECT name
-                FROM blog_category
-                WHERE group_name = #{categoryGroup}
-                AND deleted_at IS NULL
+                SELECT c.name
+                FROM blog_category c
+                INNER JOIN blog_category_group g ON c.group_id = g.id
+                    AND g.deleted_at IS NULL
+                    AND g.enabled = 1
+                WHERE g.name = #{categoryGroup}
+                AND c.enabled = 1
+                AND c.deleted_at IS NULL
             )
         </if>
         <if test="tag != null and tag != ''">

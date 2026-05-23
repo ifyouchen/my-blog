@@ -4,6 +4,7 @@ import com.myblog.infrastructure.repository.persistence.entity.TagDO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 标签 MyBatis Mapper。
@@ -108,4 +109,28 @@ public interface TagMapper {
      * @return 热门标签列表
      */
     List<TagDO> selectHot(@Param("limit") int limit);
+
+    /**
+     * 查询所有不重复的标签大类。
+     *
+     * @return 大类列表，包含 name 和 tagCount
+     */
+    List<Map<String, Object>> selectDistinctGroups();
+
+    /**
+     * 重命名标签大类。
+     *
+     * @param oldName 原大类名称
+     * @param newName 新大类名称
+     * @return 影响行数
+     */
+    int renameGroup(@Param("oldName") String oldName, @Param("newName") String newName);
+
+    /**
+     * 清空指定大类的标签（设为 NULL）。
+     *
+     * @param groupName 大类名称
+     * @return 影响行数
+     */
+    int clearGroup(@Param("groupName") String groupName);
 }

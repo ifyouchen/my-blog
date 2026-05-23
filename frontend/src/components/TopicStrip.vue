@@ -25,6 +25,11 @@ const groupNames = computed(() => {
 
 const activeGroup = computed(() => String(route.query.group || '全部'));
 
+const activeCategories = computed(() => {
+    if (activeGroup.value === '全部') return [];
+    return props.categoryGroups[activeGroup.value] || [];
+});
+
 const showSkeleton = computed(() => props.loading && !Object.keys(props.categoryGroups).length);
 
 const hasMoreGroups = computed(() => groupNames.value.length > 8);
@@ -42,6 +47,11 @@ const buildGroupRoute = (group) => {
         ? { path: '/', query: { sort: route.query.sort, feedTab: nextFeedTab, page: undefined } }
         : { path: '/', query: { group, sort: route.query.sort, feedTab: nextFeedTab, page: undefined, category: undefined } };
 };
+
+const buildCategoryRoute = (categoryName) => ({
+    path: '/',
+    query: { group: activeGroup.value, category: categoryName, sort: route.query.sort, feedTab: route.query.feedTab === 'following' ? 'following' : undefined, page: undefined }
+});
 </script>
 
 <template>
@@ -82,6 +92,17 @@ const buildGroupRoute = (group) => {
                 {{ expanded ? '收起' : '展开更多' }}
             </button>
             </div>
+            <div v-if="activeCategories.length" class="sub-category-strip">
+                <RouterLink
+                    v-for="cat in activeCategories"
+                    :key="cat.name"
+                    class="sub-category"
+                    :class="{ active: route.query.category === cat.name }"
+                    :to="buildCategoryRoute(cat.name)"
+                >
+                    {{ cat.name }}
+                </RouterLink>
+            </div>
         </template>
     </section>
 </template>
@@ -113,6 +134,37 @@ const buildGroupRoute = (group) => {
 
 .topic-more-toggle {
     display: none;
+}
+
+.sub-category-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+}
+
+.sub-category {
+    padding: 2px 10px;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: none;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.sub-category:hover {
+    color: var(--brand-strong);
+    border-color: var(--brand);
+}
+
+.sub-category.active {
+    color: #fff;
+    background: var(--brand);
+    border-color: var(--brand);
 }
 
 @media (max-width: 720px) {

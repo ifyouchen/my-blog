@@ -39,7 +39,7 @@ public interface CategoryRepository {
      * @param pageSize 每页大小
      * @return 分类列表
      */
-    List<Category> findPage(Boolean enabled, int page, int pageSize);
+    List<Category> findPage(Boolean enabled, Long groupId, String keyword, int page, int pageSize);
 
     /**
      * 统计分类数量。
@@ -47,7 +47,7 @@ public interface CategoryRepository {
      * @param enabled 是否启用，为 null 时不筛选
      * @return 分类数量
      */
-    long count(Boolean enabled);
+    long count(Boolean enabled, Long groupId, String keyword);
 
     /**
      * 判断分类名称是否已存在（排除指定 ID）。
@@ -57,6 +57,22 @@ public interface CategoryRepository {
      * @return 是否存在同名分类
      */
     boolean existsByName(String name, CategoryId excludeId);
+
+    /**
+     * 判断启用分类名称是否存在，且所属分类组也启用。
+     *
+     * @param name 分类名称
+     * @return 是否存在
+     */
+    boolean existsEnabledByName(String name);
+
+    /**
+     * 统计指定分类组下的小分类数量。
+     *
+     * @param groupId 分类组 ID
+     * @return 小分类数量
+     */
+    long countByGroupId(Long groupId);
 
     /**
      * 保存分类（新增或更新）。

@@ -42,12 +42,34 @@ CREATE TABLE `blog_user` (
   COMMENT = '博客用户表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- blog_category_group
+-- ----------------------------
+DROP TABLE IF EXISTS `blog_category_group`;
+CREATE TABLE `blog_category_group` (
+    `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `name`        varchar(50)     NOT NULL COMMENT '分类组名称',
+    `description` varchar(255)    NULL DEFAULT NULL COMMENT '分类组说明',
+    `sort_order`  int             NOT NULL DEFAULT 0 COMMENT '排序值',
+    `enabled`     tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用：1-启用 0-禁用',
+    `created_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted_at`  datetime        NULL DEFAULT NULL COMMENT '删除时间',
+    `version`     int             NOT NULL DEFAULT 0 COMMENT '版本号',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_blog_category_group_name` (`name`) USING BTREE,
+    INDEX `idx_blog_category_group_enabled_sort` (`enabled`, `sort_order`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 100
+  CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+  COMMENT = '博客分类组表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- blog_category
 -- ----------------------------
 DROP TABLE IF EXISTS `blog_category`;
 CREATE TABLE `blog_category` (
     `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `name`        varchar(50)     NOT NULL COMMENT '分类名称',
+    `group_id`    bigint unsigned NULL DEFAULT NULL COMMENT '所属分类组ID',
     `group_name`  varchar(50)     NULL DEFAULT NULL COMMENT '所属大类（如 Java 体系、数据库）',
     `description` varchar(255)    NULL DEFAULT NULL COMMENT '分类说明',
     `sort_order`  int             NOT NULL DEFAULT 0 COMMENT '排序值',
@@ -59,6 +81,7 @@ CREATE TABLE `blog_category` (
     `version`     int             NOT NULL DEFAULT 0 COMMENT '版本号',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_blog_category_name` (`name`) USING BTREE,
+    INDEX `idx_blog_category_group_sort` (`group_id`, `sort_order`) USING BTREE,
     INDEX `idx_blog_category_status_sort` (`status`, `sort_order`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 11
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
@@ -72,6 +95,7 @@ CREATE TABLE `blog_tag` (
     `id`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `name`        varchar(50)     NOT NULL COMMENT '标签名称',
     `description` varchar(255)    NULL DEFAULT NULL COMMENT '标签说明',
+    `group_name`  varchar(50)     NULL DEFAULT NULL COMMENT '所属大类',
     `use_count`   int             NOT NULL DEFAULT 0 COMMENT '使用次数',
     `enabled`     tinyint(1)      NOT NULL DEFAULT 1 COMMENT '是否启用：1-启用 0-禁用',
     `status`      varchar(20)     NOT NULL DEFAULT 'NORMAL' COMMENT '状态：NORMAL-正常 DISABLED-禁用',
@@ -823,6 +847,7 @@ INSERT IGNORE INTO `id_sequence` (`name`, `next_id`) VALUES
 ('blog_user',                 1004),
 ('blog_user_follow',          1),
 ('blog_user_search_history',  1),
+('blog_category_group',       100),
 ('blog_category',             11),
 ('blog_tag',                  11),
 ('blog_comment',              1),

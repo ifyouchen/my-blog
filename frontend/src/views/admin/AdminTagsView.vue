@@ -7,6 +7,9 @@ import {
     createTagApi,
     deleteTagApi,
     getAdminTagsApi,
+    getAdminTagGroupsApi,
+    renameTagGroupApi,
+    deleteTagGroupApi,
     updateTagApi
 } from '@/api/admin';
 import {
@@ -33,7 +36,8 @@ const {
 
 const form = reactive({
     name: '',
-    description: ''
+    description: '',
+    groupName: ''
 });
 
 const state = reactive({
@@ -45,8 +49,13 @@ const state = reactive({
     editForm: {
         name: '',
         description: '',
+        groupName: '',
         enabled: true
-    }
+    },
+    groups: [],
+    showGroupPanel: false,
+    renameGroup: { oldName: '', newName: '' },
+    deleteGroupName: ''
 });
 
 const normalizeEnabledFilter = (value) => {
@@ -138,10 +147,12 @@ const submitTag = async () => {
     try {
         await createTagApi({
             name: form.name,
-            description: form.description
+            description: form.description,
+            groupName: form.groupName || undefined
         });
         form.name = '';
         form.description = '';
+        form.groupName = '';
         await loadTags();
     } catch (error) {
         toast.error(error.message || '标签创建失败');
@@ -154,6 +165,7 @@ const startEdit = (tag) => {
     state.editingId = tag.id;
     state.editForm.name = tag.name || '';
     state.editForm.description = tag.description || '';
+    state.editForm.groupName = tag.groupName || '';
     state.editForm.enabled = Boolean(tag.enabled);
 };
 
@@ -167,6 +179,7 @@ const saveEdit = async (tagId) => {
         await updateTagApi(tagId, {
             name: state.editForm.name,
             description: state.editForm.description,
+            groupName: state.editForm.groupName || undefined,
             enabled: Boolean(state.editForm.enabled)
         });
         state.editingId = null;
@@ -215,6 +228,49 @@ const removeTag = async (tag) => {
     });
 };
 
+const loadGroups = async () => {
+    try {
+        state.groups = await getAdminTagGroupsApi();
+    } catch {
+        state.groups = [];
+    }
+};
+
+const submitRenameGroup = async () => {
+    if (!state.renameGroup.oldName || !state.renameGroup.newName) return;
+    try {
+        await renameTagGroupApi(state.renameGroup.oldName, state.renameGroup.newName);
+        toast.success('标签大类重命名成功');
+        state.renameGroup = { oldName: '', newName: '' };
+        await loadGroups();
+    } catch (error) {
+        toast.error(error.message || '重命名失败');
+    }
+};
+
+const submitDeleteGroup = async () => {
+    if (!state.deleteGroupName) return;
+    const name = state.deleteGroupName;
+    openConfirmDialog({
+        eyebrow: '标签大类确认',
+        title: '删除标签大类',
+        message: `确定删除标签大类「${name}」吗？该大类下所有标签的分类信息将被清空，但标签本身不会删除。`,
+        confirmText: '确认删除',
+        tone: 'danger',
+        onConfirm: async () => {
+            try {
+                await deleteTagGroupApi(name);
+                toast.success('标签大类已删除');
+                state.deleteGroupName = '';
+                await loadGroups();
+                await loadTags();
+            } catch (error) {
+                toast.error(error.message || '删除失败');
+            }
+        }
+    });
+};
+
 useAdminRefresh(loadTags);
 
 watch(
@@ -225,6 +281,8 @@ watch(
     },
     { immediate: true }
 );
+
+watch(() => state.showGroupPanel, (v) => { if (v) loadGroups(); });
 </script>
 
 <template>
@@ -234,6 +292,10 @@ watch(
                 <label>
                     <span>标签名称</span>
                     <input v-model.trim="form.name" type="text" placeholder="标签名称" required>
+                </label>
+                <label>
+                    <span>所属大类</span>
+                    <input v-model.trim="form.groupName" type="text" placeholder="如：Java、数据库">
                 </label>
                 <label class="admin-filter-grow">
                     <span>标签说明</span>
@@ -275,17 +337,19 @@ watch(
                 <div class="admin-table-wrap" data-testid="admin-tags-table">
                     <table class="admin-table">
                         <colgroup>
-                            <col style="width: 12%">
-                            <col style="width: 24%">
-                            <col style="width: 30%">
+                            <col style="width: 8%">
+                            <col style="width: 18%">
+                            <col style="width: 22%">
+                            <col style="width: 16%">
                             <col style="width: 14%">
-                            <col style="width: 20%">
+                            <col style="width: 22%">
                         </colgroup>
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>名称</th>
                                 <th>说明</th>
+                                <th>所属大类</th>
                                 <th>状态</th>
                                 <th>操作</th>
                             </tr>
@@ -301,6 +365,10 @@ watch(
                                     <input v-model.trim="state.editForm.description" class="admin-edit-input" type="text">
                                 </td>
                                 <td v-else><span class="admin-cell-text muted">{{ tag.description || '-' }}</span></td>
+                                <td v-if="state.editingId === tag.id" class="admin-edit-cell">
+                                    <input v-model.trim="state.editForm.groupName" class="admin-edit-input" type="text" placeholder="如：Java">
+                                </td>
+                                <td v-else><span class="admin-cell-text muted">{{ tag.groupName || '-' }}</span></td>
                                 <td>
                                     <template v-if="state.editingId === tag.id">
                                         <select v-model="state.editForm.enabled" class="admin-edit-select">
@@ -338,6 +406,46 @@ watch(
         </div>
 
         <AdminPagination :state="state" label="标签分页" @page-change="changePage" />
+
+        <div class="admin-section-actions">
+            <button type="button" class="admin-ghost-btn" @click="state.showGroupPanel = !state.showGroupPanel">
+                {{ state.showGroupPanel ? '收起' : '管理' }}标签大类
+            </button>
+        </div>
+
+        <div v-if="state.showGroupPanel" class="admin-group-panel">
+            <h4 class="admin-group-panel-title">标签大类列表</h4>
+            <div v-if="state.groups.length" class="admin-group-cards">
+                <div v-for="g in state.groups" :key="g.name" class="admin-group-card">
+                    <div class="admin-group-card-header">
+                        <strong class="admin-group-card-name">{{ g.name }}</strong>
+                        <span class="admin-group-card-count">{{ g.tagCount }} 个标签</span>
+                        <div class="admin-group-card-actions">
+                            <button type="button" @click="state.renameGroup.oldName = g.name; state.renameGroup.newName = g.name">
+                                重命名
+                            </button>
+                            <button type="button" class="danger-link" @click="state.deleteGroupName = g.name; submitDeleteGroup()">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="g.tagNames" class="admin-group-card-items">
+                        <span v-for="name in g.tagNames.split(', ')" :key="name" class="admin-group-item-tag">{{ name }}</span>
+                    </div>
+                </div>
+            </div>
+            <p v-else class="backend-state-text">暂无标签大类</p>
+
+            <div v-if="state.renameGroup.oldName" class="admin-group-rename-form">
+                <label>
+                    <span>新名称</span>
+                    <input v-model.trim="state.renameGroup.newName" type="text" placeholder="输入新大类名称">
+                </label>
+                <button type="button" :disabled="!state.renameGroup.newName" @click="submitRenameGroup">确认重命名</button>
+                <button type="button" @click="state.renameGroup = { oldName: '', newName: '' }">取消</button>
+            </div>
+        </div>
+
         <ConfirmDialog
             :visible="confirmDialog.visible"
             :eyebrow="confirmDialog.eyebrow"
@@ -424,5 +532,152 @@ watch(
 
 .admin-cell-text.muted {
     color: var(--muted);
+}
+
+.admin-section-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin: 16px 0 8px;
+}
+
+.admin-ghost-btn {
+    color: var(--brand);
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 6px 16px;
+    font: inherit;
+    font-size: 0.875rem;
+}
+
+.admin-ghost-btn:hover {
+    color: var(--brand-strong);
+    border-color: var(--brand);
+}
+
+.admin-group-panel {
+    margin: 12px 0 24px;
+    padding: 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.admin-group-panel-title {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.admin-group-cards {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.admin-group-card {
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.admin-group-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-group-card-name {
+    font-size: 0.95rem;
+    min-width: 80px;
+}
+
+.admin-group-card-count {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.admin-group-card-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.admin-group-card-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+}
+
+.admin-group-item-tag {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.admin-group-rename-form {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.admin-group-rename-form label {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.admin-group-rename-form input {
+    min-height: 36px;
+    padding: 0 12px;
+    color: var(--text);
+    font: inherit;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.admin-group-rename-form input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    outline: 0;
+}
+
+.admin-group-rename-form button {
+    height: 36px;
+    padding: 0 16px;
+    color: #fff;
+    cursor: pointer;
+    background: var(--brand);
+    border: none;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.admin-group-rename-form button:last-child {
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.admin-group-rename-form button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 </style>

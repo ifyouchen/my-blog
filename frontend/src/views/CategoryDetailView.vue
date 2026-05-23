@@ -1,5 +1,6 @@
 <script setup>
-import {ref, watch} from 'vue';
+import {computed, ref, watch} from 'vue';
+import {RouterLink} from 'vue-router';
 import {onBeforeRouteLeave, useRoute} from 'vue-router';
 import ArticleFeed from '@/components/ArticleFeed.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -13,6 +14,11 @@ const route = useRoute();
 const category = ref(null);
 const activeSort = ref(ARTICLE_SORT_LATEST);
 const pageSize = 10;
+const groupRoute = computed(() => (
+    category.value?.groupName
+        ? { path: '/', query: { group: category.value.groupName } }
+        : null
+));
 const {
     articles,
     currentPage,
@@ -118,6 +124,7 @@ onBeforeRouteLeave(() => {
                 <h1>{{ category.name }}</h1>
                 <p v-if="category.description" class="category-detail-desc">{{ category.description }}</p>
                 <div class="category-detail-stats">
+                    <RouterLink v-if="groupRoute" :to="groupRoute">{{ category.groupName }}</RouterLink>
                     <span>{{ total }} 篇文章</span>
                 </div>
             </div>
@@ -207,6 +214,26 @@ onBeforeRouteLeave(() => {
     padding: 0 12px;
     color: var(--muted);
     font-size: 13px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.category-detail-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.category-detail-stats a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
     background: var(--surface-soft);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);

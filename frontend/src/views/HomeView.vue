@@ -146,6 +146,7 @@ const createFeedCacheState = () => ({
     page: 1,
     total: 0,
     category: '',
+    group: '',
     sort: resolveDefaultSort(),
     cacheVersion: '',
     loaded: false
@@ -342,6 +343,7 @@ const saveActiveFeedCache = () => {
         ...feedCache.value[feedTab.value],
         ...getFeedState(),
         category: activeCategory.value,
+        group: activeGroup.value,
         sort: activeSort.value,
         cacheVersion: getFeedCacheVersion(),
         loaded: true
@@ -359,10 +361,12 @@ const loadArticles = async ({ sort, category } = {}) => {
     const targetSort = normalizeArticleSort(sort || resolveDefaultSort(feedTab.value));
     const normalizedCategory = normalizeCategory(category);
     const targetCacheVersion = getFeedCacheVersion(feedTab.value, targetSort);
+    const normalizedGroup = normalizeGroup(activeGroup.value);
     const cachedState = feedCache.value[feedTab.value] || createFeedCacheState();
     if (
         cachedState.loaded
         && cachedState.category === normalizedCategory
+        && (cachedState.group || '') === normalizedGroup
         && normalizeArticleSort(cachedState.sort) === targetSort
         && (cachedState.cacheVersion || '') === targetCacheVersion
     ) {
@@ -378,7 +382,7 @@ const loadArticles = async ({ sort, category } = {}) => {
     }
     if (
         restoreFeedCache(
-            buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory),
+            buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory, normalizedGroup),
             getFeedCacheOptions(feedTab.value, targetSort)
         )
     ) {
@@ -388,6 +392,7 @@ const loadArticles = async ({ sort, category } = {}) => {
             ...feedCache.value[feedTab.value],
             ...getFeedState(),
             category: normalizedCategory,
+            group: normalizedGroup,
             sort: targetSort,
             cacheVersion: targetCacheVersion,
             loaded: true
@@ -403,7 +408,6 @@ const loadArticles = async ({ sort, category } = {}) => {
     resetStableRequest();
     resetFeed();
     const isFollowing = feedTab.value === 'following' && isLoggedIn.value;
-    const normalizedGroup = normalizeGroup(activeGroup.value);
     const apiCall = isFollowing
         ? () => getFollowingFeedApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory})
         : () => listArticlesApi({page: 1, pageSize, sort: targetSort, category: normalizedCategory, group: normalizedGroup || undefined});

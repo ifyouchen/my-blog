@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -85,6 +87,47 @@ public class TagAppService {
         Tag tag = tagRepository.findById(new TagId(id))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "标签不存在"));
         return toDTO(tag);
+    }
+
+    /**
+     * 查询所有不重复的标签大类。
+     *
+     * @return 大类列表
+     */
+    public List<Map<String, Object>> getTagGroups() {
+        return tagRepository.findDistinctGroups();
+    }
+
+    /**
+     * 重命名标签大类。
+     *
+     * @param oldName 原大类名称
+     * @param newName 新大类名称
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void renameGroup(String oldName, String newName) {
+        if (oldName == null || oldName.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "原大类名称不能为空");
+        }
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "新大类名称不能为空");
+        }
+        tagRepository.renameGroup(oldName.trim(), newName.trim());
+        invalidateTagCache();
+    }
+
+    /**
+     * 删除标签大类（将属于该大类的标签的 group_name 置 NULL）。
+     *
+     * @param groupName 大类名称
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteGroup(String groupName) {
+        if (groupName == null || groupName.trim().isEmpty()) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "大类名称不能为空");
+        }
+        tagRepository.clearGroup(groupName.trim());
+        invalidateTagCache();
     }
 
     /**
@@ -220,6 +263,7 @@ public class TagAppService {
         dto.setId(source.getId());
         dto.setName(source.getName());
         dto.setDescription(source.getDescription());
+        dto.setGroupName(source.getGroupName());
         dto.setEnabled(source.getEnabled());
         dto.setCreatedAt(source.getCreatedAt());
         dto.setUpdatedAt(source.getUpdatedAt());
@@ -237,6 +281,7 @@ public class TagAppService {
         dto.setId(tag.getId().getValue());
         dto.setName(tag.getName());
         dto.setDescription(tag.getDescription());
+        dto.setGroupName(tag.getGroupName());
         dto.setEnabled(tag.getEnabled());
         dto.setCreatedAt(tag.getCreatedAt());
         dto.setUpdatedAt(tag.getUpdatedAt());

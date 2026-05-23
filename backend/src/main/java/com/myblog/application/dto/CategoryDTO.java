@@ -14,6 +14,8 @@ public class CategoryDTO {
     private Long id;
     /** 分类名称 */
     private String name;
+    /** 所属分类组 ID */
+    private Long groupId;
     /** 所属大类 */
     private String groupName;
     /** 分类描述 */
@@ -58,10 +60,38 @@ public class CategoryDTO {
         this.name = name;
     }
 
+    /**
+     * 获取所属分类组 ID。
+     *
+     * @return 所属分类组 ID
+     */
+    public Long getGroupId() {
+        return groupId;
+    }
+
+    /**
+     * 设置所属分类组 ID。
+     *
+     * @param groupId 所属分类组 ID
+     */
+    public void setGroupId(Long groupId) {
+        this.groupId = groupId;
+    }
+
+    /**
+     * 获取所属大类。
+     *
+     * @return 所属大类
+     */
     public String getGroupName() {
         return groupName;
     }
 
+    /**
+     * 设置所属大类。
+     *
+     * @param groupName 所属大类
+     */
     public void setGroupName(String groupName) {
         this.groupName = groupName;
     }

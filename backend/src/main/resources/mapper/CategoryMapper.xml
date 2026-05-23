@@ -6,6 +6,7 @@
     <resultMap id="BaseResultMap" type="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
+        <result column="group_id" property="groupId"/>
         <result column="group_name" property="groupName"/>
         <result column="description" property="description"/>
         <result column="sort_order" property="sortOrder"/>
@@ -17,14 +18,20 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, name, group_name, description, sort_order, enabled, created_at, updated_at, deleted_at, version
+        id, name, group_id, group_name, description, sort_order, enabled, created_at, updated_at, deleted_at, version
+    </sql>
+
+    <sql id="Joined_Column_List">
+        c.id, c.name, c.group_id, COALESCE(g.name, c.group_name) AS group_name,
+        c.description, c.sort_order, c.enabled, c.created_at, c.updated_at, c.deleted_at, c.version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM blog_category
-        WHERE id = #{id}
-        AND deleted_at IS NULL
+        SELECT <include refid="Joined_Column_List"/>
+        FROM blog_category c
+        LEFT JOIN blog_category_group g ON c.group_id = g.id AND g.deleted_at IS NULL
+        WHERE c.id = #{id}
+        AND c.deleted_at IS NULL
     </select>
 
     <select id="countById" resultType="int">
@@ -35,32 +42,64 @@
     </select>
 
     <select id="selectAll" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM blog_category
-        WHERE deleted_at IS NULL
+        SELECT <include refid="Joined_Column_List"/>
+        FROM blog_category c
+        LEFT JOIN blog_category_group g ON c.group_id = g.id AND g.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
         <if test="enabled != null">
-            AND enabled = #{enabled}
+            AND c.enabled = #{enabled}
         </if>
-        ORDER BY sort_order ASC, id ASC
+        <if test="enabled != null and enabled == true">
+            AND g.enabled = 1
+        </if>
+        ORDER BY g.sort_order ASC, c.sort_order ASC, c.id ASC
     </select>
 
     <select id="selectPage" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM blog_category
-        WHERE deleted_at IS NULL
+        SELECT <include refid="Joined_Column_List"/>
+        FROM blog_category c
+        LEFT JOIN blog_category_group g ON c.group_id = g.id AND g.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
         <if test="enabled != null">
-            AND enabled = #{enabled}
+            AND c.enabled = #{enabled}
         </if>
-        ORDER BY sort_order ASC, id ASC
+        <if test="enabled != null and enabled == true">
+            AND g.enabled = 1
+        </if>
+        <if test="groupId != null">
+            AND c.group_id = #{groupId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                c.name LIKE CONCAT('%', #{keyword}, '%')
+                OR c.description LIKE CONCAT('%', #{keyword}, '%')
+                OR g.name LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY g.sort_order ASC, c.sort_order ASC, c.id ASC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
     <select id="countAll" resultType="long">
         SELECT COUNT(1)
-        FROM blog_category
-        WHERE deleted_at IS NULL
+        FROM blog_category c
+        LEFT JOIN blog_category_group g ON c.group_id = g.id AND g.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
         <if test="enabled != null">
-            AND enabled = #{enabled}
+            AND c.enabled = #{enabled}
+        </if>
+        <if test="enabled != null and enabled == true">
+            AND g.enabled = 1
+        </if>
+        <if test="groupId != null">
+            AND c.group_id = #{groupId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                c.name LIKE CONCAT('%', #{keyword}, '%')
+                OR c.description LIKE CONCAT('%', #{keyword}, '%')
+                OR g.name LIKE CONCAT('%', #{keyword}, '%')
+            )
         </if>
     </select>
 
@@ -74,19 +113,38 @@
         </if>
     </select>
 
+    <select id="countEnabledByName" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_category c
+        INNER JOIN blog_category_group g ON c.group_id = g.id
+            AND g.deleted_at IS NULL
+            AND g.enabled = 1
+        WHERE c.name = #{name}
+        AND c.enabled = 1
+        AND c.deleted_at IS NULL
+    </select>
+
+    <select id="countByGroupId" resultType="long">
+        SELECT COUNT(1)
+        FROM blog_category
+        WHERE group_id = #{groupId}
+        AND deleted_at IS NULL
+    </select>
+
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         INSERT INTO blog_category
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            id, name, group_name, description, sort_order, enabled, created_at, updated_at,
+            id, name, group_id, group_name, description, sort_order, enabled, created_at, updated_at,
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
-            #{id}, #{name}, #{groupName}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt},
+            #{id}, #{name}, #{groupId}, #{groupName}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt},
         </trim>
     </insert>
 
     <update id="update" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         UPDATE blog_category
         SET name = #{name},
+            group_id = #{groupId},
             group_name = #{groupName},
             description = #{description},
             sort_order = #{sortOrder},
@@ -100,11 +158,12 @@
     <!-- INSERT ... ON DUPLICATE KEY UPDATE，省去 countById 前置查询 -->
     <insert id="insertOrUpdate" parameterType="com.myblog.infrastructure.repository.persistence.entity.CategoryDO">
         INSERT INTO blog_category
-        (id, name, group_name, description, sort_order, enabled, created_at, updated_at)
+        (id, name, group_id, group_name, description, sort_order, enabled, created_at, updated_at)
         VALUES
-        (#{id}, #{name}, #{groupName}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt})
+        (#{id}, #{name}, #{groupId}, #{groupName}, #{description}, #{sortOrder}, #{enabled}, #{createdAt}, #{updatedAt})
         ON DUPLICATE KEY UPDATE
             name = #{name},
+            group_id = #{groupId},
             group_name = #{groupName},
             description = #{description},
             sort_order = #{sortOrder},
@@ -113,7 +172,8 @@
     </insert>
 
     <select id="selectDistinctGroups" resultType="map">
-        SELECT group_name AS `name`, COUNT(1) AS categoryCount
+        SELECT group_name AS `name`, COUNT(1) AS categoryCount,
+               GROUP_CONCAT(name ORDER BY sort_order ASC SEPARATOR ', ') AS categoryNames
         FROM blog_category
         WHERE deleted_at IS NULL
         AND group_name IS NOT NULL

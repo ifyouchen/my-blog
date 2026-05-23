@@ -134,9 +134,11 @@ export const getCategoriesApi = async (enabled = null) => {
     return await request(`/categories${params}`);
 };
 
-export const getAdminCategoriesApi = async (page = 1, pageSize = 10, enabled = null) => {
+export const getAdminCategoriesApi = async (page = 1, pageSize = 10, enabled = null, groupId = null, keyword = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (enabled !== null) params.append('enabled', enabled);
+    if (groupId) params.append('groupId', groupId);
+    if (keyword) params.append('keyword', keyword);
     return await request(`/admin/categories?${params}`);
 };
 
@@ -160,21 +162,30 @@ export const deleteCategoryApi = async (categoryId) => {
     });
 };
 
-export const getCategoryGroupsApi = async () => {
-    return await request('/admin/category-groups');
+export const getCategoryGroupsApi = async (enabled = null) => {
+    const params = new URLSearchParams();
+    if (enabled !== null) params.append('enabled', enabled);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return await request(`/admin/category-groups${suffix}`);
 };
 
-export const renameCategoryGroupApi = async (oldName, newName) => {
+export const createCategoryGroupApi = async (payload) => {
     return await request('/admin/category-groups', {
-        method: 'PUT',
-        body: { oldName, newName }
+        method: 'POST',
+        body: payload
     });
 };
 
-export const deleteCategoryGroupApi = async (name) => {
-    return await request('/admin/category-groups', {
-        method: 'DELETE',
-        body: { name }
+export const updateCategoryGroupApi = async (groupId, payload) => {
+    return await request(`/admin/category-groups/${groupId}`, {
+        method: 'PUT',
+        body: payload
+    });
+};
+
+export const deleteCategoryGroupApi = async (groupId) => {
+    return await request(`/admin/category-groups/${groupId}`, {
+        method: 'DELETE'
     });
 };
 
@@ -207,6 +218,24 @@ export const updateTagApi = async (tagId, payload) => {
 export const deleteTagApi = async (tagId) => {
     return await request(`/admin/tags/${tagId}`, {
         method: 'DELETE'
+    });
+};
+
+export const getAdminTagGroupsApi = async () => {
+    return await request('/admin/tag-groups');
+};
+
+export const renameTagGroupApi = async (oldName, newName) => {
+    return await request('/admin/tag-groups', {
+        method: 'PUT',
+        body: { oldName, newName }
+    });
+};
+
+export const deleteTagGroupApi = async (name) => {
+    return await request('/admin/tag-groups', {
+        method: 'DELETE',
+        body: { name }
     });
 };
 

@@ -5,7 +5,7 @@ SET NAMES utf8mb4;
 USE `my_blog`;
 START TRANSACTION;
 
-INSERT INTO `blog_category` (`name`,`description`,`sort_order`,`enabled`,`status`,`created_at`,`updated_at`,`deleted_at`,`version`) VALUES ('企业信息化其他','博客园 企业信息化其他 分类文章',30,1,'NORMAL','2026-05-10 17:35:33','2026-05-10 17:35:33',NULL,0) ON DUPLICATE KEY UPDATE `description`=VALUES(`description`),`sort_order`=VALUES(`sort_order`),`enabled`=1,`status`='NORMAL',`updated_at`=VALUES(`updated_at`),`deleted_at`=NULL;
+INSERT INTO `blog_category` (`name`,`group_name`,`description`,`sort_order`,`enabled`,`status`,`created_at`,`updated_at`,`deleted_at`,`version`) VALUES ('企业信息化其他','其他','博客园 企业信息化其他 分类文章',30,1,'NORMAL','2026-05-10 17:35:33','2026-05-10 17:35:33',NULL,0) ON DUPLICATE KEY UPDATE `group_name`=VALUES(`group_name`),`description`=VALUES(`description`),`sort_order`=VALUES(`sort_order`),`enabled`=1,`status`='NORMAL',`updated_at`=VALUES(`updated_at`),`deleted_at`=NULL;
 
 INSERT INTO `blog_tag` (`name`,`description`,`use_count`,`enabled`,`status`,`created_at`,`updated_at`,`deleted_at`,`version`) VALUES ('企业信息化其他','博客园自动导入标签：企业信息化其他',9,1,'NORMAL','2026-05-10 17:35:33','2026-05-10 17:35:33',NULL,0) ON DUPLICATE KEY UPDATE `description`=VALUES(`description`),`enabled`=1,`status`='NORMAL',`updated_at`=VALUES(`updated_at`),`deleted_at`=NULL;
 INSERT INTO `blog_tag` (`name`,`description`,`use_count`,`enabled`,`status`,`created_at`,`updated_at`,`deleted_at`,`version`) VALUES ('前端','博客园自动导入标签：前端',9,1,'NORMAL','2026-05-10 17:35:33','2026-05-10 17:35:33',NULL,0) ON DUPLICATE KEY UPDATE `description`=VALUES(`description`),`enabled`=1,`status`='NORMAL',`updated_at`=VALUES(`updated_at`),`deleted_at`=NULL;

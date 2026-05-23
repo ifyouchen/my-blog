@@ -89,11 +89,9 @@ const publishedArticle = ref(null);
 const feedbackType = ref('info');
 const categoryOptions = ref(topics.slice(1).map(name => ({ name, groupName: '' })));
 const tagOptions = ref([]);
-const customCategoryInput = ref('');
-const showCustomCategory = ref(false);
 const categorySearchKeyword = ref('');
 const expandedCategoryGroups = ref(new Set());
-const isCustomCategory = computed(() =>
+const unavailableCategory = computed(() =>
     draft.category !== '' && !categoryOptions.value.some(c => c.name === draft.category)
 );
 
@@ -143,19 +141,7 @@ const toggleCategoryGroup = (groupName) => {
 
 const selectPresetCategory = (topic) => {
     draft.category = topic.name;
-    customCategoryInput.value = '';
-    showCustomCategory.value = false;
     expandedCategoryGroups.value = new Set([...expandedCategoryGroups.value, topic.groupName || '其他']);
-};
-
-const selectOther = () => {
-    showCustomCategory.value = true;
-    draft.category = customCategoryInput.value.trim();
-};
-
-const onCustomCategoryInput = (val) => {
-    customCategoryInput.value = val;
-    draft.category = val.trim();
 };
 const pageLoading = ref(false);
 const lastSavedSnapshot = ref('');
@@ -546,13 +532,6 @@ function applyDraft(source = {}) {
     const sourceCategory = source.category || '';
     draft.category = sourceCategory;
     const sourceCategoryObj = categoryOptions.value.find(c => c.name === sourceCategory);
-    if (sourceCategory && !sourceCategoryObj) {
-        customCategoryInput.value = sourceCategory;
-        showCustomCategory.value = true;
-    } else {
-        customCategoryInput.value = '';
-        showCustomCategory.value = false;
-    }
     if (sourceCategoryObj) {
         expandedCategoryGroups.value = new Set([
             ...expandedCategoryGroups.value,
@@ -1455,26 +1434,10 @@ onUnmounted(() => {
                         没有匹配的分类，可以使用自定义分类。
                     </p>
                 </div>
-                <button
-                    type="button"
-                    :class="['editor-category-pill', 'editor-category-pill--other', { active: showCustomCategory }]"
-                    @click="selectOther"
-                >
-                    自定义分类
-                </button>
-                <div v-if="showCustomCategory" class="editor-category-custom">
-                    <input
-                        :value="customCategoryInput"
-                        type="text"
-                        maxlength="50"
-                        placeholder="输入自定义分类名称"
-                        class="editor-category-custom-input"
-                        autofocus
-                        @input="onCustomCategoryInput($event.target.value)"
-                    >
-                    <p class="editor-category-custom-tip">自定义分类不会出现在首页筛选栏，但仍会显示在文章页头部。如需让文章出现在首页分类筛选中，请选择上方已有分类。</p>
-                </div>
-                <p v-if="!draft.category" class="editor-category-hint">请选择一个分类或输入自定义分类</p>
+                <p v-if="unavailableCategory" class="editor-category-hint">
+                    当前分类已不可用，请重新选择一个启用分类。
+                </p>
+                <p v-else-if="!draft.category" class="editor-category-hint">请选择一个启用分类</p>
             </section>
             <section class="editor-side-block">
                 <p class="eyebrow">标签</p>

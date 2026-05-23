@@ -26,6 +26,7 @@ public class TagPersistenceConverter {
             tagDO.getId(),
             tagDO.getName(),
             tagDO.getDescription(),
+            tagDO.getGroupName(),
             tagDO.getEnabled(),
             tagDO.getCreatedAt(),
             tagDO.getUpdatedAt(),
@@ -48,6 +49,7 @@ public class TagPersistenceConverter {
         tagDO.setId(tag.getId().getValue());
         tagDO.setName(tag.getName());
         tagDO.setDescription(tag.getDescription());
+        tagDO.setGroupName(tag.getGroupName());
         tagDO.setEnabled(tag.getEnabled());
         tagDO.setCreatedAt(tag.getCreatedAt());
         tagDO.setUpdatedAt(tag.getUpdatedAt());

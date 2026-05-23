@@ -28,6 +28,11 @@ public class Category {
     private String groupName;
 
     /**
+     * 所属分类组 ID
+     */
+    private Long groupId;
+
+    /**
      * 分类描述
      */
     private String description;
@@ -74,10 +79,13 @@ public class Category {
      * @param sortOrder   排序权重
      * @return 分类聚合根
      */
-    public static Category create(Long id, String name, String description, Integer sortOrder) {
+    public static Category create(Long id, String name, Long groupId, String groupName, String description,
+                                  Integer sortOrder) {
         Category category = new Category();
         category.id = new CategoryId(id);
         category.name = name;
+        category.groupId = groupId;
+        category.groupName = groupName;
         category.description = description;
         category.sortOrder = sortOrder;
         category.enabled = true;
@@ -91,10 +99,15 @@ public class Category {
     /**
      * 创建分类聚合根（含所属大类）。
      */
+    public static Category create(Long id, String name, String description, Integer sortOrder) {
+        return create(id, name, null, null, description, sortOrder);
+    }
+
+    /**
+     * 创建分类聚合根（含所属大类）。
+     */
     public static Category create(Long id, String name, String groupName, String description, Integer sortOrder) {
-        Category category = create(id, name, description, sortOrder);
-        category.groupName = groupName;
-        return category;
+        return create(id, name, null, groupName, description, sortOrder);
     }
 
     /**
@@ -114,15 +127,23 @@ public class Category {
     public static Category restore(Long id, String name, String description, Integer sortOrder,
                                     Boolean enabled, LocalDateTime createdAt, LocalDateTime updatedAt,
                                     LocalDateTime deletedAt, Integer version) {
-        return restore(id, name, null, description, sortOrder, enabled, createdAt, updatedAt, deletedAt, version);
+        return restore(id, name, null, null, description, sortOrder, enabled, createdAt, updatedAt, deletedAt, version);
     }
 
     public static Category restore(Long id, String name, String groupName, String description, Integer sortOrder,
                                     Boolean enabled, LocalDateTime createdAt, LocalDateTime updatedAt,
                                     LocalDateTime deletedAt, Integer version) {
+        return restore(id, name, null, groupName, description, sortOrder, enabled, createdAt, updatedAt, deletedAt,
+            version);
+    }
+
+    public static Category restore(Long id, String name, Long groupId, String groupName, String description,
+                                    Integer sortOrder, Boolean enabled, LocalDateTime createdAt,
+                                    LocalDateTime updatedAt, LocalDateTime deletedAt, Integer version) {
         Category category = new Category();
         category.id = new CategoryId(id);
         category.name = name;
+        category.groupId = groupId;
         category.groupName = groupName;
         category.description = description;
         category.sortOrder = sortOrder;
@@ -142,8 +163,10 @@ public class Category {
      * @param sortOrder   新排序权重
      * @param enabled     是否启用
      */
-    public void update(String name, String groupName, String description, Integer sortOrder, Boolean enabled) {
+    public void update(String name, Long groupId, String groupName, String description, Integer sortOrder,
+                       Boolean enabled) {
         this.name = name;
+        this.groupId = groupId;
         this.groupName = groupName;
         this.description = description;
         this.sortOrder = sortOrder;
@@ -195,6 +218,15 @@ public class Category {
      */
     public String getGroupName() {
         return groupName;
+    }
+
+    /**
+     * 获取所属分类组 ID。
+     *
+     * @return 所属分类组 ID
+     */
+    public Long getGroupId() {
+        return groupId;
     }
 
     /**

@@ -82,6 +82,7 @@ public class ArticleAppService {
     private final ApplicationEventPublisher eventPublisher;
     private final ArticleVersionRepository articleVersionRepository;
     private final SensitiveWordAppService sensitiveWordAppService;
+    private final CategoryAppService categoryAppService;
     private final HomePortalCacheInvalidator homePortalCacheInvalidator;
     private final String defaultArticleCoverUrl;
     private final Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache;
@@ -102,6 +103,7 @@ public class ArticleAppService {
                              ApplicationEventPublisher eventPublisher,
                              ArticleVersionRepository articleVersionRepository,
                              SensitiveWordAppService sensitiveWordAppService,
+                             CategoryAppService categoryAppService,
                              HomePortalCacheInvalidator homePortalCacheInvalidator,
                              @Value("${my-blog.default-article-cover-url:}") String defaultArticleCoverUrl,
                              @Qualifier("recommendedArticleFeedCache")
@@ -123,6 +125,7 @@ public class ArticleAppService {
         this.eventPublisher = eventPublisher;
         this.articleVersionRepository = articleVersionRepository;
         this.sensitiveWordAppService = sensitiveWordAppService;
+        this.categoryAppService = categoryAppService;
         this.homePortalCacheInvalidator = homePortalCacheInvalidator;
         this.defaultArticleCoverUrl = StringUtils.hasText(defaultArticleCoverUrl)
             ? defaultArticleCoverUrl : DEFAULT_COVER_URL;
@@ -546,6 +549,7 @@ public class ArticleAppService {
         }
         ensureSlugAvailable(command.getSlug(), null);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
+        String normalizedCategory = requireEnabledCategory(command.getCategory());
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             command.getTitle(),
             command.getSummary(),
@@ -561,7 +565,7 @@ public class ArticleAppService {
             sanitizedContent.getSummary(),
             sanitizedContent.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
-            command.getCategory(),
+            normalizedCategory,
             command.getTags(),
             targetStatus,
             command.getSlug(),
@@ -628,6 +632,7 @@ public class ArticleAppService {
         }
         ensureSlugAvailable(command.getSlug(), articleId);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
+        String normalizedCategory = requireEnabledCategory(command.getCategory());
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             command.getTitle(),
             command.getSummary(),
@@ -642,7 +647,7 @@ public class ArticleAppService {
             sanitizedContent.getSummary(),
             sanitizedContent.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
-            command.getCategory(),
+            normalizedCategory,
             command.getTags(),
             command.getSlug(),
             command.getSeoTitle(),
@@ -1488,10 +1493,10 @@ public class ArticleAppService {
             errors,
             "category",
             "文章分类",
-            StringUtils.hasText(category),
+            StringUtils.hasText(category) && categoryAppService.isEnabledCategoryName(category),
             "error",
             "文章分类已选择",
-            "发布前请先选择文章分类"
+            "发布前请先选择有效分类"
         );
         appendCheck(
             checks,
@@ -1597,6 +1602,15 @@ public class ArticleAppService {
      */
     private String normalizeValue(String source) {
         return source == null ? "" : source.trim();
+    }
+
+    private String requireEnabledCategory(String category) {
+        String normalizedCategory = normalizeValue(category);
+        if (!StringUtils.hasText(normalizedCategory)
+            || !categoryAppService.isEnabledCategoryName(normalizedCategory)) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择有效分类");
+        }
+        return normalizedCategory;
     }
 
     /**

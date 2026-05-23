@@ -4,6 +4,7 @@ import com.myblog.domain.model.aggregate.Tag;
 import com.myblog.domain.model.valueobject.TagId;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -81,4 +82,26 @@ public interface TagRepository {
      * @return 热门标签列表
      */
     List<Tag> findHot(int limit);
+
+    /**
+     * 查询所有不重复的标签大类。
+     *
+     * @return 大类列表
+     */
+    List<Map<String, Object>> findDistinctGroups();
+
+    /**
+     * 重命名标签大类。
+     *
+     * @param oldName 原大类名称
+     * @param newName 新大类名称
+     */
+    void renameGroup(String oldName, String newName);
+
+    /**
+     * 清空指定大类的标签（设为 NULL）。
+     *
+     * @param groupName 大类名称
+     */
+    void clearGroup(String groupName);
 }

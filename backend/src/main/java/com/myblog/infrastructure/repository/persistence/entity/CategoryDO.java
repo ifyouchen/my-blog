@@ -26,6 +26,11 @@ public class CategoryDO {
     private String groupName;
 
     /**
+     * 所属分类组 ID
+     */
+    private Long groupId;
+
+    /**
      * 分类描述
      */
     private String description;
@@ -112,6 +117,24 @@ public class CategoryDO {
      */
     public void setGroupName(String groupName) {
         this.groupName = groupName;
+    }
+
+    /**
+     * 获取所属分类组 ID。
+     *
+     * @return 所属分类组 ID
+     */
+    public Long getGroupId() {
+        return groupId;
+    }
+
+    /**
+     * 设置所属分类组 ID。
+     *
+     * @param groupId 所属分类组 ID
+     */
+    public void setGroupId(Long groupId) {
+        this.groupId = groupId;
     }
 
     /**

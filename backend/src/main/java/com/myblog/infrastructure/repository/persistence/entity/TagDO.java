@@ -26,6 +26,11 @@ public class TagDO {
     private String description;
 
     /**
+     * 所属大类
+     */
+    private String groupName;
+
+    /**
      * 是否启用
      */
     private Boolean enabled;
@@ -102,6 +107,24 @@ public class TagDO {
      */
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /**
+     * 获取所属大类。
+     *
+     * @return 所属大类
+     */
+    public String getGroupName() {
+        return groupName;
+    }
+
+    /**
+     * 设置所属大类。
+     *
+     * @param groupName 所属大类
+     */
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
     }
 
     /**

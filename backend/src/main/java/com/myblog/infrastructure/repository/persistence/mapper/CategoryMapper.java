@@ -47,6 +47,8 @@ public interface CategoryMapper {
      * @return 分类列表
      */
     List<CategoryDO> selectPage(@Param("enabled") Boolean enabled,
+                                @Param("groupId") Long groupId,
+                                @Param("keyword") String keyword,
                                 @Param("offset") int offset,
                                 @Param("pageSize") int pageSize);
 
@@ -56,7 +58,9 @@ public interface CategoryMapper {
      * @param enabled 是否启用，null 表示不过滤
      * @return 分类总数
      */
-    long countAll(@Param("enabled") Boolean enabled);
+    long countAll(@Param("enabled") Boolean enabled,
+                  @Param("groupId") Long groupId,
+                  @Param("keyword") String keyword);
 
     /**
      * 根据名称统计分类数量（可排除指定 ID）。
@@ -66,6 +70,22 @@ public interface CategoryMapper {
      * @return 分类数量
      */
     int countByName(@Param("name") String name, @Param("excludeId") Long excludeId);
+
+    /**
+     * 根据启用分类名称统计数量，分类组也必须启用。
+     *
+     * @param name 分类名称
+     * @return 分类数量
+     */
+    int countEnabledByName(@Param("name") String name);
+
+    /**
+     * 统计指定分类组下的小分类数量。
+     *
+     * @param groupId 分类组 ID
+     * @return 小分类数量
+     */
+    long countByGroupId(@Param("groupId") Long groupId);
 
     /**
      * 查询下一个分类 ID。
