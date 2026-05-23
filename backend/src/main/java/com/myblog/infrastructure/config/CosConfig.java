@@ -41,7 +41,6 @@ public class CosConfig {
         AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
             .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, properties.getRegion()))
             .withCredentials(new AWSStaticCredentialsProvider(credentials))
-            .withPathStyleAccessEnabled(true)
             .build();
         LOG.info("COS S3 客户端初始化完成，endpoint={}, bucket={}", endpoint, properties.getBucket());
         return s3Client;
