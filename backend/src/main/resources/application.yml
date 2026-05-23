@@ -27,16 +27,16 @@ spring:
             enable: ${MAIL_SMTP_SSL_ENABLE:true}
           starttls:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
-#  sql:
-#    init:
-#      mode: always
-#      schema-locations:
-#        - classpath:db/schema.sql
-#        - classpath:db/growth/growth-schema.sql
-#      data-locations:
-#        - classpath:db/initdata.sql
-#        - classpath*:db/articles/*.sql
-#        - classpath:db/category_groups_migration.sql
+  sql:
+    init:
+      mode: always
+      schema-locations:
+        - classpath:db/schema.sql
+        - classpath:db/growth/growth-schema.sql
+      data-locations:
+        - classpath:db/initdata.sql
+        - classpath*:db/articles/*.sql
+        - classpath:db/category_groups_migration.sql
   task:
     scheduling:
       pool:
