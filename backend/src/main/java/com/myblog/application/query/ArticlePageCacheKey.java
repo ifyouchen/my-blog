@@ -14,6 +14,7 @@ public class ArticlePageCacheKey {
     private final int pageSize;
     private final String keyword;
     private final String category;
+    private final String categoryGroup;
     private final String tag;
     private final String sort;
     private final String authorKeyword;
@@ -26,6 +27,7 @@ public class ArticlePageCacheKey {
         this.pageSize = Math.max(query.getPageSize(), 1);
         this.keyword = normalize(query.getKeyword());
         this.category = normalize(query.getCategory());
+        this.categoryGroup = normalize(query.getCategoryGroup());
         this.tag = normalize(query.getTag());
         this.sort = normalize(query.getSort());
         this.authorKeyword = normalize(query.getAuthorKeyword());
@@ -66,6 +68,7 @@ public class ArticlePageCacheKey {
             && fulltext == that.fulltext
             && Objects.equals(keyword, that.keyword)
             && Objects.equals(category, that.category)
+            && Objects.equals(categoryGroup, that.categoryGroup)
             && Objects.equals(tag, that.tag)
             && Objects.equals(sort, that.sort)
             && Objects.equals(authorKeyword, that.authorKeyword)
@@ -75,6 +78,6 @@ public class ArticlePageCacheKey {
 
     @Override
     public int hashCode() {
-        return Objects.hash(page, pageSize, keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, fulltext);
+        return Objects.hash(page, pageSize, keyword, category, categoryGroup, tag, sort, authorKeyword, dateFrom, dateTo, fulltext);
     }
 }
