@@ -1172,6 +1172,8 @@ onBeforeRouteLeave(() => {
         top: auto;
         right: 0;
         left: 0;
+        display: flex;
+        flex-direction: column;
         width: 100%;
         max-height: 88vh;
         padding: 18px;
@@ -1185,27 +1187,34 @@ onBeforeRouteLeave(() => {
         top: 0;
     }
 
+    .taxonomy-drawer-head {
+        flex: 0 0 auto;
+    }
+
     .taxonomy-drawer-head h3 {
         font-size: 18px;
     }
 
+    .taxonomy-all-option {
+        flex: 0 0 auto;
+    }
+
     .taxonomy-drawer-body {
         display: flex;
+        flex: 1;
         flex-direction: column;
         gap: 12px;
+        min-height: 0;
+        overflow: hidden;
     }
 
     .taxonomy-group-list {
         display: flex;
+        flex: 0 0 auto;
         gap: 8px;
         margin: 0 -18px;
         padding: 0 18px 4px;
         overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .taxonomy-group-list::-webkit-scrollbar {
-        display: none;
     }
 
     .taxonomy-group-list button {
@@ -1214,6 +1223,9 @@ onBeforeRouteLeave(() => {
     }
 
     .taxonomy-category-panel {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
         padding: 14px;
     }
 
