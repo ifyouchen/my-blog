@@ -323,7 +323,8 @@ public class ArticleAppService {
             && !query.isFollowingOnly()
             && !needsEnhancedSearch
             && !StringUtils.hasText(query.getKeyword())
-            && !StringUtils.hasText(query.getTag());
+            && !StringUtils.hasText(query.getTag())
+            && !StringUtils.hasText(query.getCategoryGroup());
     }
 
     private boolean isPublishedPageCacheable(ArticlePageQuery query) {

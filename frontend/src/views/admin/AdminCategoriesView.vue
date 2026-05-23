@@ -783,6 +783,23 @@ loadGroups();
     gap: 8px;
 }
 
+.admin-group-card-actions button {
+    min-height: 32px;
+    padding: 0 12px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.admin-group-card-actions button:hover:not(:disabled) {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
 .admin-group-card-desc {
     margin: 8px 0 0;
     color: var(--muted);
