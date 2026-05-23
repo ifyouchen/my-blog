@@ -25,6 +25,7 @@ public class CategoryGroupAppService {
 
     private final CategoryGroupRepository categoryGroupRepository;
     private final CategoryRepository categoryRepository;
+    private final CategoryAppService categoryAppService;
     private final HomePortalCacheInvalidator homePortalCacheInvalidator;
 
     /**
@@ -32,13 +33,16 @@ public class CategoryGroupAppService {
      *
      * @param categoryGroupRepository 分类组仓储
      * @param categoryRepository 分类仓储
+     * @param categoryAppService 分类应用服务
      * @param homePortalCacheInvalidator 首页缓存失效器
      */
     public CategoryGroupAppService(CategoryGroupRepository categoryGroupRepository,
                                    CategoryRepository categoryRepository,
+                                   CategoryAppService categoryAppService,
                                    HomePortalCacheInvalidator homePortalCacheInvalidator) {
         this.categoryGroupRepository = categoryGroupRepository;
         this.categoryRepository = categoryRepository;
+        this.categoryAppService = categoryAppService;
         this.homePortalCacheInvalidator = homePortalCacheInvalidator;
     }
 
@@ -124,7 +128,7 @@ public class CategoryGroupAppService {
         group.update(normalizedName, normalizedDescription, sortOrder == null ? 0 : sortOrder,
             enabled == null ? Boolean.TRUE : enabled);
         categoryGroupRepository.save(group);
-        homePortalCacheInvalidator.evictBootstrap();
+        categoryAppService.invalidateCategoryCache();
         return toDTO(group);
     }
 

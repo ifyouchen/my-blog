@@ -351,7 +351,14 @@ const closeTaxonomyDrawer = () => {
 
 const selectAllTaxonomy = async () => {
     taxonomyDrawerOpen.value = false;
-    await router.push({
+    activeGroup.value = '';
+    activeCategory.value = '';
+    await loadArticles({
+        sort: normalizeArticleSort(route.query.sort || resolveDefaultSort(feedTab.value)),
+        category: '',
+        force: true
+    });
+    await router.replace({
         query: {
             ...route.query,
             group: undefined,
@@ -364,7 +371,14 @@ const selectAllTaxonomy = async () => {
 const selectGroupTaxonomy = async (groupName) => {
     selectedDrawerGroup.value = groupName;
     taxonomyDrawerOpen.value = false;
-    await router.push({
+    activeGroup.value = groupName || '';
+    activeCategory.value = '';
+    await loadArticles({
+        sort: normalizeArticleSort(route.query.sort || resolveDefaultSort(feedTab.value)),
+        category: '',
+        force: true
+    });
+    await router.replace({
         query: {
             ...route.query,
             group: groupName || undefined,
@@ -376,7 +390,14 @@ const selectGroupTaxonomy = async (groupName) => {
 
 const selectCategoryTaxonomy = async (groupName, categoryName) => {
     taxonomyDrawerOpen.value = false;
-    await router.push({
+    activeGroup.value = groupName || '';
+    activeCategory.value = categoryName || '';
+    await loadArticles({
+        sort: normalizeArticleSort(route.query.sort || resolveDefaultSort(feedTab.value)),
+        category: categoryName || '',
+        force: true
+    });
+    await router.replace({
         query: {
             ...route.query,
             group: groupName || undefined,
@@ -445,14 +466,15 @@ const restoreMemoryFeedState = (state) => {
     activeSort.value = normalizeArticleSort(state.sort || resolveDefaultSort());
 };
 
-const loadArticles = async ({ sort, category } = {}) => {
+const loadArticles = async ({ sort, category, force } = {}) => {
     const targetSort = normalizeArticleSort(sort || resolveDefaultSort(feedTab.value));
     const normalizedCategory = normalizeCategory(category);
     const targetCacheVersion = getFeedCacheVersion(feedTab.value, targetSort);
     const normalizedGroup = normalizeGroup(activeGroup.value);
     const cachedState = feedCache.value[feedTab.value] || createFeedCacheState();
     if (
-        cachedState.loaded
+        !force
+        && cachedState.loaded
         && cachedState.category === normalizedCategory
         && (cachedState.group || '') === normalizedGroup
         && normalizeArticleSort(cachedState.sort) === targetSort
@@ -469,7 +491,8 @@ const loadArticles = async ({ sort, category } = {}) => {
         return;
     }
     if (
-        restoreFeedCache(
+        !force
+        && restoreFeedCache(
             buildFeedCacheKey(feedTab.value, targetSort, normalizedCategory, normalizedGroup),
             getFeedCacheOptions(feedTab.value, targetSort)
         )

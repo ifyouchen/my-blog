@@ -274,7 +274,7 @@ public class CategoryAppService {
     /**
      * 失效分类缓存并同步失效首页启动缓存。
      */
-    private void invalidateCategoryCache() {
+    public void invalidateCategoryCache() {
         categoriesCache.invalidateAll();
         homePortalCacheInvalidator.evictBootstrap();
     }
