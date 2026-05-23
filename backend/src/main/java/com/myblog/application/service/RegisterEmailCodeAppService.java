@@ -1,10 +1,10 @@
 package com.myblog.application.service;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.util.BizLogHelper;
+import org.redisson.api.RMapCache;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,25 +29,28 @@ public class RegisterEmailCodeAppService {
     private static final Logger log = LoggerFactory.getLogger(RegisterEmailCodeAppService.class);
     private static final int MAX_VERIFY_FAIL_COUNT = 5;
     private static final long CODE_EXPIRE_MILLIS = TimeUnit.MINUTES.toMillis(10);
+    private static final String CACHE_NAME = "emailVerifyCode";
 
-    private final Cache<String, RegisterEmailCode> emailCodeCache;
+    private final RMapCache<String, RegisterEmailCode> emailCodeCache;
     private final EmailQueueAppService emailQueueAppService;
     private final long resendIntervalSeconds;
 
     @Autowired
     public RegisterEmailCodeAppService(
+        RedissonClient redissonClient,
         EmailQueueAppService emailQueueAppService,
         @Value("${my-blog.mail.email-resend-interval-seconds:30}") long resendIntervalSeconds) {
-        this(emailQueueAppService, CODE_EXPIRE_MILLIS, resendIntervalSeconds);
+        this.emailCodeCache = redissonClient.getMapCache(CACHE_NAME);
+        this.emailQueueAppService = emailQueueAppService;
+        this.resendIntervalSeconds = Math.max(resendIntervalSeconds, 1L);
     }
 
     RegisterEmailCodeAppService(EmailQueueAppService emailQueueAppService,
                                 long codeExpireMillis,
-                                long resendIntervalSeconds) {
+                                long resendIntervalSeconds,
+                                RMapCache<String, RegisterEmailCode> testCache) {
+        this.emailCodeCache = testCache;
         this.emailQueueAppService = emailQueueAppService;
-        this.emailCodeCache = Caffeine.newBuilder()
-            .expireAfterWrite(codeExpireMillis, TimeUnit.MILLISECONDS)
-            .build();
         this.resendIntervalSeconds = Math.max(resendIntervalSeconds, 1L);
     }
 
@@ -59,7 +62,7 @@ public class RegisterEmailCodeAppService {
     public void sendCode(String email) {
         long _start = System.currentTimeMillis();
         String normalizedEmail = normalizeEmail(email);
-        RegisterEmailCode existingCode = emailCodeCache.getIfPresent(normalizedEmail);
+        RegisterEmailCode existingCode = emailCodeCache.get(normalizedEmail);
         LocalDateTime now = LocalDateTime.now();
         if (existingCode != null
             && Duration.between(existingCode.getSentAt(), now).getSeconds() < resendIntervalSeconds) {
@@ -67,15 +70,12 @@ public class RegisterEmailCodeAppService {
         }
 
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
-        emailCodeCache.put(normalizedEmail, new RegisterEmailCode(code, now));
+        emailCodeCache.put(normalizedEmail, new RegisterEmailCode(code, now), CODE_EXPIRE_MILLIS, TimeUnit.MILLISECONDS);
         try {
             emailQueueAppService.enqueueRegisterCode(normalizedEmail, code);
-        } catch (ApplicationException exception) {
-            emailCodeCache.invalidate(normalizedEmail);
-            throw exception;
         } catch (RuntimeException exception) {
-            emailCodeCache.invalidate(normalizedEmail);
-            throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "验证码发送失败，请稍后重试");
+            emailCodeCache.remove(normalizedEmail);
+            throw exception;
         }
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "发送注册验证码",
@@ -85,16 +85,10 @@ public class RegisterEmailCodeAppService {
             BizLogHelper.elapsed(_start));
     }
 
-    /**
-     * 校验并消费注册验证码。
-     *
-     * @param email 邮箱
-     * @param code 验证码
-     */
     public void verifyAndConsume(String email, String code) {
         long _start = System.currentTimeMillis();
         String normalizedEmail = normalizeEmail(email);
-        RegisterEmailCode cachedCode = emailCodeCache.getIfPresent(normalizedEmail);
+        RegisterEmailCode cachedCode = emailCodeCache.get(normalizedEmail);
         if (cachedCode == null) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "验证码无效或已过期，请重新获取");
         }
@@ -102,14 +96,15 @@ public class RegisterEmailCodeAppService {
         String submittedCode = code == null ? "" : code.trim();
         if (!cachedCode.getCode().equals(submittedCode)) {
             int failCount = cachedCode.increaseFailCount();
+            emailCodeCache.put(normalizedEmail, cachedCode, CODE_EXPIRE_MILLIS, TimeUnit.MILLISECONDS);
             if (failCount >= MAX_VERIFY_FAIL_COUNT) {
-                emailCodeCache.invalidate(normalizedEmail);
+                emailCodeCache.remove(normalizedEmail);
                 throw new ApplicationException(ErrorCode.PARAM_ERROR, "验证码错误次数过多，请重新获取");
             }
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "验证码不正确");
         }
 
-        emailCodeCache.invalidate(normalizedEmail);
+        emailCodeCache.remove(normalizedEmail);
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "校验验证码",
             BizLogHelper.trace(),
@@ -125,11 +120,14 @@ public class RegisterEmailCodeAppService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    private static class RegisterEmailCode {
+    static class RegisterEmailCode {
 
-        private final String code;
-        private final LocalDateTime sentAt;
+        private String code;
+        private LocalDateTime sentAt;
         private int failCount;
+
+        RegisterEmailCode() {
+        }
 
         RegisterEmailCode(String code, LocalDateTime sentAt) {
             this.code = code;
@@ -140,13 +138,28 @@ public class RegisterEmailCodeAppService {
             return code;
         }
 
+        void setCode(String code) {
+            this.code = code;
+        }
+
         LocalDateTime getSentAt() {
             return sentAt;
         }
 
+        void setSentAt(LocalDateTime sentAt) {
+            this.sentAt = sentAt;
+        }
+
         int increaseFailCount() {
-            this.failCount++;
-            return this.failCount;
+            return ++failCount;
+        }
+
+        int getFailCount() {
+            return failCount;
+        }
+
+        void setFailCount(int failCount) {
+            this.failCount = failCount;
         }
     }
 }

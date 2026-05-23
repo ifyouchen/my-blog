@@ -2,14 +2,15 @@ package com.myblog.application.config;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.myblog.application.cache.TwoTierCache;
 import com.myblog.application.dto.ArticleDTO;
+import com.myblog.application.dto.ArticleRecommendationsDTO;
 import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.HomeBootstrapDTO;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
 import com.myblog.application.dto.TagDTO;
-import com.myblog.application.dto.ArticleRecommendationsDTO;
 import com.myblog.application.query.ArticlePageCacheKey;
 import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.application.service.HomeStatsAppService.HomeStats;
@@ -23,17 +24,24 @@ import com.myblog.growth.domain.model.valueobject.LevelRewardConfig;
 import com.myblog.growth.domain.model.valueobject.LevelThreshold;
 import com.myblog.growth.domain.model.valueobject.PointRule;
 import com.myblog.shared.result.PageResult;
+import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 应用缓存配置类，定义各类 Caffeine 本地缓存 Bean 及异步任务线程池。
+ * 应用缓存配置类，定义两级缓存（Caffeine L1 + Redisson L2）及异步任务线程池。
  *
  * @author my-blog
  * @since 1.0.0
@@ -41,214 +49,173 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Configuration
 public class CacheConfig {
 
-    /**
-     * 首页统计缓存。
-     *
-     * <p>统计值允许分钟级延迟，以换取首页高频访问下的聚合开销下降。</p>
-     */
-    @Bean
-    public Cache<Long, HomeStats> homeStatsCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(4, TimeUnit.MINUTES)
-                .build();
+    private static final Logger log = LoggerFactory.getLogger(CacheConfig.class);
+
+    private final RedissonClient redissonClient;
+    private final StringRedisTemplate redisTemplate;
+
+    public CacheConfig(RedissonClient redissonClient, StringRedisTemplate redisTemplate) {
+        this.redissonClient = redissonClient;
+        this.redisTemplate = redisTemplate;
     }
 
-    /**
-     * 首页引导信息缓存。
-     *
-     * <p>该接口通常首屏就会命中，使用更短 TTL 兼顾刷新速度与接口吞吐。</p>
-     */
+    @PostConstruct
+    public void clearOldCacheData() {
+        Set<String> keys = redisTemplate.keys("twoTierCache:*");
+        if (keys != null && !keys.isEmpty()) {
+            log.info("Clearing {} stale cache keys from Redis (format change)", keys.size());
+            redisTemplate.delete(keys);
+        }
+    }
+
+    private static long l1Ttl(long l2Seconds) {
+        return Math.max(l2Seconds * 100, 5000L);
+    }
+
+    @Bean
+    public Cache<Long, HomeStats> homeStatsCache() {
+        long l2 = TimeUnit.MINUTES.toSeconds(4);
+        return new TwoTierCache<>("homeStats", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
+    }
+
     @Bean
     public Cache<String, HomeBootstrapDTO> homeBootstrapCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(45, TimeUnit.SECONDS)
-                .build();
+        long l2 = TimeUnit.SECONDS.toSeconds(45);
+        return new TwoTierCache<>("homeBootstrap", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<CategoryDTO>> categoriesCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(8)
-                .expireAfterWrite(3, TimeUnit.MINUTES)
-                .build();
+        long l2 = TimeUnit.MINUTES.toSeconds(3);
+        return new TwoTierCache<>("categories", l1Ttl(l2), l2, 8, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<TagDTO>> tagsCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(3, TimeUnit.MINUTES)
-                .build();
+        long l2 = TimeUnit.MINUTES.toSeconds(3);
+        return new TwoTierCache<>("tags", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
-    /**
-     * 榜单类缓存。
-     *
-     * <p>排行榜变化相对较慢，允许小时级缓存以减少重复排序计算。</p>
-     */
     @Bean
     public Cache<String, List<ArticleDTO>> articleRankingsCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(2, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(2);
+        return new TwoTierCache<>("articleRankings", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<ArticleDTO>> featuredArticlesCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(128)
-                .expireAfterWrite(45, TimeUnit.SECONDS)
-                .build();
+        long l2 = TimeUnit.SECONDS.toSeconds(45);
+        return new TwoTierCache<>("featuredArticles", l1Ttl(l2), l2, 128, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<RecommendArticleCacheKey, PageResult<Article>> recommendedArticleFeedCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(1, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(1);
+        return new TwoTierCache<>("recommendedArticleFeed", l1Ttl(l2), l2, 512, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<ArticlePageCacheKey, PageResult<Article>> publishedArticlePageCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(45, TimeUnit.SECONDS)
-                .build();
+        long l2 = TimeUnit.SECONDS.toSeconds(45);
+        return new TwoTierCache<>("publishedArticlePage", l1Ttl(l2), l2, 512, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<Long, ArticleDTO> publicArticleDetailCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(60, TimeUnit.SECONDS)
-                .build();
+        long l2 = TimeUnit.SECONDS.toSeconds(60);
+        return new TwoTierCache<>("publicArticleDetail", l1Ttl(l2), l2, 512, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, ArticleRecommendationsDTO> articleRecommendationsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(2, TimeUnit.MINUTES)
-                .build();
+        long l2 = TimeUnit.MINUTES.toSeconds(2);
+        return new TwoTierCache<>("articleRecommendations", l1Ttl(l2), l2, 512, redissonClient, redisTemplate);
     }
 
     @Bean
-    public Cache<Long, java.util.Map<String, ArticleDTO>> articleNeighborsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(2, TimeUnit.MINUTES)
-                .build();
+    public Cache<Long, Map<String, ArticleDTO>> articleNeighborsCache() {
+        long l2 = TimeUnit.MINUTES.toSeconds(2);
+        return new TwoTierCache<>("articleNeighbors", l1Ttl(l2), l2, 512, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<AuthorRankingDTO>> authorRankingsCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(2, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(2);
+        return new TwoTierCache<>("authorRankings", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
-    /**
-     * 未读通知数缓存。
-     *
-     * <p>短 TTL 让角标尽快回落到真实值，避免用户长期看到过期未读数。</p>
-     */
     @Bean
     public Cache<Long, Long> notificationUnreadCountCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(30, TimeUnit.SECONDS)
-                .build();
+        long l2 = TimeUnit.SECONDS.toSeconds(30);
+        return new TwoTierCache<>("notificationUnreadCount", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<NotificationDTO>> recentNotificationsCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(30, TimeUnit.SECONDS)
-                .build();
+        long l2 = TimeUnit.SECONDS.toSeconds(30);
+        return new TwoTierCache<>("recentNotifications", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, SearchBootstrapDTO> searchBootstrapCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(3, TimeUnit.MINUTES)
-                .build();
+        long l2 = TimeUnit.MINUTES.toSeconds(3);
+        return new TwoTierCache<>("searchBootstrap", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<LevelThreshold>> levelThresholdsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(8)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("levelThresholds", l1Ttl(l2), l2, 8, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<LevelRewardConfig>> levelRewardsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(16)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("levelRewards", l1Ttl(l2), l2, 16, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<LevelPrivilegeConfig>> levelPrivilegesCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(32)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("levelPrivileges", l1Ttl(l2), l2, 32, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<GrowthRule>> growthRulesCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(64)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("growthRules", l1Ttl(l2), l2, 64, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<PointRule>> pointRulesCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(64)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("pointRules", l1Ttl(l2), l2, 64, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<ConsecutiveSignInRewardConfig>> consecutiveSignInRewardsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(16)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("consecutiveSignInRewards", l1Ttl(l2), l2, 16, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<CumulativeSignInRewardConfig>> cumulativeSignInRewardsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(16)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("cumulativeSignInRewards", l1Ttl(l2), l2, 16, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<String, List<BadgeDefinition>> badgeDefinitionsCache() {
-        return Caffeine.newBuilder()
-                .maximumSize(16)
-                .expireAfterWrite(12, TimeUnit.HOURS)
-                .build();
+        long l2 = TimeUnit.HOURS.toSeconds(12);
+        return new TwoTierCache<>("badgeDefinitions", l1Ttl(l2), l2, 16, redissonClient, redisTemplate);
     }
 
     @Bean
     public Cache<Integer, List<String>> hotKeywordsCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(5, TimeUnit.MINUTES)
-                .build();
+        long l2 = TimeUnit.MINUTES.toSeconds(5);
+        return new TwoTierCache<>("hotKeywords", l1Ttl(l2), l2, 0, redissonClient, redisTemplate);
     }
 
-    /**
-     * 举报提交限流缓存。
-     *
-     * <p>以用户维度记录短时间内的提交次数，用于拦截突发刷举报行为。</p>
-     */
     @Bean
     public Cache<Long, AtomicInteger> reportCreateRateCache() {
         return Caffeine.newBuilder()
@@ -256,11 +223,6 @@ public class CacheConfig {
                 .build();
     }
 
-    /**
-     * 通用异步线程池。
-     *
-     * <p>队列满时回退到调用线程执行，优先保证任务不丢失；关闭应用时等待存量任务收尾。</p>
-     */
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -268,20 +230,13 @@ public class CacheConfig {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("async-");
-        // 队列满时由调用线程执行，避免丢失任务
         executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
-        // 应用关闭时等待正在执行的任务完成
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
     }
 
-    /**
-     * 成长模块异步线程池。
-     *
-     * <p>用于异步监听、分账补偿和批量补偿任务，避免与通用异步任务互相挤占。</p>
-     */
     @Bean(name = "growthAsyncExecutor")
     public Executor growthAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -296,11 +251,6 @@ public class CacheConfig {
         return executor;
     }
 
-    /**
-     * 统计计数异步线程池。
-     *
-     * <p>用于异步处理浏览、点赞、收藏、评论等计数更新。</p>
-     */
     @Bean(name = "statsAsyncExecutor")
     public Executor statsAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -20,6 +21,7 @@ import javax.annotation.PostConstruct;
  * </p>
  */
 @Service
+@DependsOn("cacheConfig")
 public class HomeStatsAppService {
 
     private static final Logger log = LoggerFactory.getLogger(HomeStatsAppService.class);
@@ -100,7 +102,10 @@ public class HomeStatsAppService {
          * @param totalAuthors  有文章的作者数
          * @param totalColumns  已发布专栏总数
          */
-        public HomeStats(long totalArticles, long totalAuthors, long totalColumns) {
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public HomeStats(@com.fasterxml.jackson.annotation.JsonProperty("totalArticles") long totalArticles,
+                         @com.fasterxml.jackson.annotation.JsonProperty("totalAuthors") long totalAuthors,
+                         @com.fasterxml.jackson.annotation.JsonProperty("totalColumns") long totalColumns) {
             this.totalArticles = totalArticles;
             this.totalAuthors = totalAuthors;
             this.totalColumns = totalColumns;

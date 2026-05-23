@@ -2,17 +2,59 @@ package com.myblog.application.service;
 
 import com.myblog.shared.exception.ApplicationException;
 import org.junit.jupiter.api.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import org.redisson.api.RMapCache;
+import org.redisson.api.RedissonClient;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class RegisterEmailCodeAppServiceTest {
 
+    private RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> createTestCache() {
+        RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> cache = mock(RMapCache.class);
+        Map<String, RegisterEmailCodeAppService.RegisterEmailCode> store = new ConcurrentHashMap<>();
+
+        when(cache.get(anyString())).thenAnswer(new Answer<RegisterEmailCodeAppService.RegisterEmailCode>() {
+            @Override
+            public RegisterEmailCodeAppService.RegisterEmailCode answer(InvocationOnMock inv) {
+                return store.get(inv.getArgument(0));
+            }
+        });
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock inv) {
+                store.put(inv.getArgument(0), inv.getArgument(1));
+                return null;
+            }
+        }).when(cache).put(anyString(), any(), anyLong(), any(TimeUnit.class));
+        when(cache.remove(anyString())).thenAnswer(new Answer<RegisterEmailCodeAppService.RegisterEmailCode>() {
+            @Override
+            public RegisterEmailCodeAppService.RegisterEmailCode answer(InvocationOnMock inv) {
+                return store.remove(inv.getArgument(0));
+            }
+        });
+
+        return cache;
+    }
+
     @Test
     void sendAndVerifyCodeConsumesCode() {
+        RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> testCache = createTestCache();
         EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
         RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
-            emailQueueAppService, 600000L, 0L
+            emailQueueAppService, 600000L, 0L, testCache
         );
 
         service.sendCode("User@Example.com");
@@ -29,9 +71,10 @@ class RegisterEmailCodeAppServiceTest {
 
     @Test
     void resendTooSoonIsRejected() {
+        RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> testCache = createTestCache();
         EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
         RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
-            emailQueueAppService, 600000L, 30L
+            emailQueueAppService, 600000L, 30L, testCache
         );
 
         service.sendCode("user@example.com");
@@ -42,15 +85,16 @@ class RegisterEmailCodeAppServiceTest {
     }
 
     @Test
-    void codeExpires() throws Exception {
+    void codeExpires() {
+        RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> testCache = createTestCache();
         EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
         RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
-            emailQueueAppService, 1L, 0L
+            emailQueueAppService, 1L, 0L, testCache
         );
 
         service.sendCode("user@example.com");
         EmailTask task = emailQueueAppService.poll();
-        Thread.sleep(5L);
+        testCache.remove("user@example.com");
 
         assertThatThrownBy(() -> service.verifyAndConsume("user@example.com", task.getCode()))
             .isInstanceOf(ApplicationException.class)
@@ -59,9 +103,10 @@ class RegisterEmailCodeAppServiceTest {
 
     @Test
     void tooManyWrongAttemptsInvalidatesCode() {
+        RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> testCache = createTestCache();
         EmailQueueAppService emailQueueAppService = new EmailQueueAppService(10, true);
         RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
-            emailQueueAppService, 600000L, 0L
+            emailQueueAppService, 600000L, 0L, testCache
         );
 
         service.sendCode("user@example.com");
@@ -83,10 +128,11 @@ class RegisterEmailCodeAppServiceTest {
 
     @Test
     void enqueueFailureInvalidatesCode() {
+        RMapCache<String, RegisterEmailCodeAppService.RegisterEmailCode> testCache = createTestCache();
         EmailQueueAppService emailQueueAppService = new EmailQueueAppService(1, true);
         emailQueueAppService.enqueueRegisterCode("busy@example.com", "123456");
         RegisterEmailCodeAppService service = new RegisterEmailCodeAppService(
-            emailQueueAppService, 600000L, 0L
+            emailQueueAppService, 600000L, 0L, testCache
         );
 
         assertThatThrownBy(() -> service.sendCode("user@example.com"))

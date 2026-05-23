@@ -6,7 +6,6 @@ import com.myblog.domain.repository.CategoryGroupRepository;
 import com.myblog.infrastructure.repository.persistence.converter.CategoryGroupPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.CategoryGroupDO;
 import com.myblog.infrastructure.repository.persistence.mapper.CategoryGroupMapper;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -20,7 +19,6 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Repository
-@Profile("!memory")
 public class MyBatisCategoryGroupRepository implements CategoryGroupRepository {
 
     private final CategoryGroupMapper categoryGroupMapper;

@@ -12,7 +12,6 @@ import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPoi
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleMapper;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +30,6 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Repository
-@Profile("!memory")
 public class MyBatisArticleRepository implements ArticleRepository {
 
     private final ArticleMapper articleMapper;

@@ -11,8 +11,7 @@
 ### Backend
 ```bash
 cd backend
-mvn spring-boot:run              # Start backend (auto-creates my_blog DB + tables)
-mvn spring-boot:run -Dspring-boot.run.profiles=memory  # Use in-memory repository instead
+mvn spring-boot:run              # Start backend (auto-creates my_blog DB + tables; requires Redis on localhost:6379)
 mvn test                         # Run backend unit tests
 mvn -q -DskipTests compile       # Fast backend compile check
 ```
@@ -39,7 +38,7 @@ npm run test:e2e:headed            # Playwright e2e tests with browser UI
 
 ## Default Infrastructure
 - MySQL: `localhost:3306/my_blog`, user `root`, password `123456`
-- Redis: `192.168.80.128:6379`, password `123456`
+- Redis: `localhost:6379`, no password (Redisson + Spring Data Redis)
 - Mail: SMTP (QQ), configured in `application.yml`
 - Environment overrides are supported for MySQL, Redis, mail, and frontend base URL in `application.yml`.
 - Uploads default to backend `uploads/`; logs default to `backend/logs/application.log`.
@@ -158,6 +157,10 @@ frontend/src/
 ## Key Files
 - Backend entry: `backend/src/main/resources/application.yml`
 - Backend main class: `backend/src/main/java/com/myblog/MyBlogApplication.java`
+- Redisson config: `backend/src/main/java/com/myblog/infrastructure/config/RedissonConfig.java`
+- Two-tier cache (Caffeine L1 + StringRedisTemplate L2 + GenericJackson2JsonRedisSerializer + Redisson RTopic cross-instance invalidation): `backend/src/main/java/com/myblog/application/cache/TwoTierCache.java`
+- Cache cleanup on startup (`@PostConstruct clearOldCacheData`): `backend/src/main/java/com/myblog/application/config/CacheConfig.java`
+- Cache config (bean definitions): `backend/src/main/java/com/myblog/application/config/CacheConfig.java`
 - DB schema auto-init: `backend/src/main/resources/db/schema.sql`
 - Growth DB schema: `backend/src/main/resources/db/growth/growth-schema.sql`
 - Seed data: `backend/src/main/resources/db/initdata.sql` and `backend/src/main/resources/db/articles/*.sql`

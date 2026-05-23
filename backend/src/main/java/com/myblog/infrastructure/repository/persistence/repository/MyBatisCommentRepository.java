@@ -7,7 +7,6 @@ import com.myblog.domain.repository.CommentRepository;
 import com.myblog.infrastructure.repository.persistence.converter.CommentPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.CommentDO;
 import com.myblog.infrastructure.repository.persistence.mapper.CommentMapper;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +24,6 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Repository
-@Profile("!memory")
 public class MyBatisCommentRepository implements CommentRepository {
 
     private final CommentMapper commentMapper;

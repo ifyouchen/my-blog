@@ -64,9 +64,19 @@ public class GrowthRule {
      * @param version             乐观锁版本号
      * @return 经验规则值对象
      */
-    public static GrowthRule of(Long id, String eventType, String role, int expAmount,
-                                int dailyLimit, String dailyLimitStrategy, boolean enabled,
-                                LocalDateTime effectiveAt, String operator, String reason, int version) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+    public static GrowthRule of(
+            @com.fasterxml.jackson.annotation.JsonProperty("id") Long id,
+            @com.fasterxml.jackson.annotation.JsonProperty("eventType") String eventType,
+            @com.fasterxml.jackson.annotation.JsonProperty("role") String role,
+            @com.fasterxml.jackson.annotation.JsonProperty("expAmount") int expAmount,
+            @com.fasterxml.jackson.annotation.JsonProperty("dailyLimit") int dailyLimit,
+            @com.fasterxml.jackson.annotation.JsonProperty("dailyLimitStrategy") String dailyLimitStrategy,
+            @com.fasterxml.jackson.annotation.JsonProperty("enabled") boolean enabled,
+            @com.fasterxml.jackson.annotation.JsonProperty("effectiveAt") LocalDateTime effectiveAt,
+            @com.fasterxml.jackson.annotation.JsonProperty("operator") String operator,
+            @com.fasterxml.jackson.annotation.JsonProperty("reason") String reason,
+            @com.fasterxml.jackson.annotation.JsonProperty("version") int version) {
         GrowthRule rule = new GrowthRule();
         rule.id = id;
         rule.eventType = eventType;

@@ -4,12 +4,18 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.exception.ApplicationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RMapCache;
+import org.redisson.api.RedissonClient;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JwtAuthenticationInterceptorTest {
 
@@ -18,9 +24,13 @@ class JwtAuthenticationInterceptorTest {
     @BeforeEach
     void setUp() {
         AuthContext.clear();
+        RedissonClient redisson = mock(RedissonClient.class);
+        RMapCache<Object, Object> cache = mock(RMapCache.class);
+        when(redisson.getMapCache(anyString())).thenReturn(cache);
         interceptor = new JwtAuthenticationInterceptor(
             mock(JwtTokenProvider.class),
-            mock(UserRepository.class)
+            mock(UserRepository.class),
+            redisson
         );
     }
 

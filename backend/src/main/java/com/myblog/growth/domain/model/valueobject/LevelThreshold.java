@@ -50,8 +50,16 @@ public class LevelThreshold {
      * @param version     乐观锁版本号
      * @return 等级阈值值对象
      */
-    public static LevelThreshold of(Long id, int level, int minExp, String levelName,
-                                    String description, boolean enabled, String operator, int version) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+    public static LevelThreshold of(
+            @com.fasterxml.jackson.annotation.JsonProperty("id") Long id,
+            @com.fasterxml.jackson.annotation.JsonProperty("level") int level,
+            @com.fasterxml.jackson.annotation.JsonProperty("minExp") int minExp,
+            @com.fasterxml.jackson.annotation.JsonProperty("levelName") String levelName,
+            @com.fasterxml.jackson.annotation.JsonProperty("description") String description,
+            @com.fasterxml.jackson.annotation.JsonProperty("enabled") boolean enabled,
+            @com.fasterxml.jackson.annotation.JsonProperty("operator") String operator,
+            @com.fasterxml.jackson.annotation.JsonProperty("version") int version) {
         LevelThreshold threshold = new LevelThreshold();
         threshold.id = id;
         threshold.level = level;

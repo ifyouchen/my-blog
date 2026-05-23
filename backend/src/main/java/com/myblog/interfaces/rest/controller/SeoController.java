@@ -6,21 +6,18 @@ import com.myblog.domain.model.aggregate.Topic;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.ColumnRepository;
 import com.myblog.domain.repository.TopicRepository;
+import org.redisson.api.RMapCache;
+import org.redisson.api.RedissonClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SEO 相关接口控制器。
- * <p>
- * 提供 {@code robots.txt}、{@code sitemap.xml} 和 {@code rss.xml} 接口，
- * 帮助搜索引擎抓取内容。
- * sitemap 和 RSS 内容有本地时间缓存（TTL 30 分钟），过期后自动重新生成。
- * </p>
  *
  * @author Codex
  * @since 1.0.0
@@ -28,35 +25,27 @@ import java.util.concurrent.ConcurrentHashMap;
 @RestController
 public class SeoController {
 
-    /** Sitemap 时间格式（ISO 8601，+08:00 时区）。 */
     private static final DateTimeFormatter SITEMAP_DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'+08:00'");
-    /** RSS pubDate 时间格式（RFC 822）。 */
     private static final DateTimeFormatter RSS_DATE_FMT = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z");
-    /** 缓存有效期（30 分钟）。 */
     private static final long CACHE_TTL_MS = 30 * 60 * 1000L;
-    /** RSS Feed 最多返回的文章条数。 */
     private static final int RSS_LIMIT = 20;
+    private static final String SEO_CACHE_NAME = "seoCache";
 
     private final ArticleRepository articleRepository;
     private final ColumnRepository columnRepository;
     private final TopicRepository topicRepository;
-
-    /** 本地缓存，key 为 "sitemap" 或 "rss"。 */
-    private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final RMapCache<String, String> seoCache;
 
     public SeoController(ArticleRepository articleRepository,
                          ColumnRepository columnRepository,
-                         TopicRepository topicRepository) {
+                         TopicRepository topicRepository,
+                         RedissonClient redissonClient) {
         this.articleRepository = articleRepository;
         this.columnRepository = columnRepository;
         this.topicRepository = topicRepository;
+        this.seoCache = redissonClient.getMapCache(SEO_CACHE_NAME);
     }
 
-    /**
-     * 返回 robots.txt 内容。
-     *
-     * @return robots.txt 纯文本内容
-     */
     @GetMapping(value = "/robots.txt", produces = "text/plain; charset=utf-8")
     public String robotsTxt() {
         StringBuilder sb = new StringBuilder(256);
@@ -72,43 +61,28 @@ public class SeoController {
         return sb.toString();
     }
 
-    /**
-     * 返回站点地图 XML。有缓存时直接返回缓存内容。
-     *
-     * @return sitemap.xml 内容
-     */
     @GetMapping(value = "/sitemap.xml", produces = "application/xml; charset=utf-8")
     public String sitemapXml() {
-        String cached = getCached("sitemap");
+        String cached = seoCache.get("sitemap");
         if (cached != null) {
             return cached;
         }
         String xml = buildSitemap();
-        cache.put("sitemap", new CacheEntry(xml, System.currentTimeMillis()));
+        seoCache.put("sitemap", xml, CACHE_TTL_MS, TimeUnit.MILLISECONDS);
         return xml;
     }
 
-    /**
-     * 返回 RSS Feed XML。有缓存时直接返回缓存内容。
-     *
-     * @return rss.xml 内容
-     */
     @GetMapping(value = "/rss.xml", produces = "application/xml; charset=utf-8")
     public String rssXml() {
-        String cached = getCached("rss");
+        String cached = seoCache.get("rss");
         if (cached != null) {
             return cached;
         }
         String xml = buildRss();
-        cache.put("rss", new CacheEntry(xml, System.currentTimeMillis()));
+        seoCache.put("rss", xml, CACHE_TTL_MS, TimeUnit.MILLISECONDS);
         return xml;
     }
 
-    /**
-     * 构建完整的 Sitemap XML 字符串。
-     *
-     * @return XML 字符串
-     */
     private String buildSitemap() {
         StringBuilder xml = new StringBuilder(4096);
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -137,13 +111,6 @@ public class SeoController {
         return xml.toString();
     }
 
-    /**
-     * 向 Sitemap 追加一个 URL 条目。
-     *
-     * @param xml     构建中的 XML
-     * @param url     页面路径
-     * @param lastMod 最后修改时间
-     */
     private void appendUrl(StringBuilder xml, String url, LocalDateTime lastMod) {
         xml.append("  <url>\n");
         xml.append("    <loc>https://myblog.example.com").append(url).append("</loc>\n");
@@ -153,11 +120,6 @@ public class SeoController {
         xml.append("  </url>\n");
     }
 
-    /**
-     * 构建完整的 RSS Feed XML 字符串。
-     *
-     * @return XML 字符串
-     */
     private String buildRss() {
         List<Article> articles = articleRepository.findPublishedWithLimit(null, null, null, "latest", RSS_LIMIT, 0);
 
@@ -192,26 +154,6 @@ public class SeoController {
         return xml.toString();
     }
 
-    /**
-     * 获取未过期的缓存内容。
-     *
-     * @param key 缓存键
-     * @return 缓存内容，缓存缺失或已过期则返回 null
-     */
-    private String getCached(String key) {
-        CacheEntry entry = cache.get(key);
-        if (entry != null && System.currentTimeMillis() - entry.timestamp < CACHE_TTL_MS) {
-            return entry.content;
-        }
-        return null;
-    }
-
-    /**
-     * 转义 XML 特殊字符。
-     *
-     * @param value 原始字符串
-     * @return 转义后的字符串
-     */
     private static String escapeXml(String value) {
         if (value == null) {
             return "";
@@ -221,18 +163,5 @@ public class SeoController {
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
             .replace("'", "&apos;");
-    }
-
-    /**
-     * 缓存条目，包含内容和生成时间戳。
-     */
-    private static class CacheEntry {
-        final String content;
-        final long timestamp;
-
-        CacheEntry(String content, long timestamp) {
-            this.content = content;
-            this.timestamp = timestamp;
-        }
     }
 }

@@ -80,4 +80,9 @@ public class ArticlePageCacheKey {
     public int hashCode() {
         return Objects.hash(page, pageSize, keyword, category, categoryGroup, tag, sort, authorKeyword, dateFrom, dateTo, fulltext);
     }
+
+    @Override
+    public String toString() {
+        return page + "|" + pageSize + "|" + keyword + "|" + category + "|" + categoryGroup + "|" + tag + "|" + sort + "|" + authorKeyword + "|" + dateFrom + "|" + dateTo + "|" + fulltext;
+    }
 }

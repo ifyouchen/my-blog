@@ -7,7 +7,6 @@ import com.myblog.infrastructure.repository.persistence.converter.UserPersistenc
 import com.myblog.infrastructure.repository.persistence.entity.UserDO;
 import com.myblog.infrastructure.repository.persistence.mapper.UserMapper;
 import com.myblog.shared.enums.UserStatus;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +24,6 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Repository
-@Profile("!memory")
 public class MyBatisUserRepository implements UserRepository {
 
     private final UserMapper userMapper;

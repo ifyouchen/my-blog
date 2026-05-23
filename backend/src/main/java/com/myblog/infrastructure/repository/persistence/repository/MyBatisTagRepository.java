@@ -6,7 +6,6 @@ import com.myblog.domain.repository.TagRepository;
 import com.myblog.infrastructure.repository.persistence.converter.TagPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.TagDO;
 import com.myblog.infrastructure.repository.persistence.mapper.TagMapper;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Repository
-@Profile("!memory")
 public class MyBatisTagRepository implements TagRepository {
 
     private final TagMapper tagMapper;

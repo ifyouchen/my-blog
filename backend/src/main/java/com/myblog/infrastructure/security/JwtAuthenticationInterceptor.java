@@ -6,6 +6,8 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
+import org.redisson.api.RMapCache;
+import org.redisson.api.RedissonClient;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
@@ -13,6 +15,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.concurrent.TimeUnit;
 
 /**
  * JWT 认证拦截器。
@@ -25,32 +28,25 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
 
     private static final String AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String USER_CACHE_NAME = "userStatus";
+    private static final long USER_CACHE_TTL_MINUTES = 5;
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final RMapCache<Long, UserCacheEntry> userStatusCache;
 
-    /**
-     * 创建 JWT 认证拦截器。
-     *
-     * @param jwtTokenProvider JWT 工具
-     */
-    public JwtAuthenticationInterceptor(JwtTokenProvider jwtTokenProvider, UserRepository userRepository) {
+    public JwtAuthenticationInterceptor(JwtTokenProvider jwtTokenProvider,
+                                         UserRepository userRepository,
+                                         RedissonClient redissonClient) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
+        this.userStatusCache = redissonClient.getMapCache(USER_CACHE_NAME);
     }
 
-    /**
-     * 请求进入 Controller 前完成认证校验。
-     *
-     * @param request HTTP 请求
-     * @param response HTTP 响应
-     * @param handler 处理器
-     * @return 是否继续处理
-     */
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request,
-                             @NonNull HttpServletResponse response,
-                             @NonNull Object handler) {
+                              @NonNull HttpServletResponse response,
+                              @NonNull Object handler) {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
@@ -71,14 +67,6 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    /**
-     * 尝试从请求头或查询参数中提取 token 并完成认证。
-     *
-     * @param header Authorization 请求头
-     * @param queryToken 查询参数中的 token，兼容 SSE 等不便携带 Header 的场景
-     * @param lenient 是否采用宽松模式；宽松模式下认证失败会回退为匿名访问
-     * @return 命中且认证成功时返回 {@code true}
-     */
     private boolean authenticateIfPresent(String header, String queryToken, boolean lenient) {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             return authenticateToken(header.substring(BEARER_PREFIX.length()), lenient);
@@ -89,12 +77,6 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         return false;
     }
 
-    /**
-     * 执行 token 解析与用户上下文注入。
-     *
-     * <p>公开接口会以宽松模式调用：token 无效时继续按匿名请求处理；
-     * 受保护接口则会直接抛出认证异常，避免错误 token 悄悄降级。</p>
-     */
     private boolean authenticateToken(String token, boolean lenient) {
         try {
             JwtPayload payload = jwtTokenProvider.parseToken(token);
@@ -109,25 +91,36 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * 校验 token 对应的用户仍处于可用状态，并同步最新角色。
-     *
-     * <p>即使 token 尚未过期，也要阻止已禁用账号继续访问。
-     * 同时用数据库中的最新角色覆盖 JWT 中的角色，确保后台权限变更立即生效。</p>
-     */
     private void ensureUserAvailable(JwtPayload payload) {
-        User user = userRepository.findById(new UserId(payload.getUserId()))
+        Long userId = payload.getUserId();
+
+        UserCacheEntry cached = userStatusCache.get(userId);
+        if (cached != null) {
+            if (!UserStatus.NORMAL.equals(cached.status)) {
+                throw new ApplicationException(ErrorCode.FORBIDDEN, "账号不可用");
+            }
+            payload.setRole(cached.role);
+            return;
+        }
+
+        User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录"));
-        if (!UserStatus.NORMAL.equals(user.getStatus())) {
+
+        UserStatus status = user.getStatus();
+        String role = user.getRole().name();
+
+        userStatusCache.put(userId, new UserCacheEntry(status, role),
+            USER_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+
+        if (!UserStatus.NORMAL.equals(status)) {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "账号不可用");
         }
-        payload.setRole(user.getRole().name());
+        payload.setRole(role);
     }
 
     private boolean isPublicRequest(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
-        // 认证与健康检查接口始终允许匿名访问。
         if ("/api/auth/register".equals(path)
             || "/api/auth/register/email-code".equals(path)
             || "/api/auth/login".equals(path)
@@ -136,14 +129,12 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || "/api/health".equals(path)) {
             return true;
         }
-        // 广告曝光/点击上报由前台直接触发，不要求用户登录。
         if (path.matches("^/api/ads/\\d+/(impression|click)$")) {
             return true;
         }
         if (!"GET".equalsIgnoreCase(method)) {
             return false;
         }
-        // 只读查询接口对匿名用户开放，但若携带有效 token 仍会补充登录态信息。
         return "/api/articles".equals(path)
             || "/api/ads".equals(path)
             || "/api/categories".equals(path)
@@ -191,19 +182,40 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             || "/api/tags/hot".equals(path);
     }
 
-    /**
-     * 请求完成后清理线程上下文。
-     *
-     * @param request HTTP 请求
-     * @param response HTTP 响应
-     * @param handler 处理器
-     * @param ex 异常信息
-     */
     @Override
     public void afterCompletion(@NonNull HttpServletRequest request,
-                                @NonNull HttpServletResponse response,
-                                @NonNull Object handler,
-                                @Nullable Exception ex) {
+                                 @NonNull HttpServletResponse response,
+                                 @NonNull Object handler,
+                                 @Nullable Exception ex) {
         AuthContext.clear();
+    }
+
+    static class UserCacheEntry {
+        private UserStatus status;
+        private String role;
+
+        UserCacheEntry() {
+        }
+
+        UserCacheEntry(UserStatus status, String role) {
+            this.status = status;
+            this.role = role;
+        }
+
+        public UserStatus getStatus() {
+            return status;
+        }
+
+        public void setStatus(UserStatus status) {
+            this.status = status;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
     }
 }

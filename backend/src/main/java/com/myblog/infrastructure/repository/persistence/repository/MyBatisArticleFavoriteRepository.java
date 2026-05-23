@@ -8,7 +8,6 @@ import com.myblog.domain.repository.ArticleFavoriteRepository;
 import com.myblog.infrastructure.repository.persistence.converter.ArticleFavoritePersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleFavoriteDO;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleFavoriteMapper;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +24,6 @@ import java.util.Set;
  * @since 1.0.0
  */
 @Repository
-@Profile("!memory")
 public class MyBatisArticleFavoriteRepository implements ArticleFavoriteRepository {
 
     private final ArticleFavoriteMapper articleFavoriteMapper;

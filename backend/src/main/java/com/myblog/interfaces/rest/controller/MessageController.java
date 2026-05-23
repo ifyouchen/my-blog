@@ -12,11 +12,15 @@ import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
 import com.myblog.interfaces.rest.dto.request.CreateConversationRequest;
 import com.myblog.interfaces.rest.dto.request.SendMessageRequest;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,25 +37,42 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @RequestMapping("/api/messages")
 public class MessageController {
 
-    /**
-     * 用户 ID 到活跃 SSE Emitter 列表的映射表（私信消息事件）。
-     * key = userId, value = 该用户所有当前连接的 SseEmitter 列表。
-     */
     private static final ConcurrentHashMap<Long, CopyOnWriteArrayList<SseEmitter>> MESSAGE_EMITTERS =
         new ConcurrentHashMap<>();
+    private static final String MESSAGE_TOPIC = "message:push";
 
     private final MessageAppService messageAppService;
     private final ConversationRepository conversationRepository;
+    private final RTopic messageTopic;
 
     public MessageController(MessageAppService messageAppService,
-                             ConversationRepository conversationRepository) {
+                              ConversationRepository conversationRepository,
+                              RedissonClient redissonClient) {
         this.messageAppService = messageAppService;
         this.conversationRepository = conversationRepository;
+        this.messageTopic = redissonClient.getTopic(MESSAGE_TOPIC, StringCodec.INSTANCE);
+
+        this.messageTopic.addListener(String.class, (channel, msg) -> {
+            if (msg == null || msg.isEmpty()) {
+                return;
+            }
+            String[] parts = msg.split(":", 3);
+            if (parts.length < 2) {
+                return;
+            }
+            try {
+                long userId = Long.parseLong(parts[0]);
+                String type = parts[1];
+                if ("unread".equals(type)) {
+                    long count = Long.parseLong(parts[2]);
+                    doPushUnreadCount(userId, count);
+                }
+            } catch (NumberFormatException e) {
+                // ignore bad messages
+            }
+        });
     }
 
-    /**
-     * SSE 消息流：客户端保持长连接，接收新消息和未读计数推送。
-     */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
         Long userId = AuthContext.getCurrentUserId();
@@ -79,7 +100,6 @@ public class MessageController {
         emitter.onTimeout(cleanup);
         emitter.onError(e -> cleanup.run());
 
-        // 立即推送当前未读数
         try {
             long unread = messageAppService.countUnread();
             emitter.send(SseEmitter.event()
@@ -92,9 +112,6 @@ public class MessageController {
         return emitter;
     }
 
-    /**
-     * 向指定用户推送新消息通知。
-     */
     public static void pushNewMessage(Long userId, Map<String, Object> messageData) {
         CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
         if (emitters == null || emitters.isEmpty()) {
@@ -117,7 +134,7 @@ public class MessageController {
         json.append("}");
 
         String data = json.toString();
-        List<SseEmitter> toRemove = new java.util.ArrayList<>();
+        List<SseEmitter> toRemove = new ArrayList<>();
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.send(SseEmitter.event().name("new-message").data(data));
@@ -128,16 +145,13 @@ public class MessageController {
         emitters.removeAll(toRemove);
     }
 
-    /**
-     * 向指定用户推送未读计数。
-     */
     public static void pushUnreadCount(Long userId, long unreadCount) {
         CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
         if (emitters == null || emitters.isEmpty()) {
             return;
         }
         String data = "{\"count\":" + unreadCount + "}";
-        List<SseEmitter> toRemove = new java.util.ArrayList<>();
+        List<SseEmitter> toRemove = new ArrayList<>();
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.send(SseEmitter.event().name("unread").data(data));
@@ -148,23 +162,23 @@ public class MessageController {
         emitters.removeAll(toRemove);
     }
 
-    /**
-     * 转义 JSON 字符串中的特殊字符。
-     *
-     * @param s 原始字符串
-     * @return 转义后的字符串
-     */
-    private static String escapeJson(String s) {
-        return s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+    private static void doPushUnreadCount(Long userId, long unreadCount) {
+        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
+        if (emitters == null || emitters.isEmpty()) {
+            return;
+        }
+        String data = "{\"count\":" + unreadCount + "}";
+        List<SseEmitter> toRemove = new ArrayList<>();
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name("unread").data(data));
+            } catch (IOException e) {
+                toRemove.add(emitter);
+            }
+        }
+        emitters.removeAll(toRemove);
     }
 
-    /**
-     * 获取或创建会话。
-     */
     @PostMapping("/conversations")
     public Result<ConversationDTO> createConversation(@RequestBody CreateConversationRequest request) {
         if (request.getParticipantId() == null) {
@@ -174,9 +188,6 @@ public class MessageController {
         return Result.success(dto);
     }
 
-    /**
-     * 获取会话列表。
-     */
     @GetMapping("/conversations")
     public Result<PageResult<ConversationDTO>> listConversations(
             @RequestParam(defaultValue = "1") int page,
@@ -185,18 +196,12 @@ public class MessageController {
         return Result.success(result);
     }
 
-    /**
-     * 删除会话。
-     */
     @DeleteMapping("/conversations/{id}")
     public Result<Void> deleteConversation(@PathVariable Long id) {
         messageAppService.deleteConversation(id);
         return Result.success(null);
     }
 
-    /**
-     * 获取消息历史。
-     */
     @GetMapping("/conversations/{id}/messages")
     public Result<PageResult<MessageDTO>> listMessages(
             @PathVariable Long id,
@@ -206,15 +211,11 @@ public class MessageController {
         return Result.success(result);
     }
 
-    /**
-     * 发送消息。
-     */
     @PostMapping("/conversations/{id}/messages")
     public Result<MessageDTO> sendMessage(@PathVariable Long id,
-                                          @RequestBody SendMessageRequest request) {
+                                           @RequestBody SendMessageRequest request) {
         MessageDTO dto = messageAppService.sendMessage(id, request.getContent(), request.getType());
 
-        // SSE 推送
         Long currentUserId = AuthContext.getRequiredUserId();
         Long receiverId = getReceiverId(dto.getConversationId(), currentUserId);
         if (receiverId != null) {
@@ -236,9 +237,6 @@ public class MessageController {
         return Result.success(dto);
     }
 
-    /**
-     * 标记会话内所有消息为已读。
-     */
     @PostMapping("/conversations/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
         messageAppService.markAllRead(id);
@@ -250,9 +248,6 @@ public class MessageController {
         return Result.success(null);
     }
 
-    /**
-     * 获取未读消息总数。
-     */
     @GetMapping("/unread-count")
     public Result<Map<String, Long>> getUnreadCount() {
         long count = messageAppService.countUnread();
@@ -261,12 +256,17 @@ public class MessageController {
         return Result.success(result);
     }
 
-    /**
-     * 根据当前用户获取会话中对方用户 ID。
-     */
     private Long getReceiverId(Long conversationId, Long currentUserId) {
         return conversationRepository.findById(conversationId)
             .map(conv -> conv.getOtherParticipantId(currentUserId))
             .orElse(null);
+    }
+
+    private static String escapeJson(String s) {
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 }

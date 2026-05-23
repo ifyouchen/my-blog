@@ -70,10 +70,19 @@ public class PointRule {
      * @param deletedAt           软删除时间
      * @return 积分规则值对象
      */
-    public static PointRule of(Long id, String sourceType, int pointAmount,
-                               int dailyLimit, String dailyLimitStrategy, boolean enabled,
-                               LocalDateTime effectiveAt, String operator, String reason, int version,
-                               LocalDateTime deletedAt) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+    public static PointRule of(
+            @com.fasterxml.jackson.annotation.JsonProperty("id") Long id,
+            @com.fasterxml.jackson.annotation.JsonProperty("sourceType") String sourceType,
+            @com.fasterxml.jackson.annotation.JsonProperty("pointAmount") int pointAmount,
+            @com.fasterxml.jackson.annotation.JsonProperty("dailyLimit") int dailyLimit,
+            @com.fasterxml.jackson.annotation.JsonProperty("dailyLimitStrategy") String dailyLimitStrategy,
+            @com.fasterxml.jackson.annotation.JsonProperty("enabled") boolean enabled,
+            @com.fasterxml.jackson.annotation.JsonProperty("effectiveAt") LocalDateTime effectiveAt,
+            @com.fasterxml.jackson.annotation.JsonProperty("operator") String operator,
+            @com.fasterxml.jackson.annotation.JsonProperty("reason") String reason,
+            @com.fasterxml.jackson.annotation.JsonProperty("version") int version,
+            @com.fasterxml.jackson.annotation.JsonProperty("deletedAt") LocalDateTime deletedAt) {
         PointRule rule = new PointRule();
         rule.id = id;
         rule.sourceType = sourceType;
