@@ -15,7 +15,7 @@ import {
     markMessagesReadApi,
     subscribeMessageStream
 } from '@/api/messages';
-import {uploadImageApi} from '@/api/uploads';
+import {uploadImage} from '@/api/uploads';
 import EmojiPicker from '@/components/EmojiPicker.vue';
 import UserHoverCard from '@/components/UserHoverCard.vue';
 import { formatRelativeTime, formatMessageTime } from '@/utils/time';
@@ -259,7 +259,7 @@ const sendMessage = async () => {
     try {
         let imageUrl = '';
         if (imageFile) {
-            const uploaded = await uploadImageApi(imageFile, 'message');
+            const uploaded = await uploadImage(imageFile, 'message');
             if (!uploaded?.url) {
                 throw new Error('图片上传失败');
             }
@@ -652,9 +652,57 @@ const setupSSE = () => {
     );
 };
 
+// Polling fallback — 当 SSE 连接意外断开时定时拉取最新消息
+let pollInterval = null;
+const POLL_INTERVAL_MS = 30000;
+
+const startPolling = () => {
+    clearPolling();
+    pollInterval = setInterval(async () => {
+        if (!state.activeConversationId) return;
+        try {
+            const result = await getMessagesApi({
+                conversationId: state.activeConversationId,
+                page: 1,
+                pageSize: 1
+            });
+            const items = result.items || [];
+            if (items.length > 0) {
+                const latestRemote = items[0]; // API 返回 DESC，index 0 是最新消息
+                const latestLocal = state.messages.length > 0 ? state.messages[state.messages.length - 1] : null;
+                if (!latestLocal || latestRemote.id !== latestLocal.id) {
+                    state.page = 1;
+                    const fullResult = await getMessagesApi({
+                        conversationId: state.activeConversationId,
+                        page: 1,
+                        pageSize: state.pageSize
+                    });
+                    const fullItems = fullResult.items || [];
+                    state.messages = fullItems.reverse();
+                    state.totalMessages = fullResult.total || 0;
+                    state.hasMore = state.messages.length < state.totalMessages;
+                    messagesCache.delete(state.activeConversationId);
+                    await markActiveConversationRead(state.activeConversationId);
+                    scrollToBottom();
+                }
+            }
+        } catch {
+            // 静默失败，下次轮询再试
+        }
+    }, POLL_INTERVAL_MS);
+};
+
+const clearPolling = () => {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+};
+
 onMounted(async () => {
     await loadConversations();
     setupSSE();
+    startPolling();
     document.addEventListener('click', handleEmojiPickerClickOutside);
     document.addEventListener('keydown', handlePreviewKeydown);
 
@@ -684,6 +732,7 @@ onUnmounted(() => {
     document.removeEventListener('click', handleEmojiPickerClickOutside);
     document.removeEventListener('keydown', handlePreviewKeydown);
     clearPendingImage();
+    clearPolling();
     if (unsubscribeMessageStream) {
         unsubscribeMessageStream();
     }

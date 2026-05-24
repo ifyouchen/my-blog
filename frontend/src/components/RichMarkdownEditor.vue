@@ -19,7 +19,7 @@ import ResizeImage from 'tiptap-extension-resize-image';
 import {createBlogLowlight} from '@/utils/codeLanguages';
 import {editorJsonToMarkdown, markdownToEditorHtml} from '@/utils/markdown';
 import CodeBlockNodeView from '@/components/CodeBlockNodeView.vue';
-import {uploadImageApi} from '@/api/uploads.js';
+import {uploadImage} from '@/api/uploads.js';
 import {useSession} from '@/stores/session';
 
 const { isLoggedIn } = useSession();
@@ -947,7 +947,7 @@ const uploadAndInsertImage = async (file) => {
     imageUploading.value = true;
     uploadError.value = '';
     try {
-        const result = await uploadImageApi(file, 'content');
+        const result = await uploadImage(file, 'content');
         if (result?.url) {
             insertImageMarkdown(result.url, file.name || '图片');
         }

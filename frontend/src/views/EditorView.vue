@@ -14,7 +14,7 @@ import {
 import {getToken} from '@/api/http';
 import {getCategoriesApi, getTagsApi} from '@/api/admin';
 import {getMyGrowthApi} from '@/api/growth';
-import {uploadImageApi} from '@/api/uploads';
+import {uploadImage} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
@@ -941,7 +941,7 @@ async function handleCoverSelected(event) {
     }
     coverUploading.value = true;
     try {
-        const result = await uploadImageApi(file, 'cover');
+        const result = await uploadImage(file, 'cover');
         draft.coverUrl = result.mediumUrl || result.url || defaultDraft.coverUrl;
         debouncedCoverUrl.value = draft.coverUrl;
         coverPreviewFailed.value = false;

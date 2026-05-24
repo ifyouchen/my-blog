@@ -1,7 +1,7 @@
 <script setup>
 import {computed, onMounted, reactive, ref, watch} from 'vue';
 import {RouterLink} from 'vue-router';
-import {uploadImageApi} from '@/api/uploads';
+import {uploadImage} from '@/api/uploads';
 import SiteHeader from '@/components/SiteHeader.vue';
 import UserProfileSummary from '@/components/UserProfileSummary.vue';
 import {changeEmailApi, changePasswordApi, getSecurityInfoApi, getUserHotArticlesApi, getUserProfileApi, updateProfileApi} from '@/api/auth';
@@ -239,7 +239,7 @@ const handleAvatarSelected = async (event) => {
     avatarUploading.value = true;
     fieldFeedback.value = '';
     try {
-        const result = await uploadImageApi(file, 'avatar');
+        const result = await uploadImage(file, 'avatar');
         const avatarUrl = result.thumbnailUrl || result.mediumUrl || result.url || '';
         draft.avatarUrl = avatarUrl;
         debouncedAvatarUrl.value = avatarUrl;

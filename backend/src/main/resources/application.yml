@@ -29,9 +29,10 @@ spring:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
   sql:
     init:
-      mode: always
+      # 👇 留空，让外部脚本控制！！！
+      mode: ${SPRING_SQL_INIT_MODE:never}
       schema-locations:
-        - classpath:db/schema.sql
+        - classpath:db/schema.sql 
         - classpath:db/growth/growth-schema.sql
       data-locations:
         - classpath:db/initdata.sql

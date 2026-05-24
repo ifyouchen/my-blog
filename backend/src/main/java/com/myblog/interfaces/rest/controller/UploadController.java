@@ -1,8 +1,10 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.port.FileStorage;
+import com.myblog.application.port.PresignedUrlInfo;
 import com.myblog.application.service.UploadRateLimiter;
 import com.myblog.infrastructure.security.AuthContext;
+import com.myblog.interfaces.rest.dto.request.PresignedUrlRequest;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.Result;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +23,7 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
+import javax.validation.Valid;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -79,6 +83,9 @@ public class UploadController {
     private static final int MEDIUM_MAX_SIDE = 960;
     /** JPEG 输出质量。 */
     private static final float JPEG_QUALITY = 0.82F;
+
+    /** 预签名 URL 有效期（秒）。 */
+    private static final long PRESIGNED_URL_EXPIRATION_SECONDS = 300L;
 
     /** 允许上传的附件 MIME 类型集合。 */
     private static final Set<String> ALLOWED_ATTACHMENT_TYPES = new HashSet<>(Arrays.asList(
@@ -220,6 +227,58 @@ public class UploadController {
         data.put("url", url);
         data.put("filename", StringUtils.hasText(originalFilename) ? originalFilename
             : key.substring(key.lastIndexOf('/') + 1));
+        return Result.success(data);
+    }
+
+    /**
+     * 获取预签名 PUT URL，用于前端直传 COS。
+     * <p>仅在 COS 模式下生效；本地存储模式返回 {@code uploadType: "proxy"}，前端降级为代理上传。</p>
+     *
+     * @param request 文件元信息
+     * @return 预签名 URL 及图片访问地址
+     */
+    @PostMapping("/presigned-url")
+    public Result<Map<String, Object>> getPresignedUrl(@Valid @RequestBody PresignedUrlRequest request) {
+        Long userId = AuthContext.getRequiredUserId();
+        if (userId == null) {
+            throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
+        }
+
+        uploadRateLimiter.acquire(userId, "image");
+        validateImageMetadata(request.getFileName(), request.getContentType(), request.getFileSize(), request.getScope());
+
+        String extension = resolveExtensionFromName(request.getFileName());
+        String key = buildObjectKey(extension);
+        String contentType = resolveImageContentType(extension);
+
+        PresignedUrlInfo presignedInfo = fileStorage.generatePresignedUrl(key, contentType, PRESIGNED_URL_EXPIRATION_SECONDS);
+
+        Map<String, Object> data = new HashMap<>();
+
+        if (presignedInfo == null) {
+            data.put("uploadType", "proxy");
+            return Result.success(data);
+        }
+
+        data.put("uploadType", "cos");
+        data.put("presignedUrl", presignedInfo.getPresignedUrl());
+        data.put("expiresAt", presignedInfo.getExpiresAt());
+
+        String baseUrl = fileStorage.getUrl(key);
+        data.put("originalUrl", baseUrl);
+
+        String scope = request.getScope();
+        if (canOptimize(extension)) {
+            int maxSide = resolveMaxSide(scope);
+            data.put("url", buildProcessedUrl(baseUrl, maxSide));
+            data.put("thumbnailUrl", buildProcessedUrl(baseUrl, THUMBNAIL_MAX_SIDE));
+            data.put("mediumUrl", buildProcessedUrl(baseUrl, MEDIUM_MAX_SIDE));
+        } else {
+            data.put("url", baseUrl);
+        }
+
+        LOGGER.info("COS 预签名 URL 生成成功, userId={}, username={}, key={}",
+            userId, AuthContext.getUsername(), key);
         return Result.success(data);
     }
 
@@ -420,6 +479,63 @@ public class UploadController {
 
     private boolean isJpeg(String extension) {
         return ".jpg".equalsIgnoreCase(extension) || ".jpeg".equalsIgnoreCase(extension);
+    }
+
+    // ========== Presigned URL Metadata Validation ==========
+
+    /**
+     * 校验图片文件的元信息（不读取文件内容）。
+     *
+     * @param fileName    原始文件名
+     * @param contentType MIME 类型
+     * @param fileSize    文件大小（字节）
+     * @param scope       图片用途
+     */
+    private void validateImageMetadata(String fileName, String contentType, Long fileSize, String scope) {
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "仅支持上传图片文件");
+        }
+
+        long maxBytes;
+        String message;
+        if ("avatar".equalsIgnoreCase(scope)) {
+            maxBytes = AVATAR_MAX_BYTES;
+            message = "头像图片不能超过 2MB";
+        } else if ("content".equalsIgnoreCase(scope)) {
+            maxBytes = CONTENT_IMAGE_MAX_BYTES;
+            message = "正文图片不能超过 5MB";
+        } else if ("message".equalsIgnoreCase(scope)) {
+            maxBytes = MESSAGE_IMAGE_MAX_BYTES;
+            message = "私信图片不能超过 10MB";
+        } else {
+            maxBytes = COVER_MAX_BYTES;
+            message = "封面图片不能超过 5MB";
+        }
+
+        if (fileSize != null && fileSize > maxBytes) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, message);
+        }
+    }
+
+    /**
+     * 从文件名中解析扩展名。
+     */
+    private String resolveExtensionFromName(String fileName) {
+        if (StringUtils.hasText(fileName) && fileName.contains(".")) {
+            return fileName.substring(fileName.lastIndexOf('.')).toLowerCase(Locale.ROOT);
+        }
+        return ".jpg";
+    }
+
+    /**
+     * 构建带 COS imageMogr2 图片处理参数的 URL。
+     *
+     * @param baseUrl 原始对象 URL
+     * @param maxSide 最长边限制（像素）
+     * @return 处理后 URL
+     */
+    private String buildProcessedUrl(String baseUrl, int maxSide) {
+        return baseUrl + "?imageMogr2/thumbnail/!" + maxSide + "x" + maxSide + "r/quality/82";
     }
 
     // ========== Key / URL Helpers ==========

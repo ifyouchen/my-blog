@@ -48,4 +48,17 @@ public interface FileStorage {
      * @return 完整 URL
      */
     String getUrl(String key);
+
+    /**
+     * 生成预签名 PUT URL，用于前端直传对象存储。
+     * <p>默认返回 {@code null}，表示不支持预签名 URL（降级为服务端代理上传）。</p>
+     *
+     * @param key               对象键
+     * @param contentType       文件 MIME 类型
+     * @param expirationSeconds URL 有效时长（秒）
+     * @return 预签名 URL 信息，不支持时返回 {@code null}
+     */
+    default PresignedUrlInfo generatePresignedUrl(String key, String contentType, long expirationSeconds) {
+        return null;
+    }
 }

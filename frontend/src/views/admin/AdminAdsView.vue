@@ -10,7 +10,7 @@ import {
     getAdminAdStatsApi,
     updateAdminAdApi
 } from '@/api/ads';
-import {uploadImageApi} from '@/api/uploads';
+import {uploadImage} from '@/api/uploads';
 import {
     createPagedState,
     formatAdminDateTime,
@@ -92,7 +92,7 @@ const uploadAdImage = async (event, targetForm, uploadingKey) => {
     }
     state[uploadingKey] = true;
     try {
-        const result = await uploadImageApi(file, 'cover');
+        const result = await uploadImage(file, 'cover');
         targetForm.imageUrl = result.mediumUrl || result.url || '';
         toast.success('广告封面上传成功');
     } catch (error) {
