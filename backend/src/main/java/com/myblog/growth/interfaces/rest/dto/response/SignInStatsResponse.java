@@ -15,6 +15,7 @@ public class SignInStatsResponse {
     private int currentStreak;
     private int longestStreak;
     private LocalDate lastSignDate;
+    private boolean todaySigned;
     private NextMilestoneInfo nextMilestone;
 
     public SignInStatsResponse() {
@@ -31,6 +32,9 @@ public class SignInStatsResponse {
 
     public LocalDate getLastSignDate() { return lastSignDate; }
     public void setLastSignDate(LocalDate lastSignDate) { this.lastSignDate = lastSignDate; }
+
+    public boolean isTodaySigned() { return todaySigned; }
+    public void setTodaySigned(boolean todaySigned) { this.todaySigned = todaySigned; }
 
     public NextMilestoneInfo getNextMilestone() { return nextMilestone; }
     public void setNextMilestone(NextMilestoneInfo nextMilestone) { this.nextMilestone = nextMilestone; }

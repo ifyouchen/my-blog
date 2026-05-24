@@ -236,14 +236,17 @@ public class SignInAppService {
         private final int currentStreak;
         private final int longestStreak;
         private final LocalDate lastSignDate;
+        private final boolean todaySigned;
         private final NextMilestoneInfo nextMilestone;
 
         public SignInStatsResult(int totalSignDays, int currentStreak, int longestStreak,
-                                  LocalDate lastSignDate, NextMilestoneInfo nextMilestone) {
+                                  LocalDate lastSignDate, boolean todaySigned,
+                                  NextMilestoneInfo nextMilestone) {
             this.totalSignDays = totalSignDays;
             this.currentStreak = currentStreak;
             this.longestStreak = longestStreak;
             this.lastSignDate = lastSignDate;
+            this.todaySigned = todaySigned;
             this.nextMilestone = nextMilestone;
         }
 
@@ -251,6 +254,7 @@ public class SignInAppService {
         public int getCurrentStreak() { return currentStreak; }
         public int getLongestStreak() { return longestStreak; }
         public LocalDate getLastSignDate() { return lastSignDate; }
+        public boolean isTodaySigned() { return todaySigned; }
         public NextMilestoneInfo getNextMilestone() { return nextMilestone; }
     }
 
@@ -293,11 +297,15 @@ public class SignInAppService {
         List<CumulativeSignInRewardConfig> allMilestones = cumulativeRewardRepository.findAllEnabled();
         NextMilestoneInfo nextMilestone = findNextMilestone(stats.getTotalSignDays(), allMilestones);
 
+        LocalDate today = LocalDate.now();
+        boolean todaySigned = today.equals(stats.getLastSignDate());
+
         return new SignInStatsResult(
                 stats.getTotalSignDays(),
                 stats.getCurrentStreak(),
                 stats.getLongestStreak(),
                 stats.getLastSignDate(),
+                todaySigned,
                 nextMilestone
         );
     }

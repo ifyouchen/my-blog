@@ -5,6 +5,7 @@ import {
     subscribeNotificationStream
 } from '@/api/notifications';
 import {getMessageUnreadCountApi, subscribeMessageStream} from '@/api/messages';
+import {getSignInStatsApi} from '@/api/growth';
 
 const unreadCount = ref(0);
 const recentNotifications = ref([]);
@@ -12,6 +13,8 @@ const notificationsLoading = ref(false);
 const notificationError = ref('');
 const markingAllRead = ref(false);
 const messageUnreadCount = ref(0);
+const todaySigned = ref(false);
+const signInStreak = ref(0);
 
 let activeConsumers = 0;
 let currentLoginState = false;
@@ -47,6 +50,8 @@ const resetNotificationState = () => {
     notificationError.value = '';
     notificationsLoading.value = false;
     markingAllRead.value = false;
+    todaySigned.value = false;
+    signInStreak.value = 0;
 };
 
 const fetchUnreadCount = async () => {
@@ -74,6 +79,21 @@ const fetchMessageUnreadCount = async () => {
         }
     } catch (e) {
         // 获取消息未读数失败
+    }
+};
+
+const fetchSignInStatus = async () => {
+    if (!currentLoginState) {
+        return;
+    }
+    try {
+        const result = await getSignInStatsApi();
+        if (currentLoginState) {
+            todaySigned.value = result.todaySigned || false;
+            signInStreak.value = result.currentStreak || 0;
+        }
+    } catch {
+        // 签到状态获取失败，静默忽略
     }
 };
 
@@ -122,6 +142,7 @@ const stopNotificationSync = ({clear = false} = {}) => {
 const refreshUnreadCounts = () => {
     fetchUnreadCount();
     fetchMessageUnreadCount();
+    fetchSignInStatus();
 };
 
 const startNotificationSync = () => {
@@ -199,6 +220,8 @@ export const useHeaderNotifications = (isLoggedIn) => {
         notificationsLoading,
         recentNotifications,
         refreshUnreadCounts,
+        signInStreak,
+        todaySigned,
         unreadCount
     };
 };

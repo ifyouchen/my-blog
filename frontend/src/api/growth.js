@@ -70,6 +70,13 @@ export const getSignInCalendarApi = (month) => {
     return request(`/points/sign-in/calendar${suffix}`);
 };
 
+/**
+ * 查询签到统计.
+ * @returns {Promise<{totalSignDays, currentStreak, longestStreak, lastSignDate, todaySigned, nextMilestone}>}
+ */
+export const getSignInStatsApi = () =>
+    request('/points/sign-in/stats');
+
 // ─────────────────────── 邀请 ────────────────────────────────────
 
 /**

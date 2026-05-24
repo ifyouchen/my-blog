@@ -95,6 +95,7 @@ public class SignInController {
         resp.setCurrentStreak(result.getCurrentStreak());
         resp.setLongestStreak(result.getLongestStreak());
         resp.setLastSignDate(result.getLastSignDate());
+        resp.setTodaySigned(result.isTodaySigned());
 
         SignInAppService.NextMilestoneInfo next = result.getNextMilestone();
         if (next != null) {

@@ -683,6 +683,10 @@ button:disabled {
     border-radius: 9px;
 }
 
+.mobile-badge-sign-in {
+    background: var(--brand);
+}
+
 .mobile-menu-actions .primary-action {
     width: 100%;
 }
@@ -3958,6 +3962,60 @@ button:disabled {
     height: 100%;
 }
 
+/* 签到按钮 */
+.sign-in-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand);
+    text-decoration: none;
+    background: var(--brand-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.sign-in-badge:hover {
+    background: var(--brand-hover);
+    border-color: var(--brand);
+}
+
+.sign-in-badge.signed {
+    color: var(--muted);
+    background: transparent;
+    border-color: transparent;
+}
+
+.sign-in-badge.signed:hover {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--line);
+}
+
+.sign-in-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sign-in-text {
+    line-height: 1;
+}
+
+/* 未签到时的呼吸动效 */
+.sign-in-badge:not(.signed) .sign-in-icon {
+    animation: sign-in-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sign-in-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 .bell-icon {
     display: inline-flex;
     align-items: center;
@@ -4277,10 +4335,11 @@ button:disabled {
         align-items: center;
     }
 
-    /* 移动端：隐藏文字链接、私信图标、通知铃铛、用户菜单、搜索框、顶部写文章 */
+    /* 移动端：隐藏文字链接、私信图标、通知铃铛、签到按钮、用户菜单、搜索框、顶部写文章 */
     .header-actions .text-link,
     .header-actions .message-btn,
     .header-actions .notification-wrapper,
+    .header-actions .sign-in-badge,
     .header-actions .user-menu,
     .search-box,
     .desktop-write-action {

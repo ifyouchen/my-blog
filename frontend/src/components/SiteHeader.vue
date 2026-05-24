@@ -39,6 +39,8 @@ const {
     notificationsLoading,
     recentNotifications,
     refreshUnreadCounts,
+    signInStreak,
+    todaySigned,
     unreadCount
 } = useHeaderNotifications(isLoggedIn);
 
@@ -370,6 +372,22 @@ const handleMessagesRefresh = () => {
                             </div>
                         </div>
                     </div>
+                    <RouterLink
+                        class="sign-in-badge"
+                        :class="{ signed: todaySigned }"
+                        to="/dashboard/growth"
+                        aria-label="签到"
+                        data-testid="header-sign-in"
+                    >
+                        <svg v-if="!todaySigned" class="sign-in-icon" viewBox="0 0 16 16" fill="none" width="14" height="14">
+                            <path d="M8 1v2M8 13v2M2.5 4.5l1.5 1.5M12 10l1.5 1.5M1 8h2M13 8h2M4.5 13.5l1.5-1.5M10 4l1.5-1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.3"/>
+                        </svg>
+                        <svg v-else class="sign-in-icon" viewBox="0 0 16 16" fill="none" width="14" height="14">
+                            <path d="M3 8.5L6.5 12L13 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="sign-in-text">{{ todaySigned ? '已签到' : '签到' }}</span>
+                    </RouterLink>
                     <div
                         ref="userMenuRef"
                         class="user-menu"
@@ -462,6 +480,10 @@ const handleMessagesRefresh = () => {
                     <RouterLink class="mobile-menu-link" to="/messages" @click="mobileMenuOpen = false">
                         私信
                         <span v-if="messageUnreadCount > 0" class="mobile-badge">{{ displayMessageUnreadCount }}</span>
+                    </RouterLink>
+                    <RouterLink class="mobile-menu-link" to="/dashboard/growth" @click="mobileMenuOpen = false">
+                        {{ todaySigned ? '已签到' : '今日签到' }}
+                        <span v-if="!todaySigned" class="mobile-badge mobile-badge-sign-in">去签到</span>
                     </RouterLink>
                     <RouterLink class="mobile-menu-link" to="/dashboard/articles" @click="mobileMenuOpen = false">创作台</RouterLink>
                     <RouterLink class="mobile-menu-link" to="/history" @click="mobileMenuOpen = false">阅读记录</RouterLink>
