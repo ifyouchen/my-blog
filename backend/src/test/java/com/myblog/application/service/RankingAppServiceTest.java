@@ -74,14 +74,10 @@ class RankingAppServiceTest {
     void listArticleRankingsNormalizesPeriodCategoryAndLimit() {
         when(articleRepository.findRankingArticles(eq("Go"), any(LocalDateTime.class), eq(10)))
             .thenReturn(Collections.<Article>emptyList());
-        when(articleRepository.findRankingArticles(eq("Go"), isNull(), eq(10)))
-            .thenReturn(Collections.<Article>emptyList());
 
         List<ArticleDTO> result = service.listArticleRankings(0, "invalid", " Go ");
 
-        InOrder inOrder = inOrder(articleRepository);
-        inOrder.verify(articleRepository).findRankingArticles(eq("Go"), ArgumentMatchers.<LocalDateTime>notNull(), eq(10));
-        inOrder.verify(articleRepository).findRankingArticles(eq("Go"), isNull(), eq(10));
+        verify(articleRepository).findRankingArticles(eq("Go"), ArgumentMatchers.<LocalDateTime>notNull(), eq(10));
         assertThat(result).isEmpty();
     }
 

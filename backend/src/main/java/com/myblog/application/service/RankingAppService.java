@@ -153,9 +153,6 @@ public class RankingAppService {
         LocalDateTime publishedAfter = resolvePublishedAfter(normalizedPeriod);
         List<Article> articles =
             articleRepository.findRankingArticles(normalizedCategory, publishedAfter, normalizedLimit);
-        if (articles.isEmpty() && publishedAfter != null) {
-            articles = articleRepository.findRankingArticles(normalizedCategory, null, normalizedLimit);
-        }
 
         if (articles.isEmpty()) {
             return new ArrayList<>();
@@ -264,16 +261,12 @@ public class RankingAppService {
         LocalDateTime publishedAfter = resolvePublishedAfter(normalizedPeriod);
         List<AuthorArticleStatsDO> statsList =
             articleRepository.findAuthorArticleStats(normalizedLimit, normalizedCategory, publishedAfter);
-        LocalDateTime topArticlePublishedAfter = publishedAfter;
-        if (statsList.isEmpty() && publishedAfter != null) {
-            statsList = articleRepository.findAuthorArticleStats(normalizedLimit, normalizedCategory, null);
-            topArticlePublishedAfter = null;
-        }
-        final LocalDateTime topArticleAfter = topArticlePublishedAfter;
 
         if (statsList.isEmpty()) {
             return new ArrayList<>();
         }
+
+        final LocalDateTime topArticleAfter = publishedAfter;
 
         List<Long> authorIds = statsList.stream()
             .map(AuthorArticleStatsDO::getAuthorId)

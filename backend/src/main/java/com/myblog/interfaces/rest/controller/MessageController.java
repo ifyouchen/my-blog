@@ -137,15 +137,6 @@ public class MessageController {
             }
         }, KEEPALIVE_INTERVAL_SECONDS, KEEPALIVE_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
-        try {
-            long unread = messageAppService.countUnread();
-            emitter.send(SseEmitter.event()
-                .name("unread")
-                .data("{\"count\":" + unread + "}"));
-        } catch (IOException e) {
-            emitter.completeWithError(e);
-        }
-
         return emitter;
     }
 

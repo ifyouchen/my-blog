@@ -654,7 +654,7 @@ const setupSSE = () => {
 
 // Polling fallback — 当 SSE 连接意外断开时定时拉取最新消息
 let pollInterval = null;
-const POLL_INTERVAL_MS = 30000;
+const POLL_INTERVAL_MS = 5000;
 
 const startPolling = () => {
     clearPolling();
