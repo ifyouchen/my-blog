@@ -3,6 +3,7 @@ package com.myblog.application.service;
 import com.myblog.application.assembler.UserAssembler;
 import com.myblog.application.dto.ConversationDTO;
 import com.myblog.application.dto.MessageDTO;
+import com.myblog.application.dto.UserDTO;
 import com.myblog.domain.model.aggregate.Conversation;
 import com.myblog.domain.model.aggregate.Message;
 import com.myblog.domain.model.aggregate.User;
@@ -43,13 +44,16 @@ public class MessageAppService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final UserLevelAppService userLevelAppService;
 
     public MessageAppService(ConversationRepository conversationRepository,
                              MessageRepository messageRepository,
-                             UserRepository userRepository) {
+                             UserRepository userRepository,
+                             UserLevelAppService userLevelAppService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
+        this.userLevelAppService = userLevelAppService;
     }
 
     /**
@@ -281,7 +285,11 @@ public class MessageAppService {
 
         ConversationDTO dto = new ConversationDTO();
         dto.setId(conversation.getId().getValue());
-        dto.setParticipant(otherUser != null ? UserAssembler.toDTO(otherUser) : null);
+        UserDTO participant = otherUser != null ? UserAssembler.toDTO(otherUser) : null;
+        if (participant != null) {
+            userLevelAppService.fillLevel(participant);
+        }
+        dto.setParticipant(participant);
         dto.setLastMessage(conversation.getLastMessage());
         dto.setLastMessageAt(conversation.getLastMessageAt() != null
             ? conversation.getLastMessageAt().format(DTF) : null);
