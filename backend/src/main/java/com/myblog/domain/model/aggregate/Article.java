@@ -415,9 +415,6 @@ public class Article {
         if (content == null || content.trim().isEmpty()) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "文章正文不能为空");
         }
-        if (category == null || category.trim().isEmpty()) {
-            throw new DomainException(ErrorCode.PARAM_ERROR, "文章分类不能为空");
-        }
     }
 
     private static boolean requiresCompleteContent(ArticleStatus status) {

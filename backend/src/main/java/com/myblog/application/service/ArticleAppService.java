@@ -551,6 +551,7 @@ public class ArticleAppService {
         ensureSlugAvailable(command.getSlug(), null);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
         String normalizedCategory = requireEnabledCategory(command.getCategory());
+        List<String> tags = resolveTags(command.getTags());
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             command.getTitle(),
             command.getSummary(),
@@ -567,7 +568,7 @@ public class ArticleAppService {
             sanitizedContent.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
             normalizedCategory,
-            command.getTags(),
+            tags,
             targetStatus,
             command.getSlug(),
             command.getSeoTitle(),
@@ -634,6 +635,7 @@ public class ArticleAppService {
         ensureSlugAvailable(command.getSlug(), articleId);
         ArticleStatus targetStatus = resolveCreateStatus(command.getStatus());
         String normalizedCategory = requireEnabledCategory(command.getCategory());
+        List<String> tags = resolveTags(command.getTags());
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
             command.getTitle(),
             command.getSummary(),
@@ -649,7 +651,7 @@ public class ArticleAppService {
             sanitizedContent.getContent(),
             resolveCoverUrl(command.getCoverUrl()),
             normalizedCategory,
-            command.getTags(),
+            tags,
             command.getSlug(),
             command.getSeoTitle(),
             command.getSeoDescription()
@@ -1491,13 +1493,13 @@ public class ArticleAppService {
         );
         appendCheck(
             checks,
-            errors,
+            warnings,
             "category",
             "文章分类",
             StringUtils.hasText(category) && categoryAppService.isEnabledCategoryName(category),
-            "error",
+            "warning",
             "文章分类已选择",
-            "发布前请先选择有效分类"
+            "建议选择一个合适的分类，当前将使用默认分类"
         );
         appendCheck(
             checks,
@@ -1605,10 +1607,16 @@ public class ArticleAppService {
         return source == null ? "" : source.trim();
     }
 
+    private List<String> resolveTags(List<String> tags) {
+        return tags == null || tags.isEmpty() ? Collections.singletonList("其他") : tags;
+    }
+
     private String requireEnabledCategory(String category) {
         String normalizedCategory = normalizeValue(category);
-        if (!StringUtils.hasText(normalizedCategory)
-            || !categoryAppService.isEnabledCategoryName(normalizedCategory)) {
+        if (!StringUtils.hasText(normalizedCategory)) {
+            normalizedCategory = "其他";
+        }
+        if (!categoryAppService.isEnabledCategoryName(normalizedCategory)) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择有效分类");
         }
         return normalizedCategory;

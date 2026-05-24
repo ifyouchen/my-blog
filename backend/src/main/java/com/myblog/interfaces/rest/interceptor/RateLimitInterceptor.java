@@ -1,23 +1,21 @@
 package com.myblog.interfaces.rest.interceptor;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private final Cache<String, AtomicInteger> counterCache = Caffeine.newBuilder()
-        .expireAfterWrite(1, TimeUnit.MINUTES)
-        .build();
-
-    private static final int MAX_REQUESTS_PER_MINUTE = 10;
+    private final StringRedisTemplate redisTemplate;
+    private final int maxRequestsPerMinute;
 
     private static final String[] LIMITED_PATHS = {
         "/api/auth/register",
@@ -27,6 +25,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         "/api/uploads/images",
         "/api/uploads/files"
     };
+
+    public RateLimitInterceptor(StringRedisTemplate redisTemplate,
+                                @Value("${my-blog.rate-limit.ip-max-requests-per-minute:20}") int maxRequestsPerMinute) {
+        this.redisTemplate = redisTemplate;
+        this.maxRequestsPerMinute = maxRequestsPerMinute;
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -43,9 +47,16 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String key = getClientIp(request) + ":" + path;
-        AtomicInteger counter = counterCache.get(key, k -> new AtomicInteger(0));
-        if (counter.incrementAndGet() > MAX_REQUESTS_PER_MINUTE) {
+        String ip = getClientIp(request);
+        String minuteKey = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+        String redisKey = "rate:ip:" + ip + ":" + path.replace('/', ':') + ":" + minuteKey;
+
+        Long count = redisTemplate.opsForValue().increment(redisKey);
+        if (count == 1) {
+            redisTemplate.expire(redisKey, 60, TimeUnit.SECONDS);
+        }
+
+        if (count > maxRequestsPerMinute) {
             response.setContentType("application/json;charset=UTF-8");
             response.setStatus(429);
             response.getWriter().write(

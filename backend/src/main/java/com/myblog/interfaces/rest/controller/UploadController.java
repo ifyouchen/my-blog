@@ -1,10 +1,13 @@
 package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.port.FileStorage;
+import com.myblog.application.service.UploadRateLimiter;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,6 +51,8 @@ import java.util.UUID;
 @RequestMapping("/api/uploads")
 public class UploadController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(UploadController.class);
+
     /** 头像图片大小上限（2 MB）。 */
     private static final long AVATAR_MAX_BYTES = 2L * 1024L * 1024L;
     /** 封面图片大小上限（5 MB）。 */
@@ -58,8 +63,8 @@ public class UploadController {
     private static final long MESSAGE_IMAGE_MAX_BYTES = 10L * 1024L * 1024L;
     /** 通用附件大小上限（20 MB）。 */
     private static final long FILE_MAX_BYTES = 20L * 1024L * 1024L;
-    /** 按年月分目录存储的格式化器。 */
-    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM");
+    /** 按日期分目录存储的格式化器。 */
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     /** 头像最长边。 */
     private static final int AVATAR_MAX_SIDE = 320;
     /** 封面最长边。 */
@@ -95,9 +100,11 @@ public class UploadController {
     ));
 
     private final FileStorage fileStorage;
+    private final UploadRateLimiter uploadRateLimiter;
 
-    public UploadController(FileStorage fileStorage) {
+    public UploadController(FileStorage fileStorage, UploadRateLimiter uploadRateLimiter) {
         this.fileStorage = fileStorage;
+        this.uploadRateLimiter = uploadRateLimiter;
     }
 
     /**
@@ -118,6 +125,7 @@ public class UploadController {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择要上传的图片");
         }
 
+        uploadRateLimiter.acquire(userId, "image");
         validateImageFile(file, scope);
 
         String extension = resolveImageExtension(file);
@@ -163,6 +171,9 @@ public class UploadController {
                 data.put("thumbnailUrl", thumbnailUrl);
                 data.put("mediumUrl", mediumUrl);
             }
+
+            LOGGER.info("COS 图片上传成功, userId={}, username={}, key={}",
+                userId, AuthContext.getUsername(), key);
             return Result.success(data);
         } catch (IOException exception) {
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "图片上传失败");
@@ -185,6 +196,7 @@ public class UploadController {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "请选择要上传的文件");
         }
 
+        uploadRateLimiter.acquire(userId, "file");
         validateAttachmentFile(file);
 
         String originalFilename = file.getOriginalFilename();
@@ -200,6 +212,9 @@ public class UploadController {
         } catch (IOException exception) {
             throw new ApplicationException(ErrorCode.SYSTEM_ERROR, "文件上传失败");
         }
+
+        LOGGER.info("COS 文件上传成功, userId={}, username={}, key={}",
+            userId, AuthContext.getUsername(), key);
 
         Map<String, String> data = new HashMap<>();
         data.put("url", url);
@@ -431,7 +446,7 @@ public class UploadController {
     }
 
     private String buildObjectKey(String extension) {
-        return MONTH_FORMATTER.format(LocalDate.now()) + "/" + UUID.randomUUID().toString().replace("-", "") + extension;
+        return "myblog/" + DATE_FORMATTER.format(LocalDate.now()) + "/" + UUID.randomUUID().toString().replace("-", "") + extension;
     }
 
     private String buildVariantKey(String key, String suffix) {

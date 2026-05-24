@@ -34,6 +34,11 @@ public final class ErrorCode {
     public static final int CONFLICT = 409;
 
     /**
+     * 请求过频，触发限流（429）
+     */
+    public static final int TOO_MANY_REQUESTS = 429;
+
+    /**
      * 系统内部错误（500）
      */
     public static final int SYSTEM_ERROR = 500;

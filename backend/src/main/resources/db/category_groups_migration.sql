@@ -1,5 +1,10 @@
 SET NAMES utf8mb4;
 
+-- Ensure a default "其他" category exists
+INSERT INTO blog_category (`name`, `group_name`, `description`, `sort_order`, `enabled`, `status`, `created_at`, `updated_at`, `deleted_at`, `version`)
+VALUES ('其他', '其他', '默认分类', 9999, 1, 'NORMAL', NOW(), NOW(), NULL, 0)
+ON DUPLICATE KEY UPDATE `group_name` = VALUES(`group_name`), `description` = VALUES(`description`), `enabled` = 1, `status` = 'NORMAL', `deleted_at` = NULL, `updated_at` = NOW();
+
 -- Assign group_name to all existing categories based on their content area
 -- Run this AFTER all article seed files have been imported
 
