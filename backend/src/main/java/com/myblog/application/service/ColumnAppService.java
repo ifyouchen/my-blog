@@ -350,9 +350,6 @@ public class ColumnAppService {
 
     // ==================== 创作者专栏管理方法 ====================
 
-    /** 最多可创建的专栏数 */
-    private static final int MAX_COLUMNS_PER_USER = 5;
-
     /**
      * 创作者：查询自己的所有专栏。
      *
@@ -371,7 +368,7 @@ public class ColumnAppService {
     }
 
     /**
-     * 创作者：创建专栏（每用户最多 5 个）。
+     * 创作者：创建专栏。
      *
      * @param userId    创作者 ID
      * @param title     专栏标题
@@ -384,11 +381,6 @@ public class ColumnAppService {
         long _start = System.currentTimeMillis();
         userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
-        int existing = columnRepository.countByAuthorId(userId);
-        if (existing >= MAX_COLUMNS_PER_USER) {
-            throw new ApplicationException(ErrorCode.PARAM_ERROR,
-                "每个用户最多创建 " + MAX_COLUMNS_PER_USER + " 个专栏");
-        }
         Column column = Column.create(columnRepository.nextId(), new UserId(userId), title, summary, coverUrl, 0);
         columnRepository.save(column);
         homePortalCacheInvalidator.evictStatsAndBootstrap();
