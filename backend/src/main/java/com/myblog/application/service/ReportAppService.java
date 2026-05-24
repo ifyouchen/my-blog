@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.myblog.application.command.CreateReportCommand;
 import com.myblog.application.command.ResolveReportCommand;
 import com.myblog.application.dto.ReportDTO;
+import com.myblog.application.event.ReportSubmittedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.aggregate.Report;
@@ -29,6 +30,7 @@ import com.myblog.shared.result.PageResult;
 import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -61,6 +63,7 @@ public class ReportAppService {
     private final AdminAppService adminAppService;
     private final CommentAppService commentAppService;
     private final Cache<Long, AtomicInteger> reportCreateRateCache;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ReportAppService(ReportRepository reportRepository,
                             UserRepository userRepository,
@@ -68,7 +71,8 @@ public class ReportAppService {
                             CommentRepository commentRepository,
                             AdminAppService adminAppService,
                             CommentAppService commentAppService,
-                            Cache<Long, AtomicInteger> reportCreateRateCache) {
+                            Cache<Long, AtomicInteger> reportCreateRateCache,
+                            ApplicationEventPublisher eventPublisher) {
         this.reportRepository = reportRepository;
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
@@ -76,6 +80,7 @@ public class ReportAppService {
         this.adminAppService = adminAppService;
         this.commentAppService = commentAppService;
         this.reportCreateRateCache = reportCreateRateCache;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -116,6 +121,8 @@ public class ReportAppService {
             command.getReasonDetail()
         );
         reportRepository.save(report);
+        eventPublisher.publishEvent(new ReportSubmittedEvent(
+            report.getId().getValue(), reporterUserId, targetType.name(), command.getTargetId()));
 
         Map<Long, User> userMap = new HashMap<Long, User>();
         userMap.put(reporter.getId().getValue(), reporter);

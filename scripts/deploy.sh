@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HOST_NAME="43.128.134.245"
+HOST_NAME="43.155.132.161"
 USER_NAME="root"
 PORT="22"
 IDENTITY_FILE=""
@@ -16,10 +16,15 @@ FRONTEND_DIST="$FRONTEND_DIR/dist"
 JAR_NAME="my-blog-backend-0.1.0.jar"
 BACKEND_JAR="$BACKEND_DIR/target/$JAR_NAME"
 
+# 本地压缩包
+LOCAL_DIST_ZIP="$FRONTEND_DIR/dist.tar.gz"
+
 REMOTE_ROOT="/www/wwwroot"
-REMOTE_FRONTEND_PARENT="$REMOTE_ROOT/my-blog/frontend"
+REMOTE_BASE="$REMOTE_ROOT/my-blog"
+REMOTE_FRONTEND_PARENT="$REMOTE_BASE/frontend"
 REMOTE_FRONTEND_DIST="$REMOTE_FRONTEND_PARENT/dist"
 REMOTE_JAR="$REMOTE_ROOT/$JAR_NAME"
+REMOTE_ZIP="$REMOTE_FRONTEND_PARENT/dist.tar.gz"
 
 usage() {
     cat <<EOF
@@ -147,26 +152,11 @@ format_bytes() {
 
 local_size_bytes() {
     local path="$1"
-    local file
-    local size
-    local total=0
-
     if [[ -f "$path" ]]; then
         stat -f%z "$path" 2>/dev/null || stat -c%s "$path"
         return
     fi
-
-    while IFS= read -r -d '' file; do
-        if size="$(stat -f%z "$file" 2>/dev/null)"; then
-            :
-        else
-            size="$(stat -c%s "$file")"
-        fi
-
-        total=$((total + size))
-    done < <(find "$path" -type f -print0)
-
-    printf '%s\n' "$total"
+    find "$path" -type f -print0 | xargs -0 stat -c%s | awk '{s+=$1} END {print s+0}'
 }
 
 remote_size_bytes() {
@@ -188,7 +178,6 @@ remote_size_bytes() {
 
 can_probe_upload_progress() {
     local output
-
     output="$(ssh "${SSH_BATCH_ARGS[@]}" "printf 1" 2>/dev/null || true)"
     [[ "$output" == "1" ]]
 }
@@ -237,7 +226,7 @@ print_progress() {
         "$bar" \
         "$percent" \
         "$(format_bytes "$uploaded")" \
-        "$(format_bytes "$total")"
+        "$(format_bytes "$total_bytes")"
 }
 
 upload_with_progress() {
@@ -245,52 +234,31 @@ upload_with_progress() {
     local local_path="$2"
     local remote_target="$3"
     local remote_progress_path="$4"
-    local recursive="${5:-false}"
-    local total_bytes
-    local remote_bytes
-    local scp_pid
 
     echo ""
     echo "==> $step"
 
     if [[ "$CAN_PROBE_UPLOAD_PROGRESS" != "true" ]]; then
-        echo "Upload progress probe unavailable; falling back to scp progress."
-
-        if [[ "$recursive" == "true" ]]; then
-            scp "${SCP_ARGS[@]}" -r "$local_path" "$remote_target"
-        else
-            scp "${SCP_ARGS[@]}" "$local_path" "$remote_target"
-        fi
-
+        scp "${SCP_ARGS[@]}" "$local_path" "$remote_target"
         return
     fi
 
+    local total_bytes
     total_bytes="$(local_size_bytes "$local_path")"
-
-    if [[ "$recursive" == "true" ]]; then
-        scp "${SCP_QUIET_ARGS[@]}" -r "$local_path" "$remote_target" &
-    else
-        scp "${SCP_QUIET_ARGS[@]}" "$local_path" "$remote_target" &
-    fi
-
-    scp_pid="$!"
+    scp "${SCP_QUIET_ARGS[@]}" "$local_path" "$remote_target" &
+    local scp_pid="$!"
 
     while kill -0 "$scp_pid" 2>/dev/null; do
-        if remote_bytes="$(remote_size_bytes "$remote_progress_path")"; then
-            if [[ "$remote_bytes" -gt "$total_bytes" ]]; then
-                remote_bytes="$total_bytes"
-            fi
-
-            print_progress "$step" "$remote_bytes" "$total_bytes"
-        else
-            printf '\r%s uploading...' "$step"
+        local remote_bytes
+        remote_bytes="$(remote_size_bytes "$remote_progress_path" || echo 0)"
+        if [[ "$remote_bytes" -gt "$total_bytes" ]]; then
+            remote_bytes=$total_bytes
         fi
-
+        print_progress "$step" "$remote_bytes" "$total_bytes"
         sleep 0.8
     done
 
     wait "$scp_pid"
-
     print_progress "$step" "$total_bytes" "$total_bytes"
     printf '\n'
 }
@@ -302,7 +270,6 @@ build_frontend() {
 
 package_backend() {
     cd "$BACKEND_DIR"
-
     if [[ "$SKIP_TESTS" == "true" ]]; then
         mvn package -DskipTests
     else
@@ -310,12 +277,31 @@ package_backend() {
     fi
 }
 
+# ====================== ✅ 核心：压缩 dist ======================
+compress_frontend() {
+    cd "$FRONTEND_DIR"
+    rm -f "$LOCAL_DIST_ZIP"
+    tar -zcf "$LOCAL_DIST_ZIP" -C dist .
+}
+# ==============================================================
+
 prepare_remote_directories() {
-    ssh "${SSH_ARGS[@]}" "$REMOTE_PREPARE_COMMAND"
+    ssh "${SSH_ARGS[@]}" "set -e; mkdir -p '$REMOTE_FRONTEND_PARENT'; rm -rf '$REMOTE_FRONTEND_DIST' '$REMOTE_ZIP'"
 }
 
+# ====================== ✅ 服务器解压 ======================
+extract_remote_zip() {
+    echo ""
+    echo "==> Extract frontend on server"
+    ssh "${SSH_ARGS[@]}" "set -e;
+      mkdir -p '$REMOTE_FRONTEND_DIST';
+      tar -zxf '$REMOTE_ZIP' -C '$REMOTE_FRONTEND_DIST';
+      rm -f '$REMOTE_ZIP';"
+}
+# ============================================================
+
 restart_remote_services() {
-    ssh "${SSH_ARGS[@]}" "$REMOTE_RESTART_COMMAND"
+    ssh "${SSH_ARGS[@]}" "set -e; cd '$REMOTE_ROOT'; chmod +x './restart.sh'; ./restart.sh${INIT_SQL:+ $INIT_SQL}"
 }
 
 build_ssh_args
@@ -323,7 +309,6 @@ build_ssh_batch_args
 build_scp_args
 build_scp_quiet_args
 
-# SQL 初始化提示（默认不初始化）
 INIT_SQL=""
 read -p "是否初始化 SQL 数据？(输入 yes 确认，直接回车跳过): " init_choice
 if [ "${init_choice,,}" = "yes" ]; then
@@ -332,44 +317,43 @@ if [ "${init_choice,,}" = "yes" ]; then
 fi
 
 run_step "Build frontend" build_frontend
+run_step "Compress frontend dist" compress_frontend
 run_step "Package backend" package_backend
 
 if [[ ! -d "$FRONTEND_DIST" ]]; then
-    echo "Frontend dist directory was not generated: $FRONTEND_DIST" >&2
+    echo "Frontend dist missing: $FRONTEND_DIST" >&2
     exit 1
 fi
 
 if [[ ! -f "$BACKEND_JAR" ]]; then
-    echo "Backend jar was not generated: $BACKEND_JAR" >&2
+    echo "Backend jar missing: $BACKEND_JAR" >&2
     exit 1
 fi
 
 CAN_PROBE_UPLOAD_PROGRESS="false"
-
-if can_probe_upload_progress; then
-    CAN_PROBE_UPLOAD_PROGRESS="true"
-fi
-
-REMOTE_PREPARE_COMMAND="set -e; mkdir -p '$REMOTE_FRONTEND_PARENT'; rm -rf '$REMOTE_FRONTEND_DIST'; rm -f '$REMOTE_JAR'"
-REMOTE_RESTART_COMMAND="set -e; cd '$REMOTE_ROOT'; chmod +x './restart.sh'; ./restart.sh${INIT_SQL:+ $INIT_SQL}"
+can_probe_upload_progress && CAN_PROBE_UPLOAD_PROGRESS="true"
 
 run_step "Prepare remote directories" prepare_remote_directories
 
+# ====================== ✅ 上传压缩包 ======================
 upload_with_progress \
-    "Upload frontend dist" \
-    "$FRONTEND_DIST" \
-    "$TARGET:$REMOTE_FRONTEND_PARENT/" \
-    "$REMOTE_FRONTEND_DIST" \
-    "true"
+    "Upload frontend dist.tar.gz" \
+    "$LOCAL_DIST_ZIP" \
+    "$TARGET:$REMOTE_ZIP" \
+    "$REMOTE_ZIP"
 
 upload_with_progress \
     "Upload backend jar" \
     "$BACKEND_JAR" \
     "$TARGET:$REMOTE_JAR" \
-    "$REMOTE_JAR" \
-    "false"
+    "$REMOTE_JAR"
+# ==========================================================
 
+run_step "Extract frontend on server" extract_remote_zip
 run_step "Restart remote services" restart_remote_services
 
+# 清理本地临时文件
+rm -f "$LOCAL_DIST_ZIP"
+
 echo ""
-echo "Deploy completed."
+echo "✅ Deploy completed."

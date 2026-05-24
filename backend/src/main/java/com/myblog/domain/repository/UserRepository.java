@@ -2,6 +2,7 @@ package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
+import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.enums.UserStatus;
 
 import java.time.LocalDate;
@@ -196,6 +197,14 @@ public interface UserRepository {
      * @return userId -> articleCount 映射
      */
     Map<Long, Integer> countPublishedArticlesBatchByIds(List<Long> userIds);
+
+    /**
+     * 根据角色查询用户列表。
+     *
+     * @param role 角色
+     * @return 用户列表
+     */
+    List<User> findByRole(UserRole role);
 
     /**
      * 查询推荐作者。

@@ -41,5 +41,15 @@ public enum NotificationType {
     /**
      * 文章发布
      */
-    ARTICLE_PUBLISH
+    ARTICLE_PUBLISH,
+
+    /**
+     * 举报提交（通知管理员）
+     */
+    REPORT_SUBMITTED,
+
+    /**
+     * 首页推荐申请提交（通知管理员）
+     */
+    RECOMMENDATION_APPLIED
 }

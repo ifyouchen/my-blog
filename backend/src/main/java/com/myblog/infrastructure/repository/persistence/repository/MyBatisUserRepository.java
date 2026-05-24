@@ -6,6 +6,7 @@ import com.myblog.domain.repository.UserRepository;
 import com.myblog.infrastructure.repository.persistence.converter.UserPersistenceConverter;
 import com.myblog.infrastructure.repository.persistence.entity.UserDO;
 import com.myblog.infrastructure.repository.persistence.mapper.UserMapper;
+import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.enums.UserStatus;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -273,6 +274,16 @@ public class MyBatisUserRepository implements UserRepository {
             }
         }
         return result;
+    }
+
+    @Override
+    public List<User> findByRole(UserRole role) {
+        List<UserDO> userDOList = userMapper.selectByRole(role.name());
+        List<User> users = new ArrayList<User>(userDOList.size());
+        for (UserDO userDO : userDOList) {
+            users.add(UserPersistenceConverter.toDomain(userDO));
+        }
+        return users;
     }
 
     @Override

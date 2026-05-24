@@ -227,4 +227,12 @@ public interface UserMapper {
 
     /** 查询推荐作者。 */
     List<UserDO> selectRecommended(@Param("limit") int limit);
+
+    /**
+     * 根据角色查询用户列表。
+     *
+     * @param role 角色
+     * @return 用户列表
+     */
+    List<UserDO> selectByRole(@Param("role") String role);
 }

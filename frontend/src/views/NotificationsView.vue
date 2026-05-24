@@ -3,7 +3,7 @@ import {computed, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import {getActiveAnnouncementsApi, getNotificationsApi, markNotificationReadApi} from '@/api/notifications';
+import {getActiveAnnouncementsApi, getNotificationsApi, markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
 import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
 
 const route = useRoute();
@@ -204,6 +204,27 @@ const handleNotificationClick = async (notification) => {
     router.push(notification.targetUrl);
 };
 
+const markingAllRead = ref(false);
+
+const handleMarkAllRead = async () => {
+    if (markingAllRead.value || refreshing.value) {
+        return;
+    }
+    markingAllRead.value = true;
+    actionError.value = '';
+    try {
+        await markAllNotificationsReadApi();
+        notifications.value = [];
+        total.value = 0;
+        currentPage.value = 1;
+        window.dispatchEvent(new CustomEvent('notifications:refresh'));
+    } catch (error) {
+        actionError.value = error.message || '全部标记已读失败，请稍后重试';
+    } finally {
+        markingAllRead.value = false;
+    }
+};
+
 watch(
     () => route.query,
     (query) => {
@@ -262,6 +283,15 @@ watch(
                             系统通知
                         </button>
                     </div>
+                    <button
+                        v-if="currentFilter !== 'system' && total > 0"
+                        class="mark-all-read"
+                        type="button"
+                        :disabled="markingAllRead || refreshing"
+                        @click="handleMarkAllRead"
+                    >
+                        {{ markingAllRead ? '处理中...' : '全部已读' }}
+                    </button>
                 </div>
             </header>
 
@@ -762,6 +792,27 @@ watch(
     }
 }
 
+.mark-all-read {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    transition: color 0.15s, background 0.15s;
+}
+.mark-all-read:hover:not(:disabled) {
+    color: #ffffff;
+    background: var(--brand);
+}
+.mark-all-read:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
 .announcement-item {
     cursor: default;
     border-left: 3px solid var(--brand);
@@ -822,11 +873,19 @@ watch(
 
     .hero-actions {
         width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
         justify-content: flex-start;
     }
 
     .filter-tabs {
         overflow-x: auto;
+        flex: 1 1 auto;
+    }
+
+    .mark-all-read {
+        width: 100%;
+        text-align: center;
     }
 
     .notification-item {

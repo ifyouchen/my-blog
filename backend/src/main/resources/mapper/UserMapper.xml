@@ -326,6 +326,13 @@
             version = version + 1
     </insert>
 
+    <select id="selectByRole" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_user
+        WHERE role = #{role}
+        AND deleted_at IS NULL
+    </select>
+
     <select id="selectRecommended" resultMap="BaseResultMap">
         SELECT id, username, email, nickname, avatar_url, bio, website, github, twitter, location,
                disable_reason, role, status, created_at, updated_at, deleted_at, version,

@@ -15,6 +15,7 @@ import com.myblog.domain.repository.CommentRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.shared.enums.NotificationType;
+import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.enums.UserStatus;
 import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
@@ -349,6 +350,107 @@ public class NotificationEventListener {
                 successCount, BizLogHelper.elapsed(_start));
         } catch (Exception e) {
             log.error("{} | {} 处理发布事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), who, params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onReportSubmitted(ReportSubmittedEvent event) {
+        long _start = System.currentTimeMillis();
+        String params = BizLogHelper.params("reportId", event.getReportId(), "targetType", event.getTargetType());
+        log.info("{} | 处理举报事件 | 入参({})", BizLogHelper.trace(), params);
+        try {
+            List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+            if (admins.isEmpty()) {
+                log.debug("{} | 处理举报事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), params,
+                    BizLogHelper.result("没有管理员，跳过通知"), BizLogHelper.elapsed(_start));
+                return;
+            }
+
+            String targetTypeLabel = event.getTargetType();
+            String targetDesc;
+            if ("ARTICLE".equals(targetTypeLabel)) {
+                targetDesc = "文章#" + event.getTargetId();
+            } else if ("COMMENT".equals(targetTypeLabel)) {
+                targetDesc = "评论#" + event.getTargetId();
+            } else {
+                targetDesc = "用户#" + event.getTargetId();
+            }
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("targetType", targetTypeLabel);
+            payload.put("targetId", event.getTargetId());
+            payload.put("targetDesc", targetDesc);
+            String payloadJson = objectMapper.writeValueAsString(payload);
+
+            for (User admin : admins) {
+                try {
+                    CreateNotificationCommand command = new CreateNotificationCommand();
+                    command.setReceiverUserId(admin.getId().getValue());
+                    command.setActorUserId(event.getReporterUserId());
+                    command.setType(NotificationType.REPORT_SUBMITTED);
+                    command.setPayloadJson(payloadJson);
+                    notificationAppService.createNotification(command);
+                } catch (Exception e) {
+                    log.error("{} | 处理举报事件 | 入参({}) | 结果(通知管理员{}失败: {})", BizLogHelper.trace(), params,
+                        admin.getId().getValue(), e.getMessage());
+                }
+            }
+
+            log.info("{} | 处理举报事件 | 入参({}) | 结果(通知{}个管理员) | {}", BizLogHelper.trace(), params,
+                admins.size(), BizLogHelper.elapsed(_start));
+        } catch (Exception e) {
+            log.error("{} | 处理举报事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), params,
+                BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onRecommendationApplied(RecommendationAppliedEvent event) {
+        long _start = System.currentTimeMillis();
+        String params = BizLogHelper.params("applicationId", event.getApplicationId(), "articleId", event.getArticleId());
+        log.info("{} | 处理推荐申请事件 | 入参({})", BizLogHelper.trace(), params);
+        try {
+            List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+            if (admins.isEmpty()) {
+                log.debug("{} | 处理推荐申请事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), params,
+                    BizLogHelper.result("没有管理员，跳过通知"), BizLogHelper.elapsed(_start));
+                return;
+            }
+
+            Optional<Article> articleOpt = articleRepository.findById(new ArticleId(event.getArticleId()));
+            String articleTitle = articleOpt.isPresent() ? articleOpt.get().getTitle() : "文章#" + event.getArticleId();
+
+            Optional<User> applicantOpt = userRepository.findById(new UserId(event.getApplicantUserId()));
+            String applicantName = applicantOpt.isPresent()
+                ? (applicantOpt.get().getNickname() != null ? applicantOpt.get().getNickname() : applicantOpt.get().getUsername())
+                : "用户#" + event.getApplicantUserId();
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("articleTitle", articleTitle);
+            payload.put("articleId", event.getArticleId());
+            payload.put("applicantName", applicantName);
+            String payloadJson = objectMapper.writeValueAsString(payload);
+
+            for (User admin : admins) {
+                try {
+                    CreateNotificationCommand command = new CreateNotificationCommand();
+                    command.setReceiverUserId(admin.getId().getValue());
+                    command.setActorUserId(event.getApplicantUserId());
+                    command.setType(NotificationType.RECOMMENDATION_APPLIED);
+                    command.setArticleId(event.getArticleId());
+                    command.setPayloadJson(payloadJson);
+                    notificationAppService.createNotification(command);
+                } catch (Exception e) {
+                    log.error("{} | 处理推荐申请事件 | 入参({}) | 结果(通知管理员{}失败: {})", BizLogHelper.trace(), params,
+                        admin.getId().getValue(), e.getMessage());
+                }
+            }
+
+            log.info("{} | 处理推荐申请事件 | 入参({}) | 结果(通知{}个管理员) | {}", BizLogHelper.trace(), params,
+                admins.size(), BizLogHelper.elapsed(_start));
+        } catch (Exception e) {
+            log.error("{} | 处理推荐申请事件 | 入参({}) | 结果({}) | {}", BizLogHelper.trace(), params,
                 BizLogHelper.result("失败: " + e.getMessage()), BizLogHelper.elapsed(_start));
         }
     }

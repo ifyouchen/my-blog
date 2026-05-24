@@ -280,6 +280,10 @@ public class NotificationAppService {
                 return "/articles/" + notification.getArticleId() + "#comment-" + notification.getCommentId();
             case USER_FOLLOW:
                 return "/users/" + notification.getActorUserId().getValue();
+            case REPORT_SUBMITTED:
+                return "/admin/reports?status=PENDING";
+            case RECOMMENDATION_APPLIED:
+                return "/admin/growth?tab=recommendation-applications&status=PENDING";
             default:
                 return "#";
         }

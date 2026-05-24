@@ -3,6 +3,7 @@ package com.myblog.application.service;
 import com.myblog.application.dto.AnnualCreatorCandidateDTO;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.RecommendationApplicationDTO;
+import com.myblog.application.event.RecommendationAppliedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.ArticleId;
@@ -22,6 +23,7 @@ import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +51,7 @@ public class RecommendationApplicationAppService {
     private final UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository;
     private final GrowthAccountRepository growthAccountRepository;
     private final AdminAppService adminAppService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RecommendationApplicationAppService(ArticleRecommendationApplicationRepository applicationRepository,
                                                ArticleRepository articleRepository,
@@ -56,7 +59,8 @@ public class RecommendationApplicationAppService {
                                                UserPrivilegeAppService userPrivilegeAppService,
                                                UserPrivilegeEntitlementRepository userPrivilegeEntitlementRepository,
                                                GrowthAccountRepository growthAccountRepository,
-                                               AdminAppService adminAppService) {
+                                               AdminAppService adminAppService,
+                                               ApplicationEventPublisher eventPublisher) {
         this.applicationRepository = applicationRepository;
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
@@ -64,6 +68,7 @@ public class RecommendationApplicationAppService {
         this.userPrivilegeEntitlementRepository = userPrivilegeEntitlementRepository;
         this.growthAccountRepository = growthAccountRepository;
         this.adminAppService = adminAppService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -91,6 +96,7 @@ public class RecommendationApplicationAppService {
         }
         ArticleRecommendationApplication application = ArticleRecommendationApplication.create(articleId, userId);
         applicationRepository.save(application);
+        eventPublisher.publishEvent(new RecommendationAppliedEvent(application.getId(), userId, articleId));
         return toDTO(application, article, userRepository.findById(new UserId(userId)).orElse(null));
     }
 

@@ -1,5 +1,6 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
+import {useRoute} from 'vue-router';
 import {
     approveAdminRecommendationApplicationApi,
     getAdminRecommendationApplicationsApi,
@@ -14,7 +15,8 @@ const STATUS_OPTIONS = [
     { value: 'REJECTED', label: '已拒绝' }
 ];
 
-const status = ref('');
+const route = useRoute();
+const status = ref(route.query.status || '');
 const page = ref(1);
 const size = 10;
 const total = ref(0);
@@ -81,6 +83,12 @@ const changePage = (nextPage) => {
 watch(status, () => {
     page.value = 1;
     loadApplications();
+});
+
+watch(() => route.query.status, (newStatus) => {
+    if (newStatus && newStatus !== status.value) {
+        status.value = newStatus;
+    }
 });
 
 onMounted(loadApplications);

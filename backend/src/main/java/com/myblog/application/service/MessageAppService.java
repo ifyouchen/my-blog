@@ -35,7 +35,6 @@ public class MessageAppService {
     private static final String MESSAGE_TYPE_TEXT = "TEXT";
     private static final String MESSAGE_TYPE_IMAGE = "IMAGE";
     private static final String IMAGE_MESSAGE_PREVIEW = "[图片]";
-    private static final String UPLOAD_FILE_URL_PREFIX = "/api/uploads/files/";
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -224,7 +223,7 @@ public class MessageAppService {
      */
     private String normalizeMessageContent(String content, String type) {
         String normalized = content == null ? "" : content.trim();
-        if (MESSAGE_TYPE_IMAGE.equals(type) && !normalized.startsWith(UPLOAD_FILE_URL_PREFIX)) {
+        if (MESSAGE_TYPE_IMAGE.equals(type) && normalized.isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "图片消息地址无效");
         }
         return normalized;

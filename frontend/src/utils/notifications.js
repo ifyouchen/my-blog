@@ -5,7 +5,9 @@ export function getNotificationText(type) {
         ARTICLE_COMMENT: '评论了你的文章',
         COMMENT_REPLY: '回复了你的评论',
         COMMENT_LIKE: '点赞了你的评论',
-        USER_FOLLOW: '关注了你'
+        USER_FOLLOW: '关注了你',
+        REPORT_SUBMITTED: '提交了新的举报',
+        RECOMMENDATION_APPLIED: '提交了首页推荐申请'
     };
     return textMap[type] || '有一条新通知';
 }
