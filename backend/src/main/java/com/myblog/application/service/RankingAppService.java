@@ -106,20 +106,28 @@ public class RankingAppService {
         String normalizedCategory = normalizeCategory(category);
         String cacheKey = buildCacheKey(normalizedLimit, normalizedPeriod, normalizedCategory);
 
-        List<ArticleDTO> cached = articleRankingsCache.getIfPresent(cacheKey);
-        if (cached != null) {
-            log.info("{} | 系统 查询文章排行榜 | 入参({}) | 结果({}) | {}",
-                BizLogHelper.trace(),
-                BizLogHelper.params(
-                    "limit", normalizedLimit,
-                    "period", normalizedPeriod,
-                    "category", normalizedCategory),
-                BizLogHelper.result("cached, size=" + cached.size()),
-                BizLogHelper.elapsed(_start));
-            return cached;
+        // Only cache "all" period; 7d/30d have sliding time window that would return stale results
+        if (PERIOD_ALL.equals(normalizedPeriod)) {
+            List<ArticleDTO> cached = articleRankingsCache.getIfPresent(cacheKey);
+            if (cached != null) {
+                userLevelAppService.fillLevels(cached.stream()
+                    .map(ArticleDTO::getAuthor)
+                    .collect(Collectors.toList()));
+                log.info("{} | 系统 查询文章排行榜 | 入参({}) | 结果({}) | {}",
+                    BizLogHelper.trace(),
+                    BizLogHelper.params(
+                        "limit", normalizedLimit,
+                        "period", normalizedPeriod,
+                        "category", normalizedCategory),
+                    BizLogHelper.result("cached, size=" + cached.size()),
+                    BizLogHelper.elapsed(_start));
+                return cached;
+            }
         }
         List<ArticleDTO> items = loadArticleRankingItems(normalizedLimit, normalizedPeriod, normalizedCategory);
-        articleRankingsCache.put(cacheKey, items);
+        if (PERIOD_ALL.equals(normalizedPeriod)) {
+            articleRankingsCache.put(cacheKey, items);
+        }
         log.info("{} | 系统 查询文章排行榜 | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.params(
@@ -204,23 +212,31 @@ public class RankingAppService {
         String normalizedCategory = normalizeCategory(category);
         String cacheKey = buildCacheKey(normalizedLimit, normalizedPeriod, normalizedCategory);
 
-        List<AuthorRankingDTO> cachedBase = authorRankingsCache.getIfPresent(cacheKey);
-        if (cachedBase != null) {
-            List<AuthorRankingDTO> result = applyFollowStatus(copyAuthorRankings(cachedBase), currentUserId);
-            log.info("{} | {} 查询作者排行榜 | 入参({}) | 结果({}) | {}",
-                BizLogHelper.trace(),
-                BizLogHelper.who(currentUserId),
-                BizLogHelper.params(
-                    "limit", normalizedLimit,
-                    "period", normalizedPeriod,
-                    "category", normalizedCategory),
-                BizLogHelper.result("cached, size=" + result.size()),
-                BizLogHelper.elapsed(_start));
-            return result;
+        // Only cache "all" period; 7d/30d have sliding time window that would return stale results
+        if (PERIOD_ALL.equals(normalizedPeriod)) {
+            List<AuthorRankingDTO> cachedBase = authorRankingsCache.getIfPresent(cacheKey);
+            if (cachedBase != null) {
+                List<AuthorRankingDTO> result = applyFollowStatus(copyAuthorRankings(cachedBase), currentUserId);
+                userLevelAppService.fillLevels(result.stream()
+                    .map(AuthorRankingDTO::getUser)
+                    .collect(Collectors.toList()));
+                log.info("{} | {} 查询作者排行榜 | 入参({}) | 结果({}) | {}",
+                    BizLogHelper.trace(),
+                    BizLogHelper.who(currentUserId),
+                    BizLogHelper.params(
+                        "limit", normalizedLimit,
+                        "period", normalizedPeriod,
+                        "category", normalizedCategory),
+                    BizLogHelper.result("cached, size=" + result.size()),
+                    BizLogHelper.elapsed(_start));
+                return result;
+            }
         }
         List<AuthorRankingDTO> baseItems =
             loadBaseAuthorRankingItems(normalizedLimit, normalizedPeriod, normalizedCategory);
-        authorRankingsCache.put(cacheKey, copyAuthorRankings(baseItems));
+        if (PERIOD_ALL.equals(normalizedPeriod)) {
+            authorRankingsCache.put(cacheKey, copyAuthorRankings(baseItems));
+        }
         List<AuthorRankingDTO> finalResult = applyFollowStatus(copyAuthorRankings(baseItems), currentUserId);
         log.info("{} | {} 查询作者排行榜 | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -362,12 +378,10 @@ public class RankingAppService {
      */
     private List<RankingQuery> buildRefreshQueries(Cache<String, ?> cache) {
         Map<String, RankingQuery> queryMap = new LinkedHashMap<String, RankingQuery>();
-        for (String period : Arrays.asList(PERIOD_7_DAYS, PERIOD_30_DAYS, PERIOD_ALL)) {
-            putRefreshQuery(queryMap, DEFAULT_LIMIT, period, null);
-        }
+        putRefreshQuery(queryMap, DEFAULT_LIMIT, PERIOD_ALL, null);
         for (String cacheKey : cache.asMap().keySet()) {
             RankingQuery query = parseCacheKey(cacheKey);
-            if (query != null) {
+            if (query != null && PERIOD_ALL.equals(query.period)) {
                 queryMap.put(query.cacheKey, query);
             }
         }

@@ -163,12 +163,8 @@ class RankingAppServiceTest {
         Map<Long, Integer> followerCounts = new HashMap<Long, Integer>();
         followerCounts.put(2L, 9);
 
-        when(articleRepository.findRankingArticles(isNull(), ArgumentMatchers.<LocalDateTime>notNull(), eq(10)))
-            .thenReturn(Collections.<Article>emptyList());
         when(articleRepository.findRankingArticles(isNull(), isNull(), eq(10)))
             .thenReturn(Collections.singletonList(freshArticle));
-        when(articleRepository.findAuthorArticleStats(eq(10), isNull(), ArgumentMatchers.<LocalDateTime>notNull()))
-            .thenReturn(Collections.<AuthorArticleStatsDO>emptyList());
         when(articleRepository.findAuthorArticleStats(eq(10), isNull(), isNull()))
             .thenReturn(Collections.singletonList(stats));
         when(userRepository.findByIds(Collections.singletonList(2L))).thenReturn(Collections.singletonList(author));
