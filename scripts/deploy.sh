@@ -9,7 +9,7 @@ SKIP_TESTS="false"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-IDENTITY_FILE="$SCRIPT_DIR/shouer.pem"
+IDENTITY_FILE=""
 FRONTEND_DIR="$REPO_ROOT/frontend"
 BACKEND_DIR="$REPO_ROOT/backend"
 FRONTEND_DIST="$FRONTEND_DIR/dist"
