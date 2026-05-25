@@ -1,88 +1,45 @@
 # my-blog
 
-`my-blog` 是一个面向技术创作者和技术读者的博客社区项目。第一版定位为具备商业化雏形的技术博客 MVP，先完成文章发布、阅读、互动和基础管理后台能力。
-
-## 功能范围
-
-第一版包含：
-
-- 用户注册、登录、退出。
-- 用户个人资料和个人主页。
-- 文章发布、保存草稿、编辑、删除。
-- Markdown 写作和文章详情展示。
-- 分类和标签。
-- 首页文章列表。
-- 文章搜索和筛选。
-- 评论和回复。
-- 点赞和收藏。
-- 阅读量统计。
-- 我的文章和我的收藏。
-- 基础管理员后台。
-
-第一版不包含：
-
-- 付费文章。
-- 积分系统。
-- 资源下载。
-- 会员体系。
-- 第三方登录。
-- 复杂推荐算法。
-- 移动 App。
-- 小程序。
+面向技术创作者和技术读者的博客社区平台，具备完整的文章发布、阅读、互动、管理后台以及用户成长体系。
 
 ## 技术栈
 
-- 前端：Vue 3、Vue Router、Pinia、Axios。
-- 后端：JDK 8、Spring Boot 2.7.18、Spring Web、Spring Security、MyBatis。
-- 数据库：MySQL。
-- 缓存：Redis。
-- 认证：JWT。
-- 部署：Nginx + Spring Boot + MySQL。
+**后端：** JDK 8、Spring Boot 2.7.18、MyBatis、MySQL 8.0+、Redis（Caffeine L1 + Redis L2 + Redisson RTopic）、自定义 JWT（HMAC-SHA256）、腾讯云 COS
 
-## 开发规范
+**前端：** Vue 3.5、Vite 5、Vue Router 4、TipTap 富文本编辑器（highlight.js 代码高亮）、原生 fetch()
 
-本项目后端开发必须遵循 DDD 四层架构和阿里巴巴 Java 开发手册。详细规范见：
+## 功能概览
 
-- [开发规范](docs/10-开发规范.md)
-
-## 推荐目录结构
-
-```text
-my-blog/
-  backend/
-  frontend/
-  docs/
-    01-需求说明书.md
-    02-功能模块设计.md
-    03-页面原型与页面清单.md
-    04-数据库设计.md
-    05-接口设计.md
-    06-权限设计.md
-    07-技术架构.md
-    08-测试用例.md
-    09-部署说明.md
-  README.md
-```
+- **用户系统** — 邮箱注册/登录、忘记密码、个人资料、修改密码、换绑邮箱
+- **文章系统** — TipTap 富文本编辑、Markdown 模式、封面图、草稿/发布/下线/删除、版本管理、文章导出 ZIP
+- **分类与标签** — 分类组 + 多级分类体系、标签系统
+- **专栏与专题** — 创作者专栏（系列文章排序）、平台专题（话题聚合）
+- **互动系统** — 评论/回复（置顶、编辑、点赞）、文章点赞/收藏、用户关注
+- **消息与通知** — 系统通知（评论/点赞/收藏/关注）、私信（基于会话）、SSE 实时推送
+- **内容发现** — 首页推荐、全文搜索、排行榜、个性化推荐、关注动态、浏览历史
+- **创作者后台（Dashboard）** — 数据概览、趋势图、文章管理、专栏管理、收藏管理、成长面板
+- **管理后台（Admin）** — 用户/文章/评论/举报/分类/标签/专栏/专题/广告/公告/敏感词/日志/成长管理
+- **成长体系** — 经验值（XP）+ 等级（10级）、积分（可消费）、每日签到（连续奖励）、徽章（16种）、邀请奖励、文章解锁（积分支付）、收益分成（50:50）
+- **图片上传** — COS 预签名 URL 直传、代理上传降级、限流
 
 ## 快速启动
 
-当前仓库先产出第一版设计文档。前后端工程创建后，建议按以下方式启动。
+### 环境要求
 
-后端：
+- JDK 8+、Maven 3.6+
+- Node.js 18+、npm 9+
+- MySQL 8.0+、Redis 6.0+
+
+### 后端
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-后端默认连接：
+数据库 `my_blog` 自动创建（需 MySQL 账号有建库权限），表结构自动初始化。默认连接 `localhost:3306`，用户 `root`，密码 `123456`。Redis 默认连接 `localhost:6379`，无密码。
 
-- MySQL：`localhost:3306/my_blog`，默认用户 `root`，默认密码 `123456`。
-- Redis：`192.168.80.128:6379`，默认密码 `123456`。
-
-启动后端时会通过 MySQL 连接参数自动创建 `my_blog` 数据库，并通过 `backend/src/main/resources/db/schema.sql` 自动建表。
-
-前端：
+### 前端
 
 ```bash
 cd frontend
@@ -90,43 +47,38 @@ npm install
 npm run dev
 ```
 
-默认访问地址建议：
+默认地址：`http://localhost:5173`，Vite 代理 `/api` 到 `http://localhost:8080`。
 
-- 前端：`http://localhost:5173`
-- 后端：`http://localhost:8080`
-- API 前缀：`/api`
+### 快速验证
 
-本地联调建议：
+```bash
+cd backend && mvn test        # 后端单元测试
+cd frontend && npm run build  # 前端构建
+cd frontend && npm run test:e2e  # 前端 E2E 测试
+```
 
-1. 启动后端：`cd backend && mvn spring-boot:run`
-2. 启动前端：`cd frontend && npm run dev`
-3. 前端请求会通过 Vite 代理转发到 `http://localhost:8080/api`
+## 项目结构
 
-后端当前阶段：
-
-- Spring Boot 2.7.18 + Java 8。
-- 已按 DDD 四层结构创建 `interfaces / application / domain / infrastructure / shared`。
-- 已实现用户注册、登录、退出、当前用户、文章列表、文章详情、发布文章接口。
-- 默认使用 MySQL + MyBatis 仓储和启动种子数据；如需临时切回内存仓储，可启用 `memory` profile。
-
-当前前端首页已迁移为 Vue 3 工程，入口位于：
-
-- `frontend/src/views/HomeView.vue`
-- `frontend/src/components/`
-- `frontend/src/styles/global.css`
-
-当前已实现的前端页面：
-
-- 首页：`/`
-- 登录：`/login`
-- 注册：`/register`
-- 文章详情：`/articles/:id`
-- 发布文章：`/editor/new`
-- 个人主页：`/users/:id`
-- 搜索结果：`/search`
-- 我的文章：`/dashboard/articles`
-- 我的收藏：`/dashboard/favorites`
-- 管理后台：`/admin`
+```
+my-blog/
+  backend/           — Spring Boot 后端（DDD 四层架构）
+  frontend/          — Vue 3 前端
+  docs/              — 设计文档
+    ├── 01-需求说明书.md
+    ├── 02-功能模块设计.md
+    ├── 03-页面原型与页面清单.md
+    ├── 04-数据库设计.md
+    ├── 05-接口设计.md
+    ├── 06-权限设计.md
+    ├── 07-技术架构.md
+    ├── 08-测试用例.md
+    ├── 09-部署说明.md
+    ├── 10-开发规范.md
+    ├── 产品说明书.md
+    └── 经验与积分/   — 成长模块详细设计
+  scripts/           — 运维脚本
+  db/                — 数据迁移和种子数据
+```
 
 ## 文档索引
 
@@ -140,26 +92,9 @@ npm run dev
 - [测试用例](docs/08-测试用例.md)
 - [部署说明](docs/09-部署说明.md)
 - [开发规范](docs/10-开发规范.md)
+- [产品说明书](docs/产品说明书.md)
+- [经验与积分设计](docs/经验与积分/)
 
-## 当前版本
+## 许可证
 
-当前版本：`v0.1.0`
-
-当前阶段：第一版 MVP 前后端联调。
-
-## 后续规划
-
-- 创建 Spring Boot 后端工程。
-- 创建 Vue 3 前端工程。
-- 完成数据库初始化脚本。
-- 完成用户认证和权限控制。
-- 完成文章发布、浏览和互动闭环。
-- 完成基础管理后台。
-
-## 项目截图
-
-待前端页面实现后补充。
-
-## 在线演示
-
-待部署后补充。
+MIT
