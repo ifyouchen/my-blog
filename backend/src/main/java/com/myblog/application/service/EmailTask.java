@@ -1,5 +1,8 @@
 package com.myblog.application.service;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * 邮件发送任务。
  *
@@ -15,8 +18,13 @@ public class EmailTask {
     private final String resetLink;
     private final int retryCount;
 
-    private EmailTask(EmailTaskType type, String email, String code, String username,
-                      String resetLink, int retryCount) {
+    @JsonCreator
+    private EmailTask(@JsonProperty("type") EmailTaskType type,
+                      @JsonProperty("email") String email,
+                      @JsonProperty("code") String code,
+                      @JsonProperty("username") String username,
+                      @JsonProperty("resetLink") String resetLink,
+                      @JsonProperty("retryCount") int retryCount) {
         this.type = type;
         this.email = email;
         this.code = code;

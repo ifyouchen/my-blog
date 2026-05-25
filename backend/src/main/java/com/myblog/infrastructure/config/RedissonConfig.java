@@ -1,5 +1,8 @@
 package com.myblog.infrastructure.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.codec.JsonJacksonCodec;
@@ -33,7 +36,10 @@ public class RedissonConfig {
             config.useSingleServer().setPassword(password);
         }
 
-        config.setCodec(new JsonJacksonCodec());
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        config.setCodec(new JsonJacksonCodec(mapper));
         log.info("Redisson client initialized: redis://{}:{}", host, port);
         return Redisson.create(config);
     }
