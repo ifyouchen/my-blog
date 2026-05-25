@@ -1,0 +1,117 @@
+# ============================================================
+# my-blog Backend Configuration Example
+# ============================================================
+# 复制此文件为 application.yml 并根据环境修配置
+# 敏感信息统一通过环境变量传入，不要直接写入 application.yml
+# ============================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: my-blog-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:my_blog}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    hikari:
+      pool-name: MyBlogHikariCP
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:your-email@qq.com}
+    password: ${MAIL_PASSWORD:your-smtp-auth-code}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          ssl:
+            enable: ${MAIL_SMTP_SSL_ENABLE:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
+  sql:
+    init:
+      mode: ${SPRING_SQL_INIT_MODE:never}
+      schema-locations:
+        - classpath:db/schema.sql
+        - classpath:db/growth/growth-schema.sql
+      data-locations:
+        - classpath:db/initdata.sql
+        - classpath*:db/articles/*.sql
+        - classpath:db/category_groups_migration.sql
+  task:
+    scheduling:
+      pool:
+        size: 4
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 22MB
+  redis:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 2
+
+mybatis:
+  mapper-locations:
+    - classpath:mapper/*.xml
+    - classpath:mapper/growth/*.xml
+  type-aliases-package: com.myblog.infrastructure.repository.persistence.entity,com.myblog.growth.infrastructure.repository.persistence.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+my-blog:
+  jwt:
+    secret: "${JWT_SECRET:replace-with-a-long-random-secret-for-local-development}"
+    expire-seconds: 86400
+  upload-dir: uploads
+  rate-limit:
+    ip-max-requests-per-minute: ${IP_MAX_REQUESTS_PER_MINUTE:20}
+  upload:
+    rate-limit:
+      image-permits: ${UPLOAD_IMAGE_PERMITS:10}
+      image-interval-seconds: ${UPLOAD_IMAGE_INTERVAL_SECONDS:60}
+      file-permits: ${UPLOAD_FILE_PERMITS:5}
+      file-interval-seconds: ${UPLOAD_FILE_INTERVAL_SECONDS:60}
+  cos:
+    secret-id: ${COS_SECRET_ID:}
+    secret-key: ${COS_SECRET_KEY:}
+    region: ${COS_REGION:ap-shanghai}
+    bucket: ${COS_BUCKET:my-blog}
+    domain: ${COS_DOMAIN:}
+  default-article-cover-url: /api/uploads/files/default/article-cover.svg
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173/}
+
+  mail:
+    from: ${MAIL_FROM:${MAIL_USERNAME:your-email@qq.com}}
+    queue-capacity: ${MAIL_QUEUE_CAPACITY:1000}
+    consumer-interval-ms: ${MAIL_CONSUMER_INTERVAL_MS:3000}
+    max-retry: ${MAIL_MAX_RETRY:3}
+    ip-rate-limit-seconds: ${MAIL_IP_RATE_LIMIT_SECONDS:20}
+    email-resend-interval-seconds: ${MAIL_EMAIL_RESEND_INTERVAL_SECONDS:30}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId}] - %msg%n"
+  level:
+    root: INFO
+    com.myblog: INFO
+    com.myblog.interfaces: INFO
+    org.mybatis: ERROR
+    com.zaxxer.hikari: WARN
+    org.springframework.jdbc: ERROR
+    com.myblog.application.cache.TwoTierCache: DEBUG
+  file:
+    name: logs/application.log
