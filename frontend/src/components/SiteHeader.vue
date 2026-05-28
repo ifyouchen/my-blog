@@ -184,6 +184,7 @@ onMounted(() => {
     document.addEventListener('click', handleDocumentClick);
     window.addEventListener('notifications:refresh', handleNotificationsRefresh);
     window.addEventListener('messages:refresh', handleMessagesRefresh);
+    window.addEventListener('signin:completed', handleSignInCompleted);
 });
 
 onUnmounted(() => {
@@ -192,6 +193,7 @@ onUnmounted(() => {
     document.body.classList.remove('mobile-search-open');
     window.removeEventListener('notifications:refresh', handleNotificationsRefresh);
     window.removeEventListener('messages:refresh', handleMessagesRefresh);
+    window.removeEventListener('signin:completed', handleSignInCompleted);
 });
 
 const handleNotificationsRefresh = () => {
@@ -202,6 +204,10 @@ const handleNotificationsRefresh = () => {
 };
 
 const handleMessagesRefresh = () => {
+    refreshUnreadCounts();
+};
+
+const handleSignInCompleted = () => {
     refreshUnreadCounts();
 };
 </script>

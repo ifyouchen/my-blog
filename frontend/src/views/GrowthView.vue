@@ -148,6 +148,7 @@ const doSignIn = async () => {
     try {
         signInResult.value = await signInApi();
         await Promise.all([loadAccount(), loadCalendar(calendarMonth.value)]);
+        window.dispatchEvent(new CustomEvent('signin:completed'));
     } catch (e) {
         signInError.value = e.message || '签到失败，请稍后重试';
     } finally {
