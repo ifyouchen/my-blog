@@ -16,39 +16,30 @@ public class SendMessageRequest {
     /** 消息类型（如 TEXT、IMAGE 等）. */
     private String type;
 
-    /**
-     * 获取消息内容.
-     *
-     * @return 消息内容
-     */
+    /** 被回复消息 ID. */
+    private Long parentId;
+
     public String getContent() {
         return content;
     }
 
-    /**
-     * 设置消息内容.
-     *
-     * @param content 消息内容
-     */
     public void setContent(String content) {
         this.content = content;
     }
 
-    /**
-     * 获取消息类型.
-     *
-     * @return 消息类型
-     */
     public String getType() {
         return type;
     }
 
-    /**
-     * 设置消息类型.
-     *
-     * @param type 消息类型
-     */
     public void setType(String type) {
         this.type = type;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 }

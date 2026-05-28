@@ -3,6 +3,7 @@ package com.myblog.infrastructure.repository.persistence.mapper;
 import com.myblog.infrastructure.repository.persistence.entity.MessageDO;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -76,6 +77,18 @@ public interface MessageMapper {
      */
     int markAllRead(@Param("conversationId") Long conversationId,
                     @Param("receiverId") Long receiverId);
+
+    /**
+     * 撤回消息（设置撤回时间）。
+     *
+     * @param id         消息 ID
+     * @param senderId   发送者用户 ID
+     * @param recalledAt 撤回时间
+     * @return 影响行数
+     */
+    int recallMessage(@Param("id") Long id,
+                      @Param("senderId") Long senderId,
+                      @Param("recalledAt") LocalDateTime recalledAt);
 
     /**
      * 查询下一个消息 ID。

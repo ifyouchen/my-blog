@@ -12,6 +12,7 @@ import {
     getConversationsApi,
     getMessagesApi,
     sendMessageApi,
+    recallMessageApi,
     markMessagesReadApi,
     subscribeMessageStream
 } from '@/api/messages';
@@ -68,6 +69,16 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const PREVIEW_MIN_SCALE = 0.5;
 const PREVIEW_MAX_SCALE = 4;
 const PREVIEW_SCALE_STEP = 0.25;
+const RECALL_TIME_LIMIT_MS = 10 * 60 * 1000;
+
+const replyingTo = ref(null);
+
+const contextMenu = reactive({
+    visible: false,
+    x: 0,
+    y: 0,
+    message: null
+});
 
 const messagesCache = new Map();
 
@@ -80,6 +91,60 @@ const isImageMessage = (msg) => (
 );
 const inputBusy = computed(() => state.sending);
 const canSendMessage = computed(() => Boolean(messageInput.value.trim() || pendingImageFile.value));
+
+const canRecall = (msg) => {
+    if (!msg || !isMine(msg) || msg.recalled) return false;
+    const elapsed = Date.now() - new Date(msg.createdAt).getTime();
+    return elapsed < RECALL_TIME_LIMIT_MS;
+};
+
+const startReply = (msg) => {
+    replyingTo.value = msg;
+    messageInputRef.value?.focus();
+};
+
+const replyPreview = (msg) => {
+    if (!msg) return '';
+    if (msg.type === 'IMAGE' || /\.(png|jpe?g|gif|webp)/i.test(msg.content)) return '[图片]';
+    return msg.content.substring(0, 60);
+};
+
+const handleRecall = async (msg) => {
+    try {
+        const result = await recallMessageApi(msg.id);
+        const idx = state.messages.findIndex(m => m.id === msg.id);
+        if (idx >= 0) {
+            state.messages[idx] = { ...state.messages[idx], ...result };
+        }
+        messagesCache.delete(state.activeConversationId);
+    } catch (e) {
+        toast.error(e.message || '撤回失败');
+    }
+};
+
+const scrollToMessage = (messageId) => {
+    nextTick(() => {
+        const el = messageContainer.value?.querySelector(`[data-msg-id="${messageId}"]`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('highlight-flash');
+            setTimeout(() => el.classList.remove('highlight-flash'), 1500);
+        }
+    });
+};
+
+const showContextMenu = (event, msg) => {
+    event.preventDefault();
+    contextMenu.visible = true;
+    contextMenu.x = event.clientX;
+    contextMenu.y = event.clientY;
+    contextMenu.message = msg;
+};
+
+const closeContextMenu = () => {
+    contextMenu.visible = false;
+    contextMenu.message = null;
+};
 
 const messagePreview = (msg) => isImageMessage(msg) ? '[图片]' : (msg.content || '');
 const formatConversationPreview = (content) => isUploadedImageUrl(content) ? '[图片]' : (content || '');
@@ -271,14 +336,16 @@ const sendMessage = async () => {
             sentMessages.push(await sendMessageApi({
                 conversationId,
                 content,
-                type: 'TEXT'
+                type: 'TEXT',
+                parentId: replyingTo.value?.id
             }));
         }
         if (imageUrl) {
             sentMessages.push(await sendMessageApi({
                 conversationId,
                 content: imageUrl,
-                type: 'IMAGE'
+                type: 'IMAGE',
+                parentId: replyingTo.value?.id
             }));
         }
 
@@ -292,6 +359,7 @@ const sendMessage = async () => {
         }
         messageInput.value = '';
         clearPendingImage();
+        replyingTo.value = null;
         messagesCache.delete(conversationId);
     } catch (e) {
         toast.error(e.message || '发送失败');
@@ -626,7 +694,7 @@ const setupSSE = () => {
         async (data) => {
             // 如果当前在对应的会话中，追加消息
             if (state.activeConversationId && data.conversationId === state.activeConversationId) {
-                state.messages.push({
+                const msg = {
                     id: data.id || Date.now(),
                     conversationId: data.conversationId,
                     senderId: data.senderId,
@@ -634,9 +702,12 @@ const setupSSE = () => {
                     senderAvatar: data.senderAvatar,
                     content: data.content,
                     type: data.type || 'TEXT',
+                    parentId: data.parentId,
+                    repliedMessage: data.repliedMessage,
                     createdAt: data.createdAt,
                     read: true
-                });
+                };
+                state.messages.push(msg);
                 await markActiveConversationRead(data.conversationId);
                 messagesCache.delete(data.conversationId);
                 scrollToBottom();
@@ -648,7 +719,20 @@ const setupSSE = () => {
             await loadConversations();
         },
         // onUnread
-        () => {}
+        () => {},
+        // onRecall
+        (data) => {
+            if (state.activeConversationId && data.conversationId === state.activeConversationId) {
+                const idx = state.messages.findIndex(m => m.id === data.id);
+                if (idx >= 0) {
+                    state.messages[idx].recalled = true;
+                    state.messages[idx].recalledAt = data.recalledAt;
+                    state.messages[idx].content = '对方撤回了一条消息';
+                }
+                messagesCache.delete(data.conversationId);
+            }
+            loadConversations();
+        }
     );
 };
 
@@ -704,6 +788,7 @@ onMounted(async () => {
     setupSSE();
     startPolling();
     document.addEventListener('click', handleEmojiPickerClickOutside);
+    document.addEventListener('click', closeContextMenu);
     document.addEventListener('keydown', handlePreviewKeydown);
 
     // 如果路由中有 conversationId，自动选中
@@ -730,6 +815,7 @@ watch(() => route.params.conversationId, (newId) => {
 
 onUnmounted(() => {
     document.removeEventListener('click', handleEmojiPickerClickOutside);
+    document.removeEventListener('click', closeContextMenu);
     document.removeEventListener('keydown', handlePreviewKeydown);
     clearPendingImage();
     clearPolling();
@@ -826,6 +912,8 @@ watch(() => state.sending, (sending) => {
                             <div
                                 class="message-item"
                                 :class="{ 'message-self': isMine(msg) }"
+                                :data-msg-id="msg.id"
+                                @contextmenu.prevent="showContextMenu($event, msg)"
                             >
                                 <img
                                     v-if="!isMine(msg) && msg.showAvatar"
@@ -835,24 +923,39 @@ watch(() => state.sending, (sending) => {
                                 >
                                 <div v-else-if="!isMine(msg)" class="message-avatar-spacer"></div>
                                 <div class="message-body">
-                                    <div class="message-bubble" :class="{ 'message-image-bubble': isImageMessage(msg) }">
-                                        <button
-                                            v-if="isImageMessage(msg)"
-                                            class="message-image-button"
-                                            type="button"
-                                            title="查看大图"
-                                            @click="openImagePreview(getMessageImageSrc(msg))"
-                                        >
-                                            <img
-                                                class="message-image"
-                                                :src="getMessageImageSrc(msg)"
-                                                alt="图片消息"
-                                                loading="lazy"
-                                                @load="handleImageLoad"
-                                            >
-                                        </button>
-                                        <div v-else class="message-content">{{ msg.content }}</div>
+                                    <div v-if="msg.recalled" class="message-recalled-notice">
+                                        {{ msg.content }}
                                     </div>
+                                    <template v-else>
+                                        <div class="message-bubble" :class="{ 'message-image-bubble': isImageMessage(msg) }">
+                                            <div
+                                                v-if="msg.repliedMessage"
+                                                class="reply-quote"
+                                                @click="scrollToMessage(msg.parentId)"
+                                            >
+                                                <div class="reply-quote-sender">{{ msg.repliedMessage.senderName || '' }}</div>
+                                                <div class="reply-quote-content">{{
+                                                    msg.repliedMessage.content || '该消息已被删除'
+                                                }}</div>
+                                            </div>
+                                            <button
+                                                v-if="isImageMessage(msg)"
+                                                class="message-image-button"
+                                                type="button"
+                                                title="查看大图"
+                                                @click="openImagePreview(getMessageImageSrc(msg))"
+                                            >
+                                                <img
+                                                    class="message-image"
+                                                    :src="getMessageImageSrc(msg)"
+                                                    alt="图片消息"
+                                                    loading="lazy"
+                                                    @load="handleImageLoad"
+                                                >
+                                            </button>
+                                            <div v-else class="message-content">{{ msg.content }}</div>
+                                        </div>
+                                    </template>
                                 </div>
                             </div>
                         </template>
@@ -932,6 +1035,11 @@ watch(() => state.sending, (sending) => {
                             <EmojiPicker @select="insertEmoji" />
                         </div>
                     </div>
+                    <div v-if="replyingTo" class="reply-indicator">
+                        <span class="reply-indicator-label">回复 @{{ replyingTo.senderName }}</span>
+                        <span class="reply-indicator-preview">{{ replyPreview(replyingTo) }}</span>
+                        <button class="reply-indicator-cancel" title="取消回复" @click="replyingTo = null">✕</button>
+                    </div>
                     <div class="input-wrapper">
                         <div class="message-input-shell">
                             <div v-if="pendingImageUrl" class="pending-image-preview">
@@ -982,6 +1090,10 @@ watch(() => state.sending, (sending) => {
         </main>
     </div>
     <ConfirmDialog v-bind="confirmDialog" @close="closeConfirmDialog" @confirm="executeConfirmDialog" />
+    <div v-if="contextMenu.visible" class="message-context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click.stop>
+        <button v-if="canRecall(contextMenu.message)" @click="handleRecall(contextMenu.message); closeContextMenu()">撤回</button>
+        <button @click="startReply(contextMenu.message); closeContextMenu()">回复</button>
+    </div>
     <div
         v-if="previewImageSrc"
         class="image-preview-overlay"
@@ -1838,5 +1950,139 @@ watch(() => state.sending, (sending) => {
     .image-preview-next {
         right: 10px;
     }
+}
+
+/* 被回复消息引用块 */
+.reply-quote {
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    background: var(--surface);
+    border-left: 3px solid var(--brand);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.4;
+    min-width: 0;
+}
+
+.reply-quote:hover {
+    background: var(--surface-soft);
+}
+
+.reply-quote-sender {
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 2px;
+    font-size: 11px;
+}
+
+.reply-quote-content {
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-self .reply-quote-sender {
+    color: var(--text-strong);
+}
+
+/* 回复提示栏 */
+.reply-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--brand-soft);
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.reply-indicator-label {
+    font-weight: 600;
+    color: var(--brand);
+    white-space: nowrap;
+}
+
+.reply-indicator-preview {
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    font-size: 12px;
+}
+
+.reply-indicator-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.reply-indicator-cancel:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+}
+
+/* 右键菜单 */
+.message-context-menu {
+    position: fixed;
+    z-index: 1000;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+    padding: 4px 0;
+    min-width: 110px;
+    overflow: hidden;
+}
+
+.message-context-menu button {
+    display: block;
+    width: 100%;
+    padding: 9px 18px;
+    text-align: left;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.message-context-menu button:hover {
+    background: var(--surface-soft);
+    color: var(--brand);
+}
+
+/* 已撤回消息通知 */
+.message-recalled-notice {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+    padding: 8px 14px;
+    text-align: center;
+}
+
+/* 高亮闪烁动画 */
+@keyframes highlight-flash {
+    0%, 100% { background: transparent; }
+    50% { background: var(--brand-soft); }
+}
+
+.highlight-flash {
+    animation: highlight-flash 1.5s ease;
+    border-radius: 8px;
 }
 </style>

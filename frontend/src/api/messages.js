@@ -38,10 +38,19 @@ export const getMessagesApi = async ({ conversationId, page = 1, pageSize = 50 }
 /**
  * 发送消息。
  */
-export const sendMessageApi = async ({ conversationId, content, type = 'TEXT' }) => {
+export const sendMessageApi = async ({ conversationId, content, type = 'TEXT', parentId }) => {
     return await request(`/messages/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: { content, type }
+        body: { content, type, parentId }
+    });
+};
+
+/**
+ * 撤回消息（仅允许发送者在10分钟内撤回）。
+ */
+export const recallMessageApi = async (messageId) => {
+    return await request(`/messages/${messageId}/recall`, {
+        method: 'POST'
     });
 };
 
@@ -62,10 +71,10 @@ export const getMessageUnreadCountApi = async () => {
 };
 
 /**
- * SSE 订阅私信事件（新消息、未读计数）。
+ * SSE 订阅私信事件（新消息、未读计数、消息撤回）。
  * 返回取消订阅函数。
  */
-export const subscribeMessageStream = (onMessage, onUnread) => {
+export const subscribeMessageStream = (onMessage, onUnread, onRecall) => {
     const getToken = () => {
         try {
             const raw = localStorage.getItem('my-blog-session');
@@ -101,6 +110,17 @@ export const subscribeMessageStream = (onMessage, onUnread) => {
             const data = JSON.parse(event.data);
             if (typeof data.count === 'number' && onUnread) {
                 onUnread(data.count);
+            }
+        } catch {
+            // ignore parse errors
+        }
+    });
+
+    es.addEventListener('message-recalled', (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (onRecall) {
+                onRecall(data);
             }
         } catch {
             // ignore parse errors

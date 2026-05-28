@@ -83,6 +83,11 @@ public class MessageController {
                     Object countObj = envelope.get("data");
                     long count = countObj instanceof Number ? ((Number) countObj).longValue() : Long.parseLong(countObj.toString());
                     doPushUnreadCount(userId, count);
+                } else if ("message-recalled".equals(type)) {
+                    Object data = envelope.get("data");
+                    if (data instanceof Map) {
+                        pushMessageRecalled(userId, (Map<String, Object>) data);
+                    }
                 } else if ("new-message".equals(type)) {
                     Object data = envelope.get("data");
                     if (data instanceof Map) {
@@ -207,6 +212,39 @@ public class MessageController {
         emitters.removeAll(toRemove);
     }
 
+    private static void pushMessageRecalled(Long userId, Map<String, Object> recallData) {
+        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
+        if (emitters == null || emitters.isEmpty()) {
+            return;
+        }
+        StringBuilder json = new StringBuilder("{");
+        for (Map.Entry<String, Object> entry : recallData.entrySet()) {
+            json.append("\"").append(entry.getKey()).append("\":");
+            Object val = entry.getValue();
+            if (val instanceof String) {
+                json.append("\"").append(escapeJson((String) val)).append("\"");
+            } else {
+                json.append(val);
+            }
+            json.append(",");
+        }
+        if (json.length() > 1) {
+            json.setLength(json.length() - 1);
+        }
+        json.append("}");
+
+        String data = json.toString();
+        List<SseEmitter> toRemove = new ArrayList<>();
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name("message-recalled").data(data));
+            } catch (IOException e) {
+                toRemove.add(emitter);
+            }
+        }
+        emitters.removeAll(toRemove);
+    }
+
     private static void doPushNewMessage(Long userId, Map<String, Object> messageData) {
         CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
         if (emitters == null || emitters.isEmpty()) {
@@ -289,7 +327,7 @@ public class MessageController {
     @PostMapping("/conversations/{id}/messages")
     public Result<MessageDTO> sendMessage(@PathVariable Long id,
                                            @RequestBody SendMessageRequest request) {
-        MessageDTO dto = messageAppService.sendMessage(id, request.getContent(), request.getType());
+        MessageDTO dto = messageAppService.sendMessage(id, request.getContent(), request.getType(), request.getParentId());
 
         Long currentUserId = AuthContext.getRequiredUserId();
         Long receiverId = getReceiverId(dto.getConversationId(), currentUserId);
@@ -302,13 +340,42 @@ public class MessageController {
             messageData.put("senderAvatar", dto.getSenderAvatar());
             messageData.put("content", dto.getContent());
             messageData.put("type", dto.getType());
+            messageData.put("parentId", dto.getParentId());
             messageData.put("createdAt", dto.getCreatedAt());
+            if (dto.getRepliedMessage() != null) {
+                Map<String, Object> replied = new HashMap<>();
+                replied.put("senderName", dto.getRepliedMessage().getSenderName());
+                replied.put("content", dto.getRepliedMessage().getContent());
+                replied.put("type", dto.getRepliedMessage().getType());
+                messageData.put("repliedMessage", replied);
+            }
             pushNewMessage(receiverId, messageData);
             publishToRedis(receiverId, "new-message", messageData);
 
             long unread = messageAppService.countUnreadForUser(receiverId);
             pushUnreadCount(receiverId, unread);
             publishToRedis(receiverId, "unread", unread);
+        }
+
+        return Result.success(dto);
+    }
+
+    @PostMapping("/{messageId}/recall")
+    public Result<MessageDTO> recallMessage(@PathVariable Long messageId) {
+        MessageDTO dto = messageAppService.recallMessage(messageId);
+
+        Long currentUserId = AuthContext.getRequiredUserId();
+        Long receiverId = getReceiverId(dto.getConversationId(), currentUserId);
+        if (receiverId != null) {
+            Map<String, Object> recallData = new HashMap<>();
+            recallData.put("id", dto.getId());
+            recallData.put("conversationId", dto.getConversationId());
+            recallData.put("recalledAt", dto.getRecalledAt());
+            pushMessageRecalled(receiverId, recallData);
+            publishToRedis(receiverId, "message-recalled", recallData);
+
+            long unread = messageAppService.countUnreadForUser(currentUserId);
+            pushUnreadCount(currentUserId, unread);
         }
 
         return Result.success(dto);

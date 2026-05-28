@@ -26,6 +26,11 @@ public class MessageDO {
     private Long senderId;
 
     /**
+     * 被回复消息 ID
+     */
+    private Long parentId;
+
+    /**
      * 消息正文内容
      */
     private String content;
@@ -49,6 +54,11 @@ public class MessageDO {
      * 接收方删除消息的时间，为 null 表示未删除
      */
     private LocalDateTime receiverDeletedAt;
+
+    /**
+     * 撤回时间，为 null 表示未撤回
+     */
+    private LocalDateTime recalledAt;
 
     /**
      * 记录创建时间
@@ -122,6 +132,24 @@ public class MessageDO {
      */
     public void setSenderId(Long senderId) {
         this.senderId = senderId;
+    }
+
+    /**
+     * 获取被回复消息 ID。
+     *
+     * @return 被回复消息 ID
+     */
+    public Long getParentId() {
+        return parentId;
+    }
+
+    /**
+     * 设置被回复消息 ID。
+     *
+     * @param parentId 被回复消息 ID
+     */
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     /**
@@ -212,6 +240,24 @@ public class MessageDO {
      */
     public void setReceiverDeletedAt(LocalDateTime receiverDeletedAt) {
         this.receiverDeletedAt = receiverDeletedAt;
+    }
+
+    /**
+     * 获取撤回时间。
+     *
+     * @return 撤回时间
+     */
+    public LocalDateTime getRecalledAt() {
+        return recalledAt;
+    }
+
+    /**
+     * 设置撤回时间。
+     *
+     * @param recalledAt 撤回时间
+     */
+    public void setRecalledAt(LocalDateTime recalledAt) {
+        this.recalledAt = recalledAt;
     }
 
     /**

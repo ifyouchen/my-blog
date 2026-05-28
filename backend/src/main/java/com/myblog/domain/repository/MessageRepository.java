@@ -2,6 +2,7 @@ package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.Message;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -57,6 +58,16 @@ public interface MessageRepository {
      * @return 未读消息总数
      */
     long countTotalUnread(Long userId);
+
+    /**
+     * 撤回消息。
+     *
+     * @param id         消息 ID
+     * @param senderId   发送者用户 ID
+     * @param recalledAt 撤回时间
+     * @return 影响行数
+     */
+    int recallMessage(Long id, Long senderId, LocalDateTime recalledAt);
 
     /**
      * 保存消息。

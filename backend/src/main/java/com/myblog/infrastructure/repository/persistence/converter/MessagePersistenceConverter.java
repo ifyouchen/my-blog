@@ -31,11 +31,13 @@ public final class MessagePersistenceConverter {
             messageDO.getId(),
             messageDO.getConversationId(),
             messageDO.getSenderId(),
+            messageDO.getParentId(),
             messageDO.getContent(),
             messageDO.getType(),
             messageDO.getReadAt(),
             messageDO.getSenderDeletedAt(),
             messageDO.getReceiverDeletedAt(),
+            messageDO.getRecalledAt(),
             messageDO.getCreatedAt(),
             messageDO.getUpdatedAt(),
             messageDO.getDeletedAt(),
@@ -54,11 +56,13 @@ public final class MessagePersistenceConverter {
         messageDO.setId(message.getId().getValue());
         messageDO.setConversationId(message.getConversationId());
         messageDO.setSenderId(message.getSenderId());
+        messageDO.setParentId(message.getParentId());
         messageDO.setContent(message.getContent());
         messageDO.setType(message.getType());
         messageDO.setReadAt(message.getReadAt());
         messageDO.setSenderDeletedAt(message.getSenderDeletedAt());
         messageDO.setReceiverDeletedAt(message.getReceiverDeletedAt());
+        messageDO.setRecalledAt(message.getRecalledAt());
         messageDO.setCreatedAt(message.getCreatedAt());
         messageDO.setUpdatedAt(message.getUpdatedAt());
         messageDO.setDeletedAt(message.getDeletedAt());

@@ -28,6 +28,11 @@ public class Message {
     private Long senderId;
 
     /**
+     * 被回复消息 ID
+     */
+    private Long parentId;
+
+    /**
      * 消息正文内容
      */
     private String content;
@@ -51,6 +56,11 @@ public class Message {
      * 接收方删除消息的时间，为 null 表示未删除
      */
     private LocalDateTime receiverDeletedAt;
+
+    /**
+     * 撤回时间，为 null 表示未撤回
+     */
+    private LocalDateTime recalledAt;
 
     /**
      * 消息创建时间
@@ -83,13 +93,15 @@ public class Message {
      * @param senderId       发送人用户 ID
      * @param content        消息内容
      * @param type           消息类型
+     * @param parentId       被回复消息 ID，可为 null
      * @return 消息聚合根
      */
-    public static Message create(Long id, Long conversationId, Long senderId, String content, String type) {
+    public static Message create(Long id, Long conversationId, Long senderId, String content, String type, Long parentId) {
         Message message = new Message();
         message.id = new MessageId(id);
         message.conversationId = conversationId;
         message.senderId = senderId;
+        message.parentId = parentId;
         message.content = content;
         message.type = type != null ? type : "TEXT";
         message.createdAt = LocalDateTime.now();
@@ -105,36 +117,62 @@ public class Message {
      * @param id                 消息 ID
      * @param conversationId     所属会话 ID
      * @param senderId           发送人用户 ID
+     * @param parentId           被回复消息 ID
      * @param content            消息内容
      * @param type               消息类型
      * @param readAt             已读时间
      * @param senderDeletedAt    发送方删除时间
      * @param receiverDeletedAt  接收方删除时间
+     * @param recalledAt         撤回时间
      * @param createdAt          创建时间
      * @param updatedAt          更新时间
      * @param deletedAt          删除时间
      * @param version            乐观锁版本号
      * @return 消息聚合根
      */
-    public static Message restore(Long id, Long conversationId, Long senderId,
+    public static Message restore(Long id, Long conversationId, Long senderId, Long parentId,
                                   String content, String type, LocalDateTime readAt,
                                   LocalDateTime senderDeletedAt, LocalDateTime receiverDeletedAt,
+                                  LocalDateTime recalledAt,
                                   LocalDateTime createdAt, LocalDateTime updatedAt,
                                   LocalDateTime deletedAt, Long version) {
         Message message = new Message();
         message.id = new MessageId(id);
         message.conversationId = conversationId;
         message.senderId = senderId;
+        message.parentId = parentId;
         message.content = content;
         message.type = type;
         message.readAt = readAt;
         message.senderDeletedAt = senderDeletedAt;
         message.receiverDeletedAt = receiverDeletedAt;
+        message.recalledAt = recalledAt;
         message.createdAt = createdAt;
         message.updatedAt = updatedAt;
         message.deletedAt = deletedAt;
         message.version = version;
         return message;
+    }
+
+    /**
+     * 撤回消息。
+     *
+     * @param now 撤回时间
+     */
+    public void recall(LocalDateTime now) {
+        this.recalledAt = now;
+        this.updatedAt = now;
+    }
+
+    /**
+     * 判断消息是否可以被撤回（10分钟内）。
+     *
+     * @param now 当前时间
+     * @return 可撤回返回 true
+     */
+    public boolean canRecall(LocalDateTime now) {
+        return recalledAt == null && createdAt != null
+            && createdAt.plusMinutes(10).isAfter(now);
     }
 
     /**
@@ -200,6 +238,15 @@ public class Message {
     }
 
     /**
+     * 获取被回复消息 ID。
+     *
+     * @return 被回复消息 ID，可能为 null
+     */
+    public Long getParentId() {
+        return parentId;
+    }
+
+    /**
      * 获取消息正文内容。
      *
      * @return 消息正文内容
@@ -224,6 +271,24 @@ public class Message {
      */
     public LocalDateTime getReadAt() {
         return readAt;
+    }
+
+    /**
+     * 获取撤回时间。
+     *
+     * @return 撤回时间，未撤回则为 null
+     */
+    public LocalDateTime getRecalledAt() {
+        return recalledAt;
+    }
+
+    /**
+     * 判断消息是否已撤回。
+     *
+     * @return 已撤回返回 true
+     */
+    public boolean isRecalled() {
+        return this.recalledAt != null;
     }
 
     /**

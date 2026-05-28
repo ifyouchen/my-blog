@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -151,7 +152,7 @@ public class MessageAppService {
         List<MessageDTO> items = new ArrayList<>(messages.size());
 
         for (Message msg : messages) {
-            items.add(toMessageDTO(msg));
+            items.add(toMessageDTO(msg, currentUserId));
         }
 
         PageResult<MessageDTO> result = new PageResult<>();
@@ -166,7 +167,7 @@ public class MessageAppService {
      * 发送消息。
      */
     @Transactional(rollbackFor = Exception.class)
-    public MessageDTO sendMessage(Long conversationId, String content, String type) {
+    public MessageDTO sendMessage(Long conversationId, String content, String type, Long parentId) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
 
@@ -179,8 +180,20 @@ public class MessageAppService {
         Conversation conversation = conversationRepository.findById(conversationId)
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
 
+        // 校验被回复消息
+        if (parentId != null) {
+            Message parentMsg = messageRepository.findById(parentId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "被回复的消息不存在"));
+            if (!parentMsg.getConversationId().equals(conversationId)) {
+                throw new ApplicationException(ErrorCode.PARAM_ERROR, "被回复的消息不属于当前会话");
+            }
+            if (parentMsg.getDeletedAt() != null || parentMsg.getSenderDeletedAt() != null || parentMsg.getReceiverDeletedAt() != null) {
+                throw new ApplicationException(ErrorCode.PARAM_ERROR, "被回复的消息已被删除");
+            }
+        }
+
         Long id = messageRepository.nextId();
-        Message message = Message.create(id, conversationId, currentUserId, messageContent, messageType);
+        Message message = Message.create(id, conversationId, currentUserId, messageContent, messageType, parentId);
         message = messageRepository.save(message);
 
         // 更新会话的最后消息
@@ -194,11 +207,48 @@ public class MessageAppService {
             BizLogHelper.who(currentUserId),
             "发送消息",
             BizLogHelper.params("conversationId", conversationId, "type", messageType,
-                "content", BizLogHelper.contentMeta(messageContent)),
+                "content", BizLogHelper.contentMeta(messageContent), "parentId", parentId),
             BizLogHelper.result("messageId=" + id),
             BizLogHelper.elapsed(_start));
 
-        return toMessageDTO(message);
+        return toMessageDTO(message, currentUserId);
+    }
+
+    /**
+     * 撤回消息（仅允许发送者在10分钟内撤回）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public MessageDTO recallMessage(Long messageId) {
+        long _start = System.currentTimeMillis();
+        Long currentUserId = AuthContext.getRequiredUserId();
+
+        Message message = messageRepository.findById(messageId)
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "消息不存在"));
+
+        if (!message.getSenderId().equals(currentUserId)) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "只能撤回自己的消息");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (!message.canRecall(now)) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "超过10分钟无法撤回");
+        }
+
+        message.recall(now);
+        int affected = messageRepository.recallMessage(messageId, currentUserId, now);
+        if (affected == 0) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "消息已被撤回");
+        }
+
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            "撤回消息",
+            BizLogHelper.params("messageId", messageId),
+            BizLogHelper.result("recalledAt=" + now.format(DTF)),
+            BizLogHelper.elapsed(_start));
+
+        return toMessageDTO(message, currentUserId);
     }
 
     /**
@@ -304,23 +354,66 @@ public class MessageAppService {
     /**
      * 将消息领域对象转换为 DTO，填充发送者信息。
      *
-     * @param message 消息领域对象
+     * @param message       消息领域对象
+     * @param currentUserId 当前用户 ID
      * @return 消息 DTO
      */
-    private MessageDTO toMessageDTO(Message message) {
+    private MessageDTO toMessageDTO(Message message, Long currentUserId) {
         User sender = userRepository.findById(
             new com.myblog.domain.model.valueobject.UserId(message.getSenderId())).orElse(null);
+
+        String senderName = sender != null ? (sender.getNickname() != null ? sender.getNickname() : sender.getUsername()) : null;
 
         MessageDTO dto = new MessageDTO();
         dto.setId(message.getId().getValue());
         dto.setConversationId(message.getConversationId());
         dto.setSenderId(message.getSenderId());
-        dto.setSenderName(sender != null ? (sender.getNickname() != null ? sender.getNickname() : sender.getUsername()) : null);
+        dto.setParentId(message.getParentId());
+        dto.setSenderName(senderName);
         dto.setSenderAvatar(sender != null ? sender.getAvatarUrl() : null);
-        dto.setContent(message.getContent());
         dto.setType(message.getType());
         dto.setRead(message.isRead());
         dto.setCreatedAt(message.getCreatedAt() != null ? message.getCreatedAt().format(DTF) : null);
+
+        // 已撤回消息处理
+        if (message.isRecalled()) {
+            dto.setRecalled(true);
+            dto.setRecalledAt(message.getRecalledAt().format(DTF));
+            dto.setContent(currentUserId.equals(message.getSenderId())
+                ? "你撤回了一条消息" : (senderName != null ? senderName : "对方") + " 撤回了一条消息");
+            return dto;
+        }
+
+        dto.setContent(message.getContent());
+
+        // 被回复消息快照
+        if (message.getParentId() != null) {
+            MessageDTO.ReplyMessageDTO reply = new MessageDTO.ReplyMessageDTO();
+            java.util.Optional<Message> parentOpt = messageRepository.findById(message.getParentId());
+            if (parentOpt.isPresent()) {
+                Message parent = parentOpt.get();
+                User parentSender = userRepository.findById(
+                    new com.myblog.domain.model.valueobject.UserId(parent.getSenderId())).orElse(null);
+                String parentSenderName = parentSender != null
+                    ? (parentSender.getNickname() != null ? parentSender.getNickname() : parentSender.getUsername())
+                    : null;
+
+                reply.setSenderName(parentSenderName);
+                if (parent.isRecalled() || parent.getDeletedAt() != null
+                    || parent.getSenderDeletedAt() != null || parent.getReceiverDeletedAt() != null) {
+                    reply.setContent("该消息已被删除");
+                    reply.setType("TEXT");
+                } else {
+                    reply.setContent(parent.getContent());
+                    reply.setType(parent.getType());
+                }
+            } else {
+                reply.setContent("该消息已被删除");
+                reply.setType("TEXT");
+            }
+            dto.setRepliedMessage(reply);
+        }
+
         return dto;
     }
 }

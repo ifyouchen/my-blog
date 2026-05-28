@@ -7,6 +7,7 @@ import com.myblog.infrastructure.repository.persistence.entity.MessageDO;
 import com.myblog.infrastructure.repository.persistence.mapper.MessageMapper;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -124,6 +125,19 @@ public class MyBatisMessageRepository implements MessageRepository {
     @Override
     public int markAllRead(Long conversationId, Long receiverId) {
         return messageMapper.markAllRead(conversationId, receiverId);
+    }
+
+    /**
+     * 撤回消息。
+     *
+     * @param id         消息 ID
+     * @param senderId   发送者用户 ID
+     * @param recalledAt 撤回时间
+     * @return 影响行数
+     */
+    @Override
+    public int recallMessage(Long id, Long senderId, LocalDateTime recalledAt) {
+        return messageMapper.recallMessage(id, senderId, recalledAt);
     }
 
     /**
