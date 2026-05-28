@@ -785,7 +785,10 @@
         <if test="keyword != null and keyword != ''">
             <choose>
                 <when test="useFulltext == true">
-                    AND MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
+                    AND (
+                        MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
+                        OR a.title LIKE CONCAT('%', #{keyword}, '%')
+                    )
                 </when>
                 <otherwise>
                     AND (
@@ -865,8 +868,6 @@
                     AND (
                         MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
                         OR a.title LIKE CONCAT('%', #{keyword}, '%')
-                        OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                        OR a.content LIKE CONCAT('%', #{keyword}, '%')
                     )
                 </when>
                 <otherwise>
