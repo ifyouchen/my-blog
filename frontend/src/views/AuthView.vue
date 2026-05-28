@@ -24,6 +24,7 @@ const errors = reactive({});
 const successMessage = ref('');
 const showWelcome = ref(false);
 const welcomeUsername = ref('');
+const submitting = ref(false);
 const emailCodeSending = ref(false);
 const emailCodeCooldown = ref(0);
 let emailCodeTimer = null;
@@ -118,9 +119,10 @@ const validate = () => {
 };
 
 const submit = async () => {
-    if (!validate()) {
+    if (!validate() || submitting.value) {
         return;
     }
+    submitting.value = true;
 
     try {
         if (isRegister.value) {
@@ -145,6 +147,7 @@ const submit = async () => {
         }
     } catch (error) {
         errors.submit = error.message || '请求失败';
+        submitting.value = false;
     }
 };
 
@@ -243,8 +246,8 @@ onBeforeUnmount(() => {
                     <input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" data-testid="register-confirm-password-input">
                     <small v-if="errors.confirmPassword">{{ errors.confirmPassword }}</small>
                 </label>
-                <button class="primary-action form-submit" type="submit" :data-testid="isRegister ? 'register-submit' : 'login-submit'">
-                    {{ isRegister ? '注册' : '登录' }}
+                <button class="primary-action form-submit" type="submit" :disabled="submitting" :data-testid="isRegister ? 'register-submit' : 'login-submit'">
+                    {{ submitting ? '处理中...' : (isRegister ? '注册' : '登录') }}
                 </button>
                 <small v-if="errors.submit">{{ errors.submit }}</small>
                 <div v-if="!isRegister" class="auth-forgot">
