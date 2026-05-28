@@ -58,6 +58,9 @@ const pendingImageFile = ref(null);
 const pendingImageUrl = ref('');
 const previewImageSrc = ref('');
 const previewScale = ref(1);
+const previewOffset = ref({ x: 0, y: 0 });
+const previewDragging = ref(false);
+let previewDragStart = null;
 const emojiPickerOpen = ref(false);
 const emojiPickerRef = ref(null);
 const inputAreaHeight = ref(null);
@@ -192,7 +195,7 @@ const messageInputAreaStyle = computed(() => (
     inputAreaHeight.value ? {height: `${inputAreaHeight.value}px`} : null
 ));
 const previewImageStyle = computed(() => ({
-    transform: `scale(${previewScale.value})`
+    transform: `translate(${previewOffset.value.x}px, ${previewOffset.value.y}px) scale(${previewScale.value})`
 }));
 const previewScalePercent = computed(() => `${Math.round(previewScale.value * 100)}%`);
 const previewImages = computed(() => {
@@ -495,6 +498,7 @@ const openImagePreview = (src) => {
 const closeImagePreview = () => {
     previewImageSrc.value = '';
     resetPreviewZoom();
+    previewOffset.value = { x: 0, y: 0 };
 };
 
 const switchPreviewImage = (direction) => {
@@ -543,10 +547,42 @@ const zoomPreview = (delta) => {
 
 const resetPreviewZoom = () => {
     previewScale.value = 1;
+    previewOffset.value = { x: 0, y: 0 };
 };
 
 const handlePreviewWheel = (event) => {
     zoomPreview(event.deltaY > 0 ? -PREVIEW_SCALE_STEP : PREVIEW_SCALE_STEP);
+};
+
+const startPreviewDrag = (event) => {
+    if (event.button !== 0 || previewScale.value <= 1) return;
+    event.preventDefault();
+    previewDragging.value = true;
+    previewDragStart = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        offset: { ...previewOffset.value }
+    };
+    window.addEventListener('pointermove', handlePreviewDragMove, { passive: false });
+    window.addEventListener('pointerup', stopPreviewDrag);
+    window.addEventListener('pointercancel', stopPreviewDrag);
+};
+
+const handlePreviewDragMove = (event) => {
+    if (!previewDragging.value || !previewDragStart) return;
+    event.preventDefault();
+    previewOffset.value = {
+        x: previewDragStart.offset.x + event.clientX - previewDragStart.clientX,
+        y: previewDragStart.offset.y + event.clientY - previewDragStart.clientY
+    };
+};
+
+const stopPreviewDrag = () => {
+    previewDragging.value = false;
+    previewDragStart = null;
+    window.removeEventListener('pointermove', handlePreviewDragMove);
+    window.removeEventListener('pointerup', stopPreviewDrag);
+    window.removeEventListener('pointercancel', stopPreviewDrag);
 };
 
 const handleImageLoad = () => {
@@ -1166,9 +1202,11 @@ watch(() => state.sending, (sending) => {
         <div class="image-preview-stage">
             <img
                 class="image-preview-full"
+                :class="{ 'is-draggable': previewScale > 1, 'is-dragging': previewDragging }"
                 :src="previewImageSrc"
                 :style="previewImageStyle"
                 alt="图片预览"
+                @pointerdown="startPreviewDrag"
             >
         </div>
     </div>
@@ -1753,8 +1791,9 @@ watch(() => state.sending, (sending) => {
     border-radius: 10px;
     background: var(--surface);
     box-shadow: 0 24px 80px rgba(15, 23, 42, 0.36);
-    transition: transform 0.12s ease-out;
     transform-origin: center center;
+    touch-action: none;
+    -webkit-user-drag: none;
 }
 
 .image-preview-close {
@@ -1777,6 +1816,9 @@ watch(() => state.sending, (sending) => {
 .image-preview-close:hover {
     background: rgba(15, 23, 42, 0.86);
 }
+
+.image-preview-full.is-draggable { cursor: grab; }
+.image-preview-full.is-dragging { cursor: grabbing; }
 
 .image-preview-toolbar {
     position: fixed;
