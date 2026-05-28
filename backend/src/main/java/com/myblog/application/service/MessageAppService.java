@@ -404,8 +404,13 @@ public class MessageAppService {
                     reply.setContent("该消息已被删除");
                     reply.setType("TEXT");
                 } else {
-                    reply.setContent(parent.getContent());
-                    reply.setType(parent.getType());
+                    if ("IMAGE".equals(parent.getType())) {
+                        reply.setContent("[图片]");
+                        reply.setType("IMAGE");
+                    } else {
+                        reply.setContent(parent.getContent());
+                        reply.setType(parent.getType());
+                    }
                 }
             } else {
                 reply.setContent("该消息已被删除");
