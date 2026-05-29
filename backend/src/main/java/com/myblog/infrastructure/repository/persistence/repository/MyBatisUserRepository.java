@@ -152,16 +152,17 @@ public class MyBatisUserRepository implements UserRepository {
      *
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @param page 页码
      * @param pageSize 每页大小
      * @return 用户列表
      */
     @Override
-    public List<User> findAdminPage(String status, String keyword, int page, int pageSize) {
+    public List<User> findAdminPage(String status, String keyword, String role, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int offset = (currentPage - 1) * currentPageSize;
-        List<UserDO> userDOList = userMapper.selectAdminPage(status, keyword, offset, currentPageSize);
+        List<UserDO> userDOList = userMapper.selectAdminPage(status, keyword, role, offset, currentPageSize);
         List<User> users = new ArrayList<User>(userDOList.size());
         for (UserDO userDO : userDOList) {
             users.add(UserPersistenceConverter.toDomain(userDO));
@@ -174,11 +175,12 @@ public class MyBatisUserRepository implements UserRepository {
      *
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @return 用户数量
      */
     @Override
-    public long countAdminPage(String status, String keyword) {
-        return userMapper.countAdminPage(status, keyword);
+    public long countAdminPage(String status, String keyword, String role) {
+        return userMapper.countAdminPage(status, keyword, role);
     }
 
     /**

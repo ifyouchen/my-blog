@@ -136,19 +136,21 @@ public interface ColumnRepository {
      * 后台管理：分页查询所有专栏（含草稿、已删除除外）。
      *
      * @param keyword  关键字
+     * @param status   状态筛选
      * @param page     页码
      * @param pageSize 每页大小
      * @return 专栏列表
      */
-    List<Column> findAll(String keyword, int page, int pageSize);
+    List<Column> findAll(String keyword, String status, int page, int pageSize);
 
     /**
      * 统计后台专栏数量。
      *
      * @param keyword 关键字
+     * @param status 状态筛选
      * @return 专栏数量
      */
-    long countAll(String keyword);
+    long countAll(String keyword, String status);
 
     /**
      * 后台管理：软删除专栏。

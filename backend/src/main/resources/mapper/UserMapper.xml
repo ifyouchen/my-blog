@@ -59,6 +59,9 @@
         <if test="status != null and status != ''">
             AND status = #{status}
         </if>
+        <if test="role != null and role != ''">
+            AND role = #{role}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (
                 username LIKE CONCAT('%', #{keyword}, '%')
@@ -76,6 +79,9 @@
         WHERE deleted_at IS NULL
         <if test="status != null and status != ''">
             AND status = #{status}
+        </if>
+        <if test="role != null and role != ''">
+            AND role = #{role}
         </if>
         <if test="keyword != null and keyword != ''">
             AND (

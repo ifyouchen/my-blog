@@ -79,20 +79,22 @@ public interface UserRepository {
      *
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @param page 页码
      * @param pageSize 每页大小
      * @return 用户列表
      */
-    List<User> findAdminPage(String status, String keyword, int page, int pageSize);
+    List<User> findAdminPage(String status, String keyword, String role, int page, int pageSize);
 
     /**
      * 统计后台用户数量。
      *
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @return 用户数量
      */
-    long countAdminPage(String status, String keyword);
+    long countAdminPage(String status, String keyword, String role);
 
     /**
      * 根据用户 ID 批量查询用户。

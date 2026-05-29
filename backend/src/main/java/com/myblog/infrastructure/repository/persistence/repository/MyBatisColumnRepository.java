@@ -237,15 +237,16 @@ public class MyBatisColumnRepository implements ColumnRepository {
      * 后台管理分页查询所有专栏。
      *
      * @param keyword  关键字
+     * @param status   状态筛选
      * @param page     页码
      * @param pageSize 每页大小
      * @return 专栏列表
      */
     @Override
-    public List<Column> findAll(String keyword, int page, int pageSize) {
+    public List<Column> findAll(String keyword, String status, int page, int pageSize) {
         int p = Math.max(page, 1);
         int ps = Math.max(pageSize, 1);
-        List<ColumnDO> list = columnMapper.selectAll(keyword, (p - 1) * ps, ps);
+        List<ColumnDO> list = columnMapper.selectAll(keyword, status, (p - 1) * ps, ps);
         List<Column> cols = new ArrayList<Column>(list.size());
         for (ColumnDO d : list) { cols.add(toDomain(d)); }
         return cols;
@@ -255,11 +256,12 @@ public class MyBatisColumnRepository implements ColumnRepository {
      * 统计所有专栏数量。
      *
      * @param keyword 关键字
+     * @param status 状态筛选
      * @return 专栏数量
      */
     @Override
-    public long countAll(String keyword) {
-        return columnMapper.countAll(keyword);
+    public long countAll(String keyword, String status) {
+        return columnMapper.countAll(keyword, status);
     }
 
     /**

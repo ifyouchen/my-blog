@@ -517,15 +517,15 @@ public class ColumnAppService {
     /**
      * 后台：分页查询所有专栏（含草稿）。
      */
-    public PageResult<ColumnDTO> adminPageColumns(String keyword, int page, int pageSize) {
+    public PageResult<ColumnDTO> adminPageColumns(String keyword, String status, int page, int pageSize) {
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
-        List<Column> columns = columnRepository.findAll(keyword, currentPage, currentPageSize);
+        List<Column> columns = columnRepository.findAll(keyword, status, currentPage, currentPageSize);
         List<ColumnDTO> items = new ArrayList<>(columns.size());
         for (Column column : columns) {
             items.add(toAdminDTO(column));
         }
-        return new PageResult<>(items, currentPage, currentPageSize, columnRepository.countAll(keyword));
+        return new PageResult<>(items, currentPage, currentPageSize, columnRepository.countAll(keyword, status));
     }
 
     /**

@@ -117,6 +117,7 @@ public class AdminController {
      * @param pageSize 每页数量
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @return 用户分页结果
      */
     @GetMapping("/users")
@@ -124,9 +125,10 @@ public class AdminController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role) {
         ensureAdmin();
-        return Result.success(adminAppService.getUsers(page, pageSize, status, keyword));
+        return Result.success(adminAppService.getUsers(page, pageSize, status, keyword, role));
     }
 
     /**
@@ -772,9 +774,10 @@ public class AdminController {
     public Result<PageResult<ColumnDTO>> getColumns(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
         ensureAdmin();
-        return Result.success(columnAppService.adminPageColumns(keyword, page, pageSize));
+        return Result.success(columnAppService.adminPageColumns(keyword, status, page, pageSize));
     }
 
     /**
@@ -804,7 +807,7 @@ public class AdminController {
                                           @RequestBody Map<String, Object> request,
                                           @Nullable HttpServletRequest httpServletRequest) {
         ensureAdmin();
-        ColumnDTO before = columnAppService.adminPageColumns(null, 1, Integer.MAX_VALUE)
+        ColumnDTO before = columnAppService.adminPageColumns(null, null, 1, Integer.MAX_VALUE)
             .getItems().stream().filter(c -> c.getId().equals(id)).findFirst().orElse(null);
         String title = (String) request.get("title");
         String summary = (String) request.get("summary");
@@ -1477,12 +1480,13 @@ public class AdminController {
     public void exportUsers(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role,
             HttpServletResponse response) throws IOException {
         ensureAdmin();
         String filename = "users-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-        byte[] data = adminAppService.exportUsersCsv(status, keyword);
+        byte[] data = adminAppService.exportUsersCsv(status, keyword, role);
         response.getOutputStream().write(0xEF);
         response.getOutputStream().write(0xBB);
         response.getOutputStream().write(0xBF);

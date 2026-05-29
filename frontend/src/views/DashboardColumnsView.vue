@@ -16,6 +16,7 @@ import {
   updateMyColumnApi
 } from '@/api/columns';
 import {getMyArticlesApi} from '@/api/articles';
+import {uploadImage} from '@/api/uploads';
 
 useHead({ title: '我的专栏 - DevNotes' });
 
@@ -39,6 +40,7 @@ const formTitle = ref('');
 const formSummary = ref('');
 const formCoverUrl = ref('');
 const formSubmitting = ref(false);
+const formCoverUploading = ref(false);
 const formError = ref('');
 
 // 抽屉：管理专栏文章
@@ -78,6 +80,7 @@ const openCreateForm = () => {
     formTitle.value = '';
     formSummary.value = '';
     formCoverUrl.value = '';
+    formCoverUploading.value = false;
     formError.value = '';
     showColumnForm.value = true;
 };
@@ -87,6 +90,7 @@ const openEditForm = (column) => {
     formTitle.value = column.title;
     formSummary.value = column.summary || '';
     formCoverUrl.value = column.coverUrl || '';
+    formCoverUploading.value = false;
     formError.value = '';
     showColumnForm.value = true;
 };
@@ -96,10 +100,36 @@ const closeColumnForm = () => {
     editingColumn.value = null;
 };
 
+const uploadColumnCover = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        formError.value = '请选择图片文件';
+        event.target.value = '';
+        return;
+    }
+    formCoverUploading.value = true;
+    formError.value = '';
+    try {
+        const result = await uploadImage(file, 'cover');
+        formCoverUrl.value = result.mediumUrl || result.url || result.originalUrl || '';
+        showFeedback('封面上传成功');
+    } catch (e) {
+        formError.value = e.message || '封面上传失败';
+    } finally {
+        formCoverUploading.value = false;
+        event.target.value = '';
+    }
+};
+
 const submitColumnForm = async () => {
     const title = formTitle.value.trim();
     if (!title) {
         formError.value = '专栏标题不能为空';
+        return;
+    }
+    if (formCoverUploading.value) {
+        formError.value = '封面图片还在上传中';
         return;
     }
     formSubmitting.value = true;
@@ -364,12 +394,32 @@ onMounted(fetchColumns);
                         ></textarea>
                     </div>
                     <div class="form-field">
-                        <label for="col-cover">封面图 URL</label>
-                        <input
-                            id="col-cover"
-                            v-model="formCoverUrl"
-                            type="url"
-                            placeholder="https://example.com/cover.jpg（可选）"
+                        <label for="col-cover">封面图</label>
+                        <div class="cover-input-row">
+                            <input
+                                id="col-cover"
+                                v-model="formCoverUrl"
+                                type="text"
+                                placeholder="封面图片 URL 或上传本地图片（可选）"
+                            >
+                            <label
+                                class="cover-upload-button"
+                                :class="{disabled: formSubmitting || formCoverUploading}"
+                            >
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    :disabled="formSubmitting || formCoverUploading"
+                                    @change="uploadColumnCover"
+                                >
+                                {{ formCoverUploading ? '上传中' : '本地上传' }}
+                            </label>
+                        </div>
+                        <img
+                            v-if="formCoverUrl"
+                            class="cover-preview"
+                            :src="formCoverUrl"
+                            alt="专栏封面预览"
                         >
                     </div>
                     <p v-if="formError" class="form-message error">{{ formError }}</p>
@@ -791,6 +841,63 @@ onMounted(fetchColumns);
 .form-field input:focus,
 .form-field textarea:focus {
     border-color: var(--brand);
+}
+
+.cover-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cover-input-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.cover-upload-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cover-upload-button:hover:not(.disabled) {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.cover-upload-button.disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.cover-upload-button input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.cover-upload-button.disabled input {
+    cursor: not-allowed;
+}
+
+.cover-preview {
+    width: 140px;
+    height: 78px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
 }
 
 .form-message.error {

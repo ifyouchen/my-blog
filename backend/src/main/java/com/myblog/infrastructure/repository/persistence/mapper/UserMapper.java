@@ -35,12 +35,14 @@ public interface UserMapper {
      *
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @param offset 偏移量
      * @param limit 限制数量
      * @return 用户列表
      */
     List<UserDO> selectAdminPage(@Param("status") String status,
                                  @Param("keyword") String keyword,
+                                 @Param("role") String role,
                                  @Param("offset") int offset,
                                  @Param("limit") int limit);
 
@@ -49,9 +51,11 @@ public interface UserMapper {
      *
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @return 用户数量
      */
-    long countAdminPage(@Param("status") String status, @Param("keyword") String keyword);
+    long countAdminPage(@Param("status") String status, @Param("keyword") String keyword,
+                        @Param("role") String role);
 
     /**
      * 根据用户 ID 批量查询用户。

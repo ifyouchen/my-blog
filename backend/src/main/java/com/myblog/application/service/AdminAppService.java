@@ -197,12 +197,19 @@ public class AdminAppService {
      * @param pageSize 每页数量
      * @param status 状态筛选
      * @param keyword 关键字
+     * @param role 角色筛选
      * @return 用户分页结果
      */
-    public PageResult<Map<String, Object>> getUsers(int page, int pageSize, String status, String keyword) {
+    public PageResult<Map<String, Object>> getUsers(
+            int page,
+            int pageSize,
+            String status,
+            String keyword,
+            String role) {
         String normalizedKeyword = normalizeKeyword(keyword);
-        List<User> users = userRepository.findAdminPage(status, normalizedKeyword, page, pageSize);
-        long total = userRepository.countAdminPage(status, normalizedKeyword);
+        String normalizedRole = normalizeKeyword(role);
+        List<User> users = userRepository.findAdminPage(status, normalizedKeyword, normalizedRole, page, pageSize);
+        long total = userRepository.countAdminPage(status, normalizedKeyword, normalizedRole);
         List<Map<String, Object>> items = new ArrayList<Map<String, Object>>(users.size());
         for (User user : users) {
             Map<String, Object> map = new HashMap<>();
@@ -1084,8 +1091,8 @@ public class AdminAppService {
      *
      * @return CSV 字节数组
      */
-    public byte[] exportUsersCsv(String status, String keyword) {
-        List<User> users = userRepository.findAdminPage(status, keyword, 1, 50000);
+    public byte[] exportUsersCsv(String status, String keyword, String role) {
+        List<User> users = userRepository.findAdminPage(status, keyword, role, 1, 50000);
         StringBuilder sb = new StringBuilder();
         sb.append("id,username,email,nickname,role,status,createdAt\n");
         for (User u : users) {

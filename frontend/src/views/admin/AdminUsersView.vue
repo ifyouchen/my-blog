@@ -47,6 +47,7 @@ const isCurrentUser = (user) => String(user.id) === String(sessionState.user?.id
 const state = reactive({
     ...createPagedState(),
     status: '',
+    role: '',
     keyword: '',
     actionLoadingId: null,
     disableTargetId: null,
@@ -56,6 +57,7 @@ const state = reactive({
 const applyRouteState = () => {
     state.page = readPositiveInt(route.query.page, 1);
     state.status = readQueryText(route, 'status');
+    state.role = readQueryText(route, 'role');
     state.keyword = readQueryText(route, 'keyword');
     state.jumpPage = String(state.page);
 };
@@ -68,7 +70,8 @@ const loadUsers = async () => {
             state.page,
             state.pageSize,
             state.status || null,
-            state.keyword || null
+            state.keyword || null,
+            state.role || null
         );
         const overflowPage = resolveAdminOverflowPage(state, result);
         if (overflowPage) {
@@ -94,6 +97,7 @@ const syncQuery = async (patch = {}) => {
     await syncAdminQuery(router, route, {
         page: patch.page ?? (state.page > 1 ? String(state.page) : undefined),
         status: patch.status ?? (state.status || undefined),
+        role: patch.role ?? (state.role || undefined),
         keyword: patch.keyword ?? (state.keyword || undefined)
     });
 };
@@ -103,17 +107,20 @@ const submitFilters = async () => {
     await syncQuery({
         page: undefined,
         status: state.status || undefined,
+        role: state.role || undefined,
         keyword: state.keyword || undefined
     });
 };
 
 const resetFilters = async () => {
     state.status = '';
+    state.role = '';
     state.keyword = '';
     state.page = 1;
     await syncQuery({
         page: undefined,
         status: undefined,
+        role: undefined,
         keyword: undefined
     });
 };
@@ -210,6 +217,7 @@ const exportUsers = async () => {
     try {
         await exportAdminUsersApi({
             status: state.status || undefined,
+            role: state.role || undefined,
             keyword: state.keyword || undefined
         });
     } catch (error) {
@@ -238,7 +246,7 @@ const toggleRecommended = async (user) => {
 useAdminRefresh(loadUsers);
 
 watch(
-    () => [route.query.page, route.query.status, route.query.keyword],
+    () => [route.query.page, route.query.status, route.query.role, route.query.keyword],
     () => {
         applyRouteState();
         loadUsers();
@@ -257,6 +265,15 @@ watch(
                         <option value="">全部</option>
                         <option value="NORMAL">正常</option>
                         <option value="DISABLED">禁用</option>
+                    </select>
+                </label>
+                <label>
+                    <span>用户角色</span>
+                    <select v-model="state.role">
+                        <option value="">全部</option>
+                        <option v-for="option in ROLE_OPTIONS" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
                     </select>
                 </label>
                 <label class="admin-filter-grow">

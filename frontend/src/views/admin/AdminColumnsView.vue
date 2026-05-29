@@ -12,7 +12,15 @@ import {
     updateAdminColumnApi
 } from '@/api/admin';
 import {getColumnArticlesApi} from '@/api/columns';
-import {createPagedState, readPositiveInt, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {uploadImage} from '@/api/uploads';
+import {
+    createPagedState,
+    readPositiveInt,
+    readQueryText,
+    resolveAdminOverflowPage,
+    syncAdminQuery,
+    useAdminRefresh
+} from '@/views/admin/adminShared';
 import {useRoute, useRouter} from 'vue-router';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useToast } from '@/composables/useToast';
@@ -27,6 +35,11 @@ const {
     executeConfirmDialog
 } = useConfirmDialog();
 
+const COLUMN_STATUS_OPTIONS = [
+    {value: 'PUBLISHED', label: '已发布'},
+    {value: 'DRAFT', label: '草稿'}
+];
+
 const form = reactive({
     authorId: '',
     title: '',
@@ -38,7 +51,10 @@ const form = reactive({
 const state = reactive({
     ...createPagedState(10),
     keyword: '',
+    status: '',
     submitting: false,
+    createCoverUploading: false,
+    editCoverUploading: false,
     editingId: null,
     editForm: {
         title: '',
@@ -59,7 +75,8 @@ const state = reactive({
 
 const applyRouteState = () => {
     state.page = readPositiveInt(route.query.page, 1);
-    state.keyword = route.query.keyword || '';
+    state.keyword = readQueryText(route, 'keyword');
+    state.status = readQueryText(route, 'status');
     state.jumpPage = String(state.page);
 };
 
@@ -70,7 +87,8 @@ const loadColumns = async () => {
         const result = await getAdminColumnsApi(
             state.page,
             state.pageSize,
-            state.keyword || null
+            state.keyword || null,
+            state.status || null
         );
         const overflowPage = resolveAdminOverflowPage(state, result);
         if (overflowPage) {
@@ -93,7 +111,8 @@ const loadColumns = async () => {
 const syncQuery = async (patch = {}) => {
     await syncAdminQuery(router, route, {
         page: patch.page ?? (state.page > 1 ? String(state.page) : undefined),
-        keyword: patch.keyword ?? (state.keyword || undefined)
+        keyword: patch.keyword ?? (state.keyword || undefined),
+        status: patch.status ?? (state.status || undefined)
     });
 };
 
@@ -104,7 +123,39 @@ const changePage = async (targetPage) => {
 
 const changeFilter = async () => {
     state.page = 1;
-    await syncQuery({ page: undefined, keyword: state.keyword || undefined });
+    await syncQuery({
+        page: undefined,
+        keyword: state.keyword || undefined,
+        status: state.status || undefined
+    });
+};
+
+const resetFilter = async () => {
+    state.keyword = '';
+    state.status = '';
+    state.page = 1;
+    await syncQuery({ page: undefined, keyword: undefined, status: undefined });
+};
+
+const uploadColumnCover = async (event, targetForm, uploadingKey) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        toast.error('请选择图片文件');
+        event.target.value = '';
+        return;
+    }
+    state[uploadingKey] = true;
+    try {
+        const result = await uploadImage(file, 'cover');
+        targetForm.coverUrl = result.mediumUrl || result.url || result.originalUrl || '';
+        toast.success('封面上传成功');
+    } catch (error) {
+        toast.error(error.message || '封面上传失败');
+    } finally {
+        state[uploadingKey] = false;
+        event.target.value = '';
+    }
 };
 
 const submitColumn = async () => {
@@ -269,7 +320,7 @@ const removeColumn = async (column) => {
 useAdminRefresh(loadColumns);
 
 watch(
-    () => [route.query.page, route.query.keyword],
+    () => [route.query.page, route.query.keyword, route.query.status],
     () => {
         applyRouteState();
         loadColumns();
@@ -295,10 +346,25 @@ watch(
                     <span>简介</span>
                     <input v-model.trim="form.summary" type="text" placeholder="专栏简介">
                 </label>
-                <label>
+                <div class="cover-field">
                     <span>封面 URL</span>
-                    <input v-model.trim="form.coverUrl" type="text" placeholder="封面图片 URL">
-                </label>
+                    <div class="cover-input-row">
+                        <input v-model.trim="form.coverUrl" type="text" placeholder="封面图片 URL 或上传本地图片">
+                        <label
+                            class="cover-upload-button"
+                            :class="{disabled: state.submitting || state.createCoverUploading}"
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                :disabled="state.submitting || state.createCoverUploading"
+                                @change="uploadColumnCover($event, form, 'createCoverUploading')"
+                            >
+                            {{ state.createCoverUploading ? '上传中' : '本地上传' }}
+                        </label>
+                    </div>
+                    <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="专栏封面预览">
+                </div>
                 <label>
                     <span>排序值</span>
                     <input v-model.number="form.sortOrder" type="number" placeholder="排序值">
@@ -313,12 +379,22 @@ watch(
             <!-- 关键字搜索 -->
             <div class="admin-filter-toolbar">
                 <label>
+                    <span>状态</span>
+                    <select v-model="state.status" @change="changeFilter">
+                        <option value="">全部</option>
+                        <option v-for="option in COLUMN_STATUS_OPTIONS" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+                </label>
+                <label>
                     <span>关键字搜索</span>
                     <input v-model.trim="state.keyword" type="text" placeholder="标题/简介关键字"
                            @keyup.enter="changeFilter">
                 </label>
                 <div class="admin-filter-actions">
                     <button type="button" @click="changeFilter">搜索</button>
+                    <button type="button" @click="resetFilter">重置</button>
                 </div>
             </div>
         </div>
@@ -335,20 +411,22 @@ watch(
                     <table class="admin-table">
                         <colgroup>
                             <col style="width: 8%">
-                            <col style="width: 14%">
-                            <col style="width: 18%">
-                            <col style="width: 9%">
-                            <col style="width: 9%">
-                            <col style="width: 10%">
-                            <col style="width: 10%">
-                            <col style="width: 10%">
                             <col style="width: 12%">
+                            <col style="width: 16%">
+                            <col style="width: 12%">
+                            <col style="width: 8%">
+                            <col style="width: 7%">
+                            <col style="width: 8%">
+                            <col style="width: 8%">
+                            <col style="width: 8%">
+                            <col style="width: 13%">
                         </colgroup>
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>标题</th>
                                 <th>简介</th>
+                                <th>封面</th>
                                 <th>作者ID</th>
                                 <th>排序</th>
                                 <th>订阅数</th>
@@ -373,6 +451,42 @@ watch(
                                 </td>
                                 <td v-else class="summary-cell">{{ column.summary || '-' }}</td>
 
+                                <!-- 封面 -->
+                                <td v-if="state.editingId === column.id" class="admin-edit-cell cover-edit-cell">
+                                    <input
+                                        v-model.trim="state.editForm.coverUrl"
+                                        class="admin-edit-input"
+                                        type="text"
+                                        placeholder="封面 URL"
+                                    >
+                                    <div class="cover-cell-actions">
+                                        <label
+                                            class="cover-upload-button compact"
+                                            :class="{disabled: state.submitting || state.editCoverUploading}"
+                                        >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                :disabled="state.submitting || state.editCoverUploading"
+                                                @change="
+                                                    uploadColumnCover($event, state.editForm, 'editCoverUploading')
+                                                "
+                                            >
+                                            {{ state.editCoverUploading ? '上传中' : '上传' }}
+                                        </label>
+                                        <img
+                                            v-if="state.editForm.coverUrl"
+                                            class="cover-thumb"
+                                            :src="state.editForm.coverUrl"
+                                            alt="专栏封面预览"
+                                        >
+                                    </div>
+                                </td>
+                                <td v-else>
+                                    <img v-if="column.coverUrl" class="cover-thumb" :src="column.coverUrl" alt="专栏封面">
+                                    <span v-else class="admin-subtext">-</span>
+                                </td>
+
                                 <!-- 作者 ID -->
                                 <td>{{ column.authorId }}</td>
 
@@ -388,8 +502,13 @@ watch(
                                 <!-- 状态 -->
                                 <td v-if="state.editingId === column.id">
                                     <select v-model="state.editForm.status" class="admin-edit-select">
-                                        <option value="PUBLISHED">已发布</option>
-                                        <option value="DRAFT">草稿</option>
+                                        <option
+                                            v-for="option in COLUMN_STATUS_OPTIONS"
+                                            :key="option.value"
+                                            :value="option.value"
+                                        >
+                                            {{ option.label }}
+                                        </option>
                                     </select>
                                 </td>
                                 <td v-else>
@@ -510,6 +629,100 @@ watch(
 <style scoped>
 .admin-table {
     table-layout: fixed;
+}
+
+.cover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 260px;
+}
+
+.cover-field > span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.cover-input-row,
+.cover-cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cover-input-row input {
+    flex: 1;
+    min-width: 180px;
+}
+
+.cover-upload-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cover-upload-button:hover:not(.disabled) {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.cover-upload-button.disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.cover-upload-button input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.cover-upload-button.disabled input {
+    cursor: not-allowed;
+}
+
+.cover-upload-button.compact {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+}
+
+.cover-preview {
+    width: 96px;
+    height: 54px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.cover-thumb {
+    width: 72px;
+    height: 42px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.cover-edit-cell {
+    min-width: 180px;
+}
+
+.cover-edit-cell .admin-edit-input {
+    margin-bottom: 8px;
 }
 
 .summary-cell {

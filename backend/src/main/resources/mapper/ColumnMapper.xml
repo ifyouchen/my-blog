@@ -249,6 +249,9 @@
         SELECT <include refid="Base_Column_List"/>
         FROM blog_column c
         WHERE c.deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND c.status = #{status}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (c.title LIKE CONCAT('%', #{keyword}, '%') OR c.summary LIKE CONCAT('%', #{keyword}, '%'))
         </if>
@@ -257,6 +260,9 @@
     </select>
     <select id="countAll" resultType="long">
         SELECT COUNT(1) FROM blog_column WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (title LIKE CONCAT('%', #{keyword}, '%') OR summary LIKE CONCAT('%', #{keyword}, '%'))
         </if>

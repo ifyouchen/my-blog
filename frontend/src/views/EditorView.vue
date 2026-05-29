@@ -1381,6 +1381,7 @@ onUnmounted(() => {
                 :target-selector="previewVisible ? '.editor-preview-panel .markdown-preview' : '.rich-markdown-editor .ProseMirror'"
                 :use-custom-navigation="!previewVisible"
                 :refresh-on-content-change="!previewVisible"
+                collapsible
                 @navigate="handleTocNavigate"
             />
             <section class="editor-category-section">
@@ -1930,9 +1931,9 @@ onUnmounted(() => {
 }
 
 .editor-side {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 14px;
-    align-content: start;
     max-height: calc(100vh - 88px);
     padding-right: 4px;
     overflow-x: hidden;

@@ -22,6 +22,10 @@ const props = defineProps({
     mobileVisible: {
         type: Boolean,
         default: false
+    },
+    collapsible: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -30,6 +34,8 @@ const emit = defineEmits(['navigate']);
 const activeId = ref('');
 const tocNavRef = ref(null);
 const observer = ref(null);
+const tocCollapsed = ref(false);
+const tocNavId = `article-toc-nav-${Math.random().toString(36).slice(2, 10)}`;
 const tocTooltip = ref({
     visible: false,
     text: '',
@@ -172,6 +178,22 @@ const hideTocTooltip = () => {
     tocTooltip.value.visible = false;
 };
 
+const toggleTocCollapsed = () => {
+    tocCollapsed.value = !tocCollapsed.value;
+    if (tocCollapsed.value) {
+        hideTocTooltip();
+    }
+};
+
+const handleTocShellClick = (event) => {
+    if (!props.collapsible || event.target.closest('button, a')) {
+        return;
+    }
+    if (tocCollapsed.value || event.target.closest('.toc-header')) {
+        toggleTocCollapsed();
+    }
+};
+
 watch(toc, async (nextToc, previousToc) => {
     const nextSignature = nextToc.map((item) => `${item.id}:${item.level}:${item.text}`).join('|');
     const previousSignature = (previousToc || []).map((item) => `${item.id}:${item.level}:${item.text}`).join('|');
@@ -206,14 +228,33 @@ onUnmounted(() => {
 <template>
     <aside
         v-if="toc.length > 0"
-        :class="['article-toc', { 'article-toc--mobile-visible': mobileVisible }]"
+        :class="[
+            'article-toc',
+            {
+                'article-toc--mobile-visible': mobileVisible,
+                'article-toc--collapsible': collapsible,
+                'article-toc--collapsed': tocCollapsed
+            }
+        ]"
+        @click="handleTocShellClick"
     >
         <div class="toc-header">
             <span>目录</span>
             <div class="toc-header-right">
                 <strong>{{ toc.length }}</strong>
                 <button
-                    v-if="hasDeepItems && toc.length > TOC_COLLAPSE_THRESHOLD"
+                    v-if="collapsible"
+                    type="button"
+                    class="toc-collapse-btn"
+                    :aria-controls="tocNavId"
+                    :aria-expanded="!tocCollapsed"
+                    :title="tocCollapsed ? '打开文章目录' : '隐藏文章目录'"
+                    @click="toggleTocCollapsed"
+                >
+                    {{ tocCollapsed ? '打开' : '隐藏' }}
+                </button>
+                <button
+                    v-if="!tocCollapsed && hasDeepItems && toc.length > TOC_COLLAPSE_THRESHOLD"
                     type="button"
                     class="toc-collapse-btn"
                     :title="deepCollapsed ? '展开全部目录' : '折叠三级以下目录'"
@@ -223,7 +264,13 @@ onUnmounted(() => {
                 </button>
             </div>
         </div>
-        <nav ref="tocNavRef" class="toc-nav" aria-label="文章目录">
+        <nav
+            v-if="!tocCollapsed"
+            :id="tocNavId"
+            ref="tocNavRef"
+            class="toc-nav"
+            aria-label="文章目录"
+        >
             <a
                 v-for="(item, index) in visibleToc"
                 :key="item.id"
@@ -264,8 +311,8 @@ onUnmounted(() => {
 
 <style scoped>
 .article-toc {
-    display: flex;
-    flex-direction: column;
+    display: block;
+    flex: 0 0 auto;
     min-height: 0;
     margin: 16px 0 0;
     padding: 14px 0 14px 14px;
@@ -286,6 +333,17 @@ onUnmounted(() => {
     font-weight: 800;
     color: var(--text);
     border-bottom: 1px solid rgba(219, 227, 223, 0.72);
+}
+
+.article-toc--collapsed .toc-header {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: 0;
+}
+
+.article-toc--collapsible.article-toc--collapsed,
+.article-toc--collapsible .toc-header {
+    cursor: pointer;
 }
 
 .toc-header-right {
@@ -344,9 +402,9 @@ onUnmounted(() => {
 .toc-nav {
     position: relative;
     display: grid;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     gap: 2px;
-    min-height: 0;
+    min-height: 30px;
     max-height: calc(100vh - 260px);
     padding: 2px 10px 2px 0;
     overflow-y: auto;

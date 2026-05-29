@@ -1546,7 +1546,7 @@ watch(tocDrawerOpen, (open) => {
 }
 
 .detail-layout {
-    max-width: var(--layout-article-max-width);
+    max-width: calc(1300px + 20px + (var(--layout-gutter) * 2));
     grid-template-columns: minmax(0, 1040px) 260px;
     position: relative;
     transition: grid-template-columns 0.36s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1554,11 +1554,13 @@ watch(tocDrawerOpen, (open) => {
 
 /* ===== 三列布局：从专栏/专题进入时，左=文章列表 / 中=正文 / 右=目录 ===== */
 .detail-layout--context {
+    max-width: var(--layout-article-max-width);
     grid-template-columns: 260px minmax(0, 1fr) 260px;
 }
 
 /* ===== 三列布局：普通入口，左=相关推荐 / 中=正文 / 右=目录 ===== */
 .detail-layout--related-left {
+    max-width: var(--layout-article-max-width);
     grid-template-columns: 280px minmax(0, 1fr) 260px;
 }
 

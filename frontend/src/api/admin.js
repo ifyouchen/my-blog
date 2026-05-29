@@ -4,10 +4,11 @@ export const getAdminStatsApi = async () => {
     return await request(`/admin/stats`);
 };
 
-export const getAdminUsersApi = async (page = 1, pageSize = 10, status = null, keyword = null) => {
+export const getAdminUsersApi = async (page = 1, pageSize = 10, status = null, keyword = null, role = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (status) params.append('status', status);
     if (keyword) params.append('keyword', keyword);
+    if (role) params.append('role', role);
     return await request(`/admin/users?${params}`);
 };
 
@@ -241,9 +242,10 @@ export const deleteTagGroupApi = async (name) => {
 
 // ===== 专栏管理 =====
 
-export const getAdminColumnsApi = async (page = 1, pageSize = 10, keyword = null) => {
+export const getAdminColumnsApi = async (page = 1, pageSize = 10, keyword = null, status = null) => {
     const params = new URLSearchParams({ page, pageSize });
     if (keyword) params.append('keyword', keyword);
+    if (status) params.append('status', status);
     return await request(`/admin/columns?${params}`);
 };
 
@@ -430,5 +432,6 @@ export const exportAdminUsersApi = (params = {}) => {
     const query = new URLSearchParams({ _t: Date.now() });
     if (params.status) query.set('status', params.status);
     if (params.keyword) query.set('keyword', params.keyword);
+    if (params.role) query.set('role', params.role);
     return downloadFile(`/admin/export/users?${query.toString()}`, 'users.csv');
 };

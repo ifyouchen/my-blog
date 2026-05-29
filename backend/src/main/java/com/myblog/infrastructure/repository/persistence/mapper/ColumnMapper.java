@@ -201,11 +201,13 @@ public interface ColumnMapper {
      * 后台管理：分页查询所有专栏（不含软删除）。
      *
      * @param keyword 关键字
+     * @param status 状态筛选
      * @param offset  偏移量
      * @param limit   限制数量
      * @return 专栏列表
      */
     List<ColumnDO> selectAll(@Param("keyword") String keyword,
+                             @Param("status") String status,
                              @Param("offset") int offset,
                              @Param("limit") int limit);
 
@@ -213,9 +215,10 @@ public interface ColumnMapper {
      * 统计所有专栏数量。
      *
      * @param keyword 关键字
+     * @param status 状态筛选
      * @return 专栏数量
      */
-    long countAll(@Param("keyword") String keyword);
+    long countAll(@Param("keyword") String keyword, @Param("status") String status);
 
     /**
      * 后台管理：软删除专栏。
