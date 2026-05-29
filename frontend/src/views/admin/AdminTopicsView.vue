@@ -12,7 +12,14 @@ import {
     updateAdminTopicApi
 } from '@/api/admin';
 import {getTopicArticlesApi} from '@/api/topic';
-import {createPagedState, readPositiveInt, resolveAdminOverflowPage, syncAdminQuery, useAdminRefresh} from '@/views/admin/adminShared';
+import {uploadImage} from '@/api/uploads';
+import {
+    createPagedState,
+    readPositiveInt,
+    resolveAdminOverflowPage,
+    syncAdminQuery,
+    useAdminRefresh
+} from '@/views/admin/adminShared';
 import {useRoute, useRouter} from 'vue-router';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useToast } from '@/composables/useToast';
@@ -38,6 +45,8 @@ const state = reactive({
     ...createPagedState(10),
     keyword: '',
     submitting: false,
+    createCoverUploading: false,
+    editCoverUploading: false,
     editingId: null,
     editForm: {
         title: '',
@@ -106,9 +115,34 @@ const changeFilter = async () => {
     await syncQuery({ page: undefined, keyword: state.keyword || undefined });
 };
 
+const uploadTopicCover = async (event, targetForm, uploadingKey) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        toast.error('请选择图片文件');
+        event.target.value = '';
+        return;
+    }
+    state[uploadingKey] = true;
+    try {
+        const result = await uploadImage(file, 'cover');
+        targetForm.coverUrl = result.mediumUrl || result.url || result.originalUrl || '';
+        toast.success('封面上传成功');
+    } catch (error) {
+        toast.error(error.message || '封面上传失败');
+    } finally {
+        state[uploadingKey] = false;
+        event.target.value = '';
+    }
+};
+
 const submitTopic = async () => {
     if (!form.title) {
         toast.error('请填写专题标题');
+        return;
+    }
+    if (state.createCoverUploading) {
+        toast.error('封面图片还在上传中');
         return;
     }
     state.submitting = true;
@@ -145,6 +179,10 @@ const cancelEdit = () => {
 };
 
 const saveEdit = async (topicId) => {
+    if (state.editCoverUploading) {
+        toast.error('封面图片还在上传中');
+        return;
+    }
     state.submitting = true;
     try {
         await updateAdminTopicApi(topicId, {
@@ -287,10 +325,25 @@ watch(
                     <span>简介</span>
                     <input v-model.trim="form.summary" type="text" placeholder="专题简介">
                 </label>
-                <label>
+                <div class="cover-field">
                     <span>封面 URL</span>
-                    <input v-model.trim="form.coverUrl" type="text" placeholder="封面图片 URL">
-                </label>
+                    <div class="cover-input-row">
+                        <input v-model.trim="form.coverUrl" type="text" placeholder="封面图片 URL 或上传本地图片">
+                        <label
+                            class="cover-upload-button"
+                            :class="{disabled: state.submitting || state.createCoverUploading}"
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                :disabled="state.submitting || state.createCoverUploading"
+                                @change="uploadTopicCover($event, form, 'createCoverUploading')"
+                            >
+                            {{ state.createCoverUploading ? '上传中' : '本地上传' }}
+                        </label>
+                    </div>
+                    <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="专题封面预览">
+                </div>
                 <label>
                     <span>排序值</span>
                     <input v-model.number="form.sortOrder" type="number" placeholder="排序值">
@@ -326,11 +379,12 @@ watch(
                     <table class="admin-table">
                         <colgroup>
                             <col style="width: 8%">
+                            <col style="width: 14%">
                             <col style="width: 18%">
-                            <col style="width: 22%">
+                            <col style="width: 14%">
+                            <col style="width: 8%">
                             <col style="width: 10%">
-                            <col style="width: 12%">
-                            <col style="width: 12%">
+                            <col style="width: 10%">
                             <col style="width: 18%">
                         </colgroup>
                         <thead>
@@ -338,6 +392,7 @@ watch(
                                 <th>ID</th>
                                 <th>标题</th>
                                 <th>简介</th>
+                                <th>封面</th>
                                 <th>排序</th>
                                 <th>文章数</th>
                                 <th>状态</th>
@@ -357,6 +412,41 @@ watch(
                                     <input v-model.trim="state.editForm.summary" class="admin-edit-input" type="text">
                                 </td>
                                 <td v-else class="summary-cell">{{ topic.summary || '-' }}</td>
+
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell cover-edit-cell">
+                                    <input
+                                        v-model.trim="state.editForm.coverUrl"
+                                        class="admin-edit-input"
+                                        type="text"
+                                        placeholder="封面 URL"
+                                    >
+                                    <div class="cover-cell-actions">
+                                        <label
+                                            class="cover-upload-button compact"
+                                            :class="{disabled: state.submitting || state.editCoverUploading}"
+                                        >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                :disabled="state.submitting || state.editCoverUploading"
+                                                @change="
+                                                    uploadTopicCover($event, state.editForm, 'editCoverUploading')
+                                                "
+                                            >
+                                            {{ state.editCoverUploading ? '上传中' : '上传' }}
+                                        </label>
+                                        <img
+                                            v-if="state.editForm.coverUrl"
+                                            class="cover-thumb"
+                                            :src="state.editForm.coverUrl"
+                                            alt="专题封面预览"
+                                        >
+                                    </div>
+                                </td>
+                                <td v-else>
+                                    <img v-if="topic.coverUrl" class="cover-thumb" :src="topic.coverUrl" alt="专题封面">
+                                    <span v-else class="admin-subtext">-</span>
+                                </td>
 
                                 <td v-if="state.editingId === topic.id" class="admin-edit-cell admin-edit-cell-narrow">
                                     <input v-model.number="state.editForm.sortOrder" class="admin-edit-input" type="number">
@@ -481,6 +571,100 @@ watch(
 <style scoped>
 .admin-table {
     table-layout: fixed;
+}
+
+.cover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 260px;
+}
+
+.cover-field > span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.cover-input-row,
+.cover-cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cover-input-row input {
+    flex: 1;
+    min-width: 180px;
+}
+
+.cover-upload-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cover-upload-button:hover:not(.disabled) {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.cover-upload-button.disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.cover-upload-button input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.cover-upload-button.disabled input {
+    cursor: not-allowed;
+}
+
+.cover-upload-button.compact {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+}
+
+.cover-preview {
+    width: 96px;
+    height: 54px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.cover-thumb {
+    width: 72px;
+    height: 42px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.cover-edit-cell {
+    min-width: 180px;
+}
+
+.cover-edit-cell .admin-edit-input {
+    margin-bottom: 8px;
 }
 
 .summary-cell {

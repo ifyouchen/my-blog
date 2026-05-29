@@ -163,6 +163,10 @@ const submitColumn = async () => {
         toast.error('请填写作者 ID');
         return;
     }
+    if (state.createCoverUploading) {
+        toast.error('封面图片还在上传中');
+        return;
+    }
     state.submitting = true;
     try {
         await createAdminColumnApi({
@@ -199,6 +203,10 @@ const cancelEdit = () => {
 };
 
 const saveEdit = async (columnId) => {
+    if (state.editCoverUploading) {
+        toast.error('封面图片还在上传中');
+        return;
+    }
     state.submitting = true;
     try {
         await updateAdminColumnApi(columnId, {

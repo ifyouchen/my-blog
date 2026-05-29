@@ -124,8 +124,15 @@ const sourceTopicTitle = computed(() => route.query.topicTitle ? String(route.qu
 const isFromColumn = computed(() => sourceFrom.value === 'column' && !!sourceColumnId.value);
 const isFromTopic = computed(() => sourceFrom.value === 'topic' && !!sourceTopicId.value);
 const isInContext = computed(() => isFromColumn.value || isFromTopic.value);
+const isPublishedArticleForSidebar = computed(() => {
+    const routeArticleId = String(route.params.id || '').replace(/-.+$/, '');
+    return String(remoteArticle.value?.id || '') === routeArticleId
+        && remoteArticle.value?.status === 'PUBLISHED';
+});
 const showRelatedSidebar = computed(() => (
-    !isInContext.value && (relatedLoading.value || recommendationSections.value.length > 0)
+    isPublishedArticleForSidebar.value
+        && !isInContext.value
+        && (relatedLoading.value || recommendationSections.value.length > 0)
 ));
 
 // 面包屑信息
@@ -169,6 +176,14 @@ const buildNeighborTo = (neighborArticle) => {
 const articleId = computed(() => String(route.params.id || '').replace(/-.+$/, ''));
 const articleUrl = computed(() => `${window.location.origin}/articles/${articleId.value}`);
 const article = computed(() => remoteArticle.value);
+const isCurrentArticleLoaded = computed(() => (
+    Boolean(article.value?.id) && String(article.value.id) === articleId.value
+));
+const isNonPublicArticle = computed(() => (
+    isCurrentArticleLoaded.value
+        && Boolean(article.value?.status)
+        && article.value.status !== 'PUBLISHED'
+));
 const articleMarkdown = computed(() => {
     if (!article.value) {
         return '';
@@ -242,6 +257,7 @@ const detailLayoutClasses = computed(() => [
     {
         'detail-layout--context': isInContext.value,
         'detail-layout--related-left': showRelatedSidebar.value,
+        'detail-layout--non-public': isNonPublicArticle.value,
         'detail-layout--left-collapsed': hasLeftSidebar.value && leftSidebarCollapsed.value,
         'detail-layout--right-collapsed': rightSidebarCollapsed.value
     }
@@ -491,11 +507,10 @@ const fetchArticle = async () => {
     const numericId = routeId.replace(/-.+$/, '');
     // 有旧文章时保留 remoteArticle（避免整个 main 卸载导致左侧栏闪烁）
     // 首次加载时才 null（走骨架屏分支）
-    if (!remoteArticle.value) {
-        isLoading.value = true;
-    }
+    isLoading.value = true;
     loadError.value = '';
     recommendationSections.value = [];
+    relatedLoading.value = false;
     try {
         const detail = await getArticleApi(numericId);
         if (String(route.params.id) === routeId) {
@@ -520,7 +535,7 @@ const fetchArticle = async () => {
 
 const fetchRecommendations = async (id) => {
     // 从专栏/专题进入时，不显示相关推荐（侧边栏改为专栏/专题文章列表）
-    if (isInContext.value) {
+    if (isInContext.value || String(id) !== articleId.value || !isPublishedArticleForSidebar.value) {
         recommendationSections.value = [];
         relatedLoading.value = false;
         return;
@@ -1307,19 +1322,28 @@ watch(tocDrawerOpen, (open) => {
                     :aria-hidden="rightSidebarCollapsed"
                     :inert="rightSidebarCollapsed ? '' : null"
                 >
-                    <div v-if="remoteArticle" class="detail-toc">
+                    <div v-if="isCurrentArticleLoaded" class="detail-toc">
                         <ArticleToc
                             :content="articleMarkdown"
                         />
                     </div>
 
-                    <AdBanner v-if="!isInContext" class="article-sidebar-ad" :slot-code="'article_sidebar'" />
+                    <AdBanner
+                        v-if="isPublishedArticleForSidebar && !isInContext"
+                        class="article-sidebar-ad"
+                        :slot-code="'article_sidebar'"
+                    />
                 </div>
             </div>
         </aside>
     </main>
     <!-- 加载骨架屏 -->
-    <main v-else-if="isLoading" class="page-shell detail-layout" aria-busy="true" aria-label="文章加载中">
+    <main
+        v-else-if="isLoading"
+        class="page-shell detail-layout detail-layout--loading"
+        aria-busy="true"
+        aria-label="文章加载中"
+    >
         <div class="article-main">
             <div class="article-skeleton">
                 <div class="article-body">
@@ -1349,12 +1373,6 @@ watch(tocDrawerOpen, (open) => {
                 </div>
             </div>
         </div>
-        <aside class="detail-side">
-            <div class="skeleton-toc">
-                <div class="skeleton-toc-title"></div>
-                <div v-for="i in 5" :key="i" class="skeleton-toc-item" :style="{ width: `${50 + (i % 3) * 15}%` }"></div>
-            </div>
-        </aside>
     </main>
 
     <!-- 错误状态 -->
@@ -1546,10 +1564,19 @@ watch(tocDrawerOpen, (open) => {
 }
 
 .detail-layout {
-    max-width: calc(1300px + 20px + (var(--layout-gutter) * 2));
-    grid-template-columns: minmax(0, 1040px) 260px;
+    max-width: var(--layout-article-max-width);
+    grid-template-columns: minmax(0, 1fr) 280px;
     position: relative;
     transition: grid-template-columns 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-layout--non-public {
+    max-width: var(--layout-article-max-width);
+}
+
+.detail-layout--loading {
+    max-width: min(1180px, calc(100vw - 48px));
+    grid-template-columns: minmax(0, 1fr);
 }
 
 /* ===== 三列布局：从专栏/专题进入时，左=文章列表 / 中=正文 / 右=目录 ===== */
