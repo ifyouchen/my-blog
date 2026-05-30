@@ -45,6 +45,9 @@ class MessageAppServiceTest {
     @Mock
     private UserLevelAppService userLevelAppService;
 
+    @Mock
+    private UserPresenceAppService userPresenceAppService;
+
     private MessageAppService service;
 
     @BeforeEach
@@ -53,7 +56,7 @@ class MessageAppServiceTest {
             conversationRepository,
             messageRepository,
             userRepository,
-            userLevelAppService
+            userLevelAppService, userPresenceAppService
         );
         setCurrentUser(9L);
     }
