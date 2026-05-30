@@ -15,11 +15,13 @@ import com.myblog.interfaces.rest.dto.request.SendMessageRequest;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.PreDestroy;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -116,7 +118,9 @@ public class MessageController {
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream() {
+    public SseEmitter stream(HttpServletResponse response) {
+        configureSseResponse(response);
+
         Long userId = AuthContext.getCurrentUserId();
         if (userId == null) {
             SseEmitter emitter = new SseEmitter(0L);
@@ -151,6 +155,14 @@ public class MessageController {
         emitter.onTimeout(cleanup);
         emitter.onError(e -> cleanup.run());
 
+        try {
+            emitter.send(SseEmitter.event().comment("connected"));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+            cleanup.run();
+            return emitter;
+        }
+
         // Send periodic keepalive to prevent proxies/gateways from closing idle connections
         keepaliveTask[0] = keepaliveExecutor.scheduleAtFixedRate(() -> {
             try {
@@ -161,6 +173,12 @@ public class MessageController {
         }, KEEPALIVE_INTERVAL_SECONDS, KEEPALIVE_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
         return emitter;
+    }
+
+    private static void configureSseResponse(HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform");
+        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
     }
 
     public static void pushNewMessage(Long userId, Map<String, Object> messageData) {

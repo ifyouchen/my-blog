@@ -10,10 +10,12 @@ import com.myblog.shared.result.Result;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,7 +61,9 @@ public class NotificationController {
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream() {
+    public SseEmitter stream(HttpServletResponse response) {
+        configureSseResponse(response);
+
         Long userId = AuthContext.getCurrentUserId();
         if (userId == null) {
             SseEmitter emitter = new SseEmitter(0L);
@@ -95,6 +99,12 @@ public class NotificationController {
         }
 
         return emitter;
+    }
+
+    private static void configureSseResponse(HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform");
+        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
     }
 
     public static void pushUnreadCount(Long userId, long unreadCount) {
