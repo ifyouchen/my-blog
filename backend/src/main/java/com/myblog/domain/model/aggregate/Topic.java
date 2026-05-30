@@ -117,6 +117,11 @@ public class Topic {
      */
     public static Topic create(Long id, String title, String summary,
                                String coverUrl, Integer sortOrder) {
+        return create(id, title, summary, coverUrl, sortOrder, null);
+    }
+
+    public static Topic create(Long id, String title, String summary,
+                               String coverUrl, Integer sortOrder, String difficulty) {
         Topic topic = new Topic();
         topic.id = new TopicId(id);
         topic.title = title;
@@ -126,7 +131,7 @@ public class Topic {
         topic.sortOrder = sortOrder == null ? 0 : sortOrder;
         topic.articleCount = 0;
         topic.intro = "";
-        topic.difficulty = "INTERMEDIATE";
+        topic.difficulty = difficulty == null ? "INTERMEDIATE" : difficulty;
         topic.estimatedMinutes = 0;
         topic.sourceType = "ORIGINAL";
         topic.sourceNote = "";
@@ -228,6 +233,11 @@ public class Topic {
      */
     public void update(String title, String summary, String coverUrl,
                        Integer sortOrder, String status) {
+        update(title, summary, coverUrl, sortOrder, status, null);
+    }
+
+    public void update(String title, String summary, String coverUrl,
+                       Integer sortOrder, String status, String difficulty) {
         this.title = title;
         this.summary = summary;
         this.coverUrl = coverUrl;
@@ -236,6 +246,9 @@ public class Topic {
         }
         if (status != null) {
             this.status = status;
+        }
+        if (difficulty != null) {
+            this.difficulty = difficulty;
         }
         this.updatedAt = LocalDateTime.now();
     }

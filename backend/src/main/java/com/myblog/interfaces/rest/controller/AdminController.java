@@ -895,7 +895,8 @@ public class AdminController {
         String summary = (String) request.get("summary");
         String coverUrl = (String) request.get("coverUrl");
         Integer sortOrder = parseInteger(request.get("sortOrder"), 0);
-        TopicDTO dto = topicAppService.adminCreateTopic(title, summary, coverUrl, sortOrder);
+        String difficulty = (String) request.get("difficulty");
+        TopicDTO dto = topicAppService.adminCreateTopic(title, summary, coverUrl, sortOrder, difficulty);
         adminLogAppService.recordOperation(buildLogCommand(
             "CREATE_TOPIC", "TOPIC", dto.getId(),
             "创建专题 " + dto.getTitle(), null, toTopicSnapshot(dto), httpServletRequest));
@@ -915,7 +916,8 @@ public class AdminController {
         String coverUrl = (String) request.get("coverUrl");
         Integer sortOrder = parseInteger(request.get("sortOrder"), null);
         String status = (String) request.get("status");
-        TopicDTO dto = topicAppService.adminUpdateTopic(id, title, summary, coverUrl, sortOrder, status);
+        String difficulty = (String) request.get("difficulty");
+        TopicDTO dto = topicAppService.adminUpdateTopic(id, title, summary, coverUrl, sortOrder, status, difficulty);
         adminLogAppService.recordOperation(buildLogCommand(
             "UPDATE_TOPIC", "TOPIC", id,
             "更新专题 " + dto.getTitle(), null, toTopicSnapshot(dto), httpServletRequest));

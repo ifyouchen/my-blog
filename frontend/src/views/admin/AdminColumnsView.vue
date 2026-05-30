@@ -1,5 +1,5 @@
 <script setup>
-import {reactive, watch} from 'vue';
+import {reactive, ref, watch} from 'vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
@@ -28,6 +28,9 @@ import { useToast } from '@/composables/useToast';
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const previewUrl = ref('');
+const openPreview = (url) => { if (url) previewUrl.value = url; };
+const closePreview = () => { previewUrl.value = ''; };
 const {
     confirmDialog,
     openConfirmDialog,
@@ -371,7 +374,7 @@ watch(
                             {{ state.createCoverUploading ? '上传中' : '本地上传' }}
                         </label>
                     </div>
-                    <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="专栏封面预览">
+                    <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="专栏封面预览" @click="openPreview(form.coverUrl)">
                 </div>
                 <label>
                     <span>排序值</span>
@@ -487,11 +490,12 @@ watch(
                                             class="cover-thumb"
                                             :src="state.editForm.coverUrl"
                                             alt="专栏封面预览"
+                                            @click="openPreview(state.editForm.coverUrl)"
                                         >
                                     </div>
                                 </td>
                                 <td v-else>
-                                    <img v-if="column.coverUrl" class="cover-thumb" :src="column.coverUrl" alt="专栏封面">
+                                    <img v-if="column.coverUrl" class="cover-thumb" :src="column.coverUrl" alt="专栏封面" @click="openPreview(column.coverUrl)">
                                     <span v-else class="admin-subtext">-</span>
                                 </td>
 
@@ -632,6 +636,13 @@ watch(
             </div>
         </Teleport>
     </section>
+
+    <Teleport to="body">
+        <div v-if="previewUrl" class="image-preview-overlay" @click.self="closePreview">
+            <button type="button" class="image-preview-close" @click="closePreview">&times;</button>
+            <img :src="previewUrl" alt="封面预览" class="image-preview-full">
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -714,6 +725,54 @@ watch(
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface-soft);
+    cursor: pointer;
+}
+
+.cover-thumb:hover,
+.cover-preview:hover {
+    border-color: var(--brand);
+}
+
+.image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    padding: 24px;
+}
+
+.image-preview-close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.image-preview-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.image-preview-full {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 .cover-thumb {
@@ -723,6 +782,7 @@ watch(
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface-soft);
+    cursor: pointer;
 }
 
 .cover-edit-cell {

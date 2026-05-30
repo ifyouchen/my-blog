@@ -224,11 +224,11 @@ public class TopicAppService {
      * 后台：创建专题。
      */
     @Transactional(rollbackFor = Exception.class)
-    public TopicDTO adminCreateTopic(String title, String summary, String coverUrl, Integer sortOrder) {
+    public TopicDTO adminCreateTopic(String title, String summary, String coverUrl, Integer sortOrder, String difficulty) {
         long _start = System.currentTimeMillis();
         Topic topic = Topic.create(
             topicRepository.nextId(),
-            title, summary, coverUrl, sortOrder
+            title, summary, coverUrl, sortOrder, difficulty
         );
         topicRepository.save(topic);
         homePortalCacheInvalidator.evictBootstrap();
@@ -247,11 +247,11 @@ public class TopicAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public TopicDTO adminUpdateTopic(Long topicId, String title, String summary,
-                                     String coverUrl, Integer sortOrder, String status) {
+                                     String coverUrl, Integer sortOrder, String status, String difficulty) {
         long _start = System.currentTimeMillis();
         Topic topic = topicRepository.findById(new TopicId(topicId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
-        topic.update(title, summary, coverUrl, sortOrder, status);
+        topic.update(title, summary, coverUrl, sortOrder, status, difficulty);
         topicRepository.save(topic);
         homePortalCacheInvalidator.evictBootstrap();
         TopicDTO result = toAdminDTO(topic);

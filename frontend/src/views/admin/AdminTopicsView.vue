@@ -1,5 +1,5 @@
 <script setup>
-import {reactive, watch} from 'vue';
+import {reactive, ref, watch} from 'vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
@@ -27,6 +27,10 @@ import { useToast } from '@/composables/useToast';
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const getDifficultyLabel = (d) => d === 'BEGINNER' ? '入门' : d === 'ADVANCED' ? '深入' : '进阶';
+const previewUrl = ref('');
+const openPreview = (url) => { if (url) previewUrl.value = url; };
+const closePreview = () => { previewUrl.value = ''; };
 const {
     confirmDialog,
     openConfirmDialog,
@@ -38,7 +42,8 @@ const form = reactive({
     title: '',
     summary: '',
     coverUrl: '',
-    sortOrder: 0
+    sortOrder: 0,
+    difficulty: 'INTERMEDIATE'
 });
 
 const state = reactive({
@@ -53,7 +58,8 @@ const state = reactive({
         summary: '',
         coverUrl: '',
         sortOrder: 0,
-        status: 'PUBLISHED'
+        status: 'PUBLISHED',
+        difficulty: 'INTERMEDIATE'
     },
     // 文章管理
     managingTopic: null,
@@ -151,12 +157,14 @@ const submitTopic = async () => {
             title: form.title,
             summary: form.summary,
             coverUrl: form.coverUrl,
-            sortOrder: Number(form.sortOrder || 0)
+            sortOrder: Number(form.sortOrder || 0),
+            difficulty: form.difficulty
         });
         form.title = '';
         form.summary = '';
         form.coverUrl = '';
         form.sortOrder = 0;
+        form.difficulty = 'INTERMEDIATE';
         await loadTopics();
     } catch (error) {
         toast.error(error.message || '专题创建失败');
@@ -172,6 +180,7 @@ const startEdit = (topic) => {
     state.editForm.coverUrl = topic.coverUrl || '';
     state.editForm.sortOrder = topic.sortOrder ?? 0;
     state.editForm.status = topic.status || 'PUBLISHED';
+    state.editForm.difficulty = topic.difficulty || 'INTERMEDIATE';
 };
 
 const cancelEdit = () => {
@@ -190,7 +199,8 @@ const saveEdit = async (topicId) => {
             summary: state.editForm.summary,
             coverUrl: state.editForm.coverUrl,
             sortOrder: Number(state.editForm.sortOrder || 0),
-            status: state.editForm.status
+            status: state.editForm.status,
+            difficulty: state.editForm.difficulty
         });
         state.editingId = null;
         await loadTopics();
@@ -342,8 +352,16 @@ watch(
                             {{ state.createCoverUploading ? '上传中' : '本地上传' }}
                         </label>
                     </div>
-                    <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="专题封面预览">
+                    <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="专题封面预览" @click="openPreview(form.coverUrl)">
                 </div>
+                <label>
+                    <span>难度</span>
+                    <select v-model="form.difficulty">
+                        <option value="BEGINNER">入门</option>
+                        <option value="INTERMEDIATE">进阶</option>
+                        <option value="ADVANCED">深入</option>
+                    </select>
+                </label>
                 <label>
                     <span>排序值</span>
                     <input v-model.number="form.sortOrder" type="number" placeholder="排序值">
@@ -378,14 +396,15 @@ watch(
                 <div class="admin-table-wrap" data-testid="admin-topics-table">
                     <table class="admin-table">
                         <colgroup>
-                            <col style="width: 8%">
+                            <col style="width: 7%">
+                            <col style="width: 12%">
                             <col style="width: 14%">
-                            <col style="width: 18%">
-                            <col style="width: 14%">
+                            <col style="width: 12%">
                             <col style="width: 8%">
-                            <col style="width: 10%">
-                            <col style="width: 10%">
-                            <col style="width: 18%">
+                            <col style="width: 6%">
+                            <col style="width: 7%">
+                            <col style="width: 8%">
+                            <col style="width: 26%">
                         </colgroup>
                         <thead>
                             <tr>
@@ -393,6 +412,7 @@ watch(
                                 <th>标题</th>
                                 <th>简介</th>
                                 <th>封面</th>
+                                <th>难度</th>
                                 <th>排序</th>
                                 <th>文章数</th>
                                 <th>状态</th>
@@ -440,13 +460,23 @@ watch(
                                             class="cover-thumb"
                                             :src="state.editForm.coverUrl"
                                             alt="专题封面预览"
+                                            @click="openPreview(state.editForm.coverUrl)"
                                         >
                                     </div>
                                 </td>
                                 <td v-else>
-                                    <img v-if="topic.coverUrl" class="cover-thumb" :src="topic.coverUrl" alt="专题封面">
+                                    <img v-if="topic.coverUrl" class="cover-thumb" :src="topic.coverUrl" alt="专题封面" @click="openPreview(topic.coverUrl)">
                                     <span v-else class="admin-subtext">-</span>
                                 </td>
+
+                                <td v-if="state.editingId === topic.id" class="admin-edit-cell admin-edit-cell-narrow">
+                                    <select v-model="state.editForm.difficulty" class="admin-edit-select">
+                                        <option value="BEGINNER">入门</option>
+                                        <option value="INTERMEDIATE">进阶</option>
+                                        <option value="ADVANCED">深入</option>
+                                    </select>
+                                </td>
+                                <td v-else>{{ getDifficultyLabel(topic.difficulty) }}</td>
 
                                 <td v-if="state.editingId === topic.id" class="admin-edit-cell admin-edit-cell-narrow">
                                     <input v-model.number="state.editForm.sortOrder" class="admin-edit-input" type="number">
@@ -566,11 +596,27 @@ watch(
             </div>
         </Teleport>
     </section>
+
+    <Teleport to="body">
+        <div v-if="previewUrl" class="image-preview-overlay" @click.self="closePreview">
+            <button type="button" class="image-preview-close" @click="closePreview">&times;</button>
+            <img :src="previewUrl" alt="封面预览" class="image-preview-full">
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
 .admin-table {
     table-layout: fixed;
+}
+
+.admin-filter-toolbar select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237f8fa4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    cursor: pointer;
 }
 
 .cover-field {
@@ -648,6 +694,7 @@ watch(
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface-soft);
+    cursor: pointer;
 }
 
 .cover-thumb {
@@ -657,6 +704,54 @@ watch(
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface-soft);
+    cursor: pointer;
+}
+
+.cover-thumb:hover,
+.cover-preview:hover {
+    border-color: var(--brand);
+}
+
+.image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    padding: 24px;
+}
+
+.image-preview-close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.image-preview-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.image-preview-full {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 .cover-edit-cell {
