@@ -53,6 +53,8 @@ const messageContainer = ref(null);
 const messageInputAreaRef = ref(null);
 const messageInputRef = ref(null);
 const imageFileInputRef = ref(null);
+const previewStageRef = ref(null);
+const previewImageRef = ref(null);
 const messageInput = ref('');
 const pendingImageFile = ref(null);
 const pendingImageUrl = ref('');
@@ -72,6 +74,7 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const PREVIEW_MIN_SCALE = 0.5;
 const PREVIEW_MAX_SCALE = 4;
 const PREVIEW_SCALE_STEP = 0.25;
+const PREVIEW_MIN_VISIBLE_EDGE = 56;
 const RECALL_TIME_LIMIT_MS = 10 * 60 * 1000;
 
 const replyingTo = ref(null);
@@ -196,6 +199,11 @@ const messageInputAreaStyle = computed(() => (
 ));
 const previewImageStyle = computed(() => ({
     transform: `translate(${previewOffset.value.x}px, ${previewOffset.value.y}px) scale(${previewScale.value})`
+}));
+const canDragPreviewImage = computed(() => Boolean(previewImageSrc.value));
+const previewImageClass = computed(() => ({
+    'is-draggable': canDragPreviewImage.value,
+    'is-dragging': previewDragging.value
 }));
 const previewScalePercent = computed(() => `${Math.round(previewScale.value * 100)}%`);
 const previewImages = computed(() => {
@@ -502,6 +510,7 @@ const openImagePreview = (src) => {
 };
 
 const closeImagePreview = () => {
+    stopPreviewDrag();
     previewImageSrc.value = '';
     resetPreviewZoom();
     previewOffset.value = { x: 0, y: 0 };
@@ -510,6 +519,7 @@ const closeImagePreview = () => {
 const switchPreviewImage = (direction) => {
     const images = previewImages.value;
     if (!previewImageSrc.value || images.length < 2) return;
+    stopPreviewDrag();
     const currentIndex = previewImageIndex.value >= 0 ? previewImageIndex.value : 0;
     const nextIndex = (currentIndex + direction + images.length) % images.length;
     previewImageSrc.value = images[nextIndex];
@@ -547,8 +557,28 @@ const handlePreviewKeydown = (event) => {
 
 const clampPreviewScale = (value) => Math.min(PREVIEW_MAX_SCALE, Math.max(PREVIEW_MIN_SCALE, value));
 
+const clampPreviewOffset = (offset) => {
+    const stage = previewStageRef.value;
+    const image = previewImageRef.value;
+    if (!stage || !image) {
+        return { x: 0, y: 0 };
+    }
+    const stageRect = stage.getBoundingClientRect();
+    const scaledWidth = image.offsetWidth * previewScale.value;
+    const scaledHeight = image.offsetHeight * previewScale.value;
+    const visibleWidth = Math.min(PREVIEW_MIN_VISIBLE_EDGE, scaledWidth / 2);
+    const visibleHeight = Math.min(PREVIEW_MIN_VISIBLE_EDGE, scaledHeight / 2);
+    const maxX = Math.max(0, (scaledWidth + stageRect.width) / 2 - visibleWidth);
+    const maxY = Math.max(0, (scaledHeight + stageRect.height) / 2 - visibleHeight);
+    return {
+        x: Math.min(maxX, Math.max(-maxX, offset.x)),
+        y: Math.min(maxY, Math.max(-maxY, offset.y))
+    };
+};
+
 const zoomPreview = (delta) => {
     previewScale.value = clampPreviewScale(Number((previewScale.value + delta).toFixed(2)));
+    previewOffset.value = clampPreviewOffset(previewOffset.value);
 };
 
 const resetPreviewZoom = () => {
@@ -561,14 +591,16 @@ const handlePreviewWheel = (event) => {
 };
 
 const startPreviewDrag = (event) => {
-    if (event.button !== 0 || previewScale.value <= 1) return;
+    if (!canDragPreviewImage.value || event.button !== 0) return;
     event.preventDefault();
+    event.stopPropagation();
     previewDragging.value = true;
     previewDragStart = {
         clientX: event.clientX,
         clientY: event.clientY,
         offset: { ...previewOffset.value }
     };
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
     window.addEventListener('pointermove', handlePreviewDragMove, { passive: false });
     window.addEventListener('pointerup', stopPreviewDrag);
     window.addEventListener('pointercancel', stopPreviewDrag);
@@ -581,6 +613,7 @@ const handlePreviewDragMove = (event) => {
         x: previewDragStart.offset.x + event.clientX - previewDragStart.clientX,
         y: previewDragStart.offset.y + event.clientY - previewDragStart.clientY
     };
+    previewOffset.value = clampPreviewOffset(previewOffset.value);
 };
 
 const stopPreviewDrag = () => {
@@ -913,6 +946,7 @@ onUnmounted(() => {
     document.removeEventListener('click', handleEmojiPickerClickOutside);
     document.removeEventListener('click', closeContextMenu);
     document.removeEventListener('keydown', handlePreviewKeydown);
+    stopPreviewDrag();
     clearPendingImage();
     clearSseFallbackTimer();
     clearPolling();
@@ -1194,6 +1228,9 @@ watch(() => state.sending, (sending) => {
     <div
         v-if="previewImageSrc"
         class="image-preview-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="图片预览"
         @click.self="closeImagePreview"
         @wheel.prevent="handlePreviewWheel"
     >
@@ -1260,13 +1297,15 @@ watch(() => state.sending, (sending) => {
                 <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
         </button>
-        <div class="image-preview-stage">
+        <div ref="previewStageRef" class="image-preview-stage" @click.self="closeImagePreview">
             <img
+                ref="previewImageRef"
                 class="image-preview-full"
-                :class="{ 'is-draggable': previewScale > 1, 'is-dragging': previewDragging }"
+                :class="previewImageClass"
                 :src="previewImageSrc"
                 :style="previewImageStyle"
                 alt="图片预览"
+                draggable="false"
                 @pointerdown="startPreviewDrag"
             >
         </div>
@@ -1831,29 +1870,33 @@ watch(() => state.sending, (sending) => {
 .image-preview-overlay {
     position: fixed;
     inset: 0;
-    z-index: 1000;
+    z-index: 1100;
     padding: 48px;
     background: rgba(15, 23, 42, 0.78);
+    user-select: none;
 }
 
 .image-preview-stage {
-    width: 100%;
-    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
 }
 
 .image-preview-full {
-    max-width: min(92vw, 1120px);
-    max-height: 88vh;
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: none;
     object-fit: contain;
     border-radius: 10px;
     background: var(--surface);
     box-shadow: 0 24px 80px rgba(15, 23, 42, 0.36);
+    transition: transform 0.12s ease-out;
     transform-origin: center center;
     touch-action: none;
+    user-select: none;
     -webkit-user-drag: none;
 }
 
@@ -1861,6 +1904,7 @@ watch(() => state.sending, (sending) => {
     position: fixed;
     top: 20px;
     right: 20px;
+    z-index: 1101;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1878,14 +1922,20 @@ watch(() => state.sending, (sending) => {
     background: rgba(15, 23, 42, 0.86);
 }
 
-.image-preview-full.is-draggable { cursor: grab; }
-.image-preview-full.is-dragging { cursor: grabbing; }
+.image-preview-full.is-draggable {
+    cursor: grab;
+}
+
+.image-preview-full.is-dragging {
+    cursor: grabbing;
+    transition: none;
+}
 
 .image-preview-toolbar {
     position: fixed;
     top: 20px;
     left: 50%;
-    z-index: 1001;
+    z-index: 1101;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -1943,7 +1993,7 @@ watch(() => state.sending, (sending) => {
 .image-preview-nav {
     position: fixed;
     top: 50%;
-    z-index: 1001;
+    z-index: 1101;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2022,8 +2072,8 @@ watch(() => state.sending, (sending) => {
     }
 
     .image-preview-full {
-        max-width: 96vw;
-        max-height: 86vh;
+        max-width: none;
+        max-height: none;
         border-radius: 8px;
     }
 
