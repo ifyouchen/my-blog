@@ -228,8 +228,8 @@ const buildPortalArticles = (focus = null, weekly = [], featured = []) => {
         items.push(article);
     };
     append(focus);
-    (weekly || []).forEach(append);
     (featured || []).forEach(append);
+    (weekly || []).forEach(append);
     return items.slice(0, 5);
 };
 
