@@ -65,22 +65,22 @@ const icons = {
 
 .toast.success {
     color: #ffffff;
-    background: #10b981;
+    background: var(--brand);
 }
 
 .toast.error {
     color: #ffffff;
-    background: #ef4444;
+    background: var(--error);
 }
 
 .toast.warning {
     color: #ffffff;
-    background: #f59e0b;
+    background: var(--warning);
 }
 
 .toast.info {
     color: #ffffff;
-    background: #3b82f6;
+    background: var(--info);
 }
 
 .toast-icon {
