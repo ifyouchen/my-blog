@@ -51,3 +51,30 @@ export function getNotificationDetail(notification) {
     }
     return '点击查看详情';
 }
+
+const commentNotificationTypes = new Set(['ARTICLE_COMMENT', 'COMMENT_REPLY', 'COMMENT_LIKE']);
+
+export function getNotificationTargetUrl(notification) {
+    if (!notification) {
+        return '#';
+    }
+    const fallbackUrl = notification.articleId ? `/articles/${notification.articleId}` : '#';
+    const rawUrl = notification.targetUrl && notification.targetUrl !== '#'
+        ? notification.targetUrl
+        : fallbackUrl;
+
+    if (!commentNotificationTypes.has(notification.type) || rawUrl === '#') {
+        return rawUrl;
+    }
+
+    const [pathWithQuery] = String(rawUrl).split('#');
+    const questionIndex = pathWithQuery.indexOf('?');
+    const path = questionIndex >= 0 ? pathWithQuery.slice(0, questionIndex) : pathWithQuery;
+    const query = questionIndex >= 0 ? pathWithQuery.slice(questionIndex + 1) : '';
+    const params = new URLSearchParams(query);
+    params.set('scrollTo', 'comments');
+    if (notification.commentId) {
+        params.set('commentId', String(notification.commentId));
+    }
+    return `${path}?${params.toString()}#comments`;
+}

@@ -27,7 +27,7 @@ import {
 import {useStableListRequest} from '@/composables/useStableListRequest';
 import {useSession} from '@/stores/session';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
-import {getNotificationDetail, getNotificationText} from '@/utils/notifications';
+import {getNotificationDetail, getNotificationTargetUrl, getNotificationText} from '@/utils/notifications';
 import {track} from '@/utils/track';
 
 const route = useRoute();
@@ -1149,7 +1149,7 @@ onUnmounted(() => {
                                     v-for="notification in interactions"
                                     :key="notification.id"
                                     class="interaction-item"
-                                    :to="notification.targetUrl || '/notifications'"
+                                    :to="getNotificationTargetUrl(notification) || '/notifications'"
                                 >
                                     <strong>{{ notification.actor?.nickname || notification.actor?.username || '读者' }}</strong>
                                     <span>{{ getInteractionText(notification) }}</span>

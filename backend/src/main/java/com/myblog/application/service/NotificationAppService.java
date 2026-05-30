@@ -272,12 +272,17 @@ public class NotificationAppService {
         switch (notification.getType()) {
             case ARTICLE_LIKE:
             case ARTICLE_FAVORITE:
-            case ARTICLE_COMMENT:
             case ARTICLE_PUBLISH:
                 return "/articles/" + notification.getArticleId();
+            case ARTICLE_COMMENT:
+                return "/articles/" + notification.getArticleId()
+                    + "?scrollTo=comments&commentId=" + notification.getCommentId()
+                    + "#comments";
             case COMMENT_REPLY:
             case COMMENT_LIKE:
-                return "/articles/" + notification.getArticleId() + "#comment-" + notification.getCommentId();
+                return "/articles/" + notification.getArticleId()
+                    + "?scrollTo=comments&commentId=" + notification.getCommentId()
+                    + "#comments";
             case USER_FOLLOW:
                 return "/users/" + notification.getActorUserId().getValue();
             case REPORT_SUBMITTED:

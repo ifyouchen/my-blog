@@ -39,6 +39,7 @@ const composerDraft = ref('');
 const composerFeedback = ref('');
 const composerSubmitting = ref(false);
 const composerRef = ref(null);
+const commentPanelRef = ref(null);
 let lastLoginPromptAt = 0;
 
 const comments = ref([]);
@@ -216,6 +217,22 @@ function insertExternalRootComment(comment) {
     ].slice(0, pageSize);
 }
 
+async function scrollToComment(commentId) {
+    await nextTick();
+    const panel = commentPanelRef.value;
+    const target = commentId
+        ? panel?.querySelector(`[data-comment-id="${CSS.escape(String(commentId))}"]`)
+        : panel;
+    if (!target) {
+        panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return false;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('comment-jump-flash');
+    window.setTimeout(() => target.classList.remove('comment-jump-flash'), 1800);
+    return true;
+}
+
 async function handleRootDelete(payload) {
     const id = payload?.id;
     if (!id) {
@@ -263,11 +280,11 @@ watch(() => props.pendingQuote, async (value) => {
     composerRef.value?.focus?.();
 }, { deep: true });
 
-defineExpose({ insertExternalRootComment });
+defineExpose({ insertExternalRootComment, scrollToComment });
 </script>
 
 <template>
-    <section class="comment-panel" data-testid="comment-panel">
+    <section ref="commentPanelRef" class="comment-panel" data-testid="comment-panel">
         <header class="comment-panel-header">
             <div>
                 <h2 class="comment-panel-title">评论 {{ commentCount }}</h2>

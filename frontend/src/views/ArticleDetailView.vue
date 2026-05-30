@@ -265,6 +265,7 @@ const tocDrawerOpen = ref(false);
 const mobileTocCloseButtonRef = ref(null);
 let shareHoverTimer = null;
 let exportHoverTimer = null;
+let pendingCommentScrollTimer = null;
 const SHARE_HOVER_DELAY = 280;
 const RECENT_READING_KEY = 'my-blog:recent-reading';
 const RECENT_READING_LIMIT = 20;
@@ -763,6 +764,49 @@ const scrollToQuote = (quote) => {
     flashQuoteElement(targetElement);
 };
 
+const getCommentJumpTarget = () => {
+    const hash = String(route.hash || '');
+    const hashCommentMatch = hash.match(/^#comment-(\d+)$/);
+    const queryCommentId = route.query.commentId ? String(route.query.commentId) : '';
+    const shouldScrollToComments = route.query.scrollTo === 'comments'
+        || hash === '#comments'
+        || Boolean(hashCommentMatch);
+    if (!shouldScrollToComments) {
+        return null;
+    }
+    return {
+        commentId: queryCommentId || (hashCommentMatch ? hashCommentMatch[1] : '')
+    };
+};
+
+const scrollToCommentsFromRoute = async () => {
+    const target = getCommentJumpTarget();
+    if (!target || !commentSectionRef.value) {
+        return;
+    }
+    commentSectionRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!target.commentId) {
+        return;
+    }
+    for (let attempt = 0; attempt < 8; attempt++) {
+        const found = await commentListRef.value?.scrollToComment?.(target.commentId);
+        if (found) {
+            return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 180));
+    }
+};
+
+const scheduleScrollToCommentsFromRoute = () => {
+    if (pendingCommentScrollTimer) {
+        window.clearTimeout(pendingCommentScrollTimer);
+    }
+    pendingCommentScrollTimer = window.setTimeout(() => {
+        pendingCommentScrollTimer = null;
+        scrollToCommentsFromRoute();
+    }, 120);
+};
+
 const handleAuthorFollowChange = (nextFollowed) => {
     if (!remoteArticle.value?.author) {
         return;
@@ -794,6 +838,7 @@ const fetchArticle = async () => {
             } else {
                 syncUnlockStatusFromArticle(detail, numericId);
             }
+            scheduleScrollToCommentsFromRoute();
         }
     } catch (error) {
         if (String(route.params.id) === routeId) {
@@ -1052,6 +1097,7 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleImmersiveKeydown);
     if (shareHoverTimer) clearTimeout(shareHoverTimer);
     if (exportHoverTimer) clearTimeout(exportHoverTimer);
+    if (pendingCommentScrollTimer) clearTimeout(pendingCommentScrollTimer);
     document.body.classList.remove('mobile-toc-open');
 });
 
@@ -1079,6 +1125,7 @@ watch(() => route.fullPath, () => {
     tocDrawerOpen.value = false;
     pendingCommentQuote.value = null;
     hideSelectionComment({ force: true });
+    scheduleScrollToCommentsFromRoute();
 });
 
 watch(tocDrawerOpen, (open) => {

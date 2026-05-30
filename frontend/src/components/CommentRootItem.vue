@@ -401,7 +401,11 @@ function goReplyPage(step) {
 </script>
 
 <template>
-    <article class="comment-root-item" data-testid="comment-root-item">
+    <article
+        class="comment-root-item"
+        :data-comment-id="localComment.id"
+        data-testid="comment-root-item"
+    >
         <UserHoverCard
             :user="localComment.user"
             variant="avatar"
@@ -476,7 +480,12 @@ function goReplyPage(step) {
 
             <section v-if="displayedReplyCount > 0 || activeReplyTarget" class="comment-reply-shell">
                 <div v-if="visibleReplies.length" class="comment-reply-items">
-                    <article v-for="reply in visibleReplies" :key="reply.id" class="comment-reply-item">
+                    <article
+                        v-for="reply in visibleReplies"
+                        :key="reply.id"
+                        class="comment-reply-item"
+                        :data-comment-id="reply.id"
+                    >
                         <UserHoverCard
                             :user="reply.user"
                             variant="avatar"
@@ -606,6 +615,25 @@ function goReplyPage(step) {
     gap: 12px;
     align-items: start;
     overflow: visible;
+}
+
+.comment-root-item.comment-jump-flash,
+.comment-reply-item.comment-jump-flash {
+    animation: comment-jump-flash 1.8s ease;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes comment-jump-flash {
+    0%,
+    100% {
+        background: transparent;
+        box-shadow: none;
+    }
+    20%,
+    70% {
+        background: rgba(37, 99, 235, 0.11);
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.08);
+    }
 }
 
 :deep(.comment-root-avatar),

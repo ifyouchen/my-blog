@@ -4,7 +4,12 @@ import {navItems} from '@/data/home';
 import {useSession} from '@/stores/session';
 import {markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
 import {useHeaderNotifications} from '@/composables/useHeaderNotifications';
-import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
+import {
+    formatNotificationTime,
+    getNotificationDetail,
+    getNotificationTargetUrl,
+    getNotificationText
+} from '@/utils/notifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -161,7 +166,7 @@ const handleNotificationClick = async (notification) => {
         }
     }
     notificationOpen.value = false;
-    router.push(notification.targetUrl);
+    router.push(getNotificationTargetUrl(notification));
 };
 
 const handleMarkAllRead = async () => {

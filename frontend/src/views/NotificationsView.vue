@@ -4,7 +4,12 @@ import {useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import {getActiveAnnouncementsApi, getNotificationsApi, markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
-import {formatNotificationTime, getNotificationDetail, getNotificationText} from '@/utils/notifications';
+import {
+    formatNotificationTime,
+    getNotificationDetail,
+    getNotificationTargetUrl,
+    getNotificationText
+} from '@/utils/notifications';
 
 const route = useRoute();
 const router = useRouter();
@@ -201,7 +206,7 @@ const handleNotificationClick = async (notification) => {
             return;
         }
     }
-    router.push(notification.targetUrl);
+    router.push(getNotificationTargetUrl(notification));
 };
 
 const markingAllRead = ref(false);
