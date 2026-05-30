@@ -127,6 +127,35 @@ class CommentAppServiceTest {
     }
 
     @Test
+    void createCommentKeepsArticleQuoteContext() {
+        Article article = publishedArticle(100L, 2L);
+        User user = User.create(1L, "coder", "coder@example.com", "encoded-password");
+        CreateCommentCommand command = createCommand("这个点可以展开讲");
+        command.setQuoteText("Spring 事务传播行为");
+        command.setQuotePrefix("前面讲到");
+        command.setQuoteSuffix("后面继续分析");
+        when(articleRepository.findById(any(ArticleId.class))).thenReturn(Optional.of(article));
+        when(userRepository.findById(any(UserId.class))).thenReturn(Optional.of(user));
+        when(commentRepository.nextId()).thenReturn(1597L);
+        when(sensitiveWordAppService.detectBlockWords("这个点可以展开讲"))
+            .thenReturn(Collections.<String>emptyList());
+        when(sensitiveWordAppService.detectWarnWords("这个点可以展开讲"))
+            .thenReturn(Collections.<String>emptyList());
+        when(sensitiveWordAppService.maskWarnWords(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CommentDTO dto = service.createComment(command, "USER");
+
+        ArgumentCaptor<Comment> commentCaptor = ArgumentCaptor.forClass(Comment.class);
+        verify(commentRepository).save(commentCaptor.capture());
+        assertThat(commentCaptor.getValue().getQuoteText()).isEqualTo("Spring 事务传播行为");
+        assertThat(commentCaptor.getValue().getQuotePrefix()).isEqualTo("前面讲到");
+        assertThat(commentCaptor.getValue().getQuoteSuffix()).isEqualTo("后面继续分析");
+        assertThat(dto.getQuoteText()).isEqualTo("Spring 事务传播行为");
+        assertThat(dto.getQuotePrefix()).isEqualTo("前面讲到");
+        assertThat(dto.getQuoteSuffix()).isEqualTo("后面继续分析");
+    }
+
+    @Test
     void createCommentRejectsBlockWordsWithoutSavingOrPublishingEvent() {
         Article article = publishedArticle(100L, 2L);
         User user = User.create(1L, "coder", "coder@example.com", "encoded-password");

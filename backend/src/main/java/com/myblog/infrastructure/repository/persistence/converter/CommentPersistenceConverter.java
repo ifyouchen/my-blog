@@ -37,6 +37,9 @@ public final class CommentPersistenceConverter {
             commentDO.getRootCommentId(),
             commentDO.getParentId(),
             commentDO.getContent(),
+            commentDO.getQuoteText(),
+            commentDO.getQuotePrefix(),
+            commentDO.getQuoteSuffix(),
             CommentStatus.valueOf(commentDO.getStatus()),
             commentDO.getLikeCount(),
             commentDO.getEditedAt(),
@@ -62,6 +65,9 @@ public final class CommentPersistenceConverter {
         commentDO.setRootCommentId(comment.getRootCommentId());
         commentDO.setParentId(comment.getParentId());
         commentDO.setContent(comment.getContent());
+        commentDO.setQuoteText(comment.getQuoteText());
+        commentDO.setQuotePrefix(comment.getQuotePrefix());
+        commentDO.setQuoteSuffix(comment.getQuoteSuffix());
         commentDO.setStatus(comment.getStatus().name());
         commentDO.setLikeCount(comment.getLikeCount());
         commentDO.setEditedAt(comment.getEditedAt());

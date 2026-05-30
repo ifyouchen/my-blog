@@ -1,6 +1,7 @@
 <script setup>
 import {computed, inject, ref, watch} from 'vue';
 import CommentComposer from '@/components/CommentComposer.vue';
+import CommentMarkdown from '@/components/CommentMarkdown.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
 import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
@@ -33,7 +34,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['count-change', 'root-delete']);
+const emit = defineEmits(['count-change', 'root-delete', 'quote-jump']);
 
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const {
@@ -86,6 +87,14 @@ function createCommentSnapshot(comment) {
             user: item.user ? { ...item.user } : null,
             replyToUser: item.replyToUser ? { ...item.replyToUser } : null
         }))
+    };
+}
+
+function buildQuotePayload(comment) {
+    return {
+        quoteText: comment.quoteText || '',
+        quotePrefix: comment.quotePrefix || '',
+        quoteSuffix: comment.quoteSuffix || ''
     };
 }
 
@@ -419,7 +428,7 @@ function goReplyPage(step) {
                         class="comment-edit-textarea"
                         :disabled="editSubmitting"
                         rows="3"
-                        maxlength="2000"
+                        maxlength="1000"
                         placeholder="编辑你的评论..."
                     ></textarea>
                     <div v-if="editFeedback" class="comment-edit-feedback">{{ editFeedback }}</div>
@@ -432,10 +441,18 @@ function goReplyPage(step) {
                 </div>
             </template>
             <template v-else>
-                <div class="comment-root-content">
-                    {{ localComment.content }}
-                    <span v-if="localComment.editCount > 0" class="comment-edited-mark">（已编辑）</span>
-                </div>
+                <button
+                    v-if="localComment.quoteText"
+                    type="button"
+                    class="comment-quote-card"
+                    title="回到引用原文"
+                    @click="emit('quote-jump', buildQuotePayload(localComment))"
+                >
+                    <span class="comment-quote-label">引用原文</span>
+                    <span class="comment-quote-text">{{ localComment.quoteText }}</span>
+                </button>
+                <CommentMarkdown class="comment-root-content" :content="localComment.content" />
+                <span v-if="localComment.editCount > 0" class="comment-edited-mark">已编辑</span>
             </template>
 
             <div class="comment-root-actions">
@@ -475,7 +492,7 @@ function goReplyPage(step) {
                                 <span v-if="reply.author" class="comment-badge author">作者</span>
                                 <span class="comment-root-time">{{ reply.time }}</span>
                             </div>
-                            <p class="comment-reply-content">
+                            <div class="comment-reply-content">
                                 <template v-if="reply.replyToUser">
                                     <UserHoverCard
                                         :user="reply.replyToUser"
@@ -484,8 +501,8 @@ function goReplyPage(step) {
                                         name-prefix="@"
                                     />
                                 </template>
-                                {{ reply.content }}
-                            </p>
+                                <CommentMarkdown :content="reply.content" compact />
+                            </div>
                             <div class="comment-root-actions reply-actions">
                                 <button type="button" :class="{ active: reply.liked }" data-testid="reply-like-button" @click="toggleLike(reply)">
                                     {{ reply.liked ? '已赞' : '点赞' }} {{ reply.likeCount }}
@@ -667,6 +684,43 @@ color: var(--brand-strong);
     font-size: 14px;
     line-height: 1.8;
     overflow-wrap: anywhere;
+}
+
+.comment-quote-card {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    margin: 8px 0 10px;
+    padding: 9px 11px;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
+.comment-quote-card:hover {
+    background: var(--brand-soft);
+    border-color: var(--brand-hover);
+    border-left-color: var(--brand-strong);
+}
+
+.comment-quote-label {
+    color: var(--brand-strong);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.comment-quote-text {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .comment-root-actions {

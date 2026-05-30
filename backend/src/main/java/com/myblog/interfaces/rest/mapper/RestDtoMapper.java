@@ -108,6 +108,9 @@ public class RestDtoMapper {
         command.setRootCommentId(request.getRootCommentId());
         command.setParentId(request.getParentId());
         command.setContent(request.getContent());
+        command.setQuoteText(request.getQuoteText());
+        command.setQuotePrefix(request.getQuotePrefix());
+        command.setQuoteSuffix(request.getQuoteSuffix());
         return command;
     }
 
@@ -436,6 +439,9 @@ public class RestDtoMapper {
         response.setRootCommentId(dto.getRootCommentId());
         response.setParentId(dto.getParentId());
         response.setContent(dto.getContent());
+        response.setQuoteText(dto.getQuoteText());
+        response.setQuotePrefix(dto.getQuotePrefix());
+        response.setQuoteSuffix(dto.getQuoteSuffix());
         response.setStatus(dto.getStatus());
         response.setReplyCount(dto.getReplyCount());
         response.setLikeCount(dto.getLikeCount());

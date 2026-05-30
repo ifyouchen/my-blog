@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue';
+import {computed, inject, nextTick, ref, watch} from 'vue';
 import { createCommentApi, pageCommentsApi } from '@/api/comments';
 import CommentComposer from '@/components/CommentComposer.vue';
 import CommentRootItem from '@/components/CommentRootItem.vue';
@@ -17,10 +17,14 @@ const props = defineProps({
     initialCount: {
         type: Number,
         default: 0
+    },
+    pendingQuote: {
+        type: Object,
+        default: null
     }
 });
 
-const emit = defineEmits(['count-change']);
+const emit = defineEmits(['count-change', 'quote-clear', 'quote-jump']);
 
 const { state, isLoggedIn } = useSession();
 const loginModal = inject('loginModal', { requireLogin: () => false });
@@ -34,6 +38,7 @@ const {
 const composerDraft = ref('');
 const composerFeedback = ref('');
 const composerSubmitting = ref(false);
+const composerRef = ref(null);
 let lastLoginPromptAt = 0;
 
 const comments = ref([]);
@@ -60,6 +65,17 @@ watch(() => props.initialCount, (value) => {
 const currentUser = computed(() => state.user || null);
 const totalPages = computed(() => Math.max(1, Math.ceil(rootTotal.value / pageSize)));
 const avatarUrl = computed(() => currentUser.value?.avatar || currentUser.value?.avatarUrl);
+const activeQuote = computed(() => {
+    const quoteText = props.pendingQuote?.quoteText?.trim();
+    if (!quoteText) {
+        return null;
+    }
+    return {
+        quoteText,
+        quotePrefix: props.pendingQuote?.quotePrefix || '',
+        quoteSuffix: props.pendingQuote?.quoteSuffix || ''
+    };
+});
 
 function promptCommentLogin(onSuccess = () => {}) {
     const now = Date.now();
@@ -160,10 +176,14 @@ async function submitComment(options = {}) {
         const createdComment = await createCommentApi(props.articleId, {
             content,
             parentId: 0,
-            rootCommentId: 0
+            rootCommentId: 0,
+            quoteText: activeQuote.value?.quoteText || '',
+            quotePrefix: activeQuote.value?.quotePrefix || '',
+            quoteSuffix: activeQuote.value?.quoteSuffix || ''
         });
         composerDraft.value = '';
         composerFeedback.value = '评论已发布';
+        emit('quote-clear');
         handleCountChange(1);
         insertCreatedRootComment(createdComment);
     } catch (error) {
@@ -183,6 +203,17 @@ function insertCreatedRootComment(comment) {
         ...comments.value.filter((item) => String(item.id) !== String(comment.id))
     ];
     comments.value = nextComments.slice(0, pageSize);
+}
+
+function insertExternalRootComment(comment) {
+    if (!comment?.id) {
+        return;
+    }
+    rootTotal.value += 1;
+    comments.value = [
+        comment,
+        ...comments.value.filter((item) => String(item.id) !== String(comment.id))
+    ].slice(0, pageSize);
 }
 
 async function handleRootDelete(payload) {
@@ -223,6 +254,16 @@ function goPage(page) {
 watch(() => props.articleId, () => {
     fetchComments(1, { reset: true });
 }, { immediate: true });
+
+watch(() => props.pendingQuote, async (value) => {
+    if (!value?.quoteText) {
+        return;
+    }
+    await nextTick();
+    composerRef.value?.focus?.();
+}, { deep: true });
+
+defineExpose({ insertExternalRootComment });
 </script>
 
 <template>
@@ -251,6 +292,7 @@ watch(() => props.articleId, () => {
         </header>
 
         <CommentComposer
+            ref="composerRef"
             v-model="composerDraft"
             class="comment-panel-composer"
             :avatar-url="avatarUrl"
@@ -262,6 +304,18 @@ watch(() => props.articleId, () => {
             @activate="promptCommentLogin(() => submitComment())"
             @submit="submitComment"
         />
+
+        <div v-if="activeQuote" class="comment-pending-quote">
+            <button
+                type="button"
+                class="comment-pending-quote-text"
+                title="回到引用原文"
+                @click="emit('quote-jump', activeQuote)"
+            >
+                <span>{{ activeQuote.quoteText }}</span>
+            </button>
+            <button type="button" class="comment-pending-quote-clear" @click="emit('quote-clear')">取消引用</button>
+        </div>
 
         <div v-if="refreshing && comments.length" class="comment-panel-refresh">正在更新评论...</div>
         <div v-if="inlineError" class="comment-panel-state error">{{ inlineError }}</div>
@@ -284,6 +338,7 @@ watch(() => props.articleId, () => {
                 :current-user="currentUser"
                 @count-change="handleCountChange"
                 @root-delete="handleRootDelete"
+                @quote-jump="emit('quote-jump', $event)"
             />
         </div>
 
@@ -394,6 +449,47 @@ watch(() => props.articleId, () => {
     margin-top: 2px;
 }
 
+.comment-pending-quote {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-md);
+}
+
+.comment-pending-quote-text {
+    min-width: 0;
+    padding: 0;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+}
+
+.comment-pending-quote-text span {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.comment-pending-quote-clear {
+    min-height: 30px;
+    padding: 0 10px;
+    color: var(--brand-strong);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-sm);
+}
+
 .comment-panel-list {
     display: grid;
     gap: 20px;
@@ -461,6 +557,14 @@ watch(() => props.articleId, () => {
 
     .comment-sort-tabs,
     .comment-panel-pagination {
+        width: fit-content;
+    }
+
+    .comment-pending-quote {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .comment-pending-quote-clear {
         width: fit-content;
     }
 }

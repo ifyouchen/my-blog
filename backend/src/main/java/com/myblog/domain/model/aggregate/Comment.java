@@ -16,12 +16,19 @@ import java.time.LocalDateTime;
  */
 public class Comment {
 
+    private static final int MAX_CONTENT_LENGTH = 1000;
+    private static final int MAX_QUOTE_TEXT_LENGTH = 300;
+    private static final int MAX_QUOTE_CONTEXT_LENGTH = 80;
+
     private CommentId id;
     private ArticleId articleId;
     private UserId userId;
     private CommentId rootCommentId;
     private CommentId parentId;
     private String content;
+    private String quoteText;
+    private String quotePrefix;
+    private String quoteSuffix;
     private CommentStatus status;
     private Integer likeCount;
     private LocalDateTime editedAt;
@@ -47,6 +54,26 @@ public class Comment {
      */
     public static Comment create(Long id, ArticleId articleId, UserId userId, Long rootCommentId,
                                  Long parentId, String content) {
+        return create(id, articleId, userId, rootCommentId, parentId, content, null, null, null);
+    }
+
+    /**
+     * 创建带文章原文引用的评论聚合根。
+     *
+     * @param id            评论 ID
+     * @param articleId     文章 ID
+     * @param userId        用户 ID
+     * @param rootCommentId 根评论 ID
+     * @param parentId      父评论 ID
+     * @param content       评论内容
+     * @param quoteText     引用原文
+     * @param quotePrefix   引用前文
+     * @param quoteSuffix   引用后文
+     * @return 评论聚合根
+     */
+    public static Comment create(Long id, ArticleId articleId, UserId userId, Long rootCommentId,
+                                 Long parentId, String content, String quoteText, String quotePrefix,
+                                 String quoteSuffix) {
         if (articleId == null) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "文章 ID 不能为空");
         }
@@ -56,7 +83,7 @@ public class Comment {
         if (content == null || content.trim().isEmpty()) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "评论内容不能为空");
         }
-        if (content.length() > 1000) {
+        if (content.length() > MAX_CONTENT_LENGTH) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "评论内容不能超过 1000 字符");
         }
         Comment comment = new Comment();
@@ -66,6 +93,9 @@ public class Comment {
         comment.rootCommentId = rootCommentId != null && rootCommentId > 0 ? new CommentId(rootCommentId) : comment.id;
         comment.parentId = parentId != null && parentId > 0 ? new CommentId(parentId) : null;
         comment.content = content.trim();
+        comment.quoteText = normalizeQuote(quoteText, MAX_QUOTE_TEXT_LENGTH);
+        comment.quotePrefix = normalizeQuote(quotePrefix, MAX_QUOTE_CONTEXT_LENGTH);
+        comment.quoteSuffix = normalizeQuote(quoteSuffix, MAX_QUOTE_CONTEXT_LENGTH);
         comment.status = CommentStatus.PENDING;
         comment.likeCount = 0;
         comment.editedAt = null;
@@ -99,6 +129,35 @@ public class Comment {
                                  Integer likeCount, LocalDateTime editedAt, Integer editCount,
                                  Boolean pinned, LocalDateTime pinnedAt,
                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return restore(id, articleId, userId, rootCommentId, parentId, content, null, null, null,
+            status, likeCount, editedAt, editCount, pinned, pinnedAt, createdAt, updatedAt);
+    }
+
+    /**
+     * 从持久化数据还原带文章原文引用的评论聚合根。
+     *
+     * @param id            评论 ID
+     * @param articleId     文章 ID
+     * @param userId        用户 ID
+     * @param rootCommentId 根评论 ID
+     * @param parentId      父评论 ID
+     * @param content       评论内容
+     * @param quoteText     引用原文
+     * @param quotePrefix   引用前文
+     * @param quoteSuffix   引用后文
+     * @param status        评论状态
+     * @param likeCount     点赞数
+     * @param pinned        是否置顶
+     * @param pinnedAt      置顶时间
+     * @param createdAt     创建时间
+     * @param updatedAt     更新时间
+     * @return 评论聚合根
+     */
+    public static Comment restore(Long id, ArticleId articleId, UserId userId, Long rootCommentId,
+                                  Long parentId, String content, String quoteText, String quotePrefix,
+                                  String quoteSuffix, CommentStatus status, Integer likeCount,
+                                  LocalDateTime editedAt, Integer editCount, Boolean pinned,
+                                  LocalDateTime pinnedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         Comment comment = new Comment();
         comment.id = new CommentId(id);
         comment.articleId = articleId;
@@ -106,6 +165,9 @@ public class Comment {
         comment.rootCommentId = rootCommentId != null && rootCommentId > 0 ? new CommentId(rootCommentId) : comment.id;
         comment.parentId = parentId != null && parentId > 0 ? new CommentId(parentId) : null;
         comment.content = content;
+        comment.quoteText = quoteText;
+        comment.quotePrefix = quotePrefix;
+        comment.quoteSuffix = quoteSuffix;
         comment.status = status;
         comment.likeCount = likeCount == null ? 0 : likeCount;
         comment.editedAt = editedAt;
@@ -129,7 +191,7 @@ public class Comment {
         if (newContent == null || newContent.trim().isEmpty()) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "评论内容不能为空");
         }
-        if (newContent.length() > 1000) {
+        if (newContent.length() > MAX_CONTENT_LENGTH) {
             throw new DomainException(ErrorCode.PARAM_ERROR, "评论内容不能超过 1000 字符");
         }
         this.content = newContent.trim();
@@ -286,6 +348,33 @@ public class Comment {
     }
 
     /**
+     * 获取引用原文。
+     *
+     * @return 引用原文
+     */
+    public String getQuoteText() {
+        return quoteText;
+    }
+
+    /**
+     * 获取引用前文。
+     *
+     * @return 引用前文
+     */
+    public String getQuotePrefix() {
+        return quotePrefix;
+    }
+
+    /**
+     * 获取引用后文。
+     *
+     * @return 引用后文
+     */
+    public String getQuoteSuffix() {
+        return quoteSuffix;
+    }
+
+    /**
      * 获取评论状态。
      *
      * @return 评论状态
@@ -355,6 +444,17 @@ public class Comment {
      */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    private static String normalizeQuote(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.length() > maxLength ? normalized.substring(0, maxLength) : normalized;
     }
 
     /**

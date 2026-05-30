@@ -235,7 +235,10 @@ public class CommentAppService {
             user.getId(),
             targetRootCommentId,
             parentId,
-            sanitizedContent.getContent()
+            sanitizedContent.getContent(),
+            command.getQuoteText(),
+            command.getQuotePrefix(),
+            command.getQuoteSuffix()
         );
         comment.approve();
         commentRepository.save(comment);

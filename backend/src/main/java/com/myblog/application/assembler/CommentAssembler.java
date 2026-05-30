@@ -35,6 +35,9 @@ public final class CommentAssembler {
         dto.setRootCommentId(comment.getRootCommentId());
         dto.setParentId(comment.getParentId());
         dto.setContent(comment.getContent());
+        dto.setQuoteText(comment.getQuoteText());
+        dto.setQuotePrefix(comment.getQuotePrefix());
+        dto.setQuoteSuffix(comment.getQuoteSuffix());
         dto.setStatus(comment.getStatus().name());
         dto.setLikeCount(comment.getLikeCount());
         dto.setEditCount(comment.getEditCount());

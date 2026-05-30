@@ -22,6 +22,12 @@ public class CommentDTO {
     private Long parentId;
     /** 评论内容 */
     private String content;
+    /** 引用原文 */
+    private String quoteText;
+    /** 引用前文 */
+    private String quotePrefix;
+    /** 引用后文 */
+    private String quoteSuffix;
     /** 评论状态 */
     private String status;
     /** 创建时间 */
@@ -159,6 +165,60 @@ public class CommentDTO {
      */
     public void setContent(String content) {
         this.content = content;
+    }
+
+    /**
+     * 获取引用原文。
+     *
+     * @return 引用原文
+     */
+    public String getQuoteText() {
+        return quoteText;
+    }
+
+    /**
+     * 设置引用原文。
+     *
+     * @param quoteText 引用原文
+     */
+    public void setQuoteText(String quoteText) {
+        this.quoteText = quoteText;
+    }
+
+    /**
+     * 获取引用前文。
+     *
+     * @return 引用前文
+     */
+    public String getQuotePrefix() {
+        return quotePrefix;
+    }
+
+    /**
+     * 设置引用前文。
+     *
+     * @param quotePrefix 引用前文
+     */
+    public void setQuotePrefix(String quotePrefix) {
+        this.quotePrefix = quotePrefix;
+    }
+
+    /**
+     * 获取引用后文。
+     *
+     * @return 引用后文
+     */
+    public String getQuoteSuffix() {
+        return quoteSuffix;
+    }
+
+    /**
+     * 设置引用后文。
+     *
+     * @param quoteSuffix 引用后文
+     */
+    public void setQuoteSuffix(String quoteSuffix) {
+        this.quoteSuffix = quoteSuffix;
     }
 
     /**

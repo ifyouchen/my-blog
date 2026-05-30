@@ -1,5 +1,5 @@
 <script setup>
-import {computed, inject, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, inject, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
 import {RouterLink, useRoute} from 'vue-router';
 import {useHead} from '@unhead/vue';
 import {getArticleApi, getArticleNeighborsApi, getArticleRecommendationsApi} from '@/api/articles';
@@ -10,9 +10,11 @@ import {favoriteArticleApi, unfavoriteArticleApi} from '@/api/favorites';
 import SiteHeader from '@/components/SiteHeader.vue';
 import ArticleToc from '@/components/ArticleToc.vue';
 import CommentList from '@/components/CommentList.vue';
+import CommentComposer from '@/components/CommentComposer.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import AuthorFollowButton from '@/components/AuthorFollowButton.vue';
 import ReportDialog from '@/components/ReportDialog.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdBanner from '@/components/AdBanner.vue';
 import UserEquippedBadge from '@/components/UserEquippedBadge.vue';
 import UserLevelBadge from '@/components/UserLevelBadge.vue';
@@ -20,11 +22,20 @@ import {useSession} from '@/stores/session';
 import ArticleLockBadge from '@/components/ArticleLockBadge.vue';
 import ArticleUnlockModal from '@/components/ArticleUnlockModal.vue';
 import { useGrowthStore } from '@/stores/growth';
+import {createCommentApi} from '@/api/comments';
+import {useConfirmDialog} from '@/composables/useConfirmDialog';
+import {findWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const toast = inject('toast', { error: () => {}, success: () => {} });
 const { state } = useSession();
+const {
+    confirmDialog,
+    openConfirmDialog,
+    closeConfirmDialog,
+    executeConfirmDialog
+} = useConfirmDialog();
 
 // ===== 成长模块 - 文章解锁 =====
 const growthStore = useGrowthStore();
@@ -224,6 +235,23 @@ const favorited = ref(false);
 const likeCount = ref(0);
 const favoriteCount = ref(0);
 const commentCount = ref(0);
+const articleContentRef = ref(null);
+const commentSectionRef = ref(null);
+const commentListRef = ref(null);
+const inlineQuoteComposerRef = ref(null);
+const pendingCommentQuote = ref(null);
+const selectionComment = ref({
+    visible: false,
+    composing: false,
+    quoteText: '',
+    quotePrefix: '',
+    quoteSuffix: '',
+    draft: '',
+    feedback: '',
+    submitting: false,
+    x: 0,
+    y: 0
+});
 const showBackToTop = ref(false);
 const readingProgress = ref(0);
 const likeSubmitting = ref(false);
@@ -426,6 +454,7 @@ const handleExportArticle = async (format) => {
     }
 };
 const currentUserId = computed(() => state.user?.id || null);
+const currentUserAvatar = computed(() => state.user?.avatar || state.user?.avatarUrl || '');
 const showAuthorFollow = computed(() => {
     if (!article.value?.author?.id) {
         return false;
@@ -487,6 +516,251 @@ const handleCommentCountChange = (delta) => {
     if (remoteArticle.value) {
         remoteArticle.value.commentCount = commentCount.value;
     }
+};
+
+const normalizeSelectionText = (value = '') => String(value).replace(/\s+/g, ' ').trim();
+
+const hideSelectionComment = ({ force = false } = {}) => {
+    if (!force && selectionComment.value.composing) {
+        return;
+    }
+    selectionComment.value.visible = false;
+    selectionComment.value.composing = false;
+    selectionComment.value.feedback = '';
+};
+
+const getSelectionContext = (root, selectedText) => {
+    const rootText = normalizeSelectionText(root?.textContent || '');
+    const index = rootText.indexOf(selectedText);
+    if (index < 0) {
+        return { quotePrefix: '', quoteSuffix: '' };
+    }
+    return {
+        quotePrefix: rootText.slice(Math.max(0, index - 80), index),
+        quoteSuffix: rootText.slice(index + selectedText.length, index + selectedText.length + 80)
+    };
+};
+
+const handleArticleSelection = () => {
+    window.setTimeout(() => {
+        if (selectionComment.value.composing) {
+            return;
+        }
+        const root = articleContentRef.value;
+        const selection = window.getSelection?.();
+        if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+            hideSelectionComment();
+            return;
+        }
+        const anchorNode = selection.anchorNode;
+        const focusNode = selection.focusNode;
+        if (!root.contains(anchorNode) || !root.contains(focusNode)) {
+            hideSelectionComment();
+            return;
+        }
+        const quoteText = normalizeSelectionText(selection.toString()).slice(0, 300);
+        if (quoteText.length < 2) {
+            hideSelectionComment();
+            return;
+        }
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (!rect.width && !rect.height) {
+            hideSelectionComment();
+            return;
+        }
+        const context = getSelectionContext(root, quoteText);
+        selectionComment.value = {
+            visible: true,
+            composing: false,
+            quoteText,
+            ...context,
+            draft: '',
+            feedback: '',
+            submitting: false,
+            x: Math.min(Math.max(rect.left + rect.width / 2, 56), window.innerWidth - 56),
+            y: Math.max(rect.top - 46, 80)
+        };
+    }, 0);
+};
+
+const startInlineQuotedComment = async () => {
+    if (!selectionComment.value.quoteText) {
+        return;
+    }
+    const canContinue = loginModal.requireLogin(() => startInlineQuotedComment(), {
+        title: '登录后发表评论',
+        message: '登录后可以对选中的原文直接评论，和其他读者一起交流。',
+        actionText: '登录并评论'
+    });
+    if (!canContinue) {
+        return;
+    }
+    const composerWidth = Math.min(520, window.innerWidth - 32);
+    const halfWidth = composerWidth / 2;
+    selectionComment.value.composing = true;
+    selectionComment.value.visible = true;
+    selectionComment.value.feedback = '';
+    selectionComment.value.x = Math.min(
+        Math.max(selectionComment.value.x, halfWidth + 16),
+        window.innerWidth - halfWidth - 16
+    );
+    window.getSelection?.()?.removeAllRanges();
+    await nextTick();
+    inlineQuoteComposerRef.value?.focus?.();
+};
+
+const cancelInlineQuotedComment = () => {
+    hideSelectionComment({ force: true });
+    selectionComment.value.draft = '';
+};
+
+const confirmSensitiveInlineComment = async (content, onConfirm) => {
+    const sensitiveHits = await findWarnSensitiveWords(content);
+    if (!sensitiveHits.length) {
+        return false;
+    }
+    const words = formatWarnSensitiveWords(sensitiveHits);
+    selectionComment.value.feedback = `存在敏感词 ${words}，请修改或确认继续发表`;
+    openConfirmDialog({
+        eyebrow: '敏感词提醒',
+        title: '评论包含警告词',
+        message: `存在敏感词 ${words}，发送后会自动替换为 ***。是否确认发表评论？`,
+        confirmText: '确认发表',
+        cancelText: '返回修改',
+        tone: 'warning',
+        onConfirm
+    });
+    return true;
+};
+
+const submitInlineQuotedComment = async (options = {}) => {
+    const canContinue = loginModal.requireLogin(() => submitInlineQuotedComment(options), {
+        title: '登录后发表评论',
+        message: '登录后可以对选中的原文直接评论，和其他读者一起交流。',
+        actionText: '登录并评论'
+    });
+    if (!canContinue) {
+        selectionComment.value.feedback = '登录后可以发表评论';
+        return;
+    }
+    const content = selectionComment.value.draft.trim();
+    if (!content) {
+        selectionComment.value.feedback = '评论内容不能为空';
+        return;
+    }
+    if (options.skipSensitiveWarning !== true) {
+        selectionComment.value.submitting = true;
+        const waitingConfirm = await confirmSensitiveInlineComment(content, async () => {
+            await submitInlineQuotedComment({ skipSensitiveWarning: true });
+        });
+        selectionComment.value.submitting = false;
+        if (waitingConfirm) {
+            return;
+        }
+    }
+    selectionComment.value.submitting = true;
+    try {
+        const createdComment = await createCommentApi(articleId.value, {
+            content,
+            parentId: 0,
+            rootCommentId: 0,
+            quoteText: selectionComment.value.quoteText,
+            quotePrefix: selectionComment.value.quotePrefix,
+            quoteSuffix: selectionComment.value.quoteSuffix
+        });
+        handleCommentCountChange(1);
+        commentListRef.value?.insertExternalRootComment?.(createdComment);
+        toast.success('评论已发布');
+        cancelInlineQuotedComment();
+    } catch (error) {
+        selectionComment.value.feedback = error.message || '发表评论失败';
+    } finally {
+        selectionComment.value.submitting = false;
+    }
+};
+
+const clearPendingCommentQuote = () => {
+    pendingCommentQuote.value = null;
+};
+
+const buildQuoteSearchCandidates = (text) => {
+    const target = normalizeSelectionText(text).slice(0, 300);
+    if (!target) {
+        return [];
+    }
+    const candidates = new Set([target, target.slice(0, 120)]);
+    target
+        .split(/[\s，。！？、；;：:（）()[\]{}"'“”‘’<>《》]+/)
+        .map((item) => item.trim())
+        .filter((item) => item.length >= 6)
+        .sort((first, second) => second.length - first.length)
+        .slice(0, 6)
+        .forEach((item) => {
+            candidates.add(item.slice(0, 160));
+        });
+    return Array.from(candidates).filter(Boolean);
+};
+
+const findTextNodeContaining = (root, text) => {
+    const candidates = buildQuoteSearchCandidates(text);
+    if (!root || !candidates.length) {
+        return null;
+    }
+
+    for (const candidate of candidates) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let node = walker.nextNode();
+        while (node) {
+            const nodeText = normalizeSelectionText(node.textContent || '');
+            const index = nodeText.indexOf(candidate);
+            if (index >= 0) {
+                return { node, index, text: candidate };
+            }
+            node = walker.nextNode();
+        }
+    }
+    return null;
+};
+
+const findQuoteBlockElement = (node) => {
+    const root = articleContentRef.value;
+    let element = node?.parentElement || null;
+    const blockSelector = 'p, li, blockquote, pre, figure, h1, h2, h3, h4, h5, h6, table, hr';
+    while (element && element !== root) {
+        if (element.matches?.(blockSelector)) {
+            return element;
+        }
+        element = element.parentElement;
+    }
+    return node?.parentElement || null;
+};
+
+const flashQuoteElement = (element) => {
+    if (!element) {
+        return;
+    }
+    const rect = element.getBoundingClientRect();
+    const fixedHeaderOffset = 92;
+    const contextOffset = Math.min(220, Math.round(window.innerHeight * 0.28));
+    const targetTop = Math.max(
+        0,
+        window.scrollY + rect.top - fixedHeaderOffset - contextOffset
+    );
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    element.classList.add('article-quote-flash');
+    window.setTimeout(() => element.classList.remove('article-quote-flash'), 1800);
+};
+
+const scrollToQuote = (quote) => {
+    const root = articleContentRef.value;
+    const found = findTextNodeContaining(root, quote?.quoteText || '');
+    if (!found) {
+        commentSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+    }
+    const targetElement = findQuoteBlockElement(found.node);
+    flashQuoteElement(targetElement);
 };
 
 const handleAuthorFollowChange = (nextFollowed) => {
@@ -730,6 +1004,9 @@ const handleScroll = () => {
     showBackToTop.value = scrollY > 500;
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     readingProgress.value = docHeight > 0 ? Math.min(100, Math.round((scrollY / docHeight) * 100)) : 0;
+    if (selectionComment.value.visible) {
+        hideSelectionComment();
+    }
 };
 
 watch(article, syncArticleState, { immediate: true });
@@ -800,6 +1077,8 @@ watch(
 
 watch(() => route.fullPath, () => {
     tocDrawerOpen.value = false;
+    pendingCommentQuote.value = null;
+    hideSelectionComment({ force: true });
 });
 
 watch(tocDrawerOpen, (open) => {
@@ -1201,6 +1480,10 @@ watch(tocDrawerOpen, (open) => {
                 <div
                     v-if="canReadArticleContent"
                     class="article-unlocked-content"
+                    ref="articleContentRef"
+                    @mouseup="handleArticleSelection"
+                    @keyup="handleArticleSelection"
+                    @touchend="handleArticleSelection"
                 >
                     <!-- 作者本人查看文章 -->
                     <div
@@ -1217,6 +1500,42 @@ watch(tocDrawerOpen, (open) => {
                         管理员可直接查看
                     </div>
                     <MarkdownPreview :content="articleMarkdown" />
+                    <button
+                        v-if="selectionComment.visible"
+                        v-show="!selectionComment.composing"
+                        type="button"
+                        class="article-selection-comment"
+                        :style="{ left: `${selectionComment.x}px`, top: `${selectionComment.y}px` }"
+                        @mousedown.prevent
+                        @click="startInlineQuotedComment"
+                    >
+                        评论
+                    </button>
+                    <div
+                        v-if="selectionComment.visible && selectionComment.composing"
+                        class="article-selection-composer"
+                        :style="{ left: `${selectionComment.x}px`, top: `${selectionComment.y}px` }"
+                        @mousedown.stop
+                        @click.stop
+                    >
+                        <div class="article-selection-quote">
+                            <strong>引用原文</strong>
+                            <span>{{ selectionComment.quoteText }}</span>
+                        </div>
+                        <CommentComposer
+                            ref="inlineQuoteComposerRef"
+                            v-model="selectionComment.draft"
+                            compact
+                            show-cancel
+                            :avatar-url="currentUserAvatar"
+                            :feedback="selectionComment.feedback"
+                            :submitting="selectionComment.submitting"
+                            placeholder="写下你对这段原文的想法..."
+                            submit-text="发表"
+                            @cancel="cancelInlineQuotedComment"
+                            @submit="submitInlineQuotedComment"
+                        />
+                    </div>
                 </div>
                 <!-- 需要解锁且未解锁：显示遮罩 -->
                 <div
@@ -1277,12 +1596,16 @@ watch(tocDrawerOpen, (open) => {
                     </div>
                 </section>
 
-                <section class="article-comment" data-testid="article-comments-section">
+                <section ref="commentSectionRef" class="article-comment" data-testid="article-comments-section">
                     <CommentList
                         v-if="remoteArticle"
+                        ref="commentListRef"
                         :article-id="article.id"
                         :initial-count="commentCount"
+                        :pending-quote="pendingCommentQuote"
                         @count-change="handleCommentCountChange"
+                        @quote-clear="clearPendingCommentQuote"
+                        @quote-jump="scrollToQuote"
                     />
                     <div v-else class="comment-placeholder">
                         <p>登录后发表评论</p>
@@ -1422,6 +1745,18 @@ watch(tocDrawerOpen, (open) => {
         :target-title="article.title"
         @close="reportDialogVisible = false"
         @success="handleReportSuccess"
+    />
+    <ConfirmDialog
+        :visible="confirmDialog.visible"
+        :eyebrow="confirmDialog.eyebrow"
+        :title="confirmDialog.title"
+        :message="confirmDialog.message"
+        :confirm-text="confirmDialog.confirmText"
+        :cancel-text="confirmDialog.cancelText"
+        :tone="confirmDialog.tone"
+        :loading="confirmDialog.loading"
+        @close="closeConfirmDialog"
+        @confirm="executeConfirmDialog"
     />
     <div
         v-if="sidebarTooltip.visible"
@@ -2620,6 +2955,81 @@ watch(tocDrawerOpen, (open) => {
     margin-top: 40px;
     padding-top: 24px;
     border-top: 1px solid var(--line);
+}
+
+.article-selection-comment {
+    position: fixed;
+    z-index: 120;
+    min-height: 34px;
+    padding: 0 14px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--brand);
+    border: 1px solid var(--brand-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+    transform: translateX(-50%);
+}
+
+.article-selection-comment:hover {
+    background: var(--brand-strong);
+}
+
+.article-selection-composer {
+    position: fixed;
+    z-index: 130;
+    width: min(520px, calc(100vw - 32px));
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid rgba(37, 99, 235, 0.24);
+    border-radius: var(--radius-md);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+    transform: translateX(-50%);
+}
+
+.article-selection-quote {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+    background: rgba(37, 99, 235, 0.06);
+    border-left: 3px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
+.article-selection-quote strong {
+    color: var(--brand-strong);
+    font-size: 13px;
+}
+
+.article-selection-quote span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.article-unlocked-content :deep(.article-quote-flash) {
+    animation: article-quote-flash 1.8s ease;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes article-quote-flash {
+    0%,
+    100% {
+        background: transparent;
+        box-shadow: none;
+    }
+    20%,
+    70% {
+        background: rgba(37, 99, 235, 0.12);
+        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+    }
 }
 
 .article-content-empty {
