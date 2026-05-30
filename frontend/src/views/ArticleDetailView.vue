@@ -530,16 +530,37 @@ const hideSelectionComment = ({ force = false } = {}) => {
     selectionComment.value.feedback = '';
 };
 
-const getSelectionContext = (root, selectedText) => {
-    const rootText = normalizeSelectionText(root?.textContent || '');
-    const index = rootText.indexOf(selectedText);
-    if (index < 0) {
+const getArticleQuoteRoot = () =>
+    articleContentRef.value?.querySelector('.markdown-preview') || articleContentRef.value;
+
+const getSelectionContext = (root, range, selectedText) => {
+    if (!root || !range) {
         return { quotePrefix: '', quoteSuffix: '' };
     }
-    return {
-        quotePrefix: rootText.slice(Math.max(0, index - 80), index),
-        quoteSuffix: rootText.slice(index + selectedText.length, index + selectedText.length + 80)
-    };
+    try {
+        const prefixRange = document.createRange();
+        prefixRange.selectNodeContents(root);
+        prefixRange.setEnd(range.startContainer, range.startOffset);
+
+        const suffixRange = document.createRange();
+        suffixRange.selectNodeContents(root);
+        suffixRange.setStart(range.endContainer, range.endOffset);
+
+        return {
+            quotePrefix: normalizeSelectionText(prefixRange.toString()).slice(-80),
+            quoteSuffix: normalizeSelectionText(suffixRange.toString()).slice(0, 80)
+        };
+    } catch {
+        const rootText = normalizeSelectionText(root.textContent || '');
+        const index = rootText.indexOf(selectedText);
+        if (index < 0) {
+            return { quotePrefix: '', quoteSuffix: '' };
+        }
+        return {
+            quotePrefix: rootText.slice(Math.max(0, index - 80), index),
+            quoteSuffix: rootText.slice(index + selectedText.length, index + selectedText.length + 80)
+        };
+    }
 };
 
 const handleArticleSelection = () => {
@@ -547,7 +568,7 @@ const handleArticleSelection = () => {
         if (selectionComment.value.composing) {
             return;
         }
-        const root = articleContentRef.value;
+        const root = getArticleQuoteRoot();
         const selection = window.getSelection?.();
         if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
             hideSelectionComment();
@@ -570,7 +591,7 @@ const handleArticleSelection = () => {
             hideSelectionComment();
             return;
         }
-        const context = getSelectionContext(root, quoteText);
+        const context = getSelectionContext(root, range, quoteText);
         selectionComment.value = {
             visible: true,
             composing: false,
@@ -703,25 +724,140 @@ const buildQuoteSearchCandidates = (text) => {
     return Array.from(candidates).filter(Boolean);
 };
 
-const findTextNodeContaining = (root, text) => {
-    const candidates = buildQuoteSearchCandidates(text);
+const buildNormalizedTextIndex = (root) => {
+    const positions = [];
+    let text = '';
+    let lastWasSpace = false;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+        const nodeText = node.textContent || '';
+        for (let offset = 0; offset < nodeText.length; offset += 1) {
+            const char = nodeText[offset];
+            if (/\s/.test(char)) {
+                if (text && !lastWasSpace) {
+                    text += ' ';
+                    positions.push({ node, offset });
+                    lastWasSpace = true;
+                }
+            } else {
+                text += char;
+                positions.push({ node, offset });
+                lastWasSpace = false;
+            }
+        }
+        node = walker.nextNode();
+    }
+    if (lastWasSpace) {
+        text = text.slice(0, -1);
+        positions.pop();
+    }
+    return { text, positions };
+};
+
+const findCandidateIndexes = (text, candidate) => {
+    const indexes = [];
+    let searchFrom = 0;
+    while (searchFrom < text.length) {
+        const index = text.indexOf(candidate, searchFrom);
+        if (index < 0) {
+            break;
+        }
+        indexes.push(index);
+        searchFrom = index + Math.max(1, candidate.length);
+    }
+    return indexes;
+};
+
+const commonPrefixLength = (first, second) => {
+    const limit = Math.min(first.length, second.length);
+    let length = 0;
+    while (length < limit && first[length] === second[length]) {
+        length += 1;
+    }
+    return length;
+};
+
+const commonSuffixLength = (first, second) => {
+    const limit = Math.min(first.length, second.length);
+    let length = 0;
+    while (
+        length < limit
+        && first[first.length - 1 - length] === second[second.length - 1 - length]
+    ) {
+        length += 1;
+    }
+    return length;
+};
+
+const scoreQuoteMatch = (normalizedText, index, candidate, quote) => {
+    const quoteText = normalizeSelectionText(quote?.quoteText || '').slice(0, 300);
+    const quotePrefix = normalizeSelectionText(quote?.quotePrefix || '').slice(-80);
+    const quoteSuffix = normalizeSelectionText(quote?.quoteSuffix || '').slice(0, 80);
+    const matchedLength = normalizedText.slice(index, index + quoteText.length) === quoteText
+        ? quoteText.length
+        : candidate.length;
+    let score = candidate.length;
+
+    if (quotePrefix) {
+        const before = normalizedText.slice(Math.max(0, index - quotePrefix.length), index);
+        score += commonSuffixLength(before, quotePrefix) * 4;
+        if (before === quotePrefix) {
+            score += 400;
+        }
+    }
+
+    if (quoteSuffix) {
+        const after = normalizedText.slice(index + matchedLength, index + matchedLength + quoteSuffix.length);
+        score += commonPrefixLength(after, quoteSuffix) * 4;
+        if (after === quoteSuffix) {
+            score += 400;
+        }
+    }
+
+    if (candidate === quoteText) {
+        score += 80;
+    }
+
+    return { score, matchedLength };
+};
+
+const findTextNodeContainingQuote = (root, quote) => {
+    const candidates = buildQuoteSearchCandidates(quote?.quoteText || '');
     if (!root || !candidates.length) {
         return null;
     }
 
+    const normalizedIndex = buildNormalizedTextIndex(root);
+    if (!normalizedIndex.text) {
+        return null;
+    }
+
+    let bestMatch = null;
     for (const candidate of candidates) {
-        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-        let node = walker.nextNode();
-        while (node) {
-            const nodeText = normalizeSelectionText(node.textContent || '');
-            const index = nodeText.indexOf(candidate);
-            if (index >= 0) {
-                return { node, index, text: candidate };
+        const indexes = findCandidateIndexes(normalizedIndex.text, candidate);
+        for (const index of indexes) {
+            const scored = scoreQuoteMatch(normalizedIndex.text, index, candidate, quote);
+            if (
+                !bestMatch
+                || scored.score > bestMatch.score
+                || (scored.score === bestMatch.score && index < bestMatch.index)
+            ) {
+                bestMatch = {
+                    index,
+                    text: candidate,
+                    score: scored.score,
+                    matchedLength: scored.matchedLength
+                };
             }
-            node = walker.nextNode();
         }
     }
-    return null;
+    if (!bestMatch) {
+        return null;
+    }
+
+    const position = normalizedIndex.positions[bestMatch.index];
+    return position ? { node: position.node, index: position.offset, text: bestMatch.text } : null;
 };
 
 const findQuoteBlockElement = (node) => {
@@ -754,8 +890,8 @@ const flashQuoteElement = (element) => {
 };
 
 const scrollToQuote = (quote) => {
-    const root = articleContentRef.value;
-    const found = findTextNodeContaining(root, quote?.quoteText || '');
+    const root = getArticleQuoteRoot();
+    const found = findTextNodeContainingQuote(root, quote);
     if (!found) {
         commentSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
