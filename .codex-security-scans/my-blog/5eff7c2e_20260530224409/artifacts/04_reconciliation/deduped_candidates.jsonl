@@ -1,0 +1,4 @@
+{"candidate_id":"CAND-001","raw_candidate_ids":["CAND-001"],"title":"Private message conversation ids are not scoped to participants","disposition":"survives_validation"}
+{"candidate_id":"CAND-002","raw_candidate_ids":["CAND-002"],"title":"Article feed renders author-controlled titles and summaries as raw HTML","disposition":"survives_validation"}
+{"candidate_id":"CAND-003","raw_candidate_ids":["CAND-003"],"title":"Production-looking credentials and weak JWT secret are committed as defaults","disposition":"survives_validation"}
+{"candidate_id":"CAND-004","raw_candidate_ids":["CAND-004"],"title":"JWTs are accepted from URL query parameters across all API routes","disposition":"survives_validation"}
