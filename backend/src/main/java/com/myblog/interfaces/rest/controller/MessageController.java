@@ -25,11 +25,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 私信 REST 接口。
@@ -45,6 +48,7 @@ public class MessageController {
         new ConcurrentHashMap<>();
     private static final String MESSAGE_TOPIC = "message:push";
     private static final long KEEPALIVE_INTERVAL_SECONDS = 30;
+    private static final String INSTANCE_ID = UUID.randomUUID().toString();
 
     private final MessageAppService messageAppService;
     private final ConversationRepository conversationRepository;
@@ -75,13 +79,19 @@ public class MessageController {
                 Map<String, Object> envelope = mapper.readValue(msg, Map.class);
                 Object userIdObj = envelope.get("userId");
                 String type = (String) envelope.get("type");
+                Object instanceId = envelope.get("instanceId");
                 if (userIdObj == null || type == null) {
+                    return;
+                }
+                if (INSTANCE_ID.equals(instanceId)) {
                     return;
                 }
                 long userId = ((Number) userIdObj).longValue();
                 if ("unread".equals(type)) {
                     Object countObj = envelope.get("data");
-                    long count = countObj instanceof Number ? ((Number) countObj).longValue() : Long.parseLong(countObj.toString());
+                    long count = countObj instanceof Number
+                        ? ((Number) countObj).longValue()
+                        : Long.parseLong(countObj.toString());
                     doPushUnreadCount(userId, count);
                 } else if ("message-recalled".equals(type)) {
                     Object data = envelope.get("data");
@@ -119,7 +129,15 @@ public class MessageController {
 
         MESSAGE_EMITTERS.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
 
+        AtomicBoolean cleaned = new AtomicBoolean(false);
+        ScheduledFuture<?>[] keepaliveTask = new ScheduledFuture<?>[1];
         Runnable cleanup = () -> {
+            if (!cleaned.compareAndSet(false, true)) {
+                return;
+            }
+            if (keepaliveTask[0] != null) {
+                keepaliveTask[0].cancel(true);
+            }
             CopyOnWriteArrayList<SseEmitter> list = MESSAGE_EMITTERS.get(userId);
             if (list != null) {
                 list.remove(emitter);
@@ -134,7 +152,7 @@ public class MessageController {
         emitter.onError(e -> cleanup.run());
 
         // Send periodic keepalive to prevent proxies/gateways from closing idle connections
-        keepaliveExecutor.scheduleAtFixedRate(() -> {
+        keepaliveTask[0] = keepaliveExecutor.scheduleAtFixedRate(() -> {
             try {
                 emitter.send(SseEmitter.event().comment("keepalive"));
             } catch (IOException e) {
@@ -316,6 +334,7 @@ public class MessageController {
             envelope.put("userId", userId);
             envelope.put("type", type);
             envelope.put("data", data);
+            envelope.put("instanceId", INSTANCE_ID);
             com.fasterxml.jackson.databind.ObjectMapper mapper =
                 new com.fasterxml.jackson.databind.ObjectMapper();
             messageTopic.publish(mapper.writeValueAsString(envelope));

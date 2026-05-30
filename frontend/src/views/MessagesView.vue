@@ -153,7 +153,7 @@ const messagePreview = (msg) => isImageMessage(msg) ? '[图片]' : (msg.content 
 const formatConversationPreview = (content) => isUploadedImageUrl(content) ? '[图片]' : (content || '');
 
 const updateConversationPreview = (conversationId, preview, lastMessageAt) => {
-    const conv = state.conversations.find(c => c.id === conversationId);
+    const conv = state.conversations.find(c => String(c.id) === String(conversationId));
     if (!conv) return;
     conv.lastMessage = preview;
     conv.lastMessageAt = lastMessageAt || conv.lastMessageAt;
@@ -217,9 +217,11 @@ const previewImagePosition = computed(() => {
     return `${previewImageIndex.value + 1} / ${previewImages.value.length}`;
 });
 
-const loadConversations = async () => {
-    state.conversationsLoading = true;
-    state.conversationsError = '';
+const loadConversations = async ({silent = false} = {}) => {
+    if (!silent) {
+        state.conversationsLoading = true;
+        state.conversationsError = '';
+    }
     try {
         const result = await getConversationsApi();
         state.conversations = result.items || [];
@@ -227,14 +229,18 @@ const loadConversations = async () => {
             clearConversationUnread(state.activeConversationId);
         }
     } catch (e) {
-        state.conversationsError = e.message || '加载会话列表失败';
+        if (!silent) {
+            state.conversationsError = e.message || '加载会话列表失败';
+        }
     } finally {
-        state.conversationsLoading = false;
+        if (!silent) {
+            state.conversationsLoading = false;
+        }
     }
 };
 
 const clearConversationUnread = (conversationId) => {
-    const conv = state.conversations.find(c => c.id === conversationId);
+    const conv = state.conversations.find(c => String(c.id) === String(conversationId));
     if (conv) {
         conv.unreadCount = 0;
     }
@@ -720,6 +726,56 @@ const handleEmojiPickerClickOutside = (event) => {
 
 // SSE
 let unsubscribeMessageStream = null;
+let pollInterval = null;
+let sseFallbackTimer = null;
+let sseConnected = false;
+
+const POLL_INTERVAL_MS = 5000;
+const SSE_FALLBACK_DELAY_MS = 3000;
+
+const clearSseFallbackTimer = () => {
+    if (sseFallbackTimer) {
+        clearTimeout(sseFallbackTimer);
+        sseFallbackTimer = null;
+    }
+};
+
+const hasMessage = (messageId) => state.messages.some(
+    message => String(message.id) === String(messageId)
+);
+
+const refreshActiveConversationMessages = async () => {
+    if (!state.activeConversationId) return;
+    const conversationId = state.activeConversationId;
+    try {
+        const fullResult = await getMessagesApi({
+            conversationId,
+            page: 1,
+            pageSize: state.pageSize
+        });
+        if (state.activeConversationId !== conversationId) return;
+        const fullItems = fullResult.items || [];
+        state.page = 1;
+        state.messages = fullItems.reverse();
+        state.totalMessages = fullResult.total || 0;
+        state.hasMore = state.messages.length < state.totalMessages;
+        messagesCache.delete(conversationId);
+        await markActiveConversationRead(conversationId);
+        scrollToBottom();
+    } catch {
+        // 兜底刷新失败时保持当前页面状态，等待下一次事件或轮询。
+    }
+};
+
+const schedulePollingFallback = () => {
+    if (pollInterval || sseFallbackTimer) return;
+    sseFallbackTimer = setTimeout(async () => {
+        sseFallbackTimer = null;
+        if (sseConnected) return;
+        await refreshActiveConversationMessages();
+        startPolling();
+    }, SSE_FALLBACK_DELAY_MS);
+};
 
 const setupSSE = () => {
     if (unsubscribeMessageStream) {
@@ -730,6 +786,12 @@ const setupSSE = () => {
         async (data) => {
             // 如果当前在对应的会话中，追加消息
             if (state.activeConversationId && data.conversationId === state.activeConversationId) {
+                if (data.id && hasMessage(data.id)) {
+                    await markActiveConversationRead(data.conversationId);
+                    await loadConversations({silent: true});
+                    clearConversationUnread(data.conversationId);
+                    return;
+                }
                 const msg = {
                     id: data.id || Date.now(),
                     conversationId: data.conversationId,
@@ -746,13 +808,14 @@ const setupSSE = () => {
                 state.messages.push(msg);
                 await markActiveConversationRead(data.conversationId);
                 messagesCache.delete(data.conversationId);
+                updateConversationPreview(data.conversationId, messagePreview(msg), msg.createdAt);
                 scrollToBottom();
-                await loadConversations();
+                await loadConversations({silent: true});
                 clearConversationUnread(data.conversationId);
                 return;
             }
             // 刷新会话列表
-            await loadConversations();
+            await loadConversations({silent: true});
         },
         // onUnread
         () => {},
@@ -767,15 +830,25 @@ const setupSSE = () => {
                 }
                 messagesCache.delete(data.conversationId);
             }
-            loadConversations();
+            loadConversations({silent: true});
+        },
+        {
+            onOpen: async () => {
+                sseConnected = true;
+                clearSseFallbackTimer();
+                clearPolling();
+                await refreshActiveConversationMessages();
+                await loadConversations({silent: true});
+            },
+            onError: () => {
+                sseConnected = false;
+                schedulePollingFallback();
+            }
         }
     );
 };
 
 // Polling fallback — 当 SSE 连接意外断开时定时拉取最新消息
-let pollInterval = null;
-const POLL_INTERVAL_MS = 5000;
-
 const startPolling = () => {
     clearPolling();
     pollInterval = setInterval(async () => {
@@ -790,20 +863,8 @@ const startPolling = () => {
             if (items.length > 0) {
                 const latestRemote = items[0]; // API 返回 DESC，index 0 是最新消息
                 const latestLocal = state.messages.length > 0 ? state.messages[state.messages.length - 1] : null;
-                if (!latestLocal || latestRemote.id !== latestLocal.id) {
-                    state.page = 1;
-                    const fullResult = await getMessagesApi({
-                        conversationId: state.activeConversationId,
-                        page: 1,
-                        pageSize: state.pageSize
-                    });
-                    const fullItems = fullResult.items || [];
-                    state.messages = fullItems.reverse();
-                    state.totalMessages = fullResult.total || 0;
-                    state.hasMore = state.messages.length < state.totalMessages;
-                    messagesCache.delete(state.activeConversationId);
-                    await markActiveConversationRead(state.activeConversationId);
-                    scrollToBottom();
+                if (!latestLocal || String(latestRemote.id) !== String(latestLocal.id)) {
+                    await refreshActiveConversationMessages();
                 }
             }
         } catch {
@@ -822,7 +883,6 @@ const clearPolling = () => {
 onMounted(async () => {
     await loadConversations();
     setupSSE();
-    startPolling();
     document.addEventListener('click', handleEmojiPickerClickOutside);
     document.addEventListener('click', closeContextMenu);
     document.addEventListener('keydown', handlePreviewKeydown);
@@ -854,6 +914,7 @@ onUnmounted(() => {
     document.removeEventListener('click', closeContextMenu);
     document.removeEventListener('keydown', handlePreviewKeydown);
     clearPendingImage();
+    clearSseFallbackTimer();
     clearPolling();
     if (unsubscribeMessageStream) {
         unsubscribeMessageStream();

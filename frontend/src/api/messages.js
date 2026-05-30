@@ -74,7 +74,7 @@ export const getMessageUnreadCountApi = async () => {
  * SSE 订阅私信事件（新消息、未读计数、消息撤回）。
  * 返回取消订阅函数。
  */
-export const subscribeMessageStream = (onMessage, onUnread, onRecall) => {
+export const subscribeMessageStream = (onMessage, onUnread, onRecall, options = {}) => {
     const getToken = () => {
         try {
             const raw = localStorage.getItem('my-blog-session');
@@ -93,6 +93,12 @@ export const subscribeMessageStream = (onMessage, onUnread, onRecall) => {
 
     const url = `${API_BASE_URL}/messages/stream?_t=${Date.now()}&token=${encodeURIComponent(token)}`;
     const es = new EventSource(url);
+
+    es.onopen = () => {
+        if (options.onOpen) {
+            options.onOpen();
+        }
+    };
 
     es.addEventListener('new-message', (event) => {
         try {
@@ -128,7 +134,9 @@ export const subscribeMessageStream = (onMessage, onUnread, onRecall) => {
     });
 
     es.onerror = () => {
-        // EventSource auto-reconnects
+        if (options.onError) {
+            options.onError();
+        }
     };
 
     return () => es.close();
