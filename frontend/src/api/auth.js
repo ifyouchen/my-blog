@@ -78,6 +78,12 @@ export const changePasswordApi = async (currentPassword, newPassword) => {
 
 export const getSecurityInfoApi = async () => normalizeUser(await request('/users/me/security'));
 
+export const refreshPresenceApi = async () => await request('/users/me/presence', {
+    method: 'POST',
+    suppressAuthPrompt: true,
+    timeout: 5000
+});
+
 
 
 export const changeEmailApi = async (email, password) => normalizeUser(

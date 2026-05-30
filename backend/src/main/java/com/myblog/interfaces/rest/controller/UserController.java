@@ -3,8 +3,10 @@ package com.myblog.interfaces.rest.controller;
 import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.MyArticleOverviewDTO;
 import com.myblog.application.dto.UserProfileDTO;
+import com.myblog.application.event.UserPresenceChangedEvent;
 import com.myblog.application.service.FollowAppService;
 import com.myblog.application.service.UserAppService;
+import com.myblog.application.service.UserPresenceAppService;
 import com.myblog.infrastructure.security.AuthContext;
 import com.myblog.interfaces.rest.dto.request.ChangePasswordRequest;
 import com.myblog.interfaces.rest.dto.request.UpdateProfileRequest;
@@ -16,6 +18,7 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,6 +51,8 @@ public class UserController {
 
     private final UserAppService userAppService;
     private final FollowAppService followAppService;
+    private final UserPresenceAppService userPresenceAppService;
+    private final ApplicationEventPublisher eventPublisher;
     private final RestDtoMapper restDtoMapper;
 
     /**
@@ -58,9 +63,13 @@ public class UserController {
      */
     public UserController(UserAppService userAppService,
                           FollowAppService followAppService,
+                          UserPresenceAppService userPresenceAppService,
+                          ApplicationEventPublisher eventPublisher,
                           RestDtoMapper restDtoMapper) {
         this.userAppService = userAppService;
         this.followAppService = followAppService;
+        this.userPresenceAppService = userPresenceAppService;
+        this.eventPublisher = eventPublisher;
         this.restDtoMapper = restDtoMapper;
     }
 
@@ -338,6 +347,25 @@ public class UserController {
         return Result.success(restDtoMapper.toResponse(
             userAppService.changeEmail(userId, email.trim(), password)
         ));
+    }
+
+    /**
+     * 刷新当前用户站内在线状态。
+     *
+     * @return 成功响应
+     */
+    @PostMapping("/me/presence")
+    public Result<java.util.Map<String, Object>> refreshPresence() {
+        Long userId = AuthContext.getRequiredUserId();
+        boolean wasOnline = userPresenceAppService.markOnline(userId);
+        String lastSeenAt = userPresenceAppService.getLastSeenAt(userId);
+        if (!wasOnline) {
+            eventPublisher.publishEvent(new UserPresenceChangedEvent(userId, true, lastSeenAt));
+        }
+        java.util.Map<String, Object> result = new java.util.HashMap<String, Object>();
+        result.put("online", true);
+        result.put("lastSeenAt", lastSeenAt);
+        return Result.success(result);
     }
 
     /**

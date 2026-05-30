@@ -31,6 +31,8 @@ public class UserDTO {
     private int articleCount;
     private long totalLikeCount;
     private int currentLevel;
+    private boolean online;
+    private String lastSeenAt;
     private List<String> privilegeCodes;
     private boolean exclusiveBadgeEnabled;
     private BadgeDisplayDTO equippedBadge;
@@ -375,6 +377,42 @@ public class UserDTO {
      */
     public void setCurrentLevel(int currentLevel) {
         this.currentLevel = currentLevel;
+    }
+
+    /**
+     * 获取用户是否在线。
+     *
+     * @return 是否在线
+     */
+    public boolean isOnline() {
+        return online;
+    }
+
+    /**
+     * 设置用户是否在线。
+     *
+     * @param online 是否在线
+     */
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
+
+    /**
+     * 获取最后活跃时间。
+     *
+     * @return 最后活跃时间
+     */
+    public String getLastSeenAt() {
+        return lastSeenAt;
+    }
+
+    /**
+     * 设置最后活跃时间。
+     *
+     * @param lastSeenAt 最后活跃时间
+     */
+    public void setLastSeenAt(String lastSeenAt) {
+        this.lastSeenAt = lastSeenAt;
     }
 
     /**

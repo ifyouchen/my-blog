@@ -45,6 +45,14 @@ public interface ConversationMapper {
                                       @Param("limit") int limit);
 
     /**
+     * 查询用户所有会话对端用户 ID。
+     *
+     * @param userId 用户 ID
+     * @return 对端用户 ID 列表
+     */
+    List<Long> selectPeerUserIds(@Param("userId") Long userId);
+
+    /**
      * 统计用户参与的会话数量。
      *
      * @param userId 用户 ID

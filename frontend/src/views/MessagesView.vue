@@ -193,6 +193,31 @@ const otherParticipant = computed(() => {
     if (!state.activeConversationId) return null;
     return state.conversations.find(c => c.id === state.activeConversationId)?.participant || null;
 });
+const formatPresenceText = (user) => {
+    if (!user) return '';
+    if (user.online) return '在线';
+    const relative = formatRelativeTime(user.lastSeenAt);
+    return relative ? `最后在线 ${relative}` : '离线';
+};
+const otherParticipantPresenceText = computed(() => formatPresenceText(otherParticipant.value));
+
+const updateParticipantPresence = (presence) => {
+    const userId = presence?.userId;
+    if (!userId) return;
+    state.conversations = state.conversations.map((conv) => {
+        if (String(conv.participant?.id) !== String(userId)) {
+            return conv;
+        }
+        return {
+            ...conv,
+            participant: {
+                ...conv.participant,
+                online: Boolean(presence.online),
+                lastSeenAt: presence.lastSeenAt || conv.participant.lastSeenAt
+            }
+        };
+    });
+};
 
 const messageInputAreaStyle = computed(() => (
     inputAreaHeight.value ? {height: `${inputAreaHeight.value}px`} : null
@@ -873,6 +898,7 @@ const setupSSE = () => {
                 await refreshActiveConversationMessages();
                 await loadConversations({silent: true});
             },
+            onPresence: updateParticipantPresence,
             onError: () => {
                 sseConnected = false;
                 schedulePollingFallback();
@@ -994,7 +1020,14 @@ watch(() => state.sending, (sending) => {
                         <span v-if="conv.unreadCount > 0" class="unread-dot">{{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}</span>
                     </div>
                     <div class="conv-info">
-                        <div class="conv-name">{{ conv.participant?.nickname || conv.participant?.username || '未知用户' }}</div>
+                        <div class="conv-name-row">
+                            <span class="conv-name">{{ conv.participant?.nickname || conv.participant?.username || '未知用户' }}</span>
+                            <span
+                                class="conv-presence-dot"
+                                :class="{ online: conv.participant?.online }"
+                                :title="formatPresenceText(conv.participant)"
+                            ></span>
+                        </div>
                         <div class="conv-preview">{{ formatConversationPreview(conv.lastMessage) }}</div>
                     </div>
                     <!-- 删除按钮 -->
@@ -1026,7 +1059,13 @@ watch(() => state.sending, (sending) => {
                             trigger="click"
                         />
                         <span v-else class="message-header-name">消息</span>
-                        <span class="message-header-subtitle">在线</span>
+                        <span
+                            v-if="otherParticipantPresenceText"
+                            class="message-header-subtitle"
+                            :class="{ online: otherParticipant?.online }"
+                        >
+                            {{ otherParticipantPresenceText }}
+                        </span>
                     </div>
                 </div>
 
@@ -1427,13 +1466,33 @@ watch(() => state.sending, (sending) => {
     min-width: 0;
 }
 
+.conv-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
 .conv-name {
+    min-width: 0;
     font-size: 15px;
     font-weight: 500;
     color: var(--text-strong);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.conv-presence-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: #cbd5e1;
+}
+
+.conv-presence-dot.online {
+    background: #22c55e;
 }
 
 .conv-preview {
@@ -1530,6 +1589,11 @@ watch(() => state.sending, (sending) => {
 .message-header-subtitle {
     font-size: 11px;
     color: var(--muted);
+}
+
+.message-header-subtitle.online {
+    color: #16a34a;
+    font-weight: 600;
 }
 
 .message-list {

@@ -80,6 +80,17 @@ public class MyBatisConversationRepository implements ConversationRepository {
     }
 
     /**
+     * 查询用户所有会话对端用户 ID。
+     *
+     * @param userId 用户 ID
+     * @return 对端用户 ID 列表
+     */
+    @Override
+    public List<Long> findPeerUserIds(Long userId) {
+        return conversationMapper.selectPeerUserIds(userId);
+    }
+
+    /**
      * 统计用户参与的会话数量。
      *
      * @param userId 用户 ID

@@ -46,15 +46,18 @@ public class MessageAppService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final UserLevelAppService userLevelAppService;
+    private final UserPresenceAppService userPresenceAppService;
 
     public MessageAppService(ConversationRepository conversationRepository,
                              MessageRepository messageRepository,
                              UserRepository userRepository,
-                             UserLevelAppService userLevelAppService) {
+                             UserLevelAppService userLevelAppService,
+                             UserPresenceAppService userPresenceAppService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.userLevelAppService = userLevelAppService;
+        this.userPresenceAppService = userPresenceAppService;
     }
 
     /**
@@ -351,6 +354,7 @@ public class MessageAppService {
         UserDTO participant = otherUser != null ? UserAssembler.toDTO(otherUser) : null;
         if (participant != null) {
             userLevelAppService.fillLevel(participant);
+            userPresenceAppService.fillPresence(participant);
         }
         dto.setParticipant(participant);
         dto.setLastMessage(conversation.getLastMessage());

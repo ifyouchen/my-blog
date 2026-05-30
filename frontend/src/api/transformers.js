@@ -26,6 +26,8 @@ export const normalizeUser = (user) => ({
     location: user.location || '',
     lastLoginAt: user.lastLoginAt || '',
     lastLoginIp: user.lastLoginIp || '',
+    online: Boolean(user.online),
+    lastSeenAt: user.lastSeenAt || '',
     followed: Boolean(user.followed),
     avatarUrl: user.avatarUrl || user.avatar,
     createdAt: user.createdAt

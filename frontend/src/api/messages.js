@@ -69,7 +69,7 @@ export const getMessageUnreadCountApi = async () => {
 };
 
 /**
- * SSE 订阅私信事件（新消息、未读计数、消息撤回）。
+ * SSE 订阅私信事件（新消息、未读计数、消息撤回、在线状态）。
  * 返回取消订阅函数。
  */
 export const subscribeMessageStream = (onMessage, onUnread, onRecall, options = {}) => {
@@ -101,6 +101,16 @@ export const subscribeMessageStream = (onMessage, onUnread, onRecall, options = 
                 const data = JSON.parse(event.data);
                 if (onRecall) {
                     onRecall(data);
+                }
+            } catch {
+                // ignore parse errors
+            }
+        },
+        presence: (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (options.onPresence) {
+                    options.onPresence(data);
                 }
             } catch {
                 // ignore parse errors

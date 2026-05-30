@@ -42,6 +42,14 @@ public interface ConversationRepository {
     List<Conversation> findByUser(Long userId, int page, int pageSize);
 
     /**
+     * 查询用户所有会话对端用户 ID。
+     *
+     * @param userId 用户 ID
+     * @return 对端用户 ID 列表
+     */
+    List<Long> findPeerUserIds(Long userId);
+
+    /**
      * 统计用户的会话数量。
      *
      * @param userId 用户 ID

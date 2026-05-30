@@ -2,7 +2,9 @@ package com.myblog.interfaces.rest.controller;
 
 import com.myblog.application.dto.ConversationDTO;
 import com.myblog.application.dto.MessageDTO;
+import com.myblog.application.event.UserPresenceChangedEvent;
 import com.myblog.application.service.MessageAppService;
+import com.myblog.application.service.UserPresenceAppService;
 import com.myblog.domain.model.aggregate.Conversation;
 import com.myblog.domain.repository.ConversationRepository;
 import com.myblog.infrastructure.security.AuthContext;
@@ -15,6 +17,7 @@ import com.myblog.interfaces.rest.dto.request.SendMessageRequest;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -53,14 +56,17 @@ public class MessageController {
     private static final String INSTANCE_ID = UUID.randomUUID().toString();
 
     private final MessageAppService messageAppService;
+    private final UserPresenceAppService userPresenceAppService;
     private final ConversationRepository conversationRepository;
     private final RTopic messageTopic;
     private final ScheduledExecutorService keepaliveExecutor;
 
     public MessageController(MessageAppService messageAppService,
+                              UserPresenceAppService userPresenceAppService,
                               ConversationRepository conversationRepository,
                               RedissonClient redissonClient) {
         this.messageAppService = messageAppService;
+        this.userPresenceAppService = userPresenceAppService;
         this.conversationRepository = conversationRepository;
         this.messageTopic = redissonClient.getTopic(MESSAGE_TOPIC, StringCodec.INSTANCE);
         this.keepaliveExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -105,6 +111,11 @@ public class MessageController {
                     if (data instanceof Map) {
                         doPushNewMessage(userId, (Map<String, Object>) data);
                     }
+                } else if ("presence".equals(type)) {
+                    Object data = envelope.get("data");
+                    if (data instanceof Map) {
+                        doPushPresence(userId, (Map<String, Object>) data);
+                    }
                 }
             } catch (Exception e) {
                 // ignore bad messages
@@ -132,6 +143,10 @@ public class MessageController {
         SseEmitter emitter = new SseEmitter(0L);
 
         MESSAGE_EMITTERS.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+        boolean wasOnline = userPresenceAppService.markOnline(userId);
+        if (!wasOnline) {
+            broadcastPresenceToPeers(userId, true);
+        }
 
         AtomicBoolean cleaned = new AtomicBoolean(false);
         ScheduledFuture<?>[] keepaliveTask = new ScheduledFuture<?>[1];
@@ -147,6 +162,7 @@ public class MessageController {
                 list.remove(emitter);
                 if (list.isEmpty()) {
                     MESSAGE_EMITTERS.remove(userId, list);
+                    scheduleOfflineCheck(userId);
                 }
             }
         };
@@ -166,6 +182,7 @@ public class MessageController {
         // Send periodic keepalive to prevent proxies/gateways from closing idle connections
         keepaliveTask[0] = keepaliveExecutor.scheduleAtFixedRate(() -> {
             try {
+                userPresenceAppService.refresh(userId);
                 emitter.send(SseEmitter.event().comment("keepalive"));
             } catch (IOException e) {
                 cleanup.run();
@@ -173,6 +190,20 @@ public class MessageController {
         }, KEEPALIVE_INTERVAL_SECONDS, KEEPALIVE_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
         return emitter;
+    }
+
+    private void scheduleOfflineCheck(Long userId) {
+        long delay = userPresenceAppService.getOnlineTtl().getSeconds() + 2;
+        keepaliveExecutor.schedule(() -> {
+            if (!hasLocalEmitter(userId) && !userPresenceAppService.isOnline(userId)) {
+                userPresenceAppService.publishOfflineIfExpired(userId);
+            }
+        }, delay, TimeUnit.SECONDS);
+    }
+
+    private static boolean hasLocalEmitter(Long userId) {
+        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
+        return emitters != null && !emitters.isEmpty();
     }
 
     private static void configureSseResponse(HttpServletResponse response) {
@@ -241,6 +272,43 @@ public class MessageController {
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.send(SseEmitter.event().name("unread").data(data));
+            } catch (IOException e) {
+                toRemove.add(emitter);
+            }
+        }
+        emitters.removeAll(toRemove);
+    }
+
+    private static void pushPresence(Long receiverId, Map<String, Object> presenceData) {
+        doPushPresence(receiverId, presenceData);
+    }
+
+    private static void doPushPresence(Long receiverId, Map<String, Object> presenceData) {
+        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(receiverId);
+        if (emitters == null || emitters.isEmpty()) {
+            return;
+        }
+        StringBuilder json = new StringBuilder("{");
+        for (Map.Entry<String, Object> entry : presenceData.entrySet()) {
+            json.append("\"").append(entry.getKey()).append("\":");
+            Object val = entry.getValue();
+            if (val instanceof String) {
+                json.append("\"").append(escapeJson((String) val)).append("\"");
+            } else {
+                json.append(val);
+            }
+            json.append(",");
+        }
+        if (json.length() > 1) {
+            json.setLength(json.length() - 1);
+        }
+        json.append("}");
+
+        String data = json.toString();
+        List<SseEmitter> toRemove = new ArrayList<>();
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name("presence").data(data));
             } catch (IOException e) {
                 toRemove.add(emitter);
             }
@@ -358,6 +426,31 @@ public class MessageController {
             messageTopic.publish(mapper.writeValueAsString(envelope));
         } catch (Exception e) {
             // Redis pub is best-effort; ignore failures
+        }
+    }
+
+    private void broadcastPresenceToPeers(Long userId, boolean online) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("userId", userId);
+        data.put("online", online);
+        data.put("lastSeenAt", userPresenceAppService.getLastSeenAt(userId));
+        List<Long> peerIds = conversationRepository.findPeerUserIds(userId);
+        for (Long peerId : peerIds) {
+            pushPresence(peerId, data);
+            publishToRedis(peerId, "presence", data);
+        }
+    }
+
+    @EventListener
+    public void onUserPresenceChanged(UserPresenceChangedEvent event) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("userId", event.getUserId());
+        data.put("online", event.isOnline());
+        data.put("lastSeenAt", event.getLastSeenAt());
+        List<Long> peerIds = conversationRepository.findPeerUserIds(event.getUserId());
+        for (Long peerId : peerIds) {
+            pushPresence(peerId, data);
+            publishToRedis(peerId, "presence", data);
         }
     }
 

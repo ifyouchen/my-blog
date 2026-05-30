@@ -61,6 +61,21 @@
         )
     </select>
 
+    <select id="selectPeerUserIds" resultType="long">
+        SELECT DISTINCT
+            CASE
+                WHEN participant_a_id = #{userId} THEN participant_b_id
+                ELSE participant_a_id
+            END AS peer_user_id
+        FROM blog_conversation
+        WHERE deleted_at IS NULL
+        AND (
+            (participant_a_id = #{userId} AND a_deleted_at IS NULL)
+            OR
+            (participant_b_id = #{userId} AND b_deleted_at IS NULL)
+        )
+    </select>
+
     <insert id="insert" parameterType="com.myblog.infrastructure.repository.persistence.entity.ConversationDO">
         INSERT INTO blog_conversation
         (id, participant_a_id, participant_b_id, created_at, updated_at)
