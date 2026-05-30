@@ -130,11 +130,19 @@ const showEmpty = computed(() =>
 );
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
 
+const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const highlightHtml = (text) => {
     const kw = props.highlightKeyword ? props.highlightKeyword.trim() : "";
-    if (!kw || !text) return text;
-    const escaped = kw.replace(/[.*+?^()|\[\]\\]/g, '\\$&');
-    return text.replace(new RegExp(escaped, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
+    const safeText = escapeHtml(text);
+    if (!kw || !safeText) return safeText;
+    const escapedKeyword = escapeHtml(kw).replace(/[.*+?^()|\[\]\\]/g, '\\$&');
+    return safeText.replace(new RegExp(escapedKeyword, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
 };
 const hasUsableCover = (article) => Boolean(article?.cover);
 const setCoverFallback = (event) => {

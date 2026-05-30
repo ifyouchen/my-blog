@@ -57,6 +57,16 @@ class JwtAuthenticationInterceptorTest {
             .hasMessageContaining("请先登录");
     }
 
+    @Test
+    void queryTokenDoesNotAuthenticateProtectedRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/messages/unread-count");
+        request.setParameter("token", "jwt-in-url");
+
+        assertThatThrownBy(() -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()))
+            .isInstanceOf(ApplicationException.class)
+            .hasMessageContaining("请先登录");
+    }
+
     private void assertPublicGet(String path) {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
 

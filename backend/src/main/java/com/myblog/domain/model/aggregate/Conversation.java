@@ -168,6 +168,16 @@ public class Conversation {
     }
 
     /**
+     * 判断指定用户是否是会话参与者。
+     *
+     * @param userId 用户 ID
+     * @return 是参与者返回 true，否则返回 false
+     */
+    public boolean isParticipant(Long userId) {
+        return userId != null && (userId.equals(participantAId) || userId.equals(participantBId));
+    }
+
+    /**
      * 获取对方参与者的用户 ID。
      *
      * @param userId 当前用户 ID

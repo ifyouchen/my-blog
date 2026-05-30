@@ -213,3 +213,112 @@ export const downloadFile = async (path, fallbackFilename = 'download') => {
     );
     saveBlob(blob, filename);
 };
+
+const parseEventStream = (buffer, emit) => {
+    const events = buffer.split(/\r?\n\r?\n/);
+    const rest = events.pop() || '';
+
+    for (const chunk of events) {
+        let eventName = 'message';
+        const dataLines = [];
+        for (const line of chunk.split(/\r?\n/)) {
+            if (!line || line.startsWith(':')) {
+                continue;
+            }
+            if (line.startsWith('event:')) {
+                eventName = line.slice(6).trim() || 'message';
+            } else if (line.startsWith('data:')) {
+                dataLines.push(line.slice(5).trimStart());
+            }
+        }
+        if (dataLines.length > 0) {
+            emit(eventName, dataLines.join('\n'));
+        }
+    }
+
+    return rest;
+};
+
+/**
+ * 使用 Authorization 头订阅 SSE，避免把 JWT 放进 URL。
+ */
+export const subscribeAuthorizedEventStream = (path, handlers = {}, options = {}) => {
+    let closed = false;
+    let controller = null;
+    let retryTimer = null;
+    const reconnectDelay = options.reconnectDelay ?? 3000;
+
+    const close = () => {
+        closed = true;
+        if (retryTimer) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+        }
+        if (controller) {
+            controller.abort();
+            controller = null;
+        }
+    };
+
+    const scheduleReconnect = () => {
+        if (closed) {
+            return;
+        }
+        retryTimer = setTimeout(connect, reconnectDelay);
+    };
+
+    const connect = async () => {
+        const token = getToken();
+        if (!token) {
+            close();
+            return;
+        }
+
+        controller = new AbortController();
+        try {
+            const response = await fetch(resolveUrl(`${path}?_t=${Date.now()}`), {
+                headers: {
+                    Accept: 'text/event-stream',
+                    Authorization: `Bearer ${token}`
+                },
+                signal: controller.signal
+            });
+            if (!response.ok || !response.body) {
+                if (response.status === 401 || response.status === 403) {
+                    clearSession();
+                }
+                throw new Error(`SSE 连接失败 (${response.status})`);
+            }
+            if (handlers.onOpen) {
+                handlers.onOpen();
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (!closed) {
+                const { value, done } = await reader.read();
+                if (done) {
+                    break;
+                }
+                buffer += decoder.decode(value, { stream: true });
+                buffer = parseEventStream(buffer, (eventName, data) => {
+                    const handler = handlers[eventName];
+                    if (handler) {
+                        handler({ data });
+                    }
+                });
+            }
+        } catch (error) {
+            if (!closed && handlers.onError) {
+                handlers.onError(error);
+            }
+        } finally {
+            controller = null;
+            scheduleReconnect();
+        }
+    };
+
+    connect();
+    return close;
+};

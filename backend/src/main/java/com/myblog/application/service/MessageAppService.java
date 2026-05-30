@@ -123,8 +123,7 @@ public class MessageAppService {
     public void deleteConversation(Long conversationId) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
-        Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
+        Conversation conversation = loadOwnedConversation(conversationId, currentUserId);
 
         conversation.deleteByUser(currentUserId);
         conversationRepository.deleteByUser(conversationId, currentUserId);
@@ -143,9 +142,7 @@ public class MessageAppService {
     public PageResult<MessageDTO> listMessages(Long conversationId, int page, int pageSize) {
         Long currentUserId = AuthContext.getRequiredUserId();
 
-        // 验证会话存在且用户是参与者
-        Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
+        loadOwnedConversation(conversationId, currentUserId);
 
         long total = messageRepository.countByConversation(conversationId, currentUserId);
         List<Message> messages = messageRepository.findByConversation(conversationId, currentUserId, page, pageSize);
@@ -177,8 +174,7 @@ public class MessageAppService {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "消息内容不能为空");
         }
 
-        Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
+        Conversation conversation = loadOwnedConversation(conversationId, currentUserId);
 
         // 校验被回复消息
         if (parentId != null) {
@@ -290,6 +286,7 @@ public class MessageAppService {
     public int markAllRead(Long conversationId) {
         long _start = System.currentTimeMillis();
         Long currentUserId = AuthContext.getRequiredUserId();
+        loadOwnedConversation(conversationId, currentUserId);
         int updated = messageRepository.markAllRead(conversationId, currentUserId);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -320,6 +317,22 @@ public class MessageAppService {
             return 0L;
         }
         return messageRepository.countTotalUnread(userId);
+    }
+
+    /**
+     * 加载会话并校验当前用户是参与者。
+     *
+     * @param conversationId 会话 ID
+     * @param currentUserId  当前用户 ID
+     * @return 会话聚合根
+     */
+    private Conversation loadOwnedConversation(Long conversationId, Long currentUserId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "会话不存在"));
+        if (!conversation.isParticipant(currentUserId)) {
+            throw new ApplicationException(ErrorCode.FORBIDDEN, "无权访问该会话");
+        }
+        return conversation;
     }
 
     /**

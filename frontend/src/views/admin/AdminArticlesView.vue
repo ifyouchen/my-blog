@@ -238,6 +238,7 @@ const featureDialog = reactive({
     article: null,
     weight: 500
 });
+const featureDialogMaskPointerStarted = ref(false);
 
 const openFeatureDialog = (article) => {
     featureDialog.article = article;
@@ -248,6 +249,19 @@ const openFeatureDialog = (article) => {
 const closeFeatureDialog = () => {
     featureDialog.visible = false;
     featureDialog.article = null;
+    featureDialogMaskPointerStarted.value = false;
+};
+
+const handleFeatureDialogMaskPointerDown = (event) => {
+    featureDialogMaskPointerStarted.value = event.target === event.currentTarget;
+};
+
+const handleFeatureDialogMaskClick = (event) => {
+    if (featureDialogMaskPointerStarted.value && event.target === event.currentTarget) {
+        closeFeatureDialog();
+        return;
+    }
+    featureDialogMaskPointerStarted.value = false;
 };
 
 const confirmFeature = async () => {
@@ -483,24 +497,30 @@ watch(
 
         <!-- 精选权重设置弹窗 -->
         <Teleport to="body">
-            <div v-if="featureDialog.visible" class="feature-dialog-mask" @click.self="closeFeatureDialog">
+            <div
+                v-if="featureDialog.visible"
+                class="feature-dialog-mask"
+                @pointerdown="handleFeatureDialogMaskPointerDown"
+                @pointercancel="featureDialogMaskPointerStarted = false"
+                @click="handleFeatureDialogMaskClick"
+            >
                 <div class="feature-dialog">
                     <p class="feature-dialog-title">设置精选权重</p>
                     <p class="feature-dialog-desc">权重越高，文章在精选列表和推荐流中排越靠前（0–1000000）</p>
                     <div class="feature-dialog-field">
                         <label for="feature-weight-input">权重</label>
-                <input
-                    id="feature-weight-input"
-                    v-model.number="featureDialog.weight"
-                    type="number"
-                    min="0"
-                    max="1000000"
-                    step="1000"
-                    autofocus
-                    @input="featureDialog.weight = Math.max(0, Math.min(1000000, Number($event.target.value) || 0))"
-                    @keydown.enter="confirmFeature"
-                    @keydown.esc="closeFeatureDialog"
-                >
+                        <input
+                            id="feature-weight-input"
+                            v-model.number="featureDialog.weight"
+                            type="number"
+                            min="0"
+                            max="1000000"
+                            step="1000"
+                            autofocus
+                            @input="featureDialog.weight = Math.max(0, Math.min(1000000, Number($event.target.value) || 0))"
+                            @keydown.enter="confirmFeature"
+                            @keydown.esc="closeFeatureDialog"
+                        >
                         <span class="feature-dialog-hint">0 最低 · 500 默认 · 1000000 最高</span>
                     </div>
                     <div class="feature-dialog-actions">

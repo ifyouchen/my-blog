@@ -51,14 +51,13 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
             return true;
         }
         String header = request.getHeader(AUTHORIZATION);
-        String queryToken = request.getParameter("token");
 
         if (isPublicRequest(request)) {
-            authenticateIfPresent(header, queryToken, true);
+            authenticateIfPresent(header, true);
             return true;
         }
 
-        if (authenticateIfPresent(header, queryToken, false)) {
+        if (authenticateIfPresent(header, false)) {
             return true;
         }
         if (header == null || !header.startsWith(BEARER_PREFIX)) {
@@ -67,12 +66,9 @@ public class JwtAuthenticationInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private boolean authenticateIfPresent(String header, String queryToken, boolean lenient) {
+    private boolean authenticateIfPresent(String header, boolean lenient) {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             return authenticateToken(header.substring(BEARER_PREFIX.length()), lenient);
-        }
-        if (queryToken != null && !queryToken.trim().isEmpty()) {
-            return authenticateToken(queryToken.trim(), lenient);
         }
         return false;
     }

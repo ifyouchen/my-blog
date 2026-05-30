@@ -1,6 +1,4 @@
-import {request} from '@/api/http';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+import {request, subscribeAuthorizedEventStream} from '@/api/http';
 
 /**
  * 获取或创建会话。
@@ -75,69 +73,38 @@ export const getMessageUnreadCountApi = async () => {
  * 返回取消订阅函数。
  */
 export const subscribeMessageStream = (onMessage, onUnread, onRecall, options = {}) => {
-    const getToken = () => {
-        try {
-            const raw = localStorage.getItem('my-blog-session');
-            const session = raw ? JSON.parse(raw) : null;
-            if (!session || !session.token || session.token === 'local-dev-token') return '';
-            return session.token;
-        } catch {
-            return '';
-        }
-    };
-
-    const token = getToken();
-    if (!token) {
-        return () => {};
-    }
-
-    const url = `${API_BASE_URL}/messages/stream?_t=${Date.now()}&token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-
-    es.onopen = () => {
-        if (options.onOpen) {
-            options.onOpen();
-        }
-    };
-
-    es.addEventListener('new-message', (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (onMessage) {
-                onMessage(data);
+    return subscribeAuthorizedEventStream('/messages/stream', {
+        onOpen: options.onOpen,
+        onError: options.onError,
+        'new-message': (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (onMessage) {
+                    onMessage(data);
+                }
+            } catch {
+                // ignore parse errors
             }
-        } catch {
-            // ignore parse errors
-        }
-    });
-
-    es.addEventListener('unread', (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (typeof data.count === 'number' && onUnread) {
-                onUnread(data.count);
+        },
+        unread: (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (typeof data.count === 'number' && onUnread) {
+                    onUnread(data.count);
+                }
+            } catch {
+                // ignore parse errors
             }
-        } catch {
-            // ignore parse errors
-        }
-    });
-
-    es.addEventListener('message-recalled', (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (onRecall) {
-                onRecall(data);
+        },
+        'message-recalled': (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (onRecall) {
+                    onRecall(data);
+                }
+            } catch {
+                // ignore parse errors
             }
-        } catch {
-            // ignore parse errors
         }
-    });
-
-    es.onerror = () => {
-        if (options.onError) {
-            options.onError();
-        }
-    };
-
-    return () => es.close();
+    }, options);
 };
