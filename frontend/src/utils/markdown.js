@@ -246,6 +246,8 @@ const sanitize = (html) => sanitizeHtmlStyles(DOMPurify.sanitize(html, {
     WHOLE_DOCUMENT: false
 }));
 
+export const sanitizeAnnouncementHtml = (html = '') => sanitize(html);
+
 export const renderMarkdown = (markdown = '') => {
     return sanitize(previewMarkdown.render(markdown || ''));
 };

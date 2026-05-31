@@ -24,6 +24,7 @@ import SiteHeader from '@/components/SiteHeader.vue';
 import {useLoginModal} from '@/composables/useLoginModal';
 import {useSession} from '@/stores/session';
 import {track} from '@/utils/track';
+import {sanitizeAnnouncementHtml} from '@/utils/markdown';
 
 const homeStats = ref({
     totalArticles: 0,
@@ -622,7 +623,7 @@ onBeforeRouteLeave(() => {
             >
                 <span class="announcement-banner-icon">📢</span>
                 <strong class="announcement-banner-title">{{ banner.title }}</strong>
-                <span class="announcement-banner-content">{{ banner.content }}</span>
+                <span class="announcement-banner-content" v-html="sanitizeAnnouncementHtml(banner.content)"></span>
                 <button
                     class="announcement-banner-close"
                     type="button"
@@ -1107,6 +1108,16 @@ onBeforeRouteLeave(() => {
     color: var(--text);
     min-width: 0;
     word-break: break-word;
+}
+
+.announcement-banner-content :deep(a) {
+    color: var(--brand);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.announcement-banner-content :deep(a:hover) {
+    color: var(--brand-strong);
 }
 
 .announcement-banner-close {

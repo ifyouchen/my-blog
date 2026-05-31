@@ -10,6 +10,7 @@ import {
     getNotificationTargetUrl,
     getNotificationText
 } from '@/utils/notifications';
+import {sanitizeAnnouncementHtml} from '@/utils/markdown';
 
 const route = useRoute();
 const router = useRouter();
@@ -325,7 +326,7 @@ watch(
                                     <span class="notification-actor">官方公告</span>
                                     <span class="notification-action">· {{ ann.title }}</span>
                                 </div>
-                                <div class="notification-detail">{{ ann.content }}</div>
+                                <div class="notification-detail" v-html="sanitizeAnnouncementHtml(ann.content)"></div>
                                 <div class="notification-time">{{ ann.publishedAt || ann.createdAt }}</div>
                             </div>
                         </article>
@@ -711,6 +712,16 @@ watch(
     line-height: 1.6;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.notification-detail :deep(a) {
+    color: var(--brand);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.notification-detail :deep(a:hover) {
+    color: var(--brand-strong);
 }
 
 .notification-time {
