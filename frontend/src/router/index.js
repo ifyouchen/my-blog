@@ -476,6 +476,7 @@ const router = createRouter({
             '/dashboard/columns',
             '/dashboard/favorites',
             '/admin/growth',
+            '/admin/ads',
             '/search',
             '/history',
             '/ranking'
