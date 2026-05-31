@@ -27,6 +27,8 @@ const articlePath = (article) => {
 <template>
     <aside class="sidebar home-sidebar" aria-label="侧边栏" data-testid="home-sidebar">
 
+        <AdBanner :slot-code="'home_sidebar'" />
+
         <!-- 最近阅读 -->
         <SidebarBlock
             v-if="props.recentArticles.length"
@@ -107,8 +109,6 @@ const articlePath = (article) => {
                 </RouterLink>
             </div>
         </SidebarBlock>
-
-        <AdBanner :slot-code="'home_sidebar'" />
     </aside>
 </template>
 
