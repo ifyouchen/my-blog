@@ -418,6 +418,18 @@ test.describe('guest smoke', () => {
         expect(markdownWithoutImageText).not.toContain('Export Author');
     });
 
+    test('article detail disables pdf export on mobile', async ({ page }) => {
+        await page.setViewportSize({width: 390, height: 844});
+        await mockArticleExportFixture(page);
+        await page.goto('/articles/123-export-test');
+        await expect(page.getByTestId('article-detail-page')).toBeVisible();
+
+        await page.getByTestId('article-export-button').click();
+        await expect(page.getByTestId('article-export-menu')).toBeVisible();
+        await expect(page.getByTestId('article-export-pdf')).toBeDisabled();
+        await expect(page.getByText('请在电脑端导出 PDF')).toBeVisible();
+    });
+
     test('guest write action still opens login modal', async ({ page }) => {
         await page.goto('/');
         await page.getByTestId('header-write-article').click();

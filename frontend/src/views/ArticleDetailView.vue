@@ -24,11 +24,13 @@ import ArticleUnlockModal from '@/components/ArticleUnlockModal.vue';
 import { useGrowthStore } from '@/stores/growth';
 import {createCommentApi} from '@/api/comments';
 import {useConfirmDialog} from '@/composables/useConfirmDialog';
+import {useWindowSize} from '@/composables/useWindowSize';
 import {findWarnSensitiveWords, formatWarnSensitiveWords} from '@/utils/sensitiveWords';
 
 const route = useRoute();
 const loginModal = inject('loginModal', { requireLogin: () => false });
 const toast = inject('toast', { error: () => {}, success: () => {} });
+const {width: windowWidth} = useWindowSize();
 const { state } = useSession();
 const {
     confirmDialog,
@@ -267,6 +269,7 @@ let shareHoverTimer = null;
 let exportHoverTimer = null;
 let pendingCommentScrollTimer = null;
 const SHARE_HOVER_DELAY = 280;
+const MOBILE_EXPORT_BREAKPOINT = 768;
 const RECENT_READING_KEY = 'my-blog:recent-reading';
 const RECENT_READING_LIMIT = 20;
 const ARTICLE_LAYOUT_PREF_KEY = 'my-blog:article-detail-layout';
@@ -402,8 +405,15 @@ const EXPORT_FORMAT_LABELS = {
     pdf: 'PDF'
 };
 
+const isMobileExportViewport = computed(() => windowWidth.value < MOBILE_EXPORT_BREAKPOINT);
+const pdfExportDisabled = computed(() => Boolean(exportingFormat.value) || isMobileExportViewport.value);
+
 const handleExportArticle = async (format) => {
     if (exportingFormat.value) {
+        return;
+    }
+    if (format === 'pdf' && isMobileExportViewport.value) {
+        toast.error('请在电脑端导出 PDF');
         return;
     }
     const markdown = articleMarkdown.value;
@@ -1603,9 +1613,15 @@ watch(tocDrawerOpen, (open) => {
                                         </button>
                                         <button
                                             type="button"
-                                            class="share-option export-option"
+                                            :class="['share-option', 'export-option', {
+                                                'export-option--mobile-disabled': isMobileExportViewport
+                                            }]"
                                             data-testid="article-export-pdf"
-                                            :disabled="Boolean(exportingFormat)"
+                                            :disabled="pdfExportDisabled"
+                                            :title="isMobileExportViewport ? '请在电脑端导出 PDF' : '导出 PDF'"
+                                            :aria-describedby="isMobileExportViewport
+                                                ? 'article-export-pdf-mobile-tip'
+                                                : undefined"
                                             @click="handleExportArticle('pdf')"
                                         >
                                             <svg
@@ -1623,7 +1639,15 @@ watch(tocDrawerOpen, (open) => {
                                                 <path d="M14 2v6h6"/>
                                                 <path d="M9 15h6"/>
                                             </svg>
-                                            <span>PDF</span>
+                                            <span class="export-option-text">
+                                                <span>PDF</span>
+                                                <small
+                                                    v-if="isMobileExportViewport"
+                                                    id="article-export-pdf-mobile-tip"
+                                                >
+                                                    请在电脑端导出 PDF
+                                                </small>
+                                            </span>
                                         </button>
                                     </div>
                                 </div>
@@ -3497,6 +3521,23 @@ button.share-option {
 
 .share-option:disabled:hover {
     background: transparent;
+}
+
+.export-option-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.export-option-text small {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+.export-option--mobile-disabled {
+    align-items: flex-start;
 }
 
 .share-icon {
