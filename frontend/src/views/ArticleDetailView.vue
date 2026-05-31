@@ -1931,7 +1931,7 @@ watch(tocDrawerOpen, (open) => {
     >
         目录
     </button>
-    <div v-if="tocDrawerOpen" class="mobile-toc-overlay" @click.self="tocDrawerOpen = false">
+    <div v-show="tocDrawerOpen" class="mobile-toc-overlay" @click.self="tocDrawerOpen = false">
         <section class="mobile-toc-drawer" aria-label="文章目录抽屉">
             <div class="mobile-toc-header">
                 <h3>文章目录</h3>
