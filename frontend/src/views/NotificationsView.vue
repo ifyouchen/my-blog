@@ -3,7 +3,12 @@ import {computed, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import {getActiveAnnouncementsApi, getNotificationsApi, markAllNotificationsReadApi, markNotificationReadApi} from '@/api/notifications';
+import {
+    getActiveAnnouncementsApi,
+    getNotificationsApi,
+    markAllNotificationsReadApi,
+    markNotificationReadApi
+} from '@/api/notifications';
 import {
     formatNotificationTime,
     getNotificationDetail,
@@ -17,6 +22,8 @@ const router = useRouter();
 
 const validFilters = ['all', 'unread', 'read', 'system'];
 const pageSize = 10;
+const fallbackAvatarUrl = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d'
+    + '?auto=format&fit=crop&w=96&q=80';
 
 const notifications = ref([]);
 const total = ref(0);
@@ -75,6 +82,9 @@ const getEmptyText = () => {
 };
 
 const totalPages = computed(() => (total.value > 0 ? Math.ceil(total.value / pageSize) : 1));
+const showMarkAllRead = computed(() =>
+    ['all', 'unread'].includes(currentFilter.value) && total.value > 0
+);
 
 const visiblePages = computed(() => {
     const pages = [];
@@ -190,42 +200,63 @@ const normalizeAfterUnreadMutation = async () => {
     }
 };
 
-const handleNotificationClick = async (notification) => {
-    actionError.value = '';
-    if (!notification.read) {
-        try {
-            await markNotificationReadApi(notification.id);
-            notification.read = true;
-            if (currentFilter.value === 'unread') {
-                notifications.value = notifications.value.filter((item) => item.id !== notification.id);
-                total.value = Math.max(0, total.value - 1);
-                await normalizeAfterUnreadMutation();
-            }
-            window.dispatchEvent(new CustomEvent('notifications:refresh'));
-        } catch (error) {
-            actionError.value = error.message || '标记通知已读失败，请稍后重试';
-            return;
-        }
+const markNotificationReadLocally = (notification) => {
+    notification.read = true;
+    if (currentFilter.value === 'unread') {
+        notifications.value = notifications.value.filter((item) => item.id !== notification.id);
+        total.value = Math.max(0, total.value - 1);
+        normalizeAfterUnreadMutation();
     }
-    router.push(getNotificationTargetUrl(notification));
+};
+
+const handleNotificationClick = (notification) => {
+    actionError.value = '';
+    const targetUrl = getNotificationTargetUrl(notification);
+    if (!notification.read) {
+        markNotificationReadLocally(notification);
+        markNotificationReadApi(notification.id)
+            .then(() => {
+                window.dispatchEvent(new CustomEvent('notifications:refresh'));
+            })
+            .catch((error) => {
+                actionError.value = error.message || '标记通知已读失败，请稍后重试';
+                void fetchNotifications({ silent: true });
+            });
+    }
+    router.push(targetUrl);
+};
+
+const applyAllReadLocally = () => {
+    if (currentFilter.value === 'unread') {
+        notifications.value = [];
+        total.value = 0;
+        currentPage.value = 1;
+        return;
+    }
+    notifications.value = notifications.value.map((item) => ({
+        ...item,
+        read: true
+    }));
 };
 
 const markingAllRead = ref(false);
 
 const handleMarkAllRead = async () => {
-    if (markingAllRead.value || refreshing.value) {
+    if (markingAllRead.value || refreshing.value || !showMarkAllRead.value) {
         return;
     }
     markingAllRead.value = true;
     actionError.value = '';
     try {
         await markAllNotificationsReadApi();
-        notifications.value = [];
-        total.value = 0;
-        currentPage.value = 1;
+        applyAllReadLocally();
+        if (currentFilter.value === 'unread') {
+            await normalizeAfterUnreadMutation();
+        }
         window.dispatchEvent(new CustomEvent('notifications:refresh'));
     } catch (error) {
         actionError.value = error.message || '全部标记已读失败，请稍后重试';
+        await fetchNotifications({ silent: true });
     } finally {
         markingAllRead.value = false;
     }
@@ -289,15 +320,17 @@ watch(
                             系统通知
                         </button>
                     </div>
-                    <button
-                        v-if="currentFilter !== 'system' && total > 0"
-                        class="mark-all-read"
-                        type="button"
-                        :disabled="markingAllRead || refreshing"
-                        @click="handleMarkAllRead"
-                    >
-                        {{ markingAllRead ? '处理中...' : '全部已读' }}
-                    </button>
+                    <div class="mark-all-read-slot">
+                        <button
+                            v-if="showMarkAllRead"
+                            class="mark-all-read"
+                            type="button"
+                            :disabled="markingAllRead || refreshing"
+                            @click="handleMarkAllRead"
+                        >
+                            {{ markingAllRead ? '处理中...' : '全部已读' }}
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -305,7 +338,9 @@ watch(
                 <!-- 系统通知（公告）面板 -->
                 <template v-if="currentFilter === 'system'">
                     <div v-if="announcementsLoading" class="panel-status panel-status-refreshing">正在加载系统公告...</div>
-                    <div v-else-if="announcementsError" class="panel-status panel-status-error">{{ announcementsError }}</div>
+                    <div v-else-if="announcementsError" class="panel-status panel-status-error">
+                        {{ announcementsError }}
+                    </div>
                     <EmptyState
                         v-else-if="announcements.length === 0"
                         eyebrow="系统通知"
@@ -392,7 +427,7 @@ watch(
                          decoding="async">
                         <img
                             v-else
-                            src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=96&q=80"
+                            :src="fallbackAvatarUrl"
                             class="notification-avatar"
                             alt=""
                             loading="lazy"
@@ -519,8 +554,8 @@ watch(
 }
 
 .hero-actions {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, auto) 96px;
     gap: 12px;
     align-items: center;
     justify-content: flex-end;
@@ -809,6 +844,7 @@ watch(
 }
 
 .mark-all-read {
+    width: 96px;
     flex-shrink: 0;
     padding: 5px 14px;
     color: var(--brand);
@@ -827,6 +863,12 @@ watch(
 .mark-all-read:disabled {
     cursor: not-allowed;
     opacity: 0.5;
+}
+
+.mark-all-read-slot {
+    width: 96px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .announcement-item {
@@ -910,18 +952,17 @@ watch(
 
     .hero-actions {
         width: 100%;
-        flex-wrap: wrap;
+        grid-template-columns: minmax(0, 1fr) 96px;
         gap: 8px;
         justify-content: flex-start;
     }
 
     .filter-tabs {
         overflow-x: auto;
-        flex: 1 1 auto;
     }
 
     .mark-all-read {
-        width: 100%;
+        width: 96px;
         text-align: center;
     }
 
