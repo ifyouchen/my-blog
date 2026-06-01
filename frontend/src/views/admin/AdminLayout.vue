@@ -84,38 +84,4 @@ const requestRefresh = () => {
     </main>
 </template>
 
-<style scoped>
-.admin-sidebar-head h2 {
-    color: var(--text-strong);
-    font-size: 28px;
-    line-height: 1.16;
-}
-
-.admin-sidebar-head p:not(.eyebrow),
-.admin-workspace-head p:not(.eyebrow) {
-    max-width: 620px;
-}
-
-.admin-workspace-head {
-    background: var(--surface);
-}
-
-.admin-refresh-button {
-    border-radius: var(--radius-sm);
-}
-
-.admin-empty-panel {
-    background: var(--surface);
-}
-
-@media (max-width: 760px) {
-    .admin-workspace-head {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .admin-refresh-button {
-        width: fit-content;
-    }
-}
-</style>
+<style scoped src="@/styles/views/admin/AdminLayout.css"></style>

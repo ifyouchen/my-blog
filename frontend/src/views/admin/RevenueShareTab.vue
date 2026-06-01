@@ -155,14 +155,4 @@ onMounted(() => { loadRevenueShares(); });
     </section>
 </template>
 
-<style scoped>
-.article-title {
-    font-size: 0.85em;
-    color: #666;
-    line-height: 1.4;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-</style>
+<style scoped src="@/styles/views/admin/RevenueShareTab.css"></style>

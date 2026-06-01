@@ -73,45 +73,4 @@ const toggleSubscribe = async () => {
     </button>
 </template>
 
-<style scoped>
-.column-subscribe-button {
-    min-height: 36px;
-    padding: 0 16px;
-    color: var(--brand);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    background: var(--surface);
-    border: 1px solid rgba(37, 99, 235, 0.24);
-    border-radius: var(--radius-md);
-    transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
-}
-
-.column-subscribe-button:hover:not(:disabled) {
-    color: var(--brand-strong);
-    background: var(--brand-soft);
-    border-color: rgba(37, 99, 235, 0.34);
-}
-
-.column-subscribe-button.active {
-    color: var(--muted);
-    background: var(--surface-soft);
-    border-color: var(--line);
-}
-
-.column-subscribe-button.active:hover:not(:disabled) {
-    color: var(--brand);
-    background: var(--brand-soft);
-    border-color: rgba(37, 99, 235, 0.24);
-}
-
-.column-subscribe-button.compact {
-    min-height: 32px;
-    padding: 0 14px;
-}
-
-.column-subscribe-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.62;
-}
-</style>
+<style scoped src="@/styles/components/ColumnSubscribeButton.css"></style>

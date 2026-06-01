@@ -320,12 +320,4 @@ watch(
     </section>
 </template>
 
-<style scoped>
-.success-link {
-    color: var(--success) !important;
-}
-.status-pill.success {
-    background: #d1fae5;
-    color: #065f46;
-}
-</style>
+<style scoped src="@/styles/views/admin/AdminCommentsView.css"></style>

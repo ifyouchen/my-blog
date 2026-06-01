@@ -27,27 +27,4 @@ const hasExclusiveBadge = computed(() =>
     </span>
 </template>
 
-<style scoped>
-.user-privilege-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 18px;
-    padding: 0 6px;
-    color: #7c2d12;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1;
-    background: linear-gradient(135deg, #fde68a, #f59e0b);
-    border: 1px solid rgba(245, 158, 11, 0.38);
-    border-radius: 999px;
-    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.18);
-    flex: 0 0 auto;
-}
-
-.user-privilege-badge.compact {
-    height: 16px;
-    padding: 0 5px;
-    font-size: 10px;
-}
-</style>
+<style scoped src="@/styles/components/UserPrivilegeBadge.css"></style>

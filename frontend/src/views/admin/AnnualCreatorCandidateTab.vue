@@ -180,28 +180,4 @@ onMounted(loadCandidates);
     </section>
 </template>
 
-<style scoped>
-.candidate-toolbar {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 14px;
-}
-
-.candidate-search {
-    max-width: 240px;
-}
-
-@media (max-width: 760px) {
-    .candidate-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .candidate-search {
-        max-width: none;
-        width: 100%;
-    }
-}
-</style>
+<style scoped src="@/styles/views/admin/AnnualCreatorCandidateTab.css"></style>
