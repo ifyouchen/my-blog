@@ -704,7 +704,7 @@ DROP TABLE IF EXISTS `blog_announcement`;
 CREATE TABLE `blog_announcement` (
     `id`           bigint unsigned  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `title`        varchar(200)     NOT NULL COMMENT '公告标题',
-    `content`      text             NOT NULL COMMENT '公告内容（支持 Markdown）',
+    `content`      text             NOT NULL COMMENT '公告内容（支持安全 HTML）',
     `target`       varchar(20)      NOT NULL DEFAULT 'ALL' COMMENT '目标用户：ALL / AUTHOR / ADMIN',
     `published`    tinyint(1)       NOT NULL DEFAULT 0 COMMENT '是否发布：1-已发布 0-草稿',
     `published_at` datetime         NULL DEFAULT NULL COMMENT '发布时间',

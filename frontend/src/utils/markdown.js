@@ -172,6 +172,41 @@ const normalizeTextAlign = (value = '') => {
     return ['left', 'center', 'right'].includes(align) ? align : '';
 };
 
+const normalizeFontWeight = (value = '') => {
+    const weight = normalizeStyleString(value).toLowerCase();
+    if (['normal', 'bold', 'bolder', 'lighter'].includes(weight)) return weight;
+    if (/^[1-9]00$/.test(weight)) return weight;
+    return '';
+};
+
+const normalizeFontStyle = (value = '') => {
+    const style = normalizeStyleString(value).toLowerCase();
+    return ['normal', 'italic'].includes(style) ? style : '';
+};
+
+const normalizeTextDecoration = (value = '') => {
+    const decoration = normalizeStyleString(value).toLowerCase();
+    return ['none', 'underline', 'line-through'].includes(decoration) ? decoration : '';
+};
+
+const normalizeDisplay = (value = '') => {
+    const display = normalizeStyleString(value).toLowerCase();
+    return ['inline', 'inline-block'].includes(display) ? display : '';
+};
+
+const normalizeBoxSizeValue = (value = '') => {
+    const size = normalizeStyleString(value).toLowerCase();
+    if (/^\d{1,3}(\.\d{1,2})?px$/.test(size)) return size;
+    return '';
+};
+
+const normalizeBoxSpacing = (value = '') => {
+    const parts = normalizeStyleString(value).toLowerCase().split(/\s+/).filter(Boolean);
+    if (parts.length < 1 || parts.length > 4) return '';
+    const normalized = parts.map(normalizeBoxSizeValue);
+    return normalized.every(Boolean) ? normalized.join(' ') : '';
+};
+
 const normalizeStyleValue = (property = '', value = '') => {
     if (hasUnsafeCssToken(value)) return '';
     switch (property.trim().toLowerCase()) {
@@ -190,6 +225,19 @@ const normalizeStyleValue = (property = '', value = '') => {
             return normalizeSizeValue(value);
         case 'text-align':
             return normalizeTextAlign(value);
+        case 'font-weight':
+            return normalizeFontWeight(value);
+        case 'font-style':
+            return normalizeFontStyle(value);
+        case 'text-decoration':
+            return normalizeTextDecoration(value);
+        case 'display':
+            return normalizeDisplay(value);
+        case 'padding':
+        case 'margin':
+            return normalizeBoxSpacing(value);
+        case 'border-radius':
+            return normalizeBoxSizeValue(value);
         default:
             return '';
     }
@@ -222,7 +270,34 @@ const sanitizeInlineStyle = (style = '') => {
         .join(';');
 };
 
-const sanitizeHtmlStyles = (html = '') => {
+const ensureSafeLinks = (root) => {
+    root.querySelectorAll('a[href]').forEach((anchor) => {
+        const href = anchor.getAttribute('href') || '';
+        if (!href.trim()) {
+            anchor.removeAttribute('href');
+            return;
+        }
+
+        let isExternal = /^https?:\/\//i.test(href);
+        if (typeof window !== 'undefined') {
+            try {
+                const url = new URL(href, window.location.href);
+                isExternal = ['http:', 'https:'].includes(url.protocol) && url.origin !== window.location.origin;
+            } catch {
+                isExternal = false;
+            }
+        }
+
+        if (isExternal && !anchor.getAttribute('target')) {
+            anchor.setAttribute('target', '_blank');
+        }
+        if (anchor.getAttribute('target') === '_blank') {
+            anchor.setAttribute('rel', 'noopener noreferrer');
+        }
+    });
+};
+
+const sanitizeHtmlStyles = (html = '', options = {}) => {
     if (typeof document === 'undefined') {
         return html;
     }
@@ -237,6 +312,9 @@ const sanitizeHtmlStyles = (html = '') => {
             element.removeAttribute('style');
         }
     });
+    if (options.ensureSafeLinks) {
+        ensureSafeLinks(template.content);
+    }
     return template.innerHTML;
 };
 
@@ -246,7 +324,31 @@ const sanitize = (html) => sanitizeHtmlStyles(DOMPurify.sanitize(html, {
     WHOLE_DOCUMENT: false
 }));
 
-export const sanitizeAnnouncementHtml = (html = '') => sanitize(html);
+const ANNOUNCEMENT_ALLOWED_TAGS = [
+    'a',
+    'br',
+    'strong',
+    'b',
+    'em',
+    'i',
+    'u',
+    's',
+    'span',
+    'p',
+    'small',
+    'mark',
+    'code',
+    'ul',
+    'ol',
+    'li'
+];
+const ANNOUNCEMENT_ALLOWED_ATTR = ['href', 'title', 'target', 'rel', 'style'];
+
+export const sanitizeAnnouncementHtml = (html = '') => sanitizeHtmlStyles(DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ANNOUNCEMENT_ALLOWED_TAGS,
+    ALLOWED_ATTR: ANNOUNCEMENT_ALLOWED_ATTR,
+    WHOLE_DOCUMENT: false
+}), { ensureSafeLinks: true });
 
 export const renderMarkdown = (markdown = '') => {
     return sanitize(previewMarkdown.render(markdown || ''));

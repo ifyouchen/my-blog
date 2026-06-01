@@ -94,11 +94,15 @@ const useMobileFeaturedLarge = computed(() =>
 // 公告横幅
 const activeBanners = ref([]);
 const dismissedBannerIds = ref(new Set(JSON.parse(localStorage.getItem('dismissed-banners') || '[]')));
+const getBannerDismissKey = (banner) => [
+    banner?.id,
+    banner?.publishedAt || banner?.updatedAt || banner?.createdAt || ''
+].join(':');
 const visibleBanners = computed(() =>
-    activeBanners.value.filter(b => !dismissedBannerIds.value.has(b.id))
+    activeBanners.value.filter(b => !dismissedBannerIds.value.has(getBannerDismissKey(b)))
 );
-const dismissBanner = (id) => {
-    dismissedBannerIds.value.add(id);
+const dismissBanner = (banner) => {
+    dismissedBannerIds.value.add(getBannerDismissKey(banner));
     const ids = [...dismissedBannerIds.value];
     localStorage.setItem('dismissed-banners', JSON.stringify(ids));
 };
@@ -623,12 +627,12 @@ onBeforeRouteLeave(() => {
             >
                 <span class="announcement-banner-icon">📢</span>
                 <strong class="announcement-banner-title">{{ banner.title }}</strong>
-                <span class="announcement-banner-content" v-html="sanitizeAnnouncementHtml(banner.content)"></span>
+                <div class="announcement-banner-content" v-html="sanitizeAnnouncementHtml(banner.content)"></div>
                 <button
                     class="announcement-banner-close"
                     type="button"
                     aria-label="关闭公告"
-                    @click="dismissBanner(banner.id)"
+                    @click="dismissBanner(banner)"
                 >×</button>
             </div>
         </div>
@@ -1108,6 +1112,21 @@ onBeforeRouteLeave(() => {
     color: var(--text);
     min-width: 0;
     word-break: break-word;
+}
+
+.announcement-banner-content :deep(p),
+.announcement-banner-content :deep(ul),
+.announcement-banner-content :deep(ol) {
+    margin: 0;
+}
+
+.announcement-banner-content :deep(ul),
+.announcement-banner-content :deep(ol) {
+    padding-left: 18px;
+}
+
+.announcement-banner-content :deep(li + li) {
+    margin-top: 2px;
 }
 
 .announcement-banner-content :deep(a) {

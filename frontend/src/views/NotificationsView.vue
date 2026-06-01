@@ -839,6 +839,27 @@ watch(
     background: var(--brand-soft);
 }
 
+.announcement-item .notification-detail {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+.announcement-item .notification-detail :deep(p),
+.announcement-item .notification-detail :deep(ul),
+.announcement-item .notification-detail :deep(ol) {
+    margin: 0;
+}
+
+.announcement-item .notification-detail :deep(ul),
+.announcement-item .notification-detail :deep(ol) {
+    padding-left: 18px;
+}
+
+.announcement-item .notification-detail :deep(li + li) {
+    margin-top: 2px;
+}
+
 .announcement-icon {
     width: 44px;
     height: 44px;
