@@ -1,0 +1,203 @@
+/* ============================================================
+   移动端汉堡菜单
+   ============================================================ */
+.mobile-menu-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.mobile-menu-toggle .hamburger-line {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 0;
+    transition: transform 0.15s, opacity 0.15s;
+}
+
+.mobile-menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.mobile-menu-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 101;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    width: min(300px, 80vw);
+    padding: 16px;
+    background: var(--surface);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+}
+
+.mobile-menu-drawer.open {
+    transform: translateX(0);
+}
+
+.mobile-menu-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+.mobile-menu-close {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--muted);
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.mobile-menu-close:hover {
+    color: var(--text);
+    background: var(--surface-soft);
+}
+
+.mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 16px;
+}
+
+.mobile-nav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 0;
+    border-left: 3px solid transparent;
+}
+
+.mobile-nav a:hover,
+.mobile-nav a.active,
+.mobile-nav a.router-link-active {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-left-color: var(--brand);
+}
+
+.mobile-menu-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+.mobile-menu-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.mobile-menu-link:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.mobile-menu-link-danger {
+    color: var(--accent);
+}
+
+/* 移动端抽屉内通知角标 */
+.mobile-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 9px;
+}
+
+.mobile-badge-sign-in {
+    background: var(--brand);
+}
+
+.mobile-menu-actions .primary-action {
+    width: 100%;
+}
+
+/* 移动端抽屉用户信息卡 */
+.mobile-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0 16px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+}
+
+.mobile-user-avatar {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+}
+
+.mobile-user-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mobile-user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.mobile-unread-hint {
+    font-size: 12px;
+    color: var(--accent);
+}
+
+@media (max-width: 980px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+}

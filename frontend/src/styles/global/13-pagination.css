@@ -1,0 +1,102 @@
+/* ============================================================
+   分页 — 去掉胶囊，改方形
+   ============================================================ */
+.pagination-bar {
+    display: grid;
+    gap: 10px;
+    padding: 14px 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--line);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+}
+
+.pagination-bar p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.pagination-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.pagination-actions button,
+.pagination-jump button {
+    min-width: 32px;
+    min-height: 30px;
+    padding: 0 8px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.pagination-actions button:hover:not(:disabled),
+.pagination-jump button:hover:not(:disabled) {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.pagination-actions button.active {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.pagination-actions button:disabled,
+.pagination-jump button:disabled,
+.pagination-jump input:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.pagination-actions button.active:disabled {
+    opacity: 1;
+}
+
+.pagination-ellipsis {
+    min-width: 24px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+}
+
+.pagination-jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.pagination-jump label,
+.pagination-jump span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.pagination-jump input {
+    width: 60px;
+    min-height: 30px;
+    padding: 0 8px;
+    color: var(--text);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    outline: 0;
+}
+
+.pagination-jump input:focus {
+    border-color: var(--brand);
+}

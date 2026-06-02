@@ -1,0 +1,280 @@
+.growth-main {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.growth-heading h1 {
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-strong);
+}
+
+/* ── 卡片区 ─────────────────────────────────── */
+.growth-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+    min-width: 0;
+}
+
+.growth-card {
+    min-width: 0;
+    max-width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+}
+
+.signin-card {
+    grid-column: 1 / -1;
+}
+
+.card-skeleton {
+    height: 100%;
+    min-height: 120px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--surface-soft) 25%, var(--line) 50%, var(--surface-soft) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.card-error { color: #dc2626; font-size: 14px; }
+.card-empty { color: var(--text-muted); font-size: 14px; }
+
+/* ── 等级卡片 ───────────────────────────────── */
+.level-card {
+    position: relative;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding-right: 112px;
+}
+
+.level-badge {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent, #6c63ff), #a78bfa);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.level-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.level-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin: 0 0 6px;
+}
+
+.level-exp {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+    overflow-wrap: anywhere;
+}
+
+.level-exp strong { color: var(--text-strong); }
+
+.exp-label {
+    color: var(--text-strong);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.exp-target {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.max-level { color: var(--accent); }
+
+.exp-bar {
+    height: 8px;
+    background: var(--surface-soft);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.exp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent, #6c63ff), #a78bfa);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.exp-percent {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    margin: 0;
+}
+
+.reward-entry {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px 0 8px;
+    color: #2563eb;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.reward-entry:hover {
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.reward-entry-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #8b5cf6);
+    border-radius: 50%;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.reward-summary {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.level-reward-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.42);
+}
+
+.level-reward-dialog {
+    position: relative;
+    width: min(560px, calc(100vw - 40px));
+    max-height: min(680px, calc(100vh - 40px));
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+    padding: 24px;
+}
+
+.level-reward-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--text-muted);
+    background: var(--surface);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.level-reward-close:hover {
+    color: var(--text-strong);
+    background: var(--surface-soft);
+}
+
+.reward-dialog-eyebrow {
+    margin: 0 0 6px;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.level-reward-dialog h2 {
+    margin: 0;
+    color: var(--text-strong);
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.reward-dialog-desc {
+    margin: 8px 40px 18px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.level-reward-list {
+    display: grid;
+    gap: 10px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.level-reward-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.level-reward-row.achieved {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.level-reward-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #64748b, #94a3b8);
+    font-size: 13px;
+    font-weight: 800;
+}

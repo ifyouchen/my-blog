@@ -1,0 +1,176 @@
+.auth-forgot {
+    text-align: right;
+    margin-top: -4px;
+}
+
+.auth-forgot a {
+    font-size: 13px;
+    color: var(--brand);
+    text-decoration: none;
+}
+
+.auth-forgot a:hover {
+    text-decoration: underline;
+}
+
+.email-code-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.email-code-button {
+    min-height: 42px;
+    padding: 0 14px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.email-code-button:disabled {
+    cursor: not-allowed;
+    color: var(--muted);
+    background: var(--surface-muted);
+    border-color: var(--line);
+}
+
+/* ── 欢迎弹窗 ──────────────────────────────────────────────────────── */
+.welcome-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+.welcome-dialog {
+    display: grid;
+    gap: 20px;
+    width: 100%;
+    max-width: 480px;
+    padding: 36px 32px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
+    text-align: center;
+    animation: welcome-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.welcome-icon {
+    display: flex;
+    justify-content: center;
+    color: var(--brand);
+}
+
+.welcome-icon svg {
+    width: 64px;
+    height: 64px;
+}
+
+.welcome-dialog h2 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.welcome-greeting {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.welcome-checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+    text-align: left;
+}
+
+.welcome-checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.welcome-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.1);
+    border: 1px solid rgba(22, 163, 74, 0.25);
+    border-radius: 50%;
+    margin-top: 1px;
+}
+
+.welcome-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.welcome-action-secondary {
+    font-size: 14px;
+    color: var(--brand);
+    text-decoration: none;
+}
+
+.welcome-action-secondary:hover {
+    text-decoration: underline;
+}
+
+/* 动画 */
+.welcome-fade-enter-active,
+.welcome-fade-leave-active {
+    transition: opacity 0.22s ease;
+}
+
+.welcome-fade-enter-from,
+.welcome-fade-leave-to {
+    opacity: 0;
+}
+
+@keyframes welcome-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.88) translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-dialog {
+        padding: 28px 20px;
+    }
+
+    .email-code-row {
+        grid-template-columns: 1fr;
+    }
+}

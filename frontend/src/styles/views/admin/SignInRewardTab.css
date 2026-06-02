@@ -1,0 +1,163 @@
+.sign-in-reward-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.mini-summary-grid {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.summary-chip {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    color: #4b5563;
+    font-size: 12px;
+}
+
+.summary-chip strong {
+    font-size: 14px;
+    color: #111827;
+}
+
+.reward-table {
+    min-width: 1040px;
+}
+
+.tab-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.tab-count-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.tab-count {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.tab-count-muted {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.warning-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    color: #c2410c;
+    font-size: 13px;
+}
+
+.warning-panel p {
+    margin: 0;
+}
+
+.desc-cell {
+    min-width: 220px;
+    color: #6b7280;
+}
+
+.editor-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.editor-panel {
+    padding: 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.editor-panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.editor-panel-head strong {
+    color: #111827;
+    font-size: 14px;
+}
+
+.editor-panel-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    text-transform: uppercase;
+}
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.metric-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.metric-field span {
+    font-size: 12px;
+    font-weight: 700;
+    color: #4b5563;
+}
+
+.ag-textarea {
+    width: 100%;
+    min-height: 96px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #111827;
+    background: #fff;
+    resize: vertical;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.ag-textarea:focus {
+    border-color: #6366f1;
+}
+
+@media (max-width: 760px) {
+    .metric-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tab-toolbar,
+    .tab-count-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tab-toolbar .ag-btn {
+        width: 100%;
+    }
+}

@@ -1,0 +1,140 @@
+.ranking-refresh-note {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media (max-width: 960px) {
+    .ranking-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .ranking-sidebar-card {
+        position: static;
+    }
+}
+
+@media (max-width: 760px) {
+    .ranking-toolbar {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 10px 0;
+    }
+
+    .ranking-filter-group {
+        align-items: start;
+        flex-direction: column;
+    }
+
+    .ranking-filter-options {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .ranking-filter-options button {
+        flex: 0 0 auto;
+    }
+
+    .ranking-category-toggle {
+        display: inline-flex;
+        align-items: center;
+        color: var(--brand) !important;
+        background: transparent !important;
+        border-color: transparent !important;
+    }
+
+    .ranking-filter-options.category:not(.expanded) .ranking-category-button:nth-of-type(n + 5):not(.active) {
+        display: none;
+    }
+
+    .ranking-mobile-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ranking-mobile-tabs button {
+        width: 100%;
+    }
+
+    .ranking-layout {
+        margin-top: 16px;
+    }
+
+    .ranking-layout.mobile-articles .ranking-sidebar,
+    .ranking-layout.mobile-authors .ranking-feed {
+        display: none;
+    }
+
+    .ranking-post-item {
+        grid-template-columns: 44px minmax(0, 1fr);
+    }
+
+    .ranking-post-cover {
+        display: none;
+    }
+
+    .ranking-post-content {
+        padding: 12px 14px;
+        overflow: hidden;
+    }
+
+    .ranking-post-title {
+        font-size: 15px;
+    }
+
+    .ranking-post-summary {
+        -webkit-line-clamp: 2;
+    }
+
+    .ranking-post-footer {
+        align-items: start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .ranking-post-stats {
+        width: 100%;
+        margin-left: 0;
+        gap: 8px;
+        overflow: hidden;
+    }
+
+    .ranking-post-stats span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ranking-post-stats .comments {
+        display: none;
+    }
+
+    .ranking-author-card {
+        grid-template-columns: 22px 38px minmax(0, 1fr);
+        align-items: start;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .ranking-author-action {
+        grid-column: 3;
+        justify-self: start;
+        align-self: start;
+        max-width: 100%;
+    }
+
+    .ranking-section-head {
+        padding: 12px 16px 10px;
+    }
+}

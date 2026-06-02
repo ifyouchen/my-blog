@@ -1,0 +1,135 @@
+.modal-overlay {
+    position: fixed;
+    display: flex;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0, 0, 0, 0.48);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    width: 360px;
+    max-width: 100%;
+    padding: 32px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.modal-close:hover {
+    color: var(--text);
+    background: var(--surface-soft);
+}
+
+.modal-content h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+    text-align: center;
+}
+
+.modal-eyebrow {
+    margin: 0 0 8px;
+    color: var(--brand-strong);
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.modal-message {
+    margin: 0 0 22px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.modal-form {
+    display: grid;
+    gap: 14px;
+}
+
+.form-group {
+    margin: 0;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: none;
+    background: var(--surface);
+    color: var(--text);
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    border-color: var(--brand);
+}
+
+.form-error {
+    margin: 0 0 12px;
+    color: #dc3545;
+    font-size: 13px;
+    text-align: center;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+    background: var(--brand);
+    border: none;
+    border-radius: var(--radius-sm);
+}
+
+.submit-btn:hover:not(:disabled) {
+    background: var(--brand-strong);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-footer {
+    margin: 16px 0 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.form-footer button {
+    color: var(--brand);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 14px;
+}
+
+.form-footer button:hover {
+    text-decoration: underline;
+}

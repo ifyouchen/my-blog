@@ -1,0 +1,280 @@
+
+.level-reward-row.achieved .level-reward-rank {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.level-reward-body {
+    min-width: 0;
+}
+
+.level-reward-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.level-reward-main strong {
+    min-width: 0;
+    color: var(--text-strong);
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.level-reward-main span {
+    flex-shrink: 0;
+    color: #16a34a;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.level-reward-body p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.reward-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.reward-state.claimed {
+    color: #047857;
+    background: #d1fae5;
+}
+
+.reward-state.locked {
+    color: #64748b;
+    background: #e2e8f0;
+}
+
+.level-reward-empty {
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background: var(--surface-soft);
+    border-radius: 10px;
+}
+
+/* ── 积分卡片 ───────────────────────────────── */
+.point-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+}
+
+.point-balance {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.point-num {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent, #6c63ff);
+    line-height: 1;
+}
+
+.point-unit {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.point-stats {
+    display: flex;
+    gap: 20px;
+    min-width: 0;
+}
+
+.point-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.stat-val {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+/* ── 徽章 ───────────────────────────────────── */
+.badge-card {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 14px;
+}
+
+.badge-card-head,
+.badge-wall-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-width: 0;
+}
+
+.badge-card-head h3,
+.badge-wall-head h2,
+.badge-wall-head p {
+    margin: 0;
+}
+
+.badge-card-head h3,
+.badge-wall-head h2 {
+    color: var(--text-strong);
+    font-size: 16px;
+}
+
+.badge-error {
+    margin: 0;
+    color: #dc2626;
+    font-size: 12px;
+}
+
+.badge-wall-section {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+.badge-wall-head > span {
+    flex: none;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+/* ── 签到卡片 ───────────────────────────────── */
+.signin-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.signin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.signin-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-strong);
+}
+
+.signin-reward {
+    font-size: 12px;
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.signin-error {
+    font-size: 12px;
+    color: #dc2626;
+}
+
+/* 签到统计摘要 */
+.signin-summary {
+    display: flex;
+    gap: 12px;
+    padding: 6px 10px;
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text);
+}
+
+.summary-icon {
+    font-size: 12px;
+}
+
+.summary-item strong {
+    color: var(--text-strong);
+    font-weight: 700;
+}
+
+/* 横向滚动日历条 */
+.calendar-strip {
+    display: flex;
+    max-width: 100%;
+    gap: 6px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.calendar-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.cal-strip-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    min-height: 44px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px dashed var(--line-strong);
+    border-radius: 8px;
+    transition: all 0.15s;
+}
+
+.cal-strip-day span {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* 已签到 - 实心紫色背景 */
+.cal-strip-day.cal-day--signed {
+    background: var(--accent, #6c63ff);
+    border: 1px solid var(--accent, #6c63ff);
+    color: #fff;
+}
+
+/* 今天未签到 - 脉冲动画 */
+.cal-strip-day.cal-day--today:not(.cal-day--signed) {
+    border: 2px solid var(--accent, #6c63ff);
+    background: rgba(108, 99, 255, 0.08);
+    color: var(--accent, #6c63ff);
+    animation: pulse-today-mobile 2s infinite;
+}

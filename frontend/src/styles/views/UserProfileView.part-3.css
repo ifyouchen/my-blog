@@ -1,0 +1,46 @@
+.follow-user-handle { font-size: 12px; color: var(--muted); }
+.follow-dialog-empty { text-align: center; color: var(--muted); font-size: 14px; padding: 36px 20px; margin: 0; }
+.follow-dialog-loading { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 40px 20px; }
+.follow-loading-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--brand);
+    animation: dot-bounce 1.2s ease-in-out infinite;
+}
+.follow-loading-dot:nth-child(2) { animation-delay: 0.16s; }
+.follow-loading-dot:nth-child(3) { animation-delay: 0.32s; }
+@keyframes dot-bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 1080px) {
+    .profile-columns-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .profile-content-tabs {
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+
+    .profile-content-tabs button {
+        flex: none;
+    }
+
+    .profile-columns-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .profile-columns-heading > span {
+        white-space: normal;
+    }
+
+    .profile-columns-grid {
+        grid-template-columns: 1fr;
+    }
+}

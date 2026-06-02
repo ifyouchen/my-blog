@@ -1,0 +1,7 @@
+.success-link {
+    color: var(--success) !important;
+}
+.status-pill.success {
+    background: #d1fae5;
+    color: #065f46;
+}

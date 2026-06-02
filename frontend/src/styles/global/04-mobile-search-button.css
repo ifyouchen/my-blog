@@ -1,0 +1,23 @@
+/* ============================================================
+   移动端搜索按钮（默认隐藏）
+   ============================================================ */
+.mobile-search-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.mobile-search-toggle:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    color: var(--brand);
+}

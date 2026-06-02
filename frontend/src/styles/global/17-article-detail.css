@@ -1,0 +1,165 @@
+/* ============================================================
+   文章详情页
+   ============================================================ */
+.detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+    align-items: start;
+}
+
+.article-main,
+.article-body,
+.detail-side,
+.editor-main,
+.editor-side,
+.dashboard-main,
+.dashboard-nav,
+.search-panel,
+.collection-head,
+.profile-head {
+    min-width: 0;
+}
+
+.article-main {
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.empty-state {
+    display: grid;
+    gap: 10px;
+    padding: 32px;
+}
+
+.empty-state h1,
+.empty-state p {
+    margin: 0;
+}
+
+.empty-state p:not(.eyebrow) {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.empty-state a {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 34px;
+    align-items: center;
+    padding: 0 14px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--brand);
+    border-radius: var(--radius-sm);
+}
+
+.article-body {
+    padding: 28px 32px;
+}
+
+.article-body .markdown-preview {
+    max-width: 100%;
+}
+
+.article-body h1,
+.editor-main h1,
+.dashboard-main h1,
+.search-panel h1,
+.collection-head h1,
+.profile-head h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.article-summary,
+.collection-head p,
+.profile-head p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+}
+
+/* 作者信息块 */
+.article-author {
+    display: inline-grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    width: fit-content;
+    max-width: min(100%, 300px);
+    padding: 6px 10px;
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+.article-author img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.article-author strong,
+.article-author span {
+    display: block;
+}
+
+.article-author strong {
+    font-size: 13px;
+    color: var(--text-strong);
+}
+
+.article-author span {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+/* 标签行 — 去掉胶囊 */
+.tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 18px;
+}
+
+.tag-row a,
+.tag-row button {
+    min-height: 26px;
+    padding: 0 10px;
+    color: var(--brand);
+    font-size: 12px;
+    cursor: pointer;
+    background: var(--brand-soft);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: var(--radius-md);
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.tag-row a:hover,
+.tag-row button:hover {
+    background: var(--brand-hover);
+    border-color: var(--brand);
+}
+
+.tag-row button.active {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+}

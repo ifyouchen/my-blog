@@ -1,0 +1,36 @@
+
+.feature-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.feature-dialog-cancel {
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.feature-dialog-cancel:hover {
+    background: var(--surface-soft);
+}
+
+.feature-dialog-confirm {
+    padding: 7px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.feature-dialog-confirm:hover {
+    opacity: 0.88;
+}

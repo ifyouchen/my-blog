@@ -1,0 +1,30 @@
+
+.admin-group-rename-form button:last-child {
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.admin-group-rename-form button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    .admin-group-panel-head,
+    .admin-group-create-form,
+    .admin-group-edit-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-group-card-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .admin-group-card-actions {
+        width: 100%;
+        margin-left: 0;
+        flex-wrap: wrap;
+    }
+}

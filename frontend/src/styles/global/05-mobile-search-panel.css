@@ -1,0 +1,76 @@
+/* ============================================================
+   移动端搜索面板（默认隐藏）
+   ============================================================ */
+.mobile-search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.mobile-search-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 201;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-search-form {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.mobile-search-cancel {
+    padding: 0 4px;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    white-space: nowrap;
+}
+
+.mobile-search-cancel:hover {
+    color: var(--brand);
+}
+
+.mobile-search-input {
+    min-width: 0;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 14px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    outline: 0;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mobile-search-input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.mobile-search-submit {
+    padding: 8px 16px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--brand);
+    border: 0;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.mobile-search-submit:hover {
+    background: var(--brand-strong);
+}

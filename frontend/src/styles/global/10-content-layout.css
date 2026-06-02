@@ -1,0 +1,14 @@
+/* ============================================================
+   内容布局
+   ============================================================ */
+.content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--layout-sidebar-width);
+    gap: 16px;
+    align-items: start;
+}
+
+.feed,
+.sidebar {
+    min-width: 0;
+}

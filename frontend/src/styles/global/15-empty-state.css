@@ -1,0 +1,25 @@
+/* ============================================================
+   空状态
+   ============================================================ */
+.placeholder-panel {
+    max-width: 640px;
+    padding: 40px 32px;
+    margin: 32px auto;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.placeholder-panel h1 {
+    margin: 0 0 10px;
+    font-size: 22px;
+}
+
+.placeholder-panel p:not(.eyebrow) {
+    margin: 0 auto 18px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}

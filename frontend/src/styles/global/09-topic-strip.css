@@ -1,0 +1,40 @@
+/* ============================================================
+   话题条 — 去掉胶囊，改方形标签
+   ============================================================ */
+.topic-strip {
+    display: flex;
+    gap: 0;
+    padding: 12px 0 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+}
+
+.topic {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 14px;
+    line-height: 1;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+}
+
+.topic:hover {
+    color: var(--brand);
+}
+
+.topic.active {
+    color: var(--brand);
+    font-weight: 600;
+    border-bottom-color: var(--brand);
+}

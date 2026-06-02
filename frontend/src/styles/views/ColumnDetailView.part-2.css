@@ -1,0 +1,56 @@
+
+.learning-step-title strong {
+    overflow: hidden;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.learning-step p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.learning-step-action {
+    min-height: 30px;
+    padding: 0 10px;
+    color: var(--brand);
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
+@media (max-width: 960px) {
+    .column-detail-hero {
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
+    }
+
+    .column-detail-cover-panel {
+        aspect-ratio: 16 / 9;
+        min-height: 220px;
+        max-height: none;
+        max-width: 100%;
+    }
+
+    .column-detail-actions {
+        align-items: stretch;
+    }
+
+    .learning-path-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .learning-progress {
+        text-align: left;
+    }
+
+    .learning-step {
+        grid-template-columns: 1fr;
+    }
+}

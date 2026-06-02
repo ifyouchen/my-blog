@@ -1,0 +1,281 @@
+/* ============================================================
+   Markdown 正文渲染
+   ============================================================ */
+.markdown-preview,
+.rich-editor-content {
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.9;
+}
+
+.rich-editor-content::selection,
+.rich-editor-content *::selection {
+    color: inherit;
+    background: #dbe7ff;
+}
+
+/* 图片居中：使 text-align 对图片生效，且独立图片默认居中 */
+.markdown-preview img {
+    display: inline-block;
+}
+.markdown-preview p:has(> img:only-child) {
+    text-align: center;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+    scroll-margin-top: 80px;
+    line-height: 1.4;
+    color: var(--text-strong);
+}
+
+.markdown-preview h2 {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+}
+
+.markdown-preview a,
+.rich-editor-content a {
+    color: var(--brand);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.markdown-preview span[style] a,
+.rich-editor-content span[style] a {
+    color: inherit;
+}
+
+.markdown-preview blockquote,
+.rich-editor-content blockquote {
+    padding: 4px 0 4px 14px;
+    margin: 16px 0;
+    color: var(--muted);
+    border-left: 3px solid var(--brand);
+    background: var(--brand-soft);
+}
+
+.markdown-preview code:not(pre code),
+.rich-editor-content code:not(pre code) {
+    padding: 1px 5px;
+    color: var(--brand);
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
+}
+
+.markdown-preview table,
+.rich-editor-content table {
+    width: max-content;
+    min-width: 240px;
+    max-width: none;
+    margin: 16px 0;
+    overflow: visible;
+    border-spacing: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    table-layout: fixed;
+}
+
+.markdown-preview th,
+.markdown-preview td,
+.rich-editor-content th,
+.rich-editor-content td {
+    min-width: 80px;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 14px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.markdown-preview th,
+.rich-editor-content th {
+    color: var(--text-strong);
+    background: var(--surface-soft);
+    font-weight: 700;
+}
+
+.markdown-preview tr:last-child td,
+.rich-editor-content tr:last-child td {
+    border-bottom: 0;
+}
+
+.markdown-preview th:last-child,
+.markdown-preview td:last-child,
+.rich-editor-content th:last-child,
+.rich-editor-content td:last-child {
+    border-right: 0;
+}
+
+.rich-editor-content .tableWrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.rich-editor-content .tableWrapper table {
+    margin: 0;
+}
+
+/* 表格列宽拖拽 */
+.rich-editor-content .column-resize-handle,
+.rich-editor-content .tableCellResizer {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    bottom: -1px;
+    z-index: 20;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    background: rgba(37, 99, 235, 0);
+    transition: background 0.12s;
+}
+
+.rich-editor-content .column-resize-handle::after,
+.rich-editor-content .tableCellResizer::after {
+    position: absolute;
+    top: 8px;
+    right: 3px;
+    bottom: 8px;
+    width: 2px;
+    content: "";
+    background: rgba(37, 99, 235, 0.36);
+    border-radius: 999px;
+    opacity: 0;
+}
+
+.rich-editor-content th:hover .column-resize-handle::after,
+.rich-editor-content td:hover .column-resize-handle::after,
+.rich-editor-content th:hover .tableCellResizer::after,
+.rich-editor-content td:hover .tableCellResizer::after,
+.rich-editor-content.resize-cursor .column-resize-handle::after,
+.rich-editor-content.resize-cursor .tableCellResizer::after {
+    opacity: 1;
+}
+
+.rich-editor-content.resize-cursor,
+.rich-editor-content.resize-cursor * {
+    cursor: col-resize !important;
+}
+
+.rich-editor-content .column-resize-handle:hover,
+.rich-editor-content .tableCellResizer:hover,
+.rich-editor-content .column-resize-handle.dragging,
+.rich-editor-content .tableCellResizing {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.rich-editor-content .selectedCell {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.22) !important;
+}
+
+/* Gap cursor */
+.ProseMirror-gapcursor {
+    display: none;
+    pointer-events: none;
+    position: relative;
+}
+
+.ProseMirror-gapcursor:after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: -2px;
+    width: 20px;
+    border-top: 1px solid black;
+    animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes ProseMirror-cursor-blink {
+    to { visibility: hidden; }
+}
+
+.ProseMirror-focused .ProseMirror-gapcursor {
+    display: block;
+}
+
+/* 代码块 */
+.md-code-block,
+.rich-code-block {
+    max-width: 100%;
+    margin: 16px 0;
+    overflow: hidden;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: var(--radius-sm);
+}
+
+.md-code-block figcaption,
+.rich-code-toolbar {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
+    color: #bbb;
+    font-size: 12px;
+    font-weight: 700;
+    background: #252526;
+    border-bottom: 1px solid #333;
+    border-left: 3px solid #555;
+}
+
+.md-code-block pre,
+.rich-code-block pre,
+.markdown-preview pre {
+    max-width: 100%;
+    padding: 14px 16px;
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre;
+    color: #d4d4d4;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    background: transparent;
+}
+
+.md-code-block code,
+.rich-code-block code,
+.markdown-preview pre code,
+.rich-editor-content pre code {
+    display: block;
+    min-width: max-content;
+    font-family: inherit;
+    white-space: pre;
+}
+
+.rich-code-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.code-copy-button,
+.rich-code-toolbar button {
+    min-height: 24px;
+    padding: 0 8px;
+    color: #ccc;
+    font-size: 12px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+}
+
+.code-copy-button:hover,
+.rich-code-toolbar button:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}

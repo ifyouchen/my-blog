@@ -1456,6 +1456,7 @@ watch(tocDrawerOpen, (open) => {
                         <div class="post-meta article-meta-row">
                             <span v-if="article.category">{{ article.category }}</span>
                             <span v-if="article.readingTime">{{ article.readingTime }}</span>
+                            <span v-if="article.wordCount">{{ article.wordCount.toLocaleString() }} 字</span>
                         </div>
                         <div class="article-tag-list">
                             <span v-for="tag in article.tags" :key="tag" class="article-tag-chip">

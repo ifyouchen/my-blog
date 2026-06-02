@@ -1,0 +1,32 @@
+
+.mobile-sheet-reset {
+    flex: 1;
+    min-height: 40px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.mobile-sheet-reset:hover {
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.mobile-sheet-confirm {
+    flex: 2;
+    min-height: 40px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.mobile-sheet-confirm:hover {
+    opacity: 0.9;
+}

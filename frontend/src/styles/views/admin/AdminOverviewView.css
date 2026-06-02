@@ -1,0 +1,179 @@
+/* ===== 数字卡片颜色变体 ===== */
+.admin-overview-card { border-top: 3px solid transparent; }
+.card-accent-blue    { border-top-color: #3b82f6; }
+.card-accent-green   { border-top-color: #10b981; }
+.card-accent-purple  { border-top-color: #8b5cf6; }
+.card-accent-orange  { border-top-color: #f59e0b; }
+.card-accent-teal    { border-top-color: #14b8a6; }
+.card-accent-red     { border-top-color: #ef4444; }
+.card-accent-indigo  { border-top-color: #6366f1; }
+.card-accent-pink    { border-top-color: #ec4899; }
+
+/* ===== 趋势图 ===== */
+.trend-metric-tabs {
+    display: flex;
+    gap: 4px;
+}
+.trend-tab {
+    padding: 4px 10px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 20px;
+    font-size: 12px;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-secondary, #6b7280);
+    transition: all .15s;
+}
+.trend-tab.active,
+.trend-tab:hover {
+    background: #6366f1;
+    color: #fff;
+    border-color: #6366f1;
+}
+.trend-chart-wrap {
+    margin-top: 12px;
+    padding: 0 4px;
+}
+.trend-svg {
+    width: 100%;
+    height: 110px;
+    display: block;
+    overflow: visible;
+}
+.trend-x-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-secondary, #9ca3af);
+    margin-top: 4px;
+}
+.trend-summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+}
+.trend-summary-cell {
+    flex: 1;
+    text-align: center;
+}
+.trend-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6366f1;
+}
+
+/* ===== 两列面板 ===== */
+.overview-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+.overview-sub-panel { min-width: 0; }
+
+/* ===== 分类分布 ===== */
+.category-dist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+.category-dist-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+.cat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.cat-name {
+    width: 80px;
+    truncate: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+}
+.cat-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--border-color, #f3f4f6);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.cat-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .4s;
+}
+.cat-count {
+    width: 28px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+/* ===== Top 作者 ===== */
+.top-author-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+.top-author-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+}
+.top-rank {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #6366f1;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.top-author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.top-author-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.top-author-info strong {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.top-author-info span {
+    font-size: 11px;
+    color: var(--text-secondary, #6b7280);
+}
+.top-author-likes {
+    font-size: 11px;
+    color: #ef4444;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .overview-two-col {
+        grid-template-columns: 1fr;
+    }
+}

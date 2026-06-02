@@ -1,0 +1,279 @@
+
+.admin-nav {
+    display: grid;
+    gap: 2px;
+}
+
+.admin-nav-link {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    color: var(--muted);
+    font-size: 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+    border-left: 2px solid transparent;
+}
+
+.admin-nav-link:hover {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-left-color: var(--brand);
+}
+
+.admin-nav-link.router-link-active {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-left-color: var(--brand);
+    font-weight: 600;
+}
+
+.admin-nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 6px;
+    color: var(--brand);
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--brand-soft);
+    border-radius: var(--radius-sm);
+}
+
+.admin-workspace {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+
+.admin-workspace-head {
+    display: flex;
+    gap: 14px;
+    align-items: end;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+.admin-refresh-button,
+.admin-filter-actions button,
+.admin-pagination-actions button,
+.admin-pagination-jump button,
+.admin-drawer-head button,
+.admin-table button {
+    min-height: 32px;
+    padding: 0 12px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 14px;
+    color: var(--success) !important;
+    border-color: var(--success) !important;
+    background: #f0fdf4 !important;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: background 0.12s, box-shadow 0.12s;
+}
+.btn-export:hover {
+    background: #dcfce7 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.admin-refresh-button:hover,
+.admin-filter-actions button:hover,
+.admin-pagination-actions button:hover:not(:disabled),
+.admin-pagination-jump button:hover:not(:disabled),
+.admin-drawer-head button:hover,
+.admin-table button:hover:not(:disabled) {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.admin-page-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-overview-card {
+    display: grid;
+    gap: 4px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    border-top: 3px solid var(--brand);
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.15s;
+}
+
+.admin-overview-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.admin-overview-card span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.admin-overview-card strong {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.admin-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-quick-card {
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.admin-quick-card:hover {
+    border-color: var(--brand);
+    box-shadow: var(--shadow-md);
+    background: var(--brand-soft);
+}
+
+.admin-log-list {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-log-item {
+    display: flex;
+    gap: 10px;
+    align-items: start;
+    justify-content: space-between;
+    padding: 11px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    transition: border-left-color 0.12s;
+}
+
+.admin-log-item:hover {
+    border-left-color: var(--brand);
+    background: var(--surface-soft);
+}
+
+.admin-log-item strong {
+    display: block;
+    margin-bottom: 3px;
+    font-weight: 600;
+}
+
+.admin-empty-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.admin-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-toolbar {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.admin-filter-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+}
+
+.admin-create-toolbar {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.admin-filter-toolbar label {
+    display: grid;
+    gap: 6px;
+    min-width: 150px;
+}
+
+.admin-filter-toolbar label span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-filter-grow {
+    flex: 1;
+    min-width: 200px;
+}
+
+.admin-filter-toolbar input,
+.admin-filter-toolbar select,
+.admin-pagination-jump input {
+    min-height: 34px;
+    padding: 0 10px;
+    color: var(--text);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    outline: 0;
+}
+
+.admin-filter-toolbar input:focus,
+.admin-filter-toolbar select:focus,
+.admin-pagination-jump input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.admin-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-table-shell {
+    min-height: 200px;
+}

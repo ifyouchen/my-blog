@@ -1,0 +1,44 @@
+
+.comment-edit-actions .btn-cancel {
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.comment-edit-actions .btn-cancel:hover {
+    border-color: var(--muted);
+}
+
+.comment-edit-actions .btn-submit {
+    color: #fff;
+    background: var(--brand-strong);
+    border: 1px solid var(--brand-strong);
+}
+
+.comment-edit-actions .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.comment-edited-mark {
+    margin-left: 4px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+@media (max-width: 640px) {
+    .comment-root-item {
+        grid-template-columns: 32px minmax(0, 1fr);
+    }
+
+    :deep(.comment-root-avatar) {
+        width: 32px;
+        height: 32px;
+    }
+
+    .comment-reply-summary,
+    .comment-reply-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

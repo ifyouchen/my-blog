@@ -1,0 +1,282 @@
+/* ============================================================
+   排行榜页 Hero 区
+   ============================================================ */
+.ranking-hero {
+    display: grid;
+    gap: 10px;
+    max-width: 680px;
+    padding-bottom: 8px;
+}
+
+.ranking-hero h1,
+.ranking-hero p {
+    margin: 0;
+}
+
+.ranking-hero h1 {
+    font-size: clamp(26px, 3.5vw, 38px);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-strong);
+}
+
+.ranking-hero p:last-child {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.ranking-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    align-items: center;
+    margin-top: 20px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.ranking-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+}
+
+.ranking-filter-group > span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ranking-filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ranking-filter-options.category {
+    min-height: 30px;
+}
+
+.ranking-filter-placeholder {
+    display: block;
+    width: 92px;
+    height: 30px;
+    background: var(--surface-muted);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.ranking-filter-options button,
+.ranking-mobile-tabs button {
+    min-height: 30px;
+    padding: 0 11px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.ranking-filter-options button.active,
+.ranking-mobile-tabs button.active {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--brand);
+}
+
+.ranking-filter-options button:hover:not(.active),
+.ranking-mobile-tabs button:hover:not(.active) {
+    color: var(--text);
+    border-color: var(--brand-hover);
+}
+
+.ranking-category-toggle {
+    display: none;
+}
+
+.ranking-rule-note {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.ranking-mobile-tabs {
+    display: none;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* ============================================================
+   页面整体布局
+   ============================================================ */
+.ranking-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 28px;
+    align-items: start;
+    margin-top: 24px;
+}
+
+.ranking-feed,
+.ranking-sidebar {
+    min-width: 0;
+}
+
+.ranking-feed {
+    display: grid;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.ranking-sidebar {
+    display: grid;
+    gap: 0;
+}
+
+/* ============================================================
+   分区标题
+   ============================================================ */
+.ranking-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.ranking-section-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.ranking-section-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.ranking-section-head .eyebrow {
+    margin: 0 0 0 auto;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+}
+
+/* ============================================================
+   文章榜列表
+   ============================================================ */
+.ranking-post-list {
+    display: grid;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.ranking-post-shell {
+    list-style: none;
+    border-bottom: 1px solid var(--line);
+}
+
+.ranking-post-shell:last-child {
+    border-bottom: none;
+}
+
+.ranking-post-item {
+    display: grid;
+    grid-template-columns: 52px 130px minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.ranking-post-item:hover,
+.ranking-post-item:focus-visible {
+    background: var(--surface-soft);
+}
+
+.ranking-post-item:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: -2px;
+}
+
+/* 排名数字列 */
+.ranking-post-rank {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0 6px;
+    border-right: 1px solid var(--line);
+    background: var(--surface-soft);
+}
+
+.ranking-post-rank span {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--muted-light);
+    text-transform: uppercase;
+}
+
+.ranking-post-rank strong {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--muted);
+}
+
+/* 前三名高亮排名 */
+.ranking-post-rank.top strong {
+    color: var(--brand);
+}
+
+.ranking-post-shell:nth-child(1) .ranking-post-rank {
+    background: #fffbeb;
+}
+
+.ranking-post-shell:nth-child(1) .ranking-post-rank strong {
+    color: #b45309;
+}
+
+.ranking-post-shell:nth-child(2) .ranking-post-rank strong {
+    color: #6b7280;
+}
+
+.ranking-post-shell:nth-child(3) .ranking-post-rank strong {
+    color: #b45309;
+    opacity: 0.7;
+}
+
+/* 封面图列 */
+.ranking-post-cover {
+    width: 130px;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--surface-muted);
+    flex-shrink: 0;
+    border-right: 1px solid var(--line);
+}
+
+.ranking-post-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.22s ease;
+}

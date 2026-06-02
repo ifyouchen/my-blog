@@ -1,0 +1,125 @@
+
+@media (max-width: 420px) {
+    .section-heading h2 {
+        font-size: 14px;
+    }
+
+    .quick-panel h1 {
+        font-size: 18px;
+    }
+
+    .post-content h3 {
+        font-size: 15px;
+    }
+
+    .sort-tabs {
+        width: 100%;
+    }
+
+    .sort-tabs button {
+        flex: 1;
+    }
+
+    .pagination-actions button {
+        flex: 1 1 calc(33.333% - 4px);
+    }
+
+    .pagination-jump,
+    .pagination-jump input,
+    .pagination-jump button {
+        width: 100%;
+    }
+
+    .editor-color-popover {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        left: 20px;
+        width: auto;
+        max-width: calc(100vw - 40px);
+        padding: 14px;
+        transform: translateY(-50%);
+    }
+
+    .editor-color-popover--bubble {
+        top: 50%;
+        left: 20px;
+    }
+
+    .editor-color-grid,
+    .editor-color-grid--background {
+        grid-template-columns: repeat(7, 32px);
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .editor-color-popover .editor-color-option {
+        width: 32px;
+        height: 32px;
+    }
+
+    .editor-color-popover .editor-color-reset {
+        height: 40px;
+        margin-top: 14px;
+    }
+}
+
+@media (max-width: 760px) {
+    .editor-color-popover,
+    .editor-color-popover--bubble {
+        position: fixed;
+        top: auto;
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+        z-index: 1000;
+        width: auto;
+        max-width: none;
+        max-height: min(72vh, 520px);
+        padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        border-radius: 12px;
+        transform: none;
+    }
+
+    .editor-color-title {
+        margin-bottom: 10px;
+        font-size: 15px;
+    }
+
+    .editor-color-section + .editor-color-section {
+        margin-top: 16px;
+    }
+
+    .editor-color-grid,
+    .editor-color-grid--background {
+        grid-template-columns: repeat(6, 36px);
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .editor-color-popover .editor-color-option {
+        width: 36px;
+        height: 36px;
+    }
+
+    .editor-color-popover .editor-color-option--text span {
+        font-size: 21px;
+    }
+
+    .editor-color-popover .editor-color-reset {
+        height: 42px;
+        margin-top: 18px;
+    }
+}
+
+/* NProgress — route transition bar */
+#nprogress .bar {
+    background: var(--brand);
+    height: 3px;
+    box-shadow: 0 0 8px var(--brand);
+}
+
+#nprogress .peg {
+    box-shadow: 0 0 10px var(--brand), 0 0 5px var(--brand);
+}

@@ -1,0 +1,103 @@
+
+.message-self .reply-quote-sender {
+    color: var(--text-strong);
+}
+
+/* 回复提示栏 */
+.reply-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--brand-soft);
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.reply-indicator-label {
+    font-weight: 600;
+    color: var(--brand);
+    white-space: nowrap;
+}
+
+.reply-indicator-preview {
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    font-size: 12px;
+}
+
+.reply-indicator-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.reply-indicator-cancel:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+}
+
+/* 右键菜单 */
+.message-context-menu {
+    position: fixed;
+    z-index: 1000;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+    padding: 4px 0;
+    min-width: 110px;
+    overflow: hidden;
+}
+
+.message-context-menu button {
+    display: block;
+    width: 100%;
+    padding: 9px 18px;
+    text-align: left;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.message-context-menu button:hover {
+    background: var(--surface-soft);
+    color: var(--brand);
+}
+
+/* 已撤回消息通知 */
+.message-recalled-notice {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+    padding: 8px 14px;
+    text-align: center;
+}
+
+/* 高亮闪烁动画 */
+@keyframes highlight-flash {
+    0%, 100% { background: transparent; }
+    50% { background: var(--brand-soft); }
+}
+
+.highlight-flash {
+    animation: highlight-flash 1.5s ease;
+    border-radius: 8px;
+}

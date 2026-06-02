@@ -1,0 +1,62 @@
+/* ============================================================
+   Design tokens — Blue-white gradient style
+   ● 蓝白渐变 ● 适度圆角 ● 柔和阴影 ● 专业蓝色系
+   ============================================================ */
+:root {
+    /* 背景 */
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-soft: #f5f6f8;
+    --surface-muted: #eceef2;
+
+    /* 文字 */
+    --text: #2c3e50;
+    --text-strong: #1a2535;
+    --muted: #7f8fa4;
+    --muted-light: #aab4c4;
+
+    /* 分隔线 */
+    --line: #e8eaed;
+    --line-strong: #d0d5dd;
+
+    /* 品牌主色 — 蓝色 */
+    --brand: #2563eb;
+    --brand-strong: #1d4ed8;
+    --brand-soft: #eff6ff;
+    --brand-hover: #dbeafe;
+
+    /* 功能色 */
+    --accent: #e53e3e;
+    --gold: #d4a017;
+    --success: #059669;
+    --warning: #d97706;
+    --info: #0ea5e9;
+
+    /* 兼容别名 */
+    --primary: var(--brand);
+    --primary-strong: var(--brand-strong);
+    --error: var(--accent);
+    --border: var(--line);
+    --bg-secondary: #f7f9fb;
+    --bg-tertiary: #edf0f4;
+
+    /* 阴影 — 柔和中性 */
+    --shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.09);
+    --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.07);
+    --header-shadow: 0 1px 0 var(--line), 0 2px 8px rgba(0, 0, 0, 0.05);
+
+    /* 圆角 — 适度圆润 */
+    --radius-lg: 10px;
+    --radius-md: 8px;
+    --radius-sm: 6px;
+
+    /* 布局 */
+    --layout-max-width: 1600px;
+    --layout-article-max-width: 1760px;
+    --layout-sidebar-width: 360px;
+    --layout-reading-width: 960px;
+    --layout-admin-sidebar-width: 248px;
+    --layout-editor-sidebar-width: 320px;
+    --layout-gutter: 32px;
+}

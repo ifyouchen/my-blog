@@ -1,0 +1,8 @@
+
+:deep(.search-highlight) {
+    background: #fef08a;
+    color: #78350f;
+    border-radius: 2px;
+    padding: 0 1px;
+    font-style: normal;
+}

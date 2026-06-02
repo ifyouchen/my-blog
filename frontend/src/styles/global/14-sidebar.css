@@ -1,0 +1,126 @@
+/* ============================================================
+   侧边栏
+   ============================================================ */
+.sidebar {
+    position: sticky;
+    top: 72px;
+}
+
+.side-section {
+    padding: 16px;
+    margin-bottom: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.side-section h2 {
+    margin: 0 0 12px;
+    color: var(--text-strong);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+}
+
+.special-list {
+    display: grid;
+    gap: 10px;
+}
+
+.special-item {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 4px 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.special-item img {
+    width: 80px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+}
+
+.special-item span {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+}
+
+.special-item:hover span {
+    color: var(--brand);
+}
+
+/* 作者榜 */
+.author-rank {
+    display: grid;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.author-rank li {
+    display: grid;
+    grid-template-columns: 20px 28px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+}
+
+.author-rank li:hover {
+    background: var(--surface-soft);
+}
+
+.author-rank li:last-child {
+    border-bottom: 0;
+}
+
+.rank-no {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.author-rank li:nth-child(1) .rank-no { color: var(--brand); }
+.author-rank li:nth-child(2) .rank-no { color: #d4740a; }
+.author-rank li:nth-child(3) .rank-no { color: var(--gold); }
+
+.author-rank strong,
+.author-rank span {
+    display: block;
+}
+
+.author-rank strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.author-rank span {
+    margin-top: 1px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+/* 写文章推荐区 */
+.write-box {
+    background: var(--surface);
+    border-color: var(--line);
+}
+
+.write-box p:not(.eyebrow) {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}

@@ -1,0 +1,248 @@
+
+.explore-category-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.explore-category-group-head strong {
+    color: var(--text-strong);
+    font-size: 15px;
+}
+
+.explore-category-group-head span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.explore-category-card,
+.explore-more-card {
+    display: grid;
+    gap: 6px;
+    min-height: 72px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.explore-more-card {
+    place-items: center;
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.explore-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.explore-tag {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.explore-tag:hover {
+    border-color: var(--brand-hover);
+    background: var(--surface-soft);
+}
+
+.explore-tag span {
+    color: var(--brand-strong);
+    font-weight: 700;
+}
+
+.explore-tag em {
+    color: var(--muted);
+    font-size: 11px;
+    font-style: normal;
+}
+
+.explore-tag-more {
+    color: var(--brand);
+    font-weight: 700;
+}
+
+.explore-list {
+    display: grid;
+    gap: 8px;
+}
+
+.explore-list-item {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    min-height: 72px;
+    padding: 10px;
+    text-decoration: none;
+}
+
+.explore-list-item img {
+    width: 56px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+}
+
+.explore-list-item span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.explore-list-item strong,
+.explore-list-item em {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.explore-author-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.explore-author-card {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+}
+
+.explore-author-avatar {
+    display: inline-flex;
+}
+
+.explore-author-avatar img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+}
+
+.explore-author-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.explore-author-copy a {
+    overflow: hidden;
+    color: var(--text-strong);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.explore-author-copy a:hover {
+    color: var(--brand);
+}
+
+.explore-author-copy p {
+    margin: 0;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.explore-author-stats {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.explore-empty {
+    margin: 0;
+    padding: 16px 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.explore-skeleton,
+.explore-tag-skeleton {
+    min-height: 72px;
+    background: linear-gradient(90deg, var(--surface-soft) 25%, var(--line) 37%, var(--surface-soft) 63%);
+    background-size: 400% 100%;
+    border: 0;
+    animation: explore-skeleton 1.2s ease-in-out infinite;
+}
+
+.explore-tag-skeleton {
+    width: 80px;
+    min-height: 32px;
+}
+
+@keyframes explore-skeleton {
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: 0 0;
+    }
+}
+
+@media (max-width: 1080px) {
+    .explore-two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .explore-author-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .explore-head {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .explore-head-actions {
+        flex-wrap: wrap;
+    }
+
+    .explore-search-link,
+    .explore-rank-link {
+        flex: 1;
+    }
+
+    .explore-paths {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .explore-trending-cover {
+        display: none;
+    }
+
+    .explore-trending-item {
+        grid-template-columns: 36px minmax(0, 1fr);
+    }
+
+    .explore-author-grid {
+        grid-template-columns: 1fr;
+    }
+}

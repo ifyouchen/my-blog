@@ -1,0 +1,48 @@
+/* ============================================================
+   用户主页
+   ============================================================ */
+.profile-head {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 20px;
+    align-items: center;
+    padding: 24px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.profile-head > img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+}
+
+.profile-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.profile-stats span {
+    min-width: 96px;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+.profile-stats strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 20px;
+    font-weight: 700;
+}

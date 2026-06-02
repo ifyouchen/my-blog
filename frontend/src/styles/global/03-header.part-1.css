@@ -1,0 +1,280 @@
+/* ============================================================
+   Header — 蓝白渐变顶部导航
+   ============================================================ */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--header-shadow);
+}
+
+.header-inner {
+    display: grid;
+    grid-template-columns: auto auto minmax(260px, 1fr) auto;
+    gap: 20px;
+    align-items: center;
+    max-width: var(--layout-max-width);
+    min-height: 60px;
+    padding: 0 var(--layout-gutter);
+    margin: 0 auto;
+}
+
+.header-inner--article {
+    max-width: var(--layout-article-max-width);
+}
+
+/* 品牌 logo */
+.brand {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-weight: 800;
+}
+
+.brand-mark {
+    display: inline-grid;
+    width: 32px;
+    height: 32px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+    border-radius: var(--radius-sm);
+    place-items: center;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.brand-name {
+    color: var(--text-strong);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+/* 顶部导航链接 */
+.main-nav {
+    display: flex;
+    gap: 0;
+    align-items: center;
+}
+
+.main-nav a {
+    position: relative;
+    padding: 0 12px;
+    line-height: 60px;
+    color: #555;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 0;
+    transition: color 0.15s;
+}
+
+.main-nav a:hover {
+    color: var(--brand);
+}
+
+.main-nav a.active,
+.main-nav a.router-link-active {
+    color: var(--brand);
+}
+
+.main-nav a.active::after,
+.main-nav a.router-link-active::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    content: "";
+    background: var(--brand);
+}
+
+/* 搜索框 — 方形边框风格 */
+.search-box {
+    display: grid;
+    grid-template-columns: minmax(100px, 1fr) auto;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.search-box:focus-within {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.search-box input {
+    min-width: 0;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 13px;
+    background: transparent;
+    border: 0;
+    outline: 0;
+}
+
+.search-box button {
+    height: 100%;
+    padding: 0 16px;
+    color: #ffffff;
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--brand);
+    border: 0;
+    border-left: 1px solid var(--brand);
+    transition: background 0.15s;
+}
+
+.search-box button:hover {
+    background: var(--brand-strong);
+}
+
+/* 头部操作区 */
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.text-link {
+    padding: 4px 8px;
+    color: #555;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s;
+}
+
+.text-link:hover {
+    color: var(--brand);
+}
+
+.text-button {
+    padding: 0;
+    color: #555;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    font-size: 14px;
+}
+
+.text-button:hover {
+    color: var(--brand);
+}
+
+/* 用户信息区 */
+.user-chip {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 10px 4px 6px;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    max-width: 160px;           /* 用户名过长时截断 */
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.user-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-chip:hover,
+.user-chip[aria-expanded="true"] {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.user-chip {
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.user-chip img {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-menu-trigger-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.user-home-link:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.user-menu-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;          /* 与触发区等宽 */
+    z-index: 200;
+    min-width: 140px;
+    padding: 6px 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.user-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 38px;
+    padding: 0 14px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    transition: background 0.1s;
+}
+
+.user-menu-item:hover {
+    background: var(--surface-soft);
+    color: var(--text-strong);
+}
+
+/* 危险操作：顶部分隔线 + 红色 */
+.user-menu-item-danger {
+    color: var(--accent);
+    border-top: 1px solid var(--line);
+    margin-top: 2px;
+    padding-top: 2px;
+}
+
+.user-menu-item-danger:hover {
+    background: #fff5f5;
+    color: var(--accent);
+}
+
+/* 主按钮 — 蓝色渐变 */

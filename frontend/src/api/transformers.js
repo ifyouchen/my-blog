@@ -103,6 +103,7 @@ export const normalizeArticle = (article) => {
         category: article.category,
         status: article.status,
         rawContent,
+        wordCount: article.wordCount > 0 ? article.wordCount : rawContent.length,
         readingTime: (() => {
             const chars = article.wordCount > 0
                 ? article.wordCount

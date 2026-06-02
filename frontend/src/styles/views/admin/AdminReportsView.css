@@ -1,0 +1,126 @@
+.report-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1150;
+    display: flex;
+    justify-content: flex-end;
+    background: rgba(15, 23, 42, 0.28);
+}
+
+.report-drawer {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 18px;
+    width: min(520px, 100%);
+    height: 100%;
+    padding: 28px;
+    overflow-y: auto;
+    background: var(--surface);
+    border-left: 1px solid var(--line);
+    box-shadow: var(--shadow-md);
+}
+
+.report-drawer-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.report-drawer h2,
+.report-target-summary h3 {
+    margin: 0;
+    color: var(--text);
+}
+
+.report-detail-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+}
+
+.report-detail-list div {
+    display: grid;
+    gap: 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.report-detail-list dt {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.report-detail-list dd {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.report-detail-list.compact {
+    margin-top: 10px;
+}
+
+.report-drawer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.report-drawer-actions button {
+    min-height: 34px;
+    padding: 0 12px;
+    color: var(--text);
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.report-resolve-form {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.report-resolve-form label {
+    display: grid;
+    gap: 8px;
+}
+
+.report-resolve-form span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.report-resolve-form select,
+.report-resolve-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    color: var(--text);
+    font: inherit;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.report-resolve-form textarea {
+    resize: vertical;
+}
+
+@media (max-width: 640px) {
+    .report-drawer {
+        padding: 24px 18px;
+    }
+}

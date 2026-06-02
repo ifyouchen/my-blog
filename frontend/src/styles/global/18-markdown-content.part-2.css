@@ -1,0 +1,25 @@
+
+.rich-code-toolbar button.danger {
+    color: #ff8080;
+}
+
+/* 语言高亮标识色 */
+.md-code-block.lang-java figcaption,
+.rich-code-block.lang-java .rich-code-toolbar { border-left-color: #e05d44; }
+
+.md-code-block.lang-html figcaption,
+.rich-code-block.lang-html .rich-code-toolbar { border-left-color: #4c8bf5; }
+
+.md-code-block.lang-sql figcaption,
+.rich-code-block.lang-sql .rich-code-toolbar { border-left-color: #d7a72f; }
+
+.md-code-block.lang-javascript figcaption,
+.rich-code-block.lang-javascript .rich-code-toolbar,
+.md-code-block.lang-typescript figcaption,
+.rich-code-block.lang-typescript .rich-code-toolbar { border-left-color: #6fbf73; }
+
+/* 代码高亮 */
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #569cd6; }
+.hljs-string, .hljs-title, .hljs-name { color: #9cdca6; }
+.hljs-number, .hljs-built_in, .hljs-type { color: #ce9178; }
+.hljs-comment { color: #6a9955; }

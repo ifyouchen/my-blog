@@ -1,0 +1,282 @@
+.rich-editor-content li[data-type="task-item"][data-checked="true"] > div > p {
+    text-decoration: line-through;
+    color: var(--muted-light);
+}
+
+.rich-editor-content li[data-type="task-item"] div {
+    flex: 1;
+    min-width: 0;
+}
+
+.rich-editor-content ul[data-type="task-list"] ul[data-type="task-list"] {
+    margin: 0;
+}
+
+/* 右键菜单 */
+.editor-context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 180px;
+    max-height: min(70vh, 460px);
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: scale(0.96);
+    animation: context-menu-enter 0.1s ease forwards;
+    transform-origin: top left;
+}
+
+.editor-context-menu::-webkit-scrollbar { width: 4px; }
+.editor-context-menu::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-sm);
+}
+.editor-context-menu::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes context-menu-enter {
+    to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.context-menu-group-label {
+    padding: 5px 10px 3px;
+    color: var(--muted-light);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    user-select: none;
+}
+
+.context-menu-divider {
+    height: 1px;
+    margin: 4px 6px;
+    background: var(--line);
+}
+
+.editor-context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 30px;
+    padding: 4px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    transition: background-color 0.1s;
+}
+
+.editor-context-item:hover,
+.editor-context-item.active {
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.editor-context-item:active {
+    background: var(--brand-hover);
+}
+
+.context-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--muted);
+}
+
+.editor-context-item:hover .context-item-icon,
+.editor-context-item.active .context-item-icon {
+    color: var(--brand);
+}
+
+.context-item-label {
+    flex: 1;
+    min-width: 0;
+}
+
+/* slash 命令面板 */
+.slash-command-panel {
+    position: absolute;
+    z-index: 50;
+    min-width: 230px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: scale(0.96);
+    animation: context-menu-enter 0.1s ease forwards;
+    transform-origin: top left;
+}
+
+.slash-command-title {
+    margin: 0 6px;
+    padding: 3px 0;
+    color: var(--muted-light);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.slash-command-empty {
+    margin: 0;
+    padding: 8px 10px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.slash-command-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 36px;
+    padding: 4px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    transition: background-color 0.1s;
+}
+
+.slash-command-item span {
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.slash-command-item small {
+    color: var(--muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.slash-command-item:hover,
+.slash-command-item.active {
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.slash-command-item:active {
+    background: var(--brand-hover);
+}
+
+.rich-editor-content {
+    min-height: 480px;
+    padding: 16px;
+    outline: 0;
+}
+
+.rich-editor-content:focus { outline: 0; }
+
+.rich-editor-content p { margin: 0 0 10px; }
+
+.rich-editor-content h1,
+.rich-editor-content h2,
+.rich-editor-content h3,
+.rich-editor-content h4,
+.rich-editor-content h5,
+.rich-editor-content h6 {
+    margin: 20px 0 10px;
+    line-height: 1.4;
+}
+
+.rich-editor-content h1 { font-size: 26px; }
+.rich-editor-content h2 { font-size: 22px; }
+.rich-editor-content h3 { font-size: 18px; }
+.rich-editor-content h4,
+.rich-editor-content h5,
+.rich-editor-content h6 { font-size: 15px; }
+
+.rich-editor-content .editor-heading-jump-highlight {
+    border-radius: var(--radius-sm);
+    animation: editor-heading-jump-highlight 1.4s ease;
+}
+
+@keyframes editor-heading-jump-highlight {
+    0% {
+        background: rgba(37, 99, 235, 0.18);
+        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+    }
+    100% {
+        background: transparent;
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+
+.rich-editor-content ul,
+.rich-editor-content ol { padding-left: 22px; }
+
+.rich-editor-content .tableWrapper {
+    margin: 16px 0;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.rich-editor-content .selectedCell::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.rich-editor-content th,
+.rich-editor-content td {
+    position: relative;
+    vertical-align: top;
+}
+
+/* 编辑器侧边栏 */
+.editor-side {
+    position: sticky;
+    top: 72px;
+}
+
+.editor-side .side-section {
+    display: grid;
+    gap: 8px;
+}
+
+.editor-category-section {
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.editor-category-head {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.editor-category-section .eyebrow {
+    margin-bottom: 0;
+}

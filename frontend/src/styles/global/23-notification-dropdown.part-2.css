@@ -1,0 +1,56 @@
+.notification-detail {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.notification-time {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.notification-meta {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    padding-top: 2px;
+}
+
+.unread-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--brand);
+    border-radius: 50%;
+}
+
+.notification-arrow {
+    color: var(--muted-light);
+    font-size: 18px;
+    line-height: 1;
+}
+
+.notification-footer {
+    padding: 10px 16px;
+    text-align: center;
+    border-top: 1px solid var(--line);
+    background: var(--surface-soft);
+}
+
+.view-all-btn {
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    transition: color 0.12s;
+}
+
+.view-all-btn:hover {
+    color: var(--brand-strong);
+    text-decoration: underline;
+}
