@@ -17,7 +17,7 @@ const previewImageRef = ref(null);
 const pendingLink = ref(null);
 const previewImages = ref([]);
 const previewIndex = ref(-1);
-const previewScale = ref(1);
+const previewScale = ref(0.5);
 const previewOffset = ref({ x: 0, y: 0 });
 const previewDragging = ref(false);
 let previewDragStart = null;
@@ -84,7 +84,7 @@ const zoomPreview = (delta) => {
 };
 
 const resetPreviewZoom = () => {
-    previewScale.value = 1;
+previewScale.value = 0.5;
     resetPreviewOffset();
 };
 

@@ -59,7 +59,7 @@ const messageInput = ref('');
 const pendingImageFile = ref(null);
 const pendingImageUrl = ref('');
 const previewImageSrc = ref('');
-const previewScale = ref(1);
+const previewScale = ref(0.5);
 const previewOffset = ref({ x: 0, y: 0 });
 const previewDragging = ref(false);
 let previewDragStart = null;
@@ -607,7 +607,7 @@ const zoomPreview = (delta) => {
 };
 
 const resetPreviewZoom = () => {
-    previewScale.value = 1;
+    previewScale.value = 0.5;
     previewOffset.value = { x: 0, y: 0 };
 };
 
