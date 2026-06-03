@@ -1,0 +1,16 @@
+{
+  "title": "附录",
+  "summary": "附录 实战资料：术语表、模式选择指南、常见问题解答 内容列表 附录 标题 内容 [A](./%E9%99%84%E5%BD%95A%EF%BC%9A%E6%9C%AF%E8%AF%AD%E8%A1%A8.md) 术语表 关键术语中英对照、定义、使用场景 [B](./%E9%99%84%E5%BD%95B%EF%BC%9A%E6%A8%A1%E5%BC%8F%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97.md) 模式选择指南 决策树、对比表、反模式、成本权衡 [C](./%E9%99%84%E5%BD%95C%EF%BC%9A%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98FAQ.md) 常见问题 FAQ 入门问题、架构选型、生产部署、安全合规 附录A: 术语表 Agent 核心术语 (Agent、ReAct、Tool Use 等) 扩展与集成 (MCP、Skills、Hooks、Plugins) 上下文与记忆 (Context Window、Memory、Session) 多Agent 术语 (Orchestrator、DAG、H...",
+  "content": "# 附录\n\n>\n\n实战资料：术语表、模式选择指南、常见问题解答\n\n## 内容列表\n\n| 附录 | 标题 | 内容 |\n| --- | --- | --- |\n| [A](./%E9%99%84%E5%BD%95A%EF%BC%9A%E6%9C%AF%E8%AF%AD%E8%A1%A8.md) | 术语表 | 关键术语中英对照、定义、使用场景 |\n| [B](./%E9%99%84%E5%BD%95B%EF%BC%9A%E6%A8%A1%E5%BC%8F%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97.md) | 模式选择指南 | 决策树、对比表、反模式、成本权衡 |\n| [C](./%E9%99%84%E5%BD%95C%EF%BC%9A%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98FAQ.md) | 常见问题 FAQ | 入门问题、架构选型、生产部署、安全合规 |\n\n---\n\n## 附录A: 术语表\n\n- Agent 核心术语 (Agent、ReAct、Tool Use 等)\n\n- 扩展与集成 (MCP、Skills、Hooks、Plugins)\n\n- 上下文与记忆 (Context Window、Memory、Session)\n\n- 多Agent 术语 (Orchestrator、DAG、Handoff)\n\n- 推理模式 (CoT、ToT、Reflection、Debate)\n\n- 生产特性 (Token Budget、OPA、WASI、Observability)\n\n## 附录B: 模式选择指南\n\n- 单Agent推理模式决策树\n\n- 多Agent编排模式决策树\n\n- 模式对比矩阵（成本/延迟/质量）\n\n- 反模式警示\n\n- 成本-质量-延迟权衡\n\n- 快速选择速查表\n\n- 真实案例选型\n\n- 配置模板参考\n\n## 附录C: 常见问题 FAQ\n\n- 入门问题（Agent vs Chatbot、框架选择等）\n\n- 架构选型（单 Agent vs 多 Agent、编排模式等）\n\n- 生产部署（性能优化、成本控制等）\n\n- 安全合规（沙箱隔离、权限控制等）\n\n---\n\n## 计划中的内容\n\n以下附录内容正在编写中：\n\n| 附录 | 标题 | 计划内容 |\n| --- | --- | --- |\n| D | Prompt模板库 | 各模式 Prompt 模板、变量注入、版本管理 |\n| E | 框架对比 | Shannon vs LangGraph vs CrewAI vs AutoGen |\n| F | 部署指南 | Docker/K8s 部署、扩缩容、故障恢复 |\n| G | 测试与评估 | Agent 质量测试、回归测试、红队对抗、安全防护 |\n",
+  "source_url": "https://www.waylandz.com/ai-agent-book/Part10概述/",
+  "source_title": "附录概述",
+  "section": "附录",
+  "id": 950044,
+  "order": 44,
+  "slug": "ai-agent-book-part10概述",
+  "cover_url": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800",
+  "tags": [
+    "AI Agent",
+    "学习指南"
+  ]
+}

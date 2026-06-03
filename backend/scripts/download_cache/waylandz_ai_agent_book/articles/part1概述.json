@@ -1,0 +1,16 @@
+{
+  "title": "Part 1: Agent基础",
+  "summary": "Part 1: Agent基础 理解AI Agent的本质，从LLM到自主智能体的演进 章节列表 章节 标题 核心问题 01 Agent的本质 什么是Agent？与普通Chatbot有何不同？ 02 ReAct循环 Agent如何思考和行动？ 学习目标 完成本Part后，你将能够： 理解Agent的定义和自主性谱系 掌握ReAct (Reason Act Observe) 基础循环 区分Agent与传统Chatbot的本质差异 了解Shannon架构的整体设计理念 Shannon代码导读 前置知识 LLM基础概念 (Prompt、Token、Temperature) 基本编程能力 (Go/Python任一)",
+  "content": "# Part 1: Agent基础\n\n>\n\n理解AI Agent的本质，从LLM到自主智能体的演进\n\n## 章节列表\n\n| 章节 | 标题 | 核心问题 |\n| --- | --- | --- |\n| 01 | Agent的本质 | 什么是Agent？与普通Chatbot有何不同？ |\n| 02 | ReAct循环 | Agent如何思考和行动？ |\n\n## 学习目标\n\n完成本Part后，你将能够：\n\n- 理解Agent的定义和自主性谱系\n\n- 掌握ReAct (Reason-Act-Observe) 基础循环\n\n- 区分Agent与传统Chatbot的本质差异\n\n- 了解Shannon架构的整体设计理念\n\n## Shannon代码导读\n\n```\nShannon/\n├── docs/multi-agent-workflow-architecture.md  # 架构总览\n├── go/orchestrator/internal/workflows/strategies/react.go   # ReactWorkflow（工作流层）\n└── go/orchestrator/internal/workflows/patterns/react.go     # ReactLoop（模式层）\n```\n## 前置知识\n\n- LLM基础概念 (Prompt、Token、Temperature)\n\n- 基本编程能力 (Go/Python任一)\n",
+  "source_url": "https://www.waylandz.com/ai-agent-book/Part1概述/",
+  "source_title": "Part 1 概述",
+  "section": "Part 1 - Agent 基础",
+  "id": 950002,
+  "order": 2,
+  "slug": "ai-agent-book-part1概述",
+  "cover_url": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800",
+  "tags": [
+    "AI Agent",
+    "ReAct"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Part 2: 工具与扩展",
+  "summary": "Part 2: 工具与扩展 让Agent具备真正的执行能力：工具调用、MCP协议、Skills系统 章节列表 章节 标题 核心问题 03 工具调用基础 如何让LLM调用外部函数？ 04 MCP协议详解 如何标准化Agent与外部系统的连接？ 05 Skills系统 如何构建可复用的Agent能力？ 06 Hooks与Plugins 如何扩展Agent的生命周期和打包分发？ 学习目标 完成本Part后，你将能够： 实现Function Calling工具定义 理解MCP (Model Context Protocol) 协议架构 设计可复用的Skills系统 使用Hooks扩展Agent行为 Shannon代码导读 热门话题关联 MCP : Claude Code、Cursor等工具的标准协议 Hooks : Claude Code事件驱动扩展机制 Plugins : 能力打包与社区分享 前置知识 Part 1 完成 JSON Schema基础 HTTP/gRPC基础",
+  "content": "# Part 2: 工具与扩展\n\n>\n\n让Agent具备真正的执行能力：工具调用、MCP协议、Skills系统\n\n## 章节列表\n\n| 章节 | 标题 | 核心问题 |\n| --- | --- | --- |\n| 03 | 工具调用基础 | 如何让LLM调用外部函数？ |\n| 04 | MCP协议详解 | 如何标准化Agent与外部系统的连接？ |\n| 05 | Skills系统 | 如何构建可复用的Agent能力？ |\n| 06 | Hooks与Plugins | 如何扩展Agent的生命周期和打包分发？ |\n\n## 学习目标\n\n完成本Part后，你将能够：\n\n- 实现Function Calling工具定义\n\n- 理解MCP (Model Context Protocol) 协议架构\n\n- 设计可复用的Skills系统\n\n- 使用Hooks扩展Agent行为\n\n## Shannon代码导读\n\n```\nShannon/\n├── python/llm-service/tools/           # 工具实现\n├── python/llm-service/roles/presets.py # Skills预设\n└── docs/pattern-usage-guide.md         # 模式指南\n```\n## 热门话题关联\n\n- **MCP**: Claude Code、Cursor等工具的标准协议\n\n- **Hooks**: Claude Code事件驱动扩展机制\n\n- **Plugins**: 能力打包与社区分享\n\n## 前置知识\n\n- Part 1 完成\n\n- JSON Schema基础\n\n- HTTP/gRPC基础\n",
+  "source_url": "https://www.waylandz.com/ai-agent-book/Part2概述/",
+  "source_title": "Part 2 概述",
+  "section": "Part 2 - 工具与扩展",
+  "id": 950005,
+  "order": 5,
+  "slug": "ai-agent-book-part2概述",
+  "cover_url": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800",
+  "tags": [
+    "AI Agent",
+    "工具调用",
+    "MCP"
+  ]
+}
