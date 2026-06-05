@@ -135,6 +135,7 @@ export const normalizeArticle = (article) => {
         seoDescription: article.seoDescription || '',
         needUnlock: Boolean(article.needUnlock),
         unlockPointPrice: Number(article.unlockPointPrice || 0),
+        relationSortOrder: Number(article.relationSortOrder || 0),
         recommendationApplicationId: article.recommendationApplicationId || null,
         recommendationApplicationStatus: article.recommendationApplicationStatus || '',
         contentLocked: Boolean(article.contentLocked),

@@ -112,12 +112,13 @@ public class DashboardColumnController {
      * @return 成功响应
      */
     @PostMapping("/{id}/articles")
-    public Result<Void> addArticle(@PathVariable Long id, @RequestBody Map<String, Long> body) {
-        Long articleId = body.get("articleId");
+    public Result<Void> addArticle(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        Long articleId = parseLong(body.get("articleId"));
         if (articleId == null) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "articleId 不能为空");
         }
-        columnAppService.addMyColumnArticle(id, articleId, requiredUserId());
+        int sortOrder = parseInteger(body.get("sortOrder"), 0);
+        columnAppService.addMyColumnArticle(id, articleId, requiredUserId(), sortOrder);
         return Result.success();
     }
 
@@ -145,6 +146,39 @@ public class DashboardColumnController {
             throw new ApplicationException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
         return userId;
+    }
+
+    /**
+     * 将请求字段解析为 Long。
+     *
+     * @param value 请求字段值
+     * @return Long 值
+     */
+    private Long parseLong(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+            return Long.valueOf(((String) value).trim());
+        }
+        return null;
+    }
+
+    /**
+     * 将请求字段解析为 int。
+     *
+     * @param value 请求字段值
+     * @param defaultValue 默认值
+     * @return int 值
+     */
+    private int parseInteger(Object value, int defaultValue) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+            return Integer.valueOf(((String) value).trim());
+        }
+        return defaultValue;
     }
 }
 

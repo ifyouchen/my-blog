@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import {useRouter} from 'vue-router';
 import ColumnSubscribeButton from '@/components/ColumnSubscribeButton.vue';
 import SiteHeader from '@/components/SiteHeader.vue';
@@ -12,13 +12,7 @@ const currentPage = ref(1);
 const total = ref(0);
 const searchInput = ref('');
 const activeKeyword = ref('');
-const pageSize = 12;
-const loadingMore = ref(false);
-const loadMoreError = ref('');
-const loadMoreTrigger = ref(null);
-const loadMoreTriggerVisible = ref(false);
-let loadMoreObserver = null;
-let loadMoreSeq = 0;
+const pageSize = 8;
 const {
     initialLoading,
     refreshing,
@@ -29,28 +23,30 @@ const {
     runStableRequest
 } = useStableListRequest();
 
-const hasMore = computed(() => columns.value.length < total.value);
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const paginationText = computed(() => {
+    if (!total.value) {
+        return '暂无专栏';
+    }
+    const start = (currentPage.value - 1) * pageSize + 1;
+    const end = Math.min(currentPage.value * pageSize, total.value);
+    return `第 ${start}-${end} 个，共 ${total.value} 个专栏`;
+});
 
-const mergeUniqueItems = (currentItems, nextItems) => {
-    const seen = new Set(currentItems.map((item) => String(item.id)));
-    return [
-        ...currentItems,
-        ...nextItems.filter((item) => {
-            const key = String(item.id);
-            if (seen.has(key)) {
-                return false;
-            }
-            seen.add(key);
-            return true;
-        })
-    ];
-};
+const pageButtons = computed(() => {
+    const pages = [];
+    const maxPage = totalPages.value;
+    const start = Math.max(1, currentPage.value - 2);
+    const end = Math.min(maxPage, currentPage.value + 2);
+    for (let page = start; page <= end; page += 1) {
+        pages.push(page);
+    }
+    return pages;
+});
 
-const fetchColumns = async () => {
-    loadMoreSeq += 1;
-    loadMoreError.value = '';
+const fetchColumns = async (page = currentPage.value) => {
     const response = await runStableRequest(
-        () => getColumnsApi({ page: 1, pageSize, keyword: activeKeyword.value }),
+        () => getColumnsApi({ page, pageSize, keyword: activeKeyword.value }),
         {
             silent: hasLoadedOnce.value,
             initialErrorMessage: '专栏加载失败',
@@ -63,7 +59,7 @@ const fetchColumns = async () => {
     const pageResult = response.result || {};
     columns.value = pageResult.items || [];
     total.value = pageResult.total || 0;
-    currentPage.value = pageResult.page || 1;
+    currentPage.value = pageResult.page || page;
 };
 
 const resultText = computed(() => {
@@ -76,7 +72,7 @@ const resultText = computed(() => {
 const submitSearch = async () => {
     activeKeyword.value = searchInput.value.trim();
     currentPage.value = 1;
-    await fetchColumns();
+    await fetchColumns(1);
 };
 
 const clearSearch = async () => {
@@ -86,37 +82,16 @@ const clearSearch = async () => {
     searchInput.value = '';
     activeKeyword.value = '';
     currentPage.value = 1;
-    await fetchColumns();
+    await fetchColumns(1);
 };
 
-const loadMoreColumns = async () => {
-    if (loading.value || loadingMore.value || !hasMore.value) {
+const goToPage = async (page) => {
+    const targetPage = Math.min(Math.max(page, 1), totalPages.value);
+    if (targetPage === currentPage.value || loading.value) {
         return;
     }
-    const nextPage = currentPage.value + 1;
-    const seq = loadMoreSeq + 1;
-    loadMoreSeq = seq;
-    loadingMore.value = true;
-    loadMoreError.value = '';
-
-    try {
-        const pageResult = await getColumnsApi({ page: nextPage, pageSize, keyword: activeKeyword.value });
-        if (seq !== loadMoreSeq) {
-            return;
-        }
-        columns.value = mergeUniqueItems(columns.value, pageResult.items || []);
-        total.value = pageResult.total || total.value;
-        currentPage.value = pageResult.page || nextPage;
-    } catch (error) {
-        if (seq !== loadMoreSeq) {
-            return;
-        }
-        loadMoreError.value = error?.message || '专栏加载失败，请稍后重试';
-    } finally {
-        if (seq === loadMoreSeq) {
-            loadingMore.value = false;
-        }
-    }
+    currentPage.value = targetPage;
+    await fetchColumns(targetPage);
 };
 
 const updateSubscribedState = (column, subscribed) => {
@@ -124,45 +99,7 @@ const updateSubscribedState = (column, subscribed) => {
     column.subscriberCount = Math.max(0, (column.subscriberCount || 0) + (subscribed ? 1 : -1));
 };
 
-const requestLoadMoreIfVisible = () => {
-    if (!loadMoreTriggerVisible.value || loadMoreError.value) {
-        return;
-    }
-    loadMoreColumns();
-};
-
-const teardownLoadMoreObserver = () => {
-    if (loadMoreObserver) {
-        loadMoreObserver.disconnect();
-        loadMoreObserver = null;
-    }
-};
-
-const setupLoadMoreObserver = () => {
-    teardownLoadMoreObserver();
-    loadMoreTriggerVisible.value = false;
-    if (typeof IntersectionObserver === 'undefined' || !loadMoreTrigger.value) {
-        return;
-    }
-    loadMoreObserver = new IntersectionObserver((entries) => {
-        loadMoreTriggerVisible.value = entries.some((entry) => entry.isIntersecting);
-        requestLoadMoreIfVisible();
-    }, {
-        rootMargin: '320px 0px',
-        threshold: 0
-    });
-    loadMoreObserver.observe(loadMoreTrigger.value);
-};
-
-watch(() => loadMoreTrigger.value, setupLoadMoreObserver, { flush: 'post' });
-watch(
-    () => [columns.value.length, hasMore.value, loading.value, loadingMore.value, loadMoreError.value],
-    requestLoadMoreIfVisible,
-    { flush: 'post' }
-);
-
 onMounted(fetchColumns);
-onBeforeUnmount(teardownLoadMoreObserver);
 </script>
 
 <template>
@@ -255,27 +192,67 @@ onBeforeUnmount(teardownLoadMoreObserver);
             </div>
         </section>
 
-        <div v-if="columns.length" class="infinite-list-footer" aria-live="polite">
-            <span ref="loadMoreTrigger" class="infinite-load-trigger" aria-hidden="true"></span>
-            <p v-if="loadingMore" class="infinite-load-status">继续加载专栏...</p>
+        <nav v-if="columns.length" class="columns-pagination" aria-label="专栏分页">
+            <p class="columns-page-summary">{{ paginationText }}</p>
+            <div class="columns-page-actions">
+                <button
+                    type="button"
+                    :disabled="loading || currentPage <= 1"
+                    @click="goToPage(currentPage - 1)"
+                >
+                    上一页
+                </button>
+                <button
+                    v-if="pageButtons[0] > 1"
+                    type="button"
+                    :disabled="loading"
+                    @click="goToPage(1)"
+                >
+                    1
+                </button>
+                <span v-if="pageButtons[0] > 2" class="columns-page-ellipsis">...</span>
+                <button
+                    v-for="page in pageButtons"
+                    :key="page"
+                    type="button"
+                    :class="{ active: page === currentPage }"
+                    :disabled="loading || page === currentPage"
+                    :aria-current="page === currentPage ? 'page' : undefined"
+                    @click="goToPage(page)"
+                >
+                    {{ page }}
+                </button>
+                <span
+                    v-if="pageButtons[pageButtons.length - 1] < totalPages - 1"
+                    class="columns-page-ellipsis"
+                >
+                    ...
+                </span>
+                <button
+                    v-if="pageButtons[pageButtons.length - 1] < totalPages"
+                    type="button"
+                    :disabled="loading"
+                    @click="goToPage(totalPages)"
+                >
+                    {{ totalPages }}
+                </button>
+                <button
+                    type="button"
+                    :disabled="loading || currentPage >= totalPages"
+                    @click="goToPage(currentPage + 1)"
+                >
+                    下一页
+                </button>
+            </div>
+        </nav>
+        <div v-if="inlineError && columns.length" class="columns-pagination-retry">
             <button
-                v-else-if="loadMoreError"
                 type="button"
-                class="load-more-button error"
-                @click="loadMoreColumns"
-            >
-                {{ loadMoreError }}，点击重试
-            </button>
-            <button
-                v-else-if="hasMore"
-                type="button"
-                class="load-more-button"
                 :disabled="loading"
-                @click="loadMoreColumns"
+                @click="fetchColumns(currentPage)"
             >
-                加载更多专栏
+                重试当前页
             </button>
-            <p v-else class="infinite-load-status">已显示全部 {{ total }} 个专栏</p>
         </div>
     </main>
 </template>

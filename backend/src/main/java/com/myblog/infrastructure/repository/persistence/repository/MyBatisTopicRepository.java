@@ -175,6 +175,11 @@ public class MyBatisTopicRepository implements TopicRepository {
     @Transactional(rollbackFor = Exception.class)
     public void bindArticle(TopicId topicId, Long articleId, int sortOrder) {
         if (topicMapper.countTopicArticle(topicId.getValue(), articleId) > 0) {
+            if (topicMapper.countActiveTopicArticle(topicId.getValue(), articleId) > 0) {
+                topicMapper.updateTopicArticleSort(topicId.getValue(), articleId, sortOrder);
+            } else if (topicMapper.restoreTopicArticle(topicId.getValue(), articleId, sortOrder) > 0) {
+                topicMapper.incrementArticleCount(topicId.getValue());
+            }
             return;
         }
         topicMapper.insertTopicArticle(topicId.getValue(), articleId, sortOrder);

@@ -28,7 +28,17 @@
 
     <sql id="Base_Column_List">
         c.id, c.author_id, c.title, c.summary, c.cover_url, c.status, c.sort_order,
-        c.subscriber_count, c.article_count, c.intro, c.difficulty, c.estimated_minutes,
+        c.subscriber_count,
+        (
+            SELECT COUNT(1)
+            FROM blog_column_article ca_count
+            INNER JOIN blog_article a_count ON a_count.id = ca_count.article_id
+            WHERE ca_count.column_id = c.id
+            AND ca_count.deleted_at IS NULL
+            AND a_count.deleted_at IS NULL
+            AND a_count.status = 'PUBLISHED'
+        ) AS article_count,
+        c.intro, c.difficulty, c.estimated_minutes,
         c.source_type, c.source_note, c.recommended, c.recommend_weight,
         c.created_at, c.updated_at, c.deleted_at, c.version
     </sql>
@@ -46,7 +56,7 @@
         FROM blog_column c
         WHERE c.deleted_at IS NULL
         AND c.status = 'PUBLISHED'
-        ORDER BY c.recommended DESC, c.recommend_weight DESC, c.sort_order ASC, c.subscriber_count DESC, c.id DESC
+        ORDER BY c.sort_order ASC, c.recommended DESC, c.recommend_weight DESC, c.subscriber_count DESC, c.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
@@ -63,7 +73,7 @@
         WHERE c.deleted_at IS NULL
         AND c.status = 'PUBLISHED'
         AND c.author_id = #{authorId}
-        ORDER BY c.recommended DESC, c.recommend_weight DESC, c.sort_order ASC, c.id DESC
+        ORDER BY c.sort_order ASC, c.recommended DESC, c.recommend_weight DESC, c.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
@@ -80,7 +90,7 @@
         FROM blog_column c
         WHERE c.deleted_at IS NULL
         AND c.status = 'PUBLISHED'
-        ORDER BY c.recommended DESC, c.recommend_weight DESC, c.sort_order ASC, c.subscriber_count DESC, c.id DESC
+        ORDER BY c.sort_order ASC, c.recommended DESC, c.recommend_weight DESC, c.subscriber_count DESC, c.id DESC
         LIMIT #{limit}
     </select>
 
@@ -135,14 +145,14 @@
         AND ca.deleted_at IS NULL
         AND a.deleted_at IS NULL
         AND a.status = 'PUBLISHED'
-        ORDER BY COALESCE(ca.step_order, ca.sort_order) ASC, ca.sort_order ASC, ca.id ASC
+        ORDER BY ca.sort_order ASC, ca.step_order ASC, ca.id ASC
     </select>
 
     <select id="selectArticleRelations" resultType="com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO">
         SELECT
             ca.article_id AS articleId,
             COALESCE(NULLIF(ca.section_title, ''), '推荐阅读') AS sectionTitle,
-            COALESCE(ca.step_order, ca.sort_order, 0) AS stepOrder,
+            COALESCE(NULLIF(ca.step_order, 0), ca.sort_order, 0) AS stepOrder,
             COALESCE(ca.required, 1) AS required,
             COALESCE(ca.editor_note, '') AS editorNote
         FROM blog_column_article ca
@@ -151,7 +161,7 @@
         AND ca.deleted_at IS NULL
         AND a.deleted_at IS NULL
         AND a.status = 'PUBLISHED'
-        ORDER BY COALESCE(ca.step_order, ca.sort_order) ASC, ca.sort_order ASC, ca.id ASC
+        ORDER BY ca.sort_order ASC, ca.step_order ASC, ca.id ASC
     </select>
 
     <select id="countColumnArticle" resultType="int">
@@ -161,19 +171,40 @@
         AND article_id = #{articleId}
     </select>
 
+    <select id="countActiveColumnArticle" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_column_article
+        WHERE column_id = #{columnId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NULL
+    </select>
+
     <update id="restoreColumnArticle">
         UPDATE blog_column_article
         SET deleted_at = NULL,
             updated_at = NOW(),
             sort_order = #{sortOrder},
+            step_order = #{sortOrder},
             version = version + 1
         WHERE column_id = #{columnId}
         AND article_id = #{articleId}
+        AND deleted_at IS NOT NULL
+    </update>
+
+    <update id="updateColumnArticleSort">
+        UPDATE blog_column_article
+        SET sort_order = #{sortOrder},
+            step_order = #{sortOrder},
+            updated_at = NOW(),
+            version = version + 1
+        WHERE column_id = #{columnId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NULL
     </update>
 
     <insert id="insertColumnArticle">
-        INSERT INTO blog_column_article (column_id, article_id, sort_order)
-        VALUES (#{columnId}, #{articleId}, #{sortOrder})
+        INSERT INTO blog_column_article (column_id, article_id, sort_order, step_order)
+        VALUES (#{columnId}, #{articleId}, #{sortOrder}, #{sortOrder})
     </insert>
 
     <!-- 绑定文章后递增专栏文章数（维护冗余字段） -->
@@ -219,10 +250,10 @@
         ORDER BY
         <choose>
             <when test="sort == 'subscribers'">
-                c.subscriber_count DESC, c.id DESC
+                c.subscriber_count DESC, c.sort_order ASC, c.id DESC
             </when>
             <otherwise>
-                c.id DESC
+                c.sort_order ASC, c.recommended DESC, c.recommend_weight DESC, c.id DESC
             </otherwise>
         </choose>
         LIMIT #{offset}, #{limit}

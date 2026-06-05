@@ -151,23 +151,29 @@ public class ColumnAppService {
      */
     public PageResult<ArticleDTO> pageColumnArticles(Long columnId, int page, int pageSize) {
         loadPublishedColumn(columnId);
-        List<Long> articleIds = columnRepository.findArticleIds(new ColumnId(columnId));
         List<ArticleDTO> items = new ArrayList<ArticleDTO>();
         List<Article> visibleArticles = new ArrayList<Article>();
-        for (Long articleId : articleIds) {
+        List<Integer> visibleSortOrders = new ArrayList<Integer>();
+        List<LearningPathArticle> relations = columnRepository.findArticleRelations(new ColumnId(columnId));
+        for (LearningPathArticle relation : relations) {
+            Long articleId = relation.getArticleId();
             Article article = articleRepository.findById(new ArticleId(articleId)).orElse(null);
             if (article != null && ArticleStatus.PUBLISHED.equals(article.getStatus())) {
                 visibleArticles.add(article);
+                visibleSortOrders.add(relation.getStepOrder());
             }
         }
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int fromIndex = Math.min((currentPage - 1) * currentPageSize, visibleArticles.size());
         int toIndex = Math.min(fromIndex + currentPageSize, visibleArticles.size());
-        for (Article article : visibleArticles.subList(fromIndex, toIndex)) {
+        for (int index = fromIndex; index < toIndex; index++) {
+            Article article = visibleArticles.get(index);
             User author = userRepository.findById(article.getAuthorId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
-            items.add(articleAssembler.toDTO(article, author));
+            ArticleDTO item = articleAssembler.toDTO(article, author);
+            item.setRelationSortOrder(visibleSortOrders.get(index));
+            items.add(item);
         }
         return new PageResult<ArticleDTO>(items, currentPage, currentPageSize, visibleArticles.size());
     }
@@ -320,6 +326,7 @@ public class ColumnAppService {
             throw new ApplicationException(ErrorCode.PARAM_ERROR, "只能将已发布文章添加到专栏");
         }
         columnRepository.bindArticle(column.getId(), articleId, sortOrder);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "专栏添加文章",
             BizLogHelper.trace(),
@@ -340,6 +347,7 @@ public class ColumnAppService {
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         columnRepository.unbindArticle(column.getId(), articleId);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             "专栏移除文章",
             BizLogHelper.trace(),
@@ -460,9 +468,10 @@ public class ColumnAppService {
      * @param columnId  专栏 ID
      * @param articleId 文章 ID
      * @param userId    当前用户 ID
+     * @param sortOrder 排序值
      */
     @Transactional(rollbackFor = Exception.class)
-    public void addMyColumnArticle(Long columnId, Long articleId, Long userId) {
+    public void addMyColumnArticle(Long columnId, Long articleId, Long userId, int sortOrder) {
         long _start = System.currentTimeMillis();
         Column column = columnRepository.findById(new ColumnId(columnId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
@@ -473,12 +482,13 @@ public class ColumnAppService {
         if (!article.getAuthorId().getValue().equals(userId)) {
             throw new ApplicationException(ErrorCode.FORBIDDEN, "只能将自己的文章加入专栏");
         }
-        columnRepository.bindArticle(column.getId(), articleId, 0);
+        columnRepository.bindArticle(column.getId(), articleId, sortOrder);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(userId),
             "专栏添加文章",
-            BizLogHelper.params("columnId", columnId, "articleId", articleId),
+            BizLogHelper.params("columnId", columnId, "articleId", articleId, "sortOrder", sortOrder),
             BizLogHelper.result("bound=true"),
             BizLogHelper.elapsed(_start));
     }
@@ -497,6 +507,7 @@ public class ColumnAppService {
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专栏不存在"));
         ensureColumnOwner(column, userId);
         columnRepository.unbindArticle(column.getId(), articleId);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             BizLogHelper.who(userId),

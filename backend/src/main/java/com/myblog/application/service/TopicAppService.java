@@ -129,23 +129,29 @@ public class TopicAppService {
      */
     public PageResult<ArticleDTO> pageTopicArticles(Long topicId, int page, int pageSize) {
         loadPublishedTopic(topicId);
-        List<Long> articleIds = topicRepository.findArticleIds(new TopicId(topicId));
         List<ArticleDTO> items = new ArrayList<>();
         List<Article> visibleArticles = new ArrayList<>();
-        for (Long articleId : articleIds) {
+        List<Integer> visibleSortOrders = new ArrayList<>();
+        List<LearningPathArticle> relations = topicRepository.findArticleRelations(new TopicId(topicId));
+        for (LearningPathArticle relation : relations) {
+            Long articleId = relation.getArticleId();
             Article article = articleRepository.findById(new ArticleId(articleId)).orElse(null);
             if (article != null && ArticleStatus.PUBLISHED.equals(article.getStatus())) {
                 visibleArticles.add(article);
+                visibleSortOrders.add(relation.getStepOrder());
             }
         }
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int fromIndex = Math.min((currentPage - 1) * currentPageSize, visibleArticles.size());
         int toIndex = Math.min(fromIndex + currentPageSize, visibleArticles.size());
-        for (Article article : visibleArticles.subList(fromIndex, toIndex)) {
+        for (int index = fromIndex; index < toIndex; index++) {
+            Article article = visibleArticles.get(index);
             User author = userRepository.findById(article.getAuthorId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
-            items.add(articleAssembler.toDTO(article, author));
+            ArticleDTO item = articleAssembler.toDTO(article, author);
+            item.setRelationSortOrder(visibleSortOrders.get(index));
+            items.add(item);
         }
         return new PageResult<>(items, currentPage, currentPageSize, visibleArticles.size());
     }
@@ -291,9 +297,13 @@ public class TopicAppService {
         long _start = System.currentTimeMillis();
         topicRepository.findById(new TopicId(topicId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "专题不存在"));
-        articleRepository.findById(new ArticleId(articleId))
+        Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
+        if (!ArticleStatus.PUBLISHED.equals(article.getStatus())) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "只能将已发布文章添加到专题");
+        }
         topicRepository.bindArticle(new TopicId(topicId), articleId, sortOrder == null ? 0 : sortOrder);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             "专题绑定文章",
@@ -309,6 +319,7 @@ public class TopicAppService {
     public void adminUnbindArticle(Long topicId, Long articleId) {
         long _start = System.currentTimeMillis();
         topicRepository.unbindArticle(new TopicId(topicId), articleId);
+        homePortalCacheInvalidator.evictBootstrap();
         log.info("{} | {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
             "专题解绑文章",

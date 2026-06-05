@@ -131,6 +131,15 @@ public interface ColumnMapper {
     int countColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId);
 
     /**
+     * 统计未删除的专栏文章关联数量。
+     *
+     * @param columnId  专栏 ID
+     * @param articleId 文章 ID
+     * @return 未删除关联数量
+     */
+    int countActiveColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId);
+
+    /**
      * 恢复专栏文章关联（重新绑定已被软删除的关联）。
      *
      * @param columnId  专栏 ID
@@ -140,6 +149,17 @@ public interface ColumnMapper {
      */
     int restoreColumnArticle(@Param("columnId") Long columnId, @Param("articleId") Long articleId,
                              @Param("sortOrder") int sortOrder);
+
+    /**
+     * 更新专栏文章排序。
+     *
+     * @param columnId  专栏 ID
+     * @param articleId 文章 ID
+     * @param sortOrder 排序
+     * @return 影响行数
+     */
+    int updateColumnArticleSort(@Param("columnId") Long columnId, @Param("articleId") Long articleId,
+                                @Param("sortOrder") int sortOrder);
 
     /**
      * 新增专栏文章关联。

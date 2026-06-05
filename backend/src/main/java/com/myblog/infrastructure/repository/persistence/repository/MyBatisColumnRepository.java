@@ -179,7 +179,11 @@ public class MyBatisColumnRepository implements ColumnRepository {
     @Transactional(rollbackFor = Exception.class)
     public void bindArticle(ColumnId columnId, Long articleId, int sortOrder) {
         if (columnMapper.countColumnArticle(columnId.getValue(), articleId) > 0) {
-            columnMapper.restoreColumnArticle(columnId.getValue(), articleId, sortOrder);
+            if (columnMapper.countActiveColumnArticle(columnId.getValue(), articleId) > 0) {
+                columnMapper.updateColumnArticleSort(columnId.getValue(), articleId, sortOrder);
+            } else if (columnMapper.restoreColumnArticle(columnId.getValue(), articleId, sortOrder) > 0) {
+                columnMapper.incrementArticleCount(columnId.getValue());
+            }
         } else {
             columnMapper.insertColumnArticle(columnId.getValue(), articleId, sortOrder);
             // 维护冗余的 article_count 字段

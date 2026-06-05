@@ -43,6 +43,7 @@ public class ArticleDTO {
     private String scheduledPublishAt;
     private String offlineReason;
     private boolean warnFlag;
+    private Integer relationSortOrder;
     private Long recommendationApplicationId;
     private String recommendationApplicationStatus;
     private UserDTO author;
@@ -573,6 +574,24 @@ public class ArticleDTO {
      */
     public void setWarnFlag(boolean warnFlag) {
         this.warnFlag = warnFlag;
+    }
+
+    /**
+     * 获取文章在专栏/专题关系中的排序值。
+     *
+     * @return 关系排序值
+     */
+    public Integer getRelationSortOrder() {
+        return relationSortOrder;
+    }
+
+    /**
+     * 设置文章在专栏/专题关系中的排序值。
+     *
+     * @param relationSortOrder 关系排序值
+     */
+    public void setRelationSortOrder(Integer relationSortOrder) {
+        this.relationSortOrder = relationSortOrder;
     }
 
     /**

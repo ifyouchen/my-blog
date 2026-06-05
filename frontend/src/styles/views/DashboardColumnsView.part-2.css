@@ -216,6 +216,30 @@
     font-size: 12px;
 }
 
+.article-sort-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.article-sort-field input {
+    width: 72px;
+    min-height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.article-sort-field.sm input {
+    width: 64px;
+}
+
 .muted-text {
     padding: 12px 20px;
     color: var(--muted);

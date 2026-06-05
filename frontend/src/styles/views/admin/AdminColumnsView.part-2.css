@@ -103,6 +103,26 @@
     white-space: nowrap;
 }
 
+.modal-article-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.modal-article-sort input {
+    width: 72px;
+    min-height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+}
+
 .modal-article-row button {
     min-height: 32px;
     padding: 0 14px;

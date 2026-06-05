@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import {useRouter} from 'vue-router';
 import SiteHeader from '@/components/SiteHeader.vue';
 import {getTopicsApi} from '@/api/topic';
@@ -12,13 +12,7 @@ const total = ref(0);
 const searchInput = ref('');
 const activeKeyword = ref('');
 const activeDifficulty = ref('');
-const pageSize = 12;
-const loadingMore = ref(false);
-const loadMoreError = ref('');
-const loadMoreTrigger = ref(null);
-const loadMoreTriggerVisible = ref(false);
-let loadMoreObserver = null;
-let loadMoreSeq = 0;
+const pageSize = 8;
 const difficultyOptions = [
     { value: '', label: '全部' },
     { value: 'BEGINNER', label: '入门' },
@@ -35,29 +29,31 @@ const {
     runStableRequest
 } = useStableListRequest();
 
-const hasMore = computed(() => topics.value.length < total.value);
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
+const paginationText = computed(() => {
+    if (!total.value) {
+        return '暂无专题';
+    }
+    const start = (currentPage.value - 1) * pageSize + 1;
+    const end = Math.min(currentPage.value * pageSize, total.value);
+    return `第 ${start}-${end} 个，共 ${total.value} 个专题`;
+});
 
-const mergeUniqueItems = (currentItems, nextItems) => {
-    const seen = new Set(currentItems.map((item) => String(item.id)));
-    return [
-        ...currentItems,
-        ...nextItems.filter((item) => {
-            const key = String(item.id);
-            if (seen.has(key)) {
-                return false;
-            }
-            seen.add(key);
-            return true;
-        })
-    ];
-};
+const pageButtons = computed(() => {
+    const pages = [];
+    const maxPage = totalPages.value;
+    const start = Math.max(1, currentPage.value - 2);
+    const end = Math.min(maxPage, currentPage.value + 2);
+    for (let page = start; page <= end; page += 1) {
+        pages.push(page);
+    }
+    return pages;
+});
 
-const fetchTopics = async () => {
-    loadMoreSeq += 1;
-    loadMoreError.value = '';
+const fetchTopics = async (page = currentPage.value) => {
     const response = await runStableRequest(
         () => getTopicsApi({
-            page: 1,
+            page,
             pageSize,
             keyword: activeKeyword.value,
             difficulty: activeDifficulty.value
@@ -74,7 +70,7 @@ const fetchTopics = async () => {
     const pageResult = response.result || {};
     topics.value = pageResult.items || [];
     total.value = pageResult.total || 0;
-    currentPage.value = pageResult.page || 1;
+    currentPage.value = pageResult.page || page;
 };
 
 const resultText = computed(() => {
@@ -87,7 +83,7 @@ const resultText = computed(() => {
 const submitSearch = async () => {
     activeKeyword.value = searchInput.value.trim();
     currentPage.value = 1;
-    await fetchTopics();
+    await fetchTopics(1);
 };
 
 const setDifficulty = async (difficulty) => {
@@ -96,7 +92,7 @@ const setDifficulty = async (difficulty) => {
     }
     activeDifficulty.value = difficulty;
     currentPage.value = 1;
-    await fetchTopics();
+    await fetchTopics(1);
 };
 
 const clearSearch = async () => {
@@ -107,83 +103,19 @@ const clearSearch = async () => {
     activeKeyword.value = '';
     activeDifficulty.value = '';
     currentPage.value = 1;
-    await fetchTopics();
+    await fetchTopics(1);
 };
 
-const loadMoreTopics = async () => {
-    if (loading.value || loadingMore.value || !hasMore.value) {
+const goToPage = async (page) => {
+    const targetPage = Math.min(Math.max(page, 1), totalPages.value);
+    if (targetPage === currentPage.value || loading.value) {
         return;
     }
-    const nextPage = currentPage.value + 1;
-    const seq = loadMoreSeq + 1;
-    loadMoreSeq = seq;
-    loadingMore.value = true;
-    loadMoreError.value = '';
-
-    try {
-        const pageResult = await getTopicsApi({
-            page: nextPage,
-            pageSize,
-            keyword: activeKeyword.value,
-            difficulty: activeDifficulty.value
-        });
-        if (seq !== loadMoreSeq) {
-            return;
-        }
-        topics.value = mergeUniqueItems(topics.value, pageResult.items || []);
-        total.value = pageResult.total || total.value;
-        currentPage.value = pageResult.page || nextPage;
-    } catch (error) {
-        if (seq !== loadMoreSeq) {
-            return;
-        }
-        loadMoreError.value = error?.message || '专题加载失败，请稍后重试';
-    } finally {
-        if (seq === loadMoreSeq) {
-            loadingMore.value = false;
-        }
-    }
+    currentPage.value = targetPage;
+    await fetchTopics(targetPage);
 };
-
-const requestLoadMoreIfVisible = () => {
-    if (!loadMoreTriggerVisible.value || loadMoreError.value) {
-        return;
-    }
-    loadMoreTopics();
-};
-
-const teardownLoadMoreObserver = () => {
-    if (loadMoreObserver) {
-        loadMoreObserver.disconnect();
-        loadMoreObserver = null;
-    }
-};
-
-const setupLoadMoreObserver = () => {
-    teardownLoadMoreObserver();
-    loadMoreTriggerVisible.value = false;
-    if (typeof IntersectionObserver === 'undefined' || !loadMoreTrigger.value) {
-        return;
-    }
-    loadMoreObserver = new IntersectionObserver((entries) => {
-        loadMoreTriggerVisible.value = entries.some((entry) => entry.isIntersecting);
-        requestLoadMoreIfVisible();
-    }, {
-        rootMargin: '320px 0px',
-        threshold: 0
-    });
-    loadMoreObserver.observe(loadMoreTrigger.value);
-};
-
-watch(() => loadMoreTrigger.value, setupLoadMoreObserver, { flush: 'post' });
-watch(
-    () => [topics.value.length, hasMore.value, loading.value, loadingMore.value, loadMoreError.value],
-    requestLoadMoreIfVisible,
-    { flush: 'post' }
-);
 
 onMounted(fetchTopics);
-onBeforeUnmount(teardownLoadMoreObserver);
 </script>
 
 <template>
@@ -272,27 +204,67 @@ onBeforeUnmount(teardownLoadMoreObserver);
             </div>
         </section>
 
-        <div v-if="topics.length" class="infinite-list-footer" aria-live="polite">
-            <span ref="loadMoreTrigger" class="infinite-load-trigger" aria-hidden="true"></span>
-            <p v-if="loadingMore" class="infinite-load-status">继续加载专题...</p>
+        <nav v-if="topics.length" class="topics-pagination" aria-label="专题分页">
+            <p class="topics-page-summary">{{ paginationText }}</p>
+            <div class="topics-page-actions">
+                <button
+                    type="button"
+                    :disabled="loading || currentPage <= 1"
+                    @click="goToPage(currentPage - 1)"
+                >
+                    上一页
+                </button>
+                <button
+                    v-if="pageButtons[0] > 1"
+                    type="button"
+                    :disabled="loading"
+                    @click="goToPage(1)"
+                >
+                    1
+                </button>
+                <span v-if="pageButtons[0] > 2" class="topics-page-ellipsis">...</span>
+                <button
+                    v-for="page in pageButtons"
+                    :key="page"
+                    type="button"
+                    :class="{ active: page === currentPage }"
+                    :disabled="loading || page === currentPage"
+                    :aria-current="page === currentPage ? 'page' : undefined"
+                    @click="goToPage(page)"
+                >
+                    {{ page }}
+                </button>
+                <span
+                    v-if="pageButtons[pageButtons.length - 1] < totalPages - 1"
+                    class="topics-page-ellipsis"
+                >
+                    ...
+                </span>
+                <button
+                    v-if="pageButtons[pageButtons.length - 1] < totalPages"
+                    type="button"
+                    :disabled="loading"
+                    @click="goToPage(totalPages)"
+                >
+                    {{ totalPages }}
+                </button>
+                <button
+                    type="button"
+                    :disabled="loading || currentPage >= totalPages"
+                    @click="goToPage(currentPage + 1)"
+                >
+                    下一页
+                </button>
+            </div>
+        </nav>
+        <div v-if="inlineError && topics.length" class="topics-pagination-retry">
             <button
-                v-else-if="loadMoreError"
                 type="button"
-                class="load-more-button error"
-                @click="loadMoreTopics"
-            >
-                {{ loadMoreError }}，点击重试
-            </button>
-            <button
-                v-else-if="hasMore"
-                type="button"
-                class="load-more-button"
                 :disabled="loading"
-                @click="loadMoreTopics"
+                @click="fetchTopics(currentPage)"
             >
-                加载更多专题
+                重试当前页
             </button>
-            <p v-else class="infinite-load-status">已显示全部 {{ total }} 个专题</p>
         </div>
     </main>
 </template>

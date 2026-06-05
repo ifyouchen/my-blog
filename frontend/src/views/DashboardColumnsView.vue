@@ -50,12 +50,14 @@ const drawerArticles = ref([]);
 const drawerLoading = ref(false);
 const drawerError = ref('');
 const drawerArticleActionId = ref(null);
+const drawerSortDrafts = ref({});
 
 // 弹窗：从已有文章里选择加入专栏
 const showPickArticle = ref(false);
 const myArticles = ref([]);
 const myArticlesLoading = ref(false);
 const pickArticleFeedback = ref('');
+const pickSortDrafts = ref({});
 
 const showFeedback = (msg, type = 'success') => {
     feedback.value = msg;
@@ -73,6 +75,23 @@ const fetchColumns = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const getNextSortOrder = () => {
+    if (!drawerArticles.value.length) {
+        return 10;
+    }
+    const maxSort = Math.max(...drawerArticles.value.map((article, index) => (
+        Number(article.relationSortOrder ?? (index + 1) * 10)
+    )));
+    return maxSort + 10;
+};
+
+const syncDrawerSortDrafts = () => {
+    drawerSortDrafts.value = drawerArticles.value.reduce((drafts, article, index) => {
+        drafts[article.id] = Number(article.relationSortOrder ?? (index + 1) * 10);
+        return drafts;
+    }, {});
 };
 
 const openCreateForm = () => {
@@ -189,6 +208,7 @@ const openDrawer = async (column) => {
     try {
         const result = await getColumnArticlesApi(column.id, { page: 1, pageSize: 100 });
         drawerArticles.value = result.items || [];
+        syncDrawerSortDrafts();
     } catch (e) {
         drawerError.value = e.message || '加载文章失败';
     } finally {
@@ -200,8 +220,10 @@ const closeDrawer = () => {
     drawerColumnId.value = null;
     drawerColumn.value = null;
     drawerArticles.value = [];
+    drawerSortDrafts.value = {};
     showPickArticle.value = false;
     pickArticleFeedback.value = '';
+    pickSortDrafts.value = {};
 };
 
 const removeArticleFromColumn = async (article) => {
@@ -209,6 +231,7 @@ const removeArticleFromColumn = async (article) => {
     try {
         await removeMyColumnArticleApi(drawerColumnId.value, article.id);
         drawerArticles.value = drawerArticles.value.filter((a) => a.id !== article.id);
+        syncDrawerSortDrafts();
         // 更新本地 articleCount
         if (drawerColumn.value) {
             drawerColumn.value = { ...drawerColumn.value, articleCount: Math.max(0, drawerColumn.value.articleCount - 1) };
@@ -225,6 +248,23 @@ const removeArticleFromColumn = async (article) => {
     }
 };
 
+const saveArticleSort = async (article) => {
+    const sortOrder = Number(drawerSortDrafts.value[article.id] || 0);
+    drawerArticleActionId.value = article.id;
+    drawerError.value = '';
+    try {
+        await addMyColumnArticleApi(drawerColumnId.value, article.id, sortOrder);
+        const result = await getColumnArticlesApi(drawerColumnId.value, { page: 1, pageSize: 100 });
+        drawerArticles.value = result.items || [];
+        syncDrawerSortDrafts();
+        showFeedback('文章顺序已更新');
+    } catch (e) {
+        drawerError.value = e.message || '保存排序失败';
+    } finally {
+        drawerArticleActionId.value = null;
+    }
+};
+
 // ========== 选择文章加入专栏 ==========
 
 const openPickArticle = async () => {
@@ -235,6 +275,11 @@ const openPickArticle = async () => {
         const result = await getMyArticlesApi({ page: 1, pageSize: 100, status: 'PUBLISHED' });
         const existIds = new Set(drawerArticles.value.map((a) => a.id));
         myArticles.value = (result.items || []).filter((a) => !existIds.has(a.id));
+        const nextSortOrder = getNextSortOrder();
+        pickSortDrafts.value = myArticles.value.reduce((drafts, article, index) => {
+            drafts[article.id] = nextSortOrder + index * 10;
+            return drafts;
+        }, {});
     } catch (e) {
         pickArticleFeedback.value = e.message || '加载文章失败';
     } finally {
@@ -244,10 +289,11 @@ const openPickArticle = async () => {
 
 const addArticleToColumn = async (article) => {
     try {
-        await addMyColumnArticleApi(drawerColumnId.value, article.id);
+        await addMyColumnArticleApi(drawerColumnId.value, article.id, Number(pickSortDrafts.value[article.id] || 0));
         // 重新拉取专栏文章
         const result = await getColumnArticlesApi(drawerColumnId.value, { page: 1, pageSize: 100 });
         drawerArticles.value = result.items || [];
+        syncDrawerSortDrafts();
         // 更新本地 articleCount
         if (drawerColumn.value) {
             drawerColumn.value = { ...drawerColumn.value, articleCount: drawerArticles.value.length };
@@ -259,6 +305,9 @@ const addArticleToColumn = async (article) => {
         }
         // 移出候选列表
         myArticles.value = myArticles.value.filter((a) => a.id !== article.id);
+        const nextDrafts = { ...pickSortDrafts.value };
+        delete nextDrafts[article.id];
+        pickSortDrafts.value = nextDrafts;
         pickArticleFeedback.value = `《${article.title}》已加入专栏`;
     } catch (e) {
         pickArticleFeedback.value = e.message || '添加失败';
@@ -468,6 +517,10 @@ onMounted(fetchColumns);
                     <ul v-else class="pick-article-list">
                         <li v-for="article in myArticles" :key="article.id" class="pick-article-item">
                             <span class="pick-article-title">{{ article.title }}</span>
+                            <label class="article-sort-field sm">
+                                <span>排序</span>
+                                <input v-model.number="pickSortDrafts[article.id]" type="number">
+                            </label>
                             <button
                                 type="button"
                                 class="action-link action-link-primary sm"
@@ -493,6 +546,18 @@ onMounted(fetchColumns);
                             <span class="drawer-article-title">{{ article.title }}</span>
                             <span class="drawer-article-meta">{{ article.stats?.views || `${article.viewCount} 阅读` }}</span>
                         </div>
+                        <label class="article-sort-field">
+                            <span>排序</span>
+                            <input v-model.number="drawerSortDrafts[article.id]" type="number">
+                        </label>
+                        <button
+                            type="button"
+                            class="action-link action-link-secondary sm"
+                            :disabled="drawerArticleActionId === article.id"
+                            @click="saveArticleSort(article)"
+                        >
+                            保存排序
+                        </button>
                         <button
                             type="button"
                             class="action-link action-link-danger sm"

@@ -1134,7 +1134,7 @@
     <update id="incrementLikeCount">
         UPDATE blog_article
         SET like_count = like_count + 1,
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
@@ -1143,7 +1143,7 @@
     <update id="decrementLikeCount">
         UPDATE blog_article
         SET like_count = GREATEST(like_count - 1, 0),
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
@@ -1152,7 +1152,7 @@
     <update id="incrementFavoriteCount">
         UPDATE blog_article
         SET favorite_count = favorite_count + 1,
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
@@ -1161,7 +1161,7 @@
     <update id="decrementFavoriteCount">
         UPDATE blog_article
         SET favorite_count = GREATEST(favorite_count - 1, 0),
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
@@ -1170,7 +1170,7 @@
     <update id="incrementCommentCount">
         UPDATE blog_article
         SET comment_count = comment_count + 1,
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
@@ -1179,7 +1179,7 @@
     <update id="decrementCommentCount">
         UPDATE blog_article
         SET comment_count = GREATEST(comment_count - #{decrement}, 0),
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>
@@ -1188,7 +1188,7 @@
     <update id="incrementViewCount">
         UPDATE blog_article
         SET view_count = view_count + 1,
-            updated_at = NOW()
+            updated_at = updated_at
         WHERE id = #{articleId}
         AND deleted_at IS NULL
     </update>

@@ -26,7 +26,16 @@
 
     <sql id="Base_Column_List">
         t.id, t.title, t.summary, t.cover_url, t.status, t.sort_order,
-        t.article_count, t.intro, t.difficulty, t.estimated_minutes,
+        (
+            SELECT COUNT(1)
+            FROM blog_topic_article ta_count
+            INNER JOIN blog_article a_count ON a_count.id = ta_count.article_id
+            WHERE ta_count.topic_id = t.id
+            AND ta_count.deleted_at IS NULL
+            AND a_count.deleted_at IS NULL
+            AND a_count.status = 'PUBLISHED'
+        ) AS article_count,
+        t.intro, t.difficulty, t.estimated_minutes,
         t.source_type, t.source_note, t.recommended, t.recommend_weight,
         t.created_at, t.updated_at, t.deleted_at, t.version
     </sql>
@@ -44,7 +53,7 @@
         FROM blog_topic t
         WHERE t.deleted_at IS NULL
         AND t.status = 'PUBLISHED'
-        ORDER BY t.recommended DESC, t.recommend_weight DESC, t.sort_order ASC, t.id DESC
+        ORDER BY t.sort_order ASC, t.recommended DESC, t.recommend_weight DESC, t.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
@@ -130,14 +139,14 @@
         AND ta.deleted_at IS NULL
         AND a.deleted_at IS NULL
         AND a.status = 'PUBLISHED'
-        ORDER BY COALESCE(ta.step_order, ta.sort_order) ASC, ta.sort_order ASC, ta.id ASC
+        ORDER BY ta.sort_order ASC, ta.step_order ASC, ta.id ASC
     </select>
 
     <select id="selectArticleRelations" resultType="com.myblog.infrastructure.repository.persistence.entity.LearningPathArticleDO">
         SELECT
             ta.article_id AS articleId,
             COALESCE(NULLIF(ta.section_title, ''), '推荐阅读') AS sectionTitle,
-            COALESCE(ta.step_order, ta.sort_order, 0) AS stepOrder,
+            COALESCE(NULLIF(ta.step_order, 0), ta.sort_order, 0) AS stepOrder,
             COALESCE(ta.required, 1) AS required,
             COALESCE(ta.editor_note, '') AS editorNote
         FROM blog_topic_article ta
@@ -146,7 +155,7 @@
         AND ta.deleted_at IS NULL
         AND a.deleted_at IS NULL
         AND a.status = 'PUBLISHED'
-        ORDER BY COALESCE(ta.step_order, ta.sort_order) ASC, ta.sort_order ASC, ta.id ASC
+        ORDER BY ta.sort_order ASC, ta.step_order ASC, ta.id ASC
     </select>
 
     <select id="searchPublished" resultMap="BaseResultMap">
@@ -165,7 +174,7 @@
                 OR t.source_note LIKE CONCAT('%', #{keyword}, '%')
             )
         </if>
-        ORDER BY t.recommended DESC, t.recommend_weight DESC, t.sort_order ASC, t.id DESC
+        ORDER BY t.sort_order ASC, t.recommended DESC, t.recommend_weight DESC, t.id DESC
         LIMIT #{offset}, #{limit}
     </select>
 
@@ -194,9 +203,40 @@
         AND article_id = #{articleId}
     </select>
 
+    <select id="countActiveTopicArticle" resultType="int">
+        SELECT COUNT(1)
+        FROM blog_topic_article
+        WHERE topic_id = #{topicId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NULL
+    </select>
+
+    <update id="restoreTopicArticle">
+        UPDATE blog_topic_article
+        SET deleted_at = NULL,
+            updated_at = NOW(),
+            sort_order = #{sortOrder},
+            step_order = #{sortOrder},
+            version = version + 1
+        WHERE topic_id = #{topicId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NOT NULL
+    </update>
+
+    <update id="updateTopicArticleSort">
+        UPDATE blog_topic_article
+        SET sort_order = #{sortOrder},
+            step_order = #{sortOrder},
+            updated_at = NOW(),
+            version = version + 1
+        WHERE topic_id = #{topicId}
+        AND article_id = #{articleId}
+        AND deleted_at IS NULL
+    </update>
+
     <insert id="insertTopicArticle">
-        INSERT INTO blog_topic_article (topic_id, article_id, sort_order)
-        VALUES (#{topicId}, #{articleId}, #{sortOrder})
+        INSERT INTO blog_topic_article (topic_id, article_id, sort_order, step_order)
+        VALUES (#{topicId}, #{articleId}, #{sortOrder}, #{sortOrder})
     </insert>
 
     <update id="deleteTopicArticle">
@@ -268,7 +308,7 @@
         ) hot ON hot.topic_id = t.id
         WHERE t.deleted_at IS NULL
           AND t.status = 'PUBLISHED'
-        ORDER BY COALESCE(hot.hot_score, 0) DESC, t.recommend_weight DESC, t.sort_order ASC, t.id DESC
+        ORDER BY COALESCE(hot.hot_score, 0) DESC, t.sort_order ASC, t.recommend_weight DESC, t.id DESC
         LIMIT #{limit}
     </select>
 </mapper>

@@ -92,7 +92,7 @@
 
 .topics-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 18px;
 }
 
@@ -225,27 +225,32 @@
     color: var(--error);
 }
 
-.infinite-list-footer {
-    display: grid;
-    justify-items: center;
-    gap: 10px;
+.topics-pagination {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
     margin-top: 22px;
 }
 
-.infinite-load-trigger {
-    width: 1px;
-    height: 1px;
-}
-
-.infinite-load-status {
+.topics-page-summary {
     margin: 0;
     color: var(--muted);
     font-size: 13px;
 }
 
-.load-more-button {
-    min-height: 38px;
-    padding: 0 16px;
+.topics-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.topics-page-actions button,
+.topics-pagination-retry button {
+    min-height: 36px;
+    padding: 0 12px;
     color: var(--text);
     cursor: pointer;
     background: var(--surface);
@@ -253,23 +258,48 @@
     border-radius: var(--radius-sm);
 }
 
-.load-more-button:hover:not(:disabled),
-.load-more-button:focus-visible {
+.topics-page-actions button.active {
+    color: #fff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.topics-page-actions button:hover:not(:disabled),
+.topics-page-actions button:focus-visible,
+.topics-pagination-retry button:hover:not(:disabled),
+.topics-pagination-retry button:focus-visible {
     color: var(--brand-strong);
     border-color: var(--brand);
 }
 
-.load-more-button:disabled {
+.topics-page-actions button.active:hover,
+.topics-page-actions button.active:focus-visible {
+    color: #fff;
+}
+
+.topics-page-actions button:disabled,
+.topics-pagination-retry button:disabled {
     cursor: not-allowed;
     opacity: 0.55;
 }
 
-.load-more-button.error {
-    color: var(--error);
-    border-color: rgba(220, 38, 38, 0.35);
+.topics-page-ellipsis {
+    color: var(--muted);
 }
 
-@media (max-width: 1080px) {
+.topics-pagination-retry {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+@media (max-width: 1180px) {
+    .topics-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 920px) {
     .topics-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -287,5 +317,14 @@
 
     .topics-grid {
         grid-template-columns: 1fr;
+    }
+
+    .topics-pagination {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .topics-page-actions {
+        justify-content: flex-start;
     }
 }

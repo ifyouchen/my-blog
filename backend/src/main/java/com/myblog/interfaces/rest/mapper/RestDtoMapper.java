@@ -395,6 +395,7 @@ public class RestDtoMapper {
         response.setScheduledPublishAt(dto.getScheduledPublishAt());
         response.setOfflineReason(dto.getOfflineReason());
         response.setWarnFlag(dto.isWarnFlag());
+        response.setRelationSortOrder(dto.getRelationSortOrder());
         response.setRecommendationApplicationId(dto.getRecommendationApplicationId());
         response.setRecommendationApplicationStatus(dto.getRecommendationApplicationStatus());
         // 作者信息是否脱敏取决于当前输出的是后台视图还是公开视图。

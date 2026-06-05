@@ -68,7 +68,9 @@ const state = reactive({
     searchKeyword: '',
     searchResults: [],
     searching: false,
-    articleActionLoadingId: null
+    articleActionLoadingId: null,
+    articleSortDrafts: {},
+    searchSortDrafts: {}
 });
 
 const applyRouteState = () => {
@@ -219,6 +221,8 @@ const startManageArticles = async (topic) => {
     state.searchKeyword = '';
     state.searchResults = [];
     state.articleActionLoadingId = null;
+    state.articleSortDrafts = {};
+    state.searchSortDrafts = {};
     await loadTopicArticles();
 };
 
@@ -227,6 +231,8 @@ const stopManageArticles = async () => {
     state.topicArticles = [];
     state.searchKeyword = '';
     state.searchResults = [];
+    state.articleSortDrafts = {};
+    state.searchSortDrafts = {};
     await loadTopics();
 };
 
@@ -236,12 +242,30 @@ const loadTopicArticles = async () => {
     try {
         const result = await getTopicArticlesApi(state.managingTopic.id, { page: 1, pageSize: 100 });
         state.topicArticles = result.items || [];
+        syncArticleSortDrafts();
     } catch (error) {
         state.topicArticles = [];
         toast.error('加载专题文章失败');
     } finally {
         state.topicArticlesLoading = false;
     }
+};
+
+const getNextSortOrder = () => {
+    if (!state.topicArticles.length) {
+        return 10;
+    }
+    const maxSort = Math.max(...state.topicArticles.map((article, index) => (
+        Number(article.relationSortOrder ?? (index + 1) * 10)
+    )));
+    return maxSort + 10;
+};
+
+const syncArticleSortDrafts = () => {
+    state.articleSortDrafts = state.topicArticles.reduce((drafts, article, index) => {
+        drafts[article.id] = Number(article.relationSortOrder ?? (index + 1) * 10);
+        return drafts;
+    }, {});
 };
 
 const handleSearchArticles = async () => {
@@ -255,6 +279,11 @@ const handleSearchArticles = async () => {
         state.searchResults = (result.items || []).filter(
             (a) => !state.topicArticles.some((ta) => ta.id === a.id)
         );
+        const nextSortOrder = getNextSortOrder();
+        state.searchSortDrafts = state.searchResults.reduce((drafts, article, index) => {
+            drafts[article.id] = nextSortOrder + index * 10;
+            return drafts;
+        }, {});
     } catch (error) {
         toast.error('搜索文章失败');
         state.searchResults = [];
@@ -267,11 +296,32 @@ const handleAddArticle = async (articleId) => {
     if (!state.managingTopic) return;
     state.articleActionLoadingId = articleId;
     try {
-        await addAdminTopicArticleApi(state.managingTopic.id, { articleId, sortOrder: 0 });
+        await addAdminTopicArticleApi(state.managingTopic.id, {
+            articleId,
+            sortOrder: Number(state.searchSortDrafts[articleId] || 0)
+        });
         await loadTopicArticles();
         state.searchResults = state.searchResults.filter((a) => a.id !== articleId);
+        delete state.searchSortDrafts[articleId];
     } catch (error) {
         toast.error(error.message || '添加失败');
+    } finally {
+        state.articleActionLoadingId = null;
+    }
+};
+
+const handleSaveArticleSort = async (articleId) => {
+    if (!state.managingTopic) return;
+    state.articleActionLoadingId = articleId;
+    try {
+        await addAdminTopicArticleApi(state.managingTopic.id, {
+            articleId,
+            sortOrder: Number(state.articleSortDrafts[articleId] || 0)
+        });
+        await loadTopicArticles();
+        toast.success('文章顺序已更新');
+    } catch (error) {
+        toast.error(error.message || '保存排序失败');
     } finally {
         state.articleActionLoadingId = null;
     }
@@ -283,6 +333,7 @@ const handleRemoveArticle = async (articleId) => {
     try {
         await removeAdminTopicArticleApi(state.managingTopic.id, articleId);
         state.topicArticles = state.topicArticles.filter((a) => a.id !== articleId);
+        syncArticleSortDrafts();
     } catch (error) {
         toast.error(error.message || '移除失败');
     } finally {
@@ -562,6 +613,10 @@ watch(
                                     <span class="modal-article-title">{{ article.title }}</span>
                                     <span class="modal-article-category">{{ article.category || '-' }}</span>
                                 </div>
+                                <label class="modal-article-sort">
+                                    <span>排序</span>
+                                    <input v-model.number="state.searchSortDrafts[article.id]" type="number">
+                                </label>
                                 <button type="button" :disabled="state.articleActionLoadingId !== null"
                                         @click="handleAddArticle(article.id)">
                                     {{ state.articleActionLoadingId === article.id ? '添加中' : '添加' }}
@@ -583,6 +638,15 @@ watch(
                                     <span class="modal-article-title">{{ article.title }}</span>
                                     <span class="modal-article-category">{{ article.category || '-' }}</span>
                                 </div>
+                                <label class="modal-article-sort">
+                                    <span>排序</span>
+                                    <input v-model.number="state.articleSortDrafts[article.id]" type="number">
+                                </label>
+                                <button type="button"
+                                        :disabled="state.articleActionLoadingId !== null"
+                                        @click="handleSaveArticleSort(article.id)">
+                                    {{ state.articleActionLoadingId === article.id ? '保存中' : '保存排序' }}
+                                </button>
                                 <button type="button" class="danger-link"
                                         :disabled="state.articleActionLoadingId !== null"
                                         @click="handleRemoveArticle(article.id)">

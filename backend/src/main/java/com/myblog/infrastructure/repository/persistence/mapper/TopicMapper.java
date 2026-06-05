@@ -126,6 +126,37 @@ public interface TopicMapper {
     int countTopicArticle(@Param("topicId") Long topicId, @Param("articleId") Long articleId);
 
     /**
+     * 统计未删除的专题文章关联数量。
+     *
+     * @param topicId   专题 ID
+     * @param articleId 文章 ID
+     * @return 未删除关联数量
+     */
+    int countActiveTopicArticle(@Param("topicId") Long topicId, @Param("articleId") Long articleId);
+
+    /**
+     * 恢复专题文章关联。
+     *
+     * @param topicId   专题 ID
+     * @param articleId 文章 ID
+     * @param sortOrder 排序
+     * @return 影响行数
+     */
+    int restoreTopicArticle(@Param("topicId") Long topicId, @Param("articleId") Long articleId,
+                            @Param("sortOrder") int sortOrder);
+
+    /**
+     * 更新专题文章排序。
+     *
+     * @param topicId   专题 ID
+     * @param articleId 文章 ID
+     * @param sortOrder 排序
+     * @return 影响行数
+     */
+    int updateTopicArticleSort(@Param("topicId") Long topicId, @Param("articleId") Long articleId,
+                               @Param("sortOrder") int sortOrder);
+
+    /**
      * 新增专题文章关联。
      *
      * @param topicId   专题 ID

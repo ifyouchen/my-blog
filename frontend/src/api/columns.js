@@ -28,10 +28,10 @@ export const deleteMyColumnApi = async (columnId) => {
     return request(`/dashboard/columns/${columnId}`, { method: 'DELETE' });
 };
 
-export const addMyColumnArticleApi = async (columnId, articleId) => {
+export const addMyColumnArticleApi = async (columnId, articleId, sortOrder = 0) => {
     return request(`/dashboard/columns/${columnId}/articles`, {
         method: 'POST',
-        body: JSON.stringify({ articleId })
+        body: JSON.stringify({ articleId, sortOrder })
     });
 };
 

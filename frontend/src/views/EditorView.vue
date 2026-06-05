@@ -998,6 +998,17 @@ function continueWriting() {
     feedbackType.value = 'info';
 }
 
+async function writeAnotherArticle() {
+    clearStoredDraft(`${DRAFT_STORAGE_PREFIX}:new`);
+    publishedArticle.value = null;
+    recoveryInfo.value = null;
+    statusMessage.value = '';
+    feedbackType.value = 'info';
+    allowRouteLeave.value = true;
+    await router.push('/editor/new');
+    allowRouteLeave.value = false;
+}
+
 async function togglePreview() {
     previewVisible.value = !previewVisible.value;
     if (previewVisible.value) {
@@ -1247,6 +1258,7 @@ onUnmounted(() => {
                 </div>
                 <div class="publish-result-actions">
                     <button class="primary-action" type="button" @click="viewPublishedArticle">查看文章</button>
+                    <button type="button" @click="writeAnotherArticle">继续写新文章</button>
                     <button type="button" @click="continueWriting">继续编辑</button>
                 </div>
             </section>
