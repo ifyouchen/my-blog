@@ -1193,6 +1193,15 @@
         AND deleted_at IS NULL
     </update>
 
+    <!-- 插入文章阅读明细，用于按日趋势统计 -->
+    <insert id="insertArticleView">
+        INSERT INTO blog_article_view (
+            article_id, user_id, ip_address, user_agent, created_at, updated_at, deleted_at, version
+        ) VALUES (
+            #{articleId}, NULL, NULL, NULL, NOW(), NOW(), NULL, 0
+        )
+    </insert>
+
     <!-- 查询精选文章 -->
     <select id="selectFeatured" resultMap="BaseResultMap">
         SELECT <include refid="List_Alias_Column_List"/>

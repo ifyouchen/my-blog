@@ -505,6 +505,9 @@ public interface ArticleMapper {
     /** 原子递增阅读数。 */
     int incrementViewCount(@Param("articleId") Long articleId);
 
+    /** 插入文章阅读明细。 */
+    int insertArticleView(@Param("articleId") Long articleId);
+
     /** 查询精选文章（featured = 1 且 status = PUBLISHED）。 */
     List<ArticleDO> selectFeatured(@Param("offset") int offset,
                                    @Param("pageSize") int pageSize);

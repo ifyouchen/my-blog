@@ -30,6 +30,7 @@ public class StatsAsyncHandler {
     public void incrementViewCount(Long articleId) {
         try {
             articleRepository.incrementViewCount(articleId);
+            articleRepository.recordArticleView(articleId);
             homePortalCacheInvalidator.evictRecommendedArticles();
         } catch (Exception e) {
             log.error("{} | 异步递增浏览数失败 | 入参({}) | 结果({})",

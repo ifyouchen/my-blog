@@ -221,6 +221,7 @@ public class DashboardAppService {
             point.setCommentCount(safeInt(row != null ? row.getCommentCount() : null));
             trends.add(point);
         }
+        fillMissingArticleViews(article.getViewCount(), trends);
         ArticleStatsDTO stats = new ArticleStatsDTO();
         stats.setArticleId(article.getId().getValue());
         stats.setTitle(article.getTitle());
@@ -233,6 +234,28 @@ public class DashboardAppService {
         stats.setUpdatedAt(formatDateTime(article.getUpdatedAt()));
         stats.setTrends(trends);
         return stats;
+    }
+
+    /**
+     * 补齐早期未写入阅读明细的累计阅读数。
+     *
+     * @param totalViewCount 文章累计阅读数
+     * @param trends         趋势数据
+     */
+    private void fillMissingArticleViews(int totalViewCount, List<ArticleStatsTrendPointDTO> trends) {
+        if (totalViewCount <= 0 || trends == null || trends.isEmpty()) {
+            return;
+        }
+        int trendViewTotal = 0;
+        for (ArticleStatsTrendPointDTO point : trends) {
+            trendViewTotal += safeInt(point.getViewCount());
+        }
+        int missingViews = totalViewCount - trendViewTotal;
+        if (missingViews <= 0) {
+            return;
+        }
+        ArticleStatsTrendPointDTO lastPoint = trends.get(trends.size() - 1);
+        lastPoint.setViewCount(safeInt(lastPoint.getViewCount()) + missingViews);
     }
 
     /**

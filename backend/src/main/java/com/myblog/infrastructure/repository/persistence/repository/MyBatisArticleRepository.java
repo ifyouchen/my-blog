@@ -643,6 +643,10 @@ public class MyBatisArticleRepository implements ArticleRepository {
     @Override
     public void incrementViewCount(Long articleId) { articleMapper.incrementViewCount(articleId); }
 
+    /** 记录文章阅读明细。 */
+    @Override
+    public void recordArticleView(Long articleId) { articleMapper.insertArticleView(articleId); }
+
     /**
      * 根据 Slug 查询已发布文章。
      *

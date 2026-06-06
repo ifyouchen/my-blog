@@ -433,6 +433,13 @@ public interface ArticleRepository {
     void incrementViewCount(Long articleId);
 
     /**
+     * 记录文章阅读明细。
+     *
+     * @param articleId 文章 ID
+     */
+    void recordArticleView(Long articleId);
+
+    /**
      * 查询精选文章。
      *
      * @param page     页码

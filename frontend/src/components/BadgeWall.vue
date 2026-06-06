@@ -61,6 +61,10 @@ const equipBadge = (badge) => {
                     :title="badge.owned ? (badge.equipped ? '当前佩戴中' : '点击佩戴该徽章') : '尚未获得'"
                     @click="equipBadge(badge)"
                 >
+                    <span v-if="badge.equipped" class="equipped-mark" aria-hidden="true">
+                        <span class="equipped-check">✓</span>
+                        已佩戴
+                    </span>
                     <UserEquippedBadge :badge="badge" />
                     <p>{{ badge.description }}</p>
                 </button>
