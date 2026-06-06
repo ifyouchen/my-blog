@@ -231,10 +231,10 @@ public class FollowAppService {
         }
 
         List<Article> publishedArticles = articleRepository.findPublishedEnhancedByAuthorIds(
-            followingUserIds, null, category, null, sort, null, null, null, page, pageSize
+            followingUserIds, null, category, null, sort, null, null, null, page, pageSize, false
         );
         long total = articleRepository.countPublishedEnhancedByAuthorIds(
-            followingUserIds, null, category, null, sort, null, null, null
+            followingUserIds, null, category, null, sort, null, null, null, false
         );
         List<Long> authorIds = publishedArticles.stream()
             .map(article -> article.getAuthorId().getValue())
