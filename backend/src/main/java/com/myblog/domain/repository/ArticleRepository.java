@@ -1,9 +1,12 @@
 package com.myblog.domain.repository;
 
 import com.myblog.domain.model.aggregate.Article;
+import com.myblog.domain.model.readmodel.AdminCategoryStat;
+import com.myblog.domain.model.readmodel.AdminTrendPoint;
+import com.myblog.domain.model.readmodel.AuthorArticleMetrics;
+import com.myblog.domain.model.readmodel.AuthorArticleStats;
+import com.myblog.domain.model.readmodel.DashboardTrendPoint;
 import com.myblog.domain.model.valueobject.ArticleId;
-import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
-import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -127,7 +130,7 @@ public interface ArticleRepository {
      * @param status 状态筛选
      * @return 聚合数据
      */
-    AuthorArticleMetricsDO summarizeByAuthor(Long authorId, String status);
+    AuthorArticleMetrics summarizeByAuthor(Long authorId, String status);
 
     /**
      * 查询作者热门文章列表。
@@ -156,7 +159,7 @@ public interface ArticleRepository {
      * @param endDate 结束日期
      * @return 趋势聚合列表
      */
-    List<DashboardTrendPointDO> findAuthorTrendPoints(Long authorId, LocalDate startDate, LocalDate endDate);
+    List<DashboardTrendPoint> findAuthorTrendPoints(Long authorId, LocalDate startDate, LocalDate endDate);
 
     /**
      * 分页查询关注作者的已发布文章。
@@ -223,12 +226,13 @@ public interface ArticleRepository {
      * @param dateTo 结束日期
      * @param page 页码
      * @param pageSize 每页大小
+     * @param useFulltext 是否使用全文检索
      * @return 文章列表
      */
     List<Article> findPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
                                                    String tag, String sort, String authorKeyword,
                                                    String dateFrom, String dateTo,
-                                                   int page, int pageSize);
+                                                   int page, int pageSize, boolean useFulltext);
 
     /**
      * 统计增强查询关注作者的已发布文章数量。
@@ -240,11 +244,12 @@ public interface ArticleRepository {
      * @param authorKeyword 作者关键字
      * @param dateFrom 起始日期
      * @param dateTo 结束日期
+     * @param useFulltext 是否使用全文检索
      * @return 文章数量
      */
     long countPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
                                            String tag, String sort, String authorKeyword, String dateFrom,
-                                           String dateTo);
+                                           String dateTo, boolean useFulltext);
 
     /**
      * 分页查询后台文章列表。
@@ -347,7 +352,7 @@ public interface ArticleRepository {
      * @param limit 返回数量限制
      * @return 作者文章统计列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(int limit);
+    List<AuthorArticleStats> findAuthorArticleStats(int limit);
 
     /**
      * 查询作者文章统计聚合（带分类和时间筛选）。
@@ -357,7 +362,7 @@ public interface ArticleRepository {
      * @param publishedAfter 发布时间下限
      * @return 作者文章统计列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStats(
+    List<AuthorArticleStats> findAuthorArticleStats(
             int limit,
             String category,
             LocalDateTime publishedAfter);
@@ -368,7 +373,7 @@ public interface ArticleRepository {
      * @param authorIds 作者 ID 列表
      * @return 作者文章统计列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds);
+    List<AuthorArticleStats> findAuthorArticleStatsByAuthorIds(List<Long> authorIds);
 
     /**
      * 根据作者 ID 列表查询排行榜文章。
@@ -538,7 +543,7 @@ public interface ArticleRepository {
      * @param endDate 结束日期（含）
      * @return 每日文章新增数列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO> findDailyArticleTrend(
+    List<AdminTrendPoint> findDailyArticleTrend(
             LocalDate startDate, LocalDate endDate);
 
     /**
@@ -547,7 +552,7 @@ public interface ArticleRepository {
      * @param limit 最多返回的分类数量
      * @return 分类统计列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> findCategoryStats(int limit);
+    List<AdminCategoryStat> findCategoryStats(int limit);
 
     /**
      * 统计命中敏感词警告的文章数量。
@@ -579,7 +584,7 @@ public interface ArticleRepository {
      * @param endDate 结束日期
      * @return 趋势数据列表
      */
-    List<com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO> findArticleTrendPoints(
+    List<DashboardTrendPoint> findArticleTrendPoints(
             Long articleId, LocalDate startDate, LocalDate endDate);
 }
 

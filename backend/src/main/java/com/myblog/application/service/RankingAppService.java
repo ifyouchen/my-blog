@@ -9,11 +9,11 @@ import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.application.dto.UserDTO;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.readmodel.AuthorArticleStats;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
-import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -259,7 +259,7 @@ public class RankingAppService {
                                                               String normalizedPeriod,
                                                               String normalizedCategory) {
         LocalDateTime publishedAfter = resolvePublishedAfter(normalizedPeriod);
-        List<AuthorArticleStatsDO> statsList =
+        List<AuthorArticleStats> statsList =
             articleRepository.findAuthorArticleStats(normalizedLimit, normalizedCategory, publishedAfter);
 
         if (statsList.isEmpty()) {
@@ -269,7 +269,7 @@ public class RankingAppService {
         final LocalDateTime topArticleAfter = publishedAfter;
 
         List<Long> authorIds = statsList.stream()
-            .map(AuthorArticleStatsDO::getAuthorId)
+            .map(AuthorArticleStats::getAuthorId)
             .collect(Collectors.toList());
 
         CompletableFuture<Map<Long, User>> authorFuture = CompletableFuture.supplyAsync(() ->
@@ -288,7 +288,7 @@ public class RankingAppService {
 
         List<AuthorRankingDTO> result = new ArrayList<>(statsList.size());
         int rank = 1;
-        for (AuthorArticleStatsDO stats : statsList) {
+        for (AuthorArticleStats stats : statsList) {
             User author = authorMap.get(stats.getAuthorId());
             if (author == null) {
                 continue;

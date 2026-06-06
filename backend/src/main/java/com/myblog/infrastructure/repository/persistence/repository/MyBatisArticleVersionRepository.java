@@ -1,10 +1,12 @@
 package com.myblog.infrastructure.repository.persistence.repository;
 
+import com.myblog.domain.model.readmodel.ArticleVersionSnapshot;
 import com.myblog.domain.repository.ArticleVersionRepository;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleVersionDO;
 import com.myblog.infrastructure.repository.persistence.mapper.ArticleVersionMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,8 +37,13 @@ public class MyBatisArticleVersionRepository implements ArticleVersionRepository
      * @return 版本列表
      */
     @Override
-    public List<ArticleVersionDO> findByArticleId(Long articleId) {
-        return mapper.selectByArticleId(articleId);
+    public List<ArticleVersionSnapshot> findByArticleId(Long articleId) {
+        List<ArticleVersionDO> rows = mapper.selectByArticleId(articleId);
+        List<ArticleVersionSnapshot> result = new ArrayList<ArticleVersionSnapshot>(rows.size());
+        for (ArticleVersionDO row : rows) {
+            result.add(toSnapshot(row));
+        }
+        return result;
     }
 
     /**
@@ -47,8 +54,8 @@ public class MyBatisArticleVersionRepository implements ArticleVersionRepository
      * @return 版本详情 Optional
      */
     @Override
-    public Optional<ArticleVersionDO> findByArticleIdAndVersionNo(Long articleId, Integer versionNo) {
-        return Optional.ofNullable(mapper.selectByArticleIdAndVersionNo(articleId, versionNo));
+    public Optional<ArticleVersionSnapshot> findByArticleIdAndVersionNo(Long articleId, Integer versionNo) {
+        return Optional.ofNullable(toSnapshot(mapper.selectByArticleIdAndVersionNo(articleId, versionNo)));
     }
 
     /**
@@ -69,8 +76,8 @@ public class MyBatisArticleVersionRepository implements ArticleVersionRepository
      * @param version 版本数据对象
      */
     @Override
-    public void save(ArticleVersionDO version) {
-        mapper.insert(version);
+    public void save(ArticleVersionSnapshot version) {
+        mapper.insert(toDO(version));
     }
 
     /**
@@ -96,6 +103,47 @@ public class MyBatisArticleVersionRepository implements ArticleVersionRepository
     @Override
     public int countByArticleId(Long articleId) {
         return mapper.countByArticleId(articleId);
+    }
+
+    /**
+     * 转换为文章版本快照。
+     *
+     * @param row 持久化行
+     * @return 文章版本快照
+     */
+    private ArticleVersionSnapshot toSnapshot(ArticleVersionDO row) {
+        if (row == null) {
+            return null;
+        }
+        ArticleVersionSnapshot snapshot = new ArticleVersionSnapshot();
+        snapshot.setId(row.getId());
+        snapshot.setArticleId(row.getArticleId());
+        snapshot.setVersionNo(row.getVersionNo());
+        snapshot.setTitle(row.getTitle());
+        snapshot.setContent(row.getContent());
+        snapshot.setSummary(row.getSummary());
+        snapshot.setSavedBy(row.getSavedBy());
+        snapshot.setCreatedAt(row.getCreatedAt());
+        return snapshot;
+    }
+
+    /**
+     * 转换为持久化行。
+     *
+     * @param snapshot 文章版本快照
+     * @return 持久化行
+     */
+    private ArticleVersionDO toDO(ArticleVersionSnapshot snapshot) {
+        ArticleVersionDO row = new ArticleVersionDO();
+        row.setId(snapshot.getId());
+        row.setArticleId(snapshot.getArticleId());
+        row.setVersionNo(snapshot.getVersionNo());
+        row.setTitle(snapshot.getTitle());
+        row.setContent(snapshot.getContent());
+        row.setSummary(snapshot.getSummary());
+        row.setSavedBy(snapshot.getSavedBy());
+        row.setCreatedAt(snapshot.getCreatedAt());
+        return row;
     }
 }
 

@@ -1,10 +1,12 @@
 package com.myblog.infrastructure.repository.persistence.repository;
 
+import com.myblog.domain.model.readmodel.UserSearchHistory;
 import com.myblog.domain.repository.UserSearchHistoryRepository;
 import com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO;
 import com.myblog.infrastructure.repository.persistence.mapper.UserSearchHistoryMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -37,8 +39,8 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
      * @return 搜索历史数据对象
      */
     @Override
-    public UserSearchHistoryDO findById(Long id) {
-        return userSearchHistoryMapper.selectById(id);
+    public UserSearchHistory findById(Long id) {
+        return toReadModel(userSearchHistoryMapper.selectById(id));
     }
 
     /**
@@ -50,9 +52,9 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
      * @return 搜索历史列表
      */
     @Override
-    public List<UserSearchHistoryDO> findByUserId(Long userId, int page, int pageSize) {
+    public List<UserSearchHistory> findByUserId(Long userId, int page, int pageSize) {
         int offset = (Math.max(page, 1) - 1) * Math.max(pageSize, 1);
-        return userSearchHistoryMapper.selectByUserId(userId, offset, pageSize);
+        return toReadModels(userSearchHistoryMapper.selectByUserId(userId, offset, pageSize));
     }
 
     /**
@@ -74,8 +76,8 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
      * @return 搜索历史数据对象
      */
     @Override
-    public UserSearchHistoryDO findByUserIdAndKeyword(Long userId, String keyword) {
-        return userSearchHistoryMapper.selectByUserIdAndKeyword(userId, keyword);
+    public UserSearchHistory findByUserIdAndKeyword(Long userId, String keyword) {
+        return toReadModel(userSearchHistoryMapper.selectByUserIdAndKeyword(userId, keyword));
     }
 
     /**
@@ -84,8 +86,8 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
      * @param userSearchHistoryDO 搜索历史数据对象
      */
     @Override
-    public void save(UserSearchHistoryDO userSearchHistoryDO) {
-        userSearchHistoryMapper.insert(userSearchHistoryDO);
+    public void save(UserSearchHistory userSearchHistory) {
+        userSearchHistoryMapper.insert(toDO(userSearchHistory));
     }
 
     /**
@@ -94,8 +96,8 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
      * @param userSearchHistoryDO 搜索历史数据对象
      */
     @Override
-    public void update(UserSearchHistoryDO userSearchHistoryDO) {
-        userSearchHistoryMapper.update(userSearchHistoryDO);
+    public void update(UserSearchHistory userSearchHistory) {
+        userSearchHistoryMapper.update(toDO(userSearchHistory));
     }
 
     /**
@@ -127,5 +129,62 @@ public class MyBatisUserSearchHistoryRepository implements UserSearchHistoryRepo
     @Override
     public Long nextId() {
         return idGenerator.nextId("blog_user_search_history");
+    }
+
+    /**
+     * 转换搜索历史列表。
+     *
+     * @param rows 持久化行列表
+     * @return 搜索历史列表
+     */
+    private List<UserSearchHistory> toReadModels(List<UserSearchHistoryDO> rows) {
+        List<UserSearchHistory> result = new ArrayList<UserSearchHistory>(rows.size());
+        for (UserSearchHistoryDO row : rows) {
+            result.add(toReadModel(row));
+        }
+        return result;
+    }
+
+    /**
+     * 转换搜索历史。
+     *
+     * @param row 持久化行
+     * @return 搜索历史
+     */
+    private UserSearchHistory toReadModel(UserSearchHistoryDO row) {
+        if (row == null) {
+            return null;
+        }
+        UserSearchHistory history = new UserSearchHistory();
+        history.setId(row.getId());
+        history.setUserId(row.getUserId());
+        history.setKeyword(row.getKeyword());
+        history.setSearchCount(row.getSearchCount());
+        history.setLastSearchedAt(row.getLastSearchedAt());
+        history.setCreatedAt(row.getCreatedAt());
+        history.setUpdatedAt(row.getUpdatedAt());
+        history.setDeletedAt(row.getDeletedAt());
+        history.setVersion(row.getVersion());
+        return history;
+    }
+
+    /**
+     * 转换为持久化行。
+     *
+     * @param history 搜索历史
+     * @return 持久化行
+     */
+    private UserSearchHistoryDO toDO(UserSearchHistory history) {
+        UserSearchHistoryDO row = new UserSearchHistoryDO();
+        row.setId(history.getId());
+        row.setUserId(history.getUserId());
+        row.setKeyword(history.getKeyword());
+        row.setSearchCount(history.getSearchCount());
+        row.setLastSearchedAt(history.getLastSearchedAt());
+        row.setCreatedAt(history.getCreatedAt());
+        row.setUpdatedAt(history.getUpdatedAt());
+        row.setDeletedAt(history.getDeletedAt());
+        row.setVersion(history.getVersion());
+        return row;
     }
 }

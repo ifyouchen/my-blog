@@ -15,10 +15,10 @@ spring:
       maximum-pool-size: 20
       connection-timeout: 30000
   mail:
-    host: ${MAIL_HOST:smtp.qq.com}
+    host: ${MAIL_HOST:}
     port: ${MAIL_PORT:465}
-    username: ${MAIL_USERNAME:successful-chen@qq.com}
-    password: ${MAIL_PASSWORD:qongmajewctojecc}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -68,7 +68,7 @@ mybatis:
 
 my-blog:
   jwt:
-    secret: "replace-with-a-long-random-secret-for-local-development"
+    secret: ${JWT_SECRET:}
     expire-seconds: 86400
   upload-dir: uploads
   rate-limit:
@@ -80,8 +80,8 @@ my-blog:
       file-permits: ${UPLOAD_FILE_PERMITS:5}
       file-interval-seconds: ${UPLOAD_FILE_INTERVAL_SECONDS:60}
   cos:
-    secret-id: ${COS_SECRET_ID:AKID9B0bu27xJU7XjgPtgHdllX5PUbjlcN3X}
-    secret-key: ${COS_SECRET_KEY:qTr1wc3OVN1VkuqJadR2SM4XkjMlwsYz}
+    secret-id: ${COS_SECRET_ID:}
+    secret-key: ${COS_SECRET_KEY:}
     region: ${COS_REGION:ap-shanghai}
     bucket: ${COS_BUCKET:myblog-1322876242}
     domain: ${COS_DOMAIN:}
@@ -90,7 +90,7 @@ my-blog:
   frontend-base-url: ${FRONTEND_BASE_URL:https://gemini4.click/}
 
   mail:
-    from: ${MAIL_FROM:${MAIL_USERNAME:successful-chen@qq.com}}
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
     queue-capacity: ${MAIL_QUEUE_CAPACITY:1000}
     consumer-interval-ms: ${MAIL_CONSUMER_INTERVAL_MS:3000}
     max-retry: ${MAIL_MAX_RETRY:3}

@@ -293,6 +293,7 @@ public interface ArticleMapper {
      * @param dateTo        结束日期
      * @param offset        偏移量
      * @param limit         返回数量限制
+     * @param useFulltext   是否使用全文检索
      * @return 文章列表
      */
     List<ArticleDO> selectPublishedEnhancedByAuthorIds(@Param("authorIds") List<Long> authorIds,
@@ -304,7 +305,8 @@ public interface ArticleMapper {
                                                        @Param("dateFrom") String dateFrom,
                                                        @Param("dateTo") String dateTo,
                                                        @Param("offset") Integer offset,
-                                                       @Param("limit") Integer limit);
+                                                       @Param("limit") Integer limit,
+                                                       @Param("useFulltext") boolean useFulltext);
 
     /**
      * 根据多个作者 ID 增强版统计已发布文章数量。
@@ -317,6 +319,7 @@ public interface ArticleMapper {
      * @param authorKeyword 作者关键字
      * @param dateFrom      起始日期
      * @param dateTo        结束日期
+     * @param useFulltext   是否使用全文检索
      * @return 文章数量
      */
     long countPublishedEnhancedByAuthorIds(@Param("authorIds") List<Long> authorIds,
@@ -326,7 +329,8 @@ public interface ArticleMapper {
                                            @Param("sort") String sort,
                                            @Param("authorKeyword") String authorKeyword,
                                            @Param("dateFrom") String dateFrom,
-                                           @Param("dateTo") String dateTo);
+                                           @Param("dateTo") String dateTo,
+                                           @Param("useFulltext") boolean useFulltext);
 
     /**
      * 根据 ID 统计文章数量。

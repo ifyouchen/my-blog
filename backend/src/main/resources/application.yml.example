@@ -73,7 +73,7 @@ mybatis:
 
 my-blog:
   jwt:
-    secret: "${JWT_SECRET:replace-with-a-long-random-secret-for-local-development}"
+    secret: ${JWT_SECRET:}
     expire-seconds: 86400
   upload-dir: uploads
   rate-limit:
@@ -94,7 +94,7 @@ my-blog:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173/}
 
   mail:
-    from: ${MAIL_FROM:${MAIL_USERNAME:your-email@qq.com}}
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
     queue-capacity: ${MAIL_QUEUE_CAPACITY:1000}
     consumer-interval-ms: ${MAIL_CONSUMER_INTERVAL_MS:3000}
     max-retry: ${MAIL_MAX_RETRY:3}

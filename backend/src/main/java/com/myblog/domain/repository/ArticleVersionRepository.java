@@ -1,6 +1,6 @@
 package com.myblog.domain.repository;
 
-import com.myblog.infrastructure.repository.persistence.entity.ArticleVersionDO;
+import com.myblog.domain.model.readmodel.ArticleVersionSnapshot;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +19,7 @@ public interface ArticleVersionRepository {
      * @param articleId 文章 ID
      * @return 版本列表
      */
-    List<ArticleVersionDO> findByArticleId(Long articleId);
+    List<ArticleVersionSnapshot> findByArticleId(Long articleId);
 
     /**
      * 查询指定版本详情。
@@ -28,7 +28,7 @@ public interface ArticleVersionRepository {
      * @param versionNo 版本号
      * @return 版本详情
      */
-    Optional<ArticleVersionDO> findByArticleIdAndVersionNo(Long articleId, Integer versionNo);
+    Optional<ArticleVersionSnapshot> findByArticleIdAndVersionNo(Long articleId, Integer versionNo);
 
     /**
      * 查询文章最新版本号。
@@ -43,7 +43,7 @@ public interface ArticleVersionRepository {
      *
      * @param version 版本数据对象
      */
-    void save(ArticleVersionDO version);
+    void save(ArticleVersionSnapshot version);
 
     /**
      * 删除最旧的版本（保留最近 N 条）。

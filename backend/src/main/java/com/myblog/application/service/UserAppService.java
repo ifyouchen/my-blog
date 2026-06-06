@@ -9,12 +9,12 @@ import com.myblog.application.dto.UserProfileDTO;
 import com.myblog.application.dto.UserSearchDTO;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.readmodel.AuthorArticleMetrics;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
 import com.myblog.domain.service.PasswordDomainService;
-import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
@@ -248,7 +248,7 @@ public class UserAppService {
     public UserProfileDTO getUserProfile(Long userId, Long currentUserId) {
         User user = userRepository.findById(new UserId(userId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "用户不存在"));
-        AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, ArticleStatus.PUBLISHED.name());
+        AuthorArticleMetrics metrics = articleRepository.summarizeByAuthor(userId, ArticleStatus.PUBLISHED.name());
         UserProfileDTO profileDTO = new UserProfileDTO();
         UserDTO userDTO = UserAssembler.toDTO(user);
         userLevelAppService.fillLevel(userDTO);
@@ -334,7 +334,7 @@ public class UserAppService {
      * @return 文章创作台概览 DTO
      */
     public MyArticleOverviewDTO getMyArticleOverview(Long userId) {
-        AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, null);
+        AuthorArticleMetrics metrics = articleRepository.summarizeByAuthor(userId, null);
         Article latestArticle = articleRepository.findLatestByAuthorId(userId).orElse(null);
         MyArticleOverviewDTO overviewDTO = new MyArticleOverviewDTO();
         overviewDTO.setTotalCount(safeInt(metrics != null ? metrics.getArticleCount() : null));

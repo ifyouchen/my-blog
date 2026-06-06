@@ -7,12 +7,12 @@ import com.myblog.application.dto.DashboardOverviewDTO;
 import com.myblog.application.dto.DashboardTrendPointDTO;
 import com.myblog.application.dto.NotificationDTO;
 import com.myblog.domain.model.aggregate.Article;
+import com.myblog.domain.model.readmodel.AuthorArticleMetrics;
+import com.myblog.domain.model.readmodel.DashboardTrendPoint;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.UserFollowRepository;
-import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
-import com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO;
 import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import org.slf4j.Logger;
@@ -62,7 +62,7 @@ public class DashboardAppService {
      * @return 工作台概览 DTO
      */
     public DashboardOverviewDTO getOverview(Long userId) {
-        AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, null);
+        AuthorArticleMetrics metrics = articleRepository.summarizeByAuthor(userId, null);
         Article latestArticle = articleRepository.findLatestByAuthorId(userId).orElse(null);
         DashboardOverviewDTO overview = new DashboardOverviewDTO();
         overview.setTotalCount(safeInt(metrics != null ? metrics.getArticleCount() : null));
@@ -96,16 +96,16 @@ public class DashboardAppService {
         int days = "30d".equalsIgnoreCase(range) ? 30 : 7;
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1L);
-        List<DashboardTrendPointDO> rows = articleRepository.findAuthorTrendPoints(userId, startDate, endDate);
-        Map<LocalDate, DashboardTrendPointDO> rowMap = new HashMap<LocalDate, DashboardTrendPointDO>(rows.size());
-        for (DashboardTrendPointDO row : rows) {
+        List<DashboardTrendPoint> rows = articleRepository.findAuthorTrendPoints(userId, startDate, endDate);
+        Map<LocalDate, DashboardTrendPoint> rowMap = new HashMap<LocalDate, DashboardTrendPoint>(rows.size());
+        for (DashboardTrendPoint row : rows) {
             rowMap.put(row.getStatDate(), row);
         }
 
         List<DashboardTrendPointDTO> points = new ArrayList<DashboardTrendPointDTO>(days);
         for (int i = 0; i < days; i++) {
             LocalDate date = startDate.plusDays(i);
-            DashboardTrendPointDO row = rowMap.get(date);
+            DashboardTrendPoint row = rowMap.get(date);
             DashboardTrendPointDTO point = new DashboardTrendPointDTO();
             point.setDate(DATE_FORMATTER.format(date));
             point.setViewCount(safeInt(row != null ? row.getViewCount() : null));
@@ -162,7 +162,7 @@ public class DashboardAppService {
      * @return 选题建议列表
      */
     public List<Map<String, Object>> getContentOpportunities(Long userId) {
-        AuthorArticleMetricsDO metrics = articleRepository.summarizeByAuthor(userId, null);
+        AuthorArticleMetrics metrics = articleRepository.summarizeByAuthor(userId, null);
         List<String> hotKeywords = searchHistoryAppService.getHotKeywords(6);
         List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
         int publishedCount = safeInt(metrics != null ? metrics.getPublishedCount() : null);
@@ -204,15 +204,15 @@ public class DashboardAppService {
         int days = "30d".equalsIgnoreCase(range) ? 30 : 7;
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1L);
-        List<DashboardTrendPointDO> rows = articleRepository.findArticleTrendPoints(articleId, startDate, endDate);
-        Map<LocalDate, DashboardTrendPointDO> rowMap = new HashMap<LocalDate, DashboardTrendPointDO>(rows.size());
-        for (DashboardTrendPointDO row : rows) {
+        List<DashboardTrendPoint> rows = articleRepository.findArticleTrendPoints(articleId, startDate, endDate);
+        Map<LocalDate, DashboardTrendPoint> rowMap = new HashMap<LocalDate, DashboardTrendPoint>(rows.size());
+        for (DashboardTrendPoint row : rows) {
             rowMap.put(row.getStatDate(), row);
         }
         List<ArticleStatsTrendPointDTO> trends = new ArrayList<ArticleStatsTrendPointDTO>(days);
         for (int i = 0; i < days; i++) {
             LocalDate date = startDate.plusDays(i);
-            DashboardTrendPointDO row = rowMap.get(date);
+            DashboardTrendPoint row = rowMap.get(date);
             ArticleStatsTrendPointDTO point = new ArticleStatsTrendPointDTO();
             point.setDate(DATE_FORMATTER.format(date));
             point.setViewCount(safeInt(row != null ? row.getViewCount() : null));

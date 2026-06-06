@@ -5,8 +5,8 @@ import com.myblog.application.dto.CategoryDTO;
 import com.myblog.application.dto.SearchBootstrapDTO;
 import com.myblog.application.dto.SearchHistoryDTO;
 import com.myblog.application.dto.TagDTO;
+import com.myblog.domain.model.readmodel.UserSearchHistory;
 import com.myblog.domain.repository.UserSearchHistoryRepository;
-import com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO;
 import com.myblog.shared.result.PageResult;
 import com.myblog.shared.util.BizLogHelper;
 import org.slf4j.Logger;
@@ -90,9 +90,9 @@ public class SearchHistoryAppService {
 
         // Load recent keywords for logged-in user
         if (userId != null) {
-            List<UserSearchHistoryDO> recentHistory = userSearchHistoryRepository.findByUserId(userId, 1, MAX_RECENT_KEYWORDS);
+            List<UserSearchHistory> recentHistory = userSearchHistoryRepository.findByUserId(userId, 1, MAX_RECENT_KEYWORDS);
             List<String> recentKeywords = new ArrayList<>(recentHistory.size());
-            for (UserSearchHistoryDO history : recentHistory) {
+            for (UserSearchHistory history : recentHistory) {
                 recentKeywords.add(history.getKeyword());
             }
             bootstrap.setRecentKeywords(recentKeywords);
@@ -117,7 +117,7 @@ public class SearchHistoryAppService {
         }
         String trimmedKeyword = keyword.trim();
 
-        UserSearchHistoryDO existing = userSearchHistoryRepository.findByUserIdAndKeyword(userId, trimmedKeyword);
+        UserSearchHistory existing = userSearchHistoryRepository.findByUserIdAndKeyword(userId, trimmedKeyword);
         LocalDateTime now = LocalDateTime.now();
 
         if (existing != null) {
@@ -125,7 +125,7 @@ public class SearchHistoryAppService {
             existing.setLastSearchedAt(now);
             userSearchHistoryRepository.update(existing);
         } else {
-            UserSearchHistoryDO newHistory = new UserSearchHistoryDO();
+            UserSearchHistory newHistory = new UserSearchHistory();
             newHistory.setId(userSearchHistoryRepository.nextId());
             newHistory.setUserId(userId);
             newHistory.setKeyword(trimmedKeyword);
@@ -157,11 +157,11 @@ public class SearchHistoryAppService {
      * @return 搜索历史分页
      */
     public PageResult<SearchHistoryDTO> getUserSearchHistory(Long userId, int page, int pageSize) {
-        List<UserSearchHistoryDO> historyList = userSearchHistoryRepository.findByUserId(userId, page, pageSize);
+        List<UserSearchHistory> historyList = userSearchHistoryRepository.findByUserId(userId, page, pageSize);
         long total = userSearchHistoryRepository.countByUserId(userId);
 
         List<SearchHistoryDTO> dtos = new ArrayList<>(historyList.size());
-        for (UserSearchHistoryDO history : historyList) {
+        for (UserSearchHistory history : historyList) {
             SearchHistoryDTO dto = new SearchHistoryDTO();
             dto.setId(history.getId());
             dto.setKeyword(history.getKeyword());
@@ -220,9 +220,9 @@ public class SearchHistoryAppService {
         if (userId == null) {
             return new ArrayList<>();
         }
-        List<UserSearchHistoryDO> recentHistory = userSearchHistoryRepository.findByUserId(userId, 1, limit);
+        List<UserSearchHistory> recentHistory = userSearchHistoryRepository.findByUserId(userId, 1, limit);
         List<String> recentKeywords = new ArrayList<>(recentHistory.size());
-        for (UserSearchHistoryDO history : recentHistory) {
+        for (UserSearchHistory history : recentHistory) {
             recentKeywords.add(history.getKeyword());
         }
         return recentKeywords;

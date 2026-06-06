@@ -7,11 +7,11 @@ import com.myblog.application.dto.ArticleDTO;
 import com.myblog.application.dto.AuthorRankingDTO;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.readmodel.AuthorArticleStats;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
-import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.shared.enums.ArticleStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,7 +83,7 @@ class RankingAppServiceTest {
 
     @Test
     void listAuthorRankingsIncludesFollowStatusAndTopArticle() {
-        AuthorArticleStatsDO stats = new AuthorArticleStatsDO();
+        AuthorArticleStats stats = new AuthorArticleStats();
         stats.setAuthorId(2L);
         stats.setArticleCount(3);
         stats.setTotalViews(1200L);
@@ -151,7 +151,7 @@ class RankingAppServiceTest {
 
         Article freshArticle = createArticle(101L, 2L, "新文章榜", "fresh-article");
         User author = User.create(2L, "writer", "writer@example.com", "encoded-password");
-        AuthorArticleStatsDO stats = new AuthorArticleStatsDO();
+        AuthorArticleStats stats = new AuthorArticleStats();
         stats.setAuthorId(2L);
         stats.setArticleCount(1);
         stats.setTotalViews(300L);

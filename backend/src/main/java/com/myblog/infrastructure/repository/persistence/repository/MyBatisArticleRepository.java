@@ -1,9 +1,16 @@
 package com.myblog.infrastructure.repository.persistence.repository;
 
 import com.myblog.domain.model.aggregate.Article;
+import com.myblog.domain.model.readmodel.AdminCategoryStat;
+import com.myblog.domain.model.readmodel.AdminTrendPoint;
+import com.myblog.domain.model.readmodel.AuthorArticleMetrics;
+import com.myblog.domain.model.readmodel.AuthorArticleStats;
+import com.myblog.domain.model.readmodel.DashboardTrendPoint;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.infrastructure.repository.persistence.converter.ArticlePersistenceConverter;
+import com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO;
+import com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleDO;
 import com.myblog.infrastructure.repository.persistence.entity.ArticleTagRowDO;
 import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleMetricsDO;
@@ -205,8 +212,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 作者文章指标数据对象
      */
     @Override
-    public AuthorArticleMetricsDO summarizeByAuthor(Long authorId, String status) {
-        return articleMapper.selectAuthorMetrics(authorId, status);
+    public AuthorArticleMetrics summarizeByAuthor(Long authorId, String status) {
+        return toAuthorArticleMetrics(articleMapper.selectAuthorMetrics(authorId, status));
     }
 
     /**
@@ -243,8 +250,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 趋势数据列表
      */
     @Override
-    public List<DashboardTrendPointDO> findAuthorTrendPoints(Long authorId, LocalDate startDate, LocalDate endDate) {
-        return articleMapper.selectAuthorTrendPoints(authorId, startDate, endDate);
+    public List<DashboardTrendPoint> findAuthorTrendPoints(Long authorId, LocalDate startDate, LocalDate endDate) {
+        return toDashboardTrendPoints(articleMapper.selectAuthorTrendPoints(authorId, startDate, endDate));
     }
 
     /**
@@ -339,19 +346,20 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @param dateTo        结束日期
      * @param page          页码
      * @param pageSize      每页大小
+     * @param useFulltext   是否使用全文索引
      * @return 文章列表
      */
     @Override
     public List<Article> findPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
                                                          String tag, String sort, String authorKeyword,
                                                          String dateFrom, String dateTo,
-                                                         int page, int pageSize) {
+                                                         int page, int pageSize, boolean useFulltext) {
         if (authorIds == null || authorIds.isEmpty()) {
             return new ArrayList<Article>();
         }
         int offset = (Math.max(page, 1) - 1) * Math.max(pageSize, 1);
         return toDomainList(articleMapper.selectPublishedEnhancedByAuthorIds(
-            authorIds, keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, offset, pageSize));
+            authorIds, keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, offset, pageSize, useFulltext));
     }
 
     /**
@@ -365,17 +373,18 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @param authorKeyword 作者关键字
      * @param dateFrom      开始日期
      * @param dateTo        结束日期
+     * @param useFulltext   是否使用全文索引
      * @return 文章数量
      */
     @Override
     public long countPublishedEnhancedByAuthorIds(List<Long> authorIds, String keyword, String category,
                                                   String tag, String sort, String authorKeyword, String dateFrom,
-                                                  String dateTo) {
+                                                  String dateTo, boolean useFulltext) {
         if (authorIds == null || authorIds.isEmpty()) {
             return 0L;
         }
         return articleMapper.countPublishedEnhancedByAuthorIds(
-            authorIds, keyword, category, tag, sort, authorKeyword, dateFrom, dateTo);
+            authorIds, keyword, category, tag, sort, authorKeyword, dateFrom, dateTo, useFulltext);
     }
 
     /**
@@ -537,8 +546,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 作者文章统计列表
      */
     @Override
-    public List<AuthorArticleStatsDO> findAuthorArticleStats(int limit) {
-        return articleMapper.selectAuthorArticleStats(limit);
+    public List<AuthorArticleStats> findAuthorArticleStats(int limit) {
+        return toAuthorArticleStatsList(articleMapper.selectAuthorArticleStats(limit));
     }
 
     /**
@@ -550,8 +559,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 作者文章统计列表
      */
     @Override
-    public List<AuthorArticleStatsDO> findAuthorArticleStats(int limit, String category, LocalDateTime publishedAfter) {
-        return articleMapper.selectAuthorArticleStatsForRanking(limit, category, publishedAfter);
+    public List<AuthorArticleStats> findAuthorArticleStats(int limit, String category, LocalDateTime publishedAfter) {
+        return toAuthorArticleStatsList(articleMapper.selectAuthorArticleStatsForRanking(limit, category, publishedAfter));
     }
 
     /**
@@ -561,11 +570,11 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 作者文章统计列表
      */
     @Override
-    public List<AuthorArticleStatsDO> findAuthorArticleStatsByAuthorIds(List<Long> authorIds) {
+    public List<AuthorArticleStats> findAuthorArticleStatsByAuthorIds(List<Long> authorIds) {
         if (authorIds == null || authorIds.isEmpty()) {
             return java.util.Collections.emptyList();
         }
-        return articleMapper.selectAuthorArticleStatsByAuthorIds(authorIds);
+        return toAuthorArticleStatsList(articleMapper.selectAuthorArticleStatsByAuthorIds(authorIds));
     }
 
     /**
@@ -786,9 +795,9 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 每日文章趋势列表
      */
     @Override
-    public List<com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO> findDailyArticleTrend(
+    public List<AdminTrendPoint> findDailyArticleTrend(
             java.time.LocalDate startDate, java.time.LocalDate endDate) {
-        return articleMapper.selectDailyArticleTrend(startDate, endDate);
+        return toAdminTrendPoints(articleMapper.selectDailyArticleTrend(startDate, endDate));
     }
 
     /**
@@ -798,8 +807,8 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 分类统计列表
      */
     @Override
-    public List<com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO> findCategoryStats(int limit) {
-        return articleMapper.selectCategoryStats(limit);
+    public List<AdminCategoryStat> findCategoryStats(int limit) {
+        return toAdminCategoryStats(articleMapper.selectCategoryStats(limit));
     }
 
     /**
@@ -811,9 +820,107 @@ public class MyBatisArticleRepository implements ArticleRepository {
      * @return 趋势数据列表
      */
     @Override
-    public List<com.myblog.infrastructure.repository.persistence.entity.DashboardTrendPointDO> findArticleTrendPoints(
+    public List<DashboardTrendPoint> findArticleTrendPoints(
             Long articleId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
-        return articleMapper.selectArticleTrendPoints(articleId, startDate, endDate);
+        return toDashboardTrendPoints(articleMapper.selectArticleTrendPoints(articleId, startDate, endDate));
+    }
+
+    /**
+     * 转换作者文章指标。
+     *
+     * @param row 持久化行
+     * @return 作者文章指标
+     */
+    private AuthorArticleMetrics toAuthorArticleMetrics(AuthorArticleMetricsDO row) {
+        if (row == null) {
+            return null;
+        }
+        AuthorArticleMetrics metrics = new AuthorArticleMetrics();
+        metrics.setArticleCount(row.getArticleCount());
+        metrics.setTotalViews(row.getTotalViews());
+        metrics.setTotalLikes(row.getTotalLikes());
+        metrics.setTotalFavorites(row.getTotalFavorites());
+        metrics.setTotalComments(row.getTotalComments());
+        metrics.setDraftCount(row.getDraftCount());
+        metrics.setPublishedCount(row.getPublishedCount());
+        metrics.setOfflineCount(row.getOfflineCount());
+        metrics.setDeletedCount(row.getDeletedCount());
+        return metrics;
+    }
+
+    /**
+     * 转换作者文章排行行列表。
+     *
+     * @param rows 持久化行列表
+     * @return 作者文章排行行列表
+     */
+    private List<AuthorArticleStats> toAuthorArticleStatsList(List<AuthorArticleStatsDO> rows) {
+        List<AuthorArticleStats> result = new ArrayList<AuthorArticleStats>(rows.size());
+        for (AuthorArticleStatsDO row : rows) {
+            AuthorArticleStats stats = new AuthorArticleStats();
+            stats.setAuthorId(row.getAuthorId());
+            stats.setArticleCount(row.getArticleCount());
+            stats.setTotalViews(row.getTotalViews());
+            stats.setTotalLikes(row.getTotalLikes());
+            result.add(stats);
+        }
+        return result;
+    }
+
+    /**
+     * 转换趋势数据点列表。
+     *
+     * @param rows 持久化行列表
+     * @return 趋势数据点列表
+     */
+    private List<DashboardTrendPoint> toDashboardTrendPoints(List<DashboardTrendPointDO> rows) {
+        List<DashboardTrendPoint> result = new ArrayList<DashboardTrendPoint>(rows.size());
+        for (DashboardTrendPointDO row : rows) {
+            DashboardTrendPoint point = new DashboardTrendPoint();
+            point.setStatDate(row.getStatDate());
+            point.setViewCount(row.getViewCount());
+            point.setLikeCount(row.getLikeCount());
+            point.setFavoriteCount(row.getFavoriteCount());
+            point.setCommentCount(row.getCommentCount());
+            result.add(point);
+        }
+        return result;
+    }
+
+    /**
+     * 转换管理后台趋势数据点。
+     *
+     * @param rows 持久化行列表
+     * @return 管理后台趋势数据点
+     */
+    private List<AdminTrendPoint> toAdminTrendPoints(List<AdminTrendPointDO> rows) {
+        List<AdminTrendPoint> result = new ArrayList<AdminTrendPoint>(rows.size());
+        for (AdminTrendPointDO row : rows) {
+            AdminTrendPoint point = new AdminTrendPoint();
+            point.setDate(row.getDate());
+            point.setNewUsers(row.getNewUsers());
+            point.setNewArticles(row.getNewArticles());
+            point.setNewComments(row.getNewComments());
+            result.add(point);
+        }
+        return result;
+    }
+
+    /**
+     * 转换管理后台分类统计。
+     *
+     * @param rows 持久化行列表
+     * @return 分类统计
+     */
+    private List<AdminCategoryStat> toAdminCategoryStats(List<AdminCategoryStatDO> rows) {
+        List<AdminCategoryStat> result = new ArrayList<AdminCategoryStat>(rows.size());
+        for (AdminCategoryStatDO row : rows) {
+            AdminCategoryStat stat = new AdminCategoryStat();
+            stat.setCategory(row.getCategory());
+            stat.setArticleCount(row.getArticleCount());
+            result.add(stat);
+        }
+        return result;
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.myblog.domain.repository;
 
-import com.myblog.infrastructure.repository.persistence.entity.UserSearchHistoryDO;
+import com.myblog.domain.model.readmodel.UserSearchHistory;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public interface UserSearchHistoryRepository {
      * @param id 搜索记录 ID
      * @return 搜索历史数据对象，不存在时返回 null
      */
-    UserSearchHistoryDO findById(Long id);
+    UserSearchHistory findById(Long id);
 
     /**
      * 分页查询用户的搜索历史。
@@ -28,7 +28,7 @@ public interface UserSearchHistoryRepository {
      * @param pageSize 每页大小
      * @return 搜索历史列表
      */
-    List<UserSearchHistoryDO> findByUserId(Long userId, int page, int pageSize);
+    List<UserSearchHistory> findByUserId(Long userId, int page, int pageSize);
 
     /**
      * 统计用户的搜索历史数量。
@@ -45,21 +45,21 @@ public interface UserSearchHistoryRepository {
      * @param keyword 搜索关键字
      * @return 搜索历史数据对象，不存在时返回 null
      */
-    UserSearchHistoryDO findByUserIdAndKeyword(Long userId, String keyword);
+    UserSearchHistory findByUserIdAndKeyword(Long userId, String keyword);
 
     /**
      * 保存搜索历史（新增）。
      *
      * @param userSearchHistoryDO 搜索历史数据对象
      */
-    void save(UserSearchHistoryDO userSearchHistoryDO);
+    void save(UserSearchHistory userSearchHistory);
 
     /**
      * 更新搜索历史。
      *
      * @param userSearchHistoryDO 搜索历史数据对象
      */
-    void update(UserSearchHistoryDO userSearchHistoryDO);
+    void update(UserSearchHistory userSearchHistory);
 
     /**
      * 删除用户的所有搜索历史。

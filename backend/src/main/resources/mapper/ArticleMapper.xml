@@ -775,11 +775,8 @@
         </if>
     </select>
 
-    <select id="selectPublishedEnhanced" resultMap="BaseResultMap">
-        SELECT <include refid="List_Alias_Column_List"/>
-        FROM blog_article a
-        LEFT JOIN blog_user u ON a.author_id = u.id
-        WHERE a.status = 'PUBLISHED'
+    <sql id="Published_Enhanced_Common_Filter">
+        AND a.status = 'PUBLISHED'
         AND a.deleted_at IS NULL
         AND u.deleted_at IS NULL
         <if test="keyword != null and keyword != ''">
@@ -825,6 +822,14 @@
         <if test="sort == 'featured'">
             AND a.featured = 1
         </if>
+    </sql>
+
+    <select id="selectPublishedEnhanced" resultMap="BaseResultMap">
+        SELECT <include refid="List_Alias_Column_List"/>
+        FROM blog_article a
+        LEFT JOIN blog_user u ON a.author_id = u.id
+        WHERE 1 = 1
+        <include refid="Published_Enhanced_Common_Filter"/>
         <if test="sort == 'recommend'">
             <include refid="Recommend_Alias_Candidate_Condition"/>
         </if>
@@ -859,52 +864,8 @@
         SELECT COUNT(1)
         FROM blog_article a
         LEFT JOIN blog_user u ON a.author_id = u.id
-        WHERE a.status = 'PUBLISHED'
-        AND a.deleted_at IS NULL
-        AND u.deleted_at IS NULL
-        <if test="keyword != null and keyword != ''">
-            <choose>
-                <when test="useFulltext == true">
-                    AND (
-                        MATCH(a.title, a.summary, a.content) AGAINST(#{keyword} IN BOOLEAN MODE)
-                        OR a.title LIKE CONCAT('%', #{keyword}, '%')
-                    )
-                </when>
-                <otherwise>
-                    AND (
-                        a.title LIKE CONCAT('%', #{keyword}, '%')
-                        OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                        OR a.content LIKE CONCAT('%', #{keyword}, '%')
-                    )
-                </otherwise>
-            </choose>
-        </if>
-        <if test="category != null and category != ''">
-            AND a.category = #{category}
-        </if>
-        <if test="tag != null and tag != ''">
-            AND a.id IN (
-                SELECT article_id
-                FROM blog_article_tag
-                WHERE tag_name = #{tag}
-                AND deleted_at IS NULL
-            )
-        </if>
-        <if test="authorKeyword != null and authorKeyword != ''">
-            AND (
-                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
-                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
-            )
-        </if>
-        <if test="dateFrom != null and dateFrom != ''">
-            AND a.published_at &gt;= #{dateFrom}
-        </if>
-        <if test="dateTo != null and dateTo != ''">
-            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
-        </if>
-        <if test="sort == 'featured'">
-            AND a.featured = 1
-        </if>
+        WHERE 1 = 1
+        <include refid="Published_Enhanced_Common_Filter"/>
         <if test="sort == 'recommend'">
             <include refid="Recommend_Alias_Candidate_Condition"/>
         </if>
@@ -918,42 +879,7 @@
         <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
             #{authorId}
         </foreach>
-        AND a.status = 'PUBLISHED'
-        AND a.deleted_at IS NULL
-        AND u.deleted_at IS NULL
-        <if test="keyword != null and keyword != ''">
-            AND (
-                a.title LIKE CONCAT('%', #{keyword}, '%')
-                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                OR a.content LIKE CONCAT('%', #{keyword}, '%')
-            )
-        </if>
-        <if test="category != null and category != ''">
-            AND a.category = #{category}
-        </if>
-        <if test="tag != null and tag != ''">
-            AND a.id IN (
-                SELECT article_id
-                FROM blog_article_tag
-                WHERE tag_name = #{tag}
-                AND deleted_at IS NULL
-            )
-        </if>
-        <if test="authorKeyword != null and authorKeyword != ''">
-            AND (
-                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
-                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
-            )
-        </if>
-        <if test="dateFrom != null and dateFrom != ''">
-            AND a.published_at &gt;= #{dateFrom}
-        </if>
-        <if test="dateTo != null and dateTo != ''">
-            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
-        </if>
-        <if test="sort == 'featured'">
-            AND a.featured = 1
-        </if>
+        <include refid="Published_Enhanced_Common_Filter"/>
         <choose>
             <when test="keyword != null and keyword != '' and sort == 'latest'">
                 ORDER BY <include refid="Search_Alias_Hit_Priority"/> DESC,
@@ -985,42 +911,7 @@
         <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
             #{authorId}
         </foreach>
-        AND a.status = 'PUBLISHED'
-        AND a.deleted_at IS NULL
-        AND u.deleted_at IS NULL
-        <if test="keyword != null and keyword != ''">
-            AND (
-                a.title LIKE CONCAT('%', #{keyword}, '%')
-                OR a.summary LIKE CONCAT('%', #{keyword}, '%')
-                OR a.content LIKE CONCAT('%', #{keyword}, '%')
-            )
-        </if>
-        <if test="category != null and category != ''">
-            AND a.category = #{category}
-        </if>
-        <if test="tag != null and tag != ''">
-            AND a.id IN (
-                SELECT article_id
-                FROM blog_article_tag
-                WHERE tag_name = #{tag}
-                AND deleted_at IS NULL
-            )
-        </if>
-        <if test="authorKeyword != null and authorKeyword != ''">
-            AND (
-                u.username LIKE CONCAT('%', #{authorKeyword}, '%')
-                OR u.nickname LIKE CONCAT('%', #{authorKeyword}, '%')
-            )
-        </if>
-        <if test="dateFrom != null and dateFrom != ''">
-            AND a.published_at &gt;= #{dateFrom}
-        </if>
-        <if test="dateTo != null and dateTo != ''">
-            AND a.published_at &lt; DATE_ADD(#{dateTo}, INTERVAL 1 DAY)
-        </if>
-        <if test="sort == 'featured'">
-            AND a.featured = 1
-        </if>
+        <include refid="Published_Enhanced_Common_Filter"/>
     </select>
 
     <select id="countVisible" resultType="long">

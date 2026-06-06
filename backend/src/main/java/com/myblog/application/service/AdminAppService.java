@@ -4,15 +4,15 @@ import com.myblog.application.event.ArticlePublishedEvent;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Comment;
 import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.readmodel.AdminCategoryStat;
+import com.myblog.domain.model.readmodel.AdminTrendPoint;
+import com.myblog.domain.model.readmodel.AuthorArticleStats;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.CommentId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.CommentRepository;
 import com.myblog.domain.repository.UserRepository;
-import com.myblog.infrastructure.repository.persistence.entity.AdminCategoryStatDO;
-import com.myblog.infrastructure.repository.persistence.entity.AdminTrendPointDO;
-import com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.enums.UserStatus;
@@ -102,9 +102,9 @@ public class AdminAppService {
         List<Map<String, Object>> sevenDayTrend = buildSevenDayTrend(today, sevenDaysAgo);
 
         // 分类分布（已发布文章，Top 10）
-        List<AdminCategoryStatDO> categoryStatDOs = articleRepository.findCategoryStats(10);
+        List<AdminCategoryStat> categoryStatDOs = articleRepository.findCategoryStats(10);
         List<Map<String, Object>> categoryStats = new ArrayList<Map<String, Object>>(categoryStatDOs.size());
-        for (AdminCategoryStatDO stat : categoryStatDOs) {
+        for (AdminCategoryStat stat : categoryStatDOs) {
             Map<String, Object> entry = new LinkedHashMap<String, Object>();
             entry.put("category", stat.getCategory());
             entry.put("articleCount", stat.getArticleCount());
@@ -112,9 +112,9 @@ public class AdminAppService {
         }
 
         // Top 5 活跃作者（按已发布文章的浏览量排序）
-        List<AuthorArticleStatsDO> authorStatsDOs = articleRepository.findAuthorArticleStats(5);
+        List<AuthorArticleStats> authorStatsDOs = articleRepository.findAuthorArticleStats(5);
         List<Long> topAuthorIds = new ArrayList<Long>(authorStatsDOs.size());
-        for (AuthorArticleStatsDO stat : authorStatsDOs) {
+        for (AuthorArticleStats stat : authorStatsDOs) {
             topAuthorIds.add(stat.getAuthorId());
         }
         List<User> topAuthors = topAuthorIds.isEmpty()
@@ -125,7 +125,7 @@ public class AdminAppService {
             authorMap.put(u.getId().getValue(), u);
         }
         List<Map<String, Object>> topAuthorList = new ArrayList<Map<String, Object>>(authorStatsDOs.size());
-        for (AuthorArticleStatsDO stat : authorStatsDOs) {
+        for (AuthorArticleStats stat : authorStatsDOs) {
             User author = authorMap.get(stat.getAuthorId());
             Map<String, Object> entry = new LinkedHashMap<String, Object>();
             entry.put("authorId", stat.getAuthorId());
@@ -167,9 +167,9 @@ public class AdminAppService {
      */
     private List<Map<String, Object>> buildSevenDayTrend(LocalDate today, LocalDate sevenDaysAgo) {
         // 获取文章每日趋势（使用 DB 聚合）
-        List<AdminTrendPointDO> articleTrend = articleRepository.findDailyArticleTrend(sevenDaysAgo, today);
+        List<AdminTrendPoint> articleTrend = articleRepository.findDailyArticleTrend(sevenDaysAgo, today);
         Map<String, Long> articleByDate = new HashMap<String, Long>();
-        for (AdminTrendPointDO p : articleTrend) {
+        for (AdminTrendPoint p : articleTrend) {
             articleByDate.put(p.getDate(), p.getNewArticles());
         }
         // 用户和评论按日循环查询

@@ -12,6 +12,7 @@ import com.myblog.application.query.ArticlePageQuery;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.Column;
 import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.readmodel.AuthorArticleStats;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleRepository;
@@ -89,11 +90,11 @@ public class RecommendationAppService {
             authorIds.add(user.getId().getValue());
         }
 
-        java.util.Map<Long, com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> statsMap =
+        java.util.Map<Long, AuthorArticleStats> statsMap =
             new java.util.HashMap<>();
-        List<com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO> statsList =
+        List<AuthorArticleStats> statsList =
             articleRepository.findAuthorArticleStatsByAuthorIds(authorIds);
-        for (com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO stats : statsList) {
+        for (AuthorArticleStats stats : statsList) {
             statsMap.put(stats.getAuthorId(), stats);
         }
 
@@ -103,7 +104,7 @@ public class RecommendationAppService {
             if (currentUserId != null) {
                 dto.setFollowed(userFollowRepository.exists(new UserId(currentUserId), user.getId()));
             }
-            com.myblog.infrastructure.repository.persistence.entity.AuthorArticleStatsDO stats = statsMap.get(user.getId().getValue());
+            AuthorArticleStats stats = statsMap.get(user.getId().getValue());
             if (stats != null) {
                 dto.setArticleCount(stats.getArticleCount() != null ? stats.getArticleCount() : 0);
                 dto.setTotalLikeCount(stats.getTotalLikes() != null ? stats.getTotalLikes() : 0L);

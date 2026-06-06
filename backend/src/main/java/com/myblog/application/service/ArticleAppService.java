@@ -16,6 +16,7 @@ import com.myblog.application.query.RecommendArticleCacheKey;
 import com.myblog.growth.application.service.UserPrivilegeAppService;
 import com.myblog.domain.model.aggregate.Article;
 import com.myblog.domain.model.aggregate.User;
+import com.myblog.domain.model.readmodel.ArticleVersionSnapshot;
 import com.myblog.domain.model.valueobject.ArticleId;
 import com.myblog.domain.model.valueobject.UserId;
 import com.myblog.domain.repository.ArticleFavoriteRepository;
@@ -24,7 +25,6 @@ import com.myblog.domain.repository.ArticleRepository;
 import com.myblog.domain.repository.ArticleVersionRepository;
 import com.myblog.domain.repository.UserFollowRepository;
 import com.myblog.domain.repository.UserRepository;
-import com.myblog.infrastructure.repository.persistence.entity.ArticleVersionDO;
 import com.myblog.shared.enums.ArticleStatus;
 import com.myblog.shared.enums.UserRole;
 import com.myblog.shared.exception.ApplicationException;
@@ -198,7 +198,8 @@ public class ArticleAppService {
                     query.getDateFrom(),
                     query.getDateTo(),
                     page,
-                    pageSize
+                    pageSize,
+                    useFulltext
                 );
                 total = articleRepository.countPublishedEnhancedByAuthorIds(
                     followingIds,
@@ -208,7 +209,8 @@ public class ArticleAppService {
                     query.getSort(),
                     query.getAuthorKeyword(),
                     query.getDateFrom(),
-                    query.getDateTo()
+                    query.getDateTo(),
+                    useFulltext
                 );
             } else {
                 articles = articleRepository.findPublishedByAuthorIds(
@@ -1369,7 +1371,7 @@ public class ArticleAppService {
         Article article = articleRepository.findById(new ArticleId(articleId))
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章不存在"));
         ensureCanManage(article, userId, role);
-        ArticleVersionDO version = articleVersionRepository
+        ArticleVersionSnapshot version = articleVersionRepository
             .findByArticleIdAndVersionNo(articleId, versionNo)
             .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "版本不存在"));
         SanitizedArticleContent sanitizedContent = sanitizeArticleContent(
@@ -1406,7 +1408,7 @@ public class ArticleAppService {
      */
     private void saveVersionSnapshot(Article article, Long savedBy) {
         int nextVersionNo = articleVersionRepository.findMaxVersionNo(article.getId().getValue()) + 1;
-        ArticleVersionDO version = new ArticleVersionDO();
+        ArticleVersionSnapshot version = new ArticleVersionSnapshot();
         version.setArticleId(article.getId().getValue());
         version.setVersionNo(nextVersionNo);
         version.setTitle(article.getTitle());
@@ -1422,12 +1424,12 @@ public class ArticleAppService {
     }
 
     /**
-     * 将文章版本 DO 转换为 DTO（不含正文）。
+     * 将文章版本快照转换为 DTO（不含正文）。
      *
-     * @param v 文章版本 DO
+     * @param v 文章版本快照
      * @return 文章版本 DTO
      */
-    private ArticleVersionDTO toVersionDTO(ArticleVersionDO v) {
+    private ArticleVersionDTO toVersionDTO(ArticleVersionSnapshot v) {
         ArticleVersionDTO dto = new ArticleVersionDTO();
         dto.setVersionNo(v.getVersionNo());
         dto.setTitle(v.getTitle());

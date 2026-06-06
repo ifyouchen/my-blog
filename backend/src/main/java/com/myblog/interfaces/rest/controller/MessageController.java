@@ -14,6 +14,7 @@ import com.myblog.shared.result.PageResult;
 import com.myblog.shared.result.Result;
 import com.myblog.interfaces.rest.dto.request.CreateConversationRequest;
 import com.myblog.interfaces.rest.dto.request.SendMessageRequest;
+import com.myblog.interfaces.rest.sse.MessageSseEmitterRegistry;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -26,13 +27,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import javax.annotation.PreDestroy;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -49,8 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequestMapping("/api/messages")
 public class MessageController {
 
-    private static final ConcurrentHashMap<Long, CopyOnWriteArrayList<SseEmitter>> MESSAGE_EMITTERS =
-        new ConcurrentHashMap<>();
     private static final String MESSAGE_TOPIC = "message:push";
     private static final long KEEPALIVE_INTERVAL_SECONDS = 30;
     private static final String INSTANCE_ID = UUID.randomUUID().toString();
@@ -58,16 +54,19 @@ public class MessageController {
     private final MessageAppService messageAppService;
     private final UserPresenceAppService userPresenceAppService;
     private final ConversationRepository conversationRepository;
+    private final MessageSseEmitterRegistry sseEmitterRegistry;
     private final RTopic messageTopic;
     private final ScheduledExecutorService keepaliveExecutor;
 
     public MessageController(MessageAppService messageAppService,
                               UserPresenceAppService userPresenceAppService,
                               ConversationRepository conversationRepository,
+                              MessageSseEmitterRegistry sseEmitterRegistry,
                               RedissonClient redissonClient) {
         this.messageAppService = messageAppService;
         this.userPresenceAppService = userPresenceAppService;
         this.conversationRepository = conversationRepository;
+        this.sseEmitterRegistry = sseEmitterRegistry;
         this.messageTopic = redissonClient.getTopic(MESSAGE_TOPIC, StringCodec.INSTANCE);
         this.keepaliveExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "sse-keepalive");
@@ -142,7 +141,7 @@ public class MessageController {
         // No timeout — EventSource auto-reconnects on network errors; indefinite keeps the connection alive
         SseEmitter emitter = new SseEmitter(0L);
 
-        MESSAGE_EMITTERS.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+        sseEmitterRegistry.add(userId, emitter);
         boolean wasOnline = userPresenceAppService.markOnline(userId);
         if (!wasOnline) {
             broadcastPresenceToPeers(userId, true);
@@ -157,13 +156,8 @@ public class MessageController {
             if (keepaliveTask[0] != null) {
                 keepaliveTask[0].cancel(true);
             }
-            CopyOnWriteArrayList<SseEmitter> list = MESSAGE_EMITTERS.get(userId);
-            if (list != null) {
-                list.remove(emitter);
-                if (list.isEmpty()) {
-                    MESSAGE_EMITTERS.remove(userId, list);
-                    scheduleOfflineCheck(userId);
-                }
+            if (sseEmitterRegistry.remove(userId, emitter)) {
+                scheduleOfflineCheck(userId);
             }
         };
 
@@ -195,15 +189,10 @@ public class MessageController {
     private void scheduleOfflineCheck(Long userId) {
         long delay = userPresenceAppService.getOnlineTtl().getSeconds() + 2;
         keepaliveExecutor.schedule(() -> {
-            if (!hasLocalEmitter(userId) && !userPresenceAppService.isOnline(userId)) {
+            if (!sseEmitterRegistry.hasEmitter(userId) && !userPresenceAppService.isOnline(userId)) {
                 userPresenceAppService.publishOfflineIfExpired(userId);
             }
         }, delay, TimeUnit.SECONDS);
-    }
-
-    private static boolean hasLocalEmitter(Long userId) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
-        return emitters != null && !emitters.isEmpty();
     }
 
     private static void configureSseResponse(HttpServletResponse response) {
@@ -212,11 +201,7 @@ public class MessageController {
         response.setHeader(HttpHeaders.PRAGMA, "no-cache");
     }
 
-    public static void pushNewMessage(Long userId, Map<String, Object> messageData) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
-        if (emitters == null || emitters.isEmpty()) {
-            return;
-        }
+    private void pushNewMessage(Long userId, Map<String, Object> messageData) {
         StringBuilder json = new StringBuilder("{");
         for (Map.Entry<String, Object> entry : messageData.entrySet()) {
             json.append("\"").append(entry.getKey()).append("\":");
@@ -234,60 +219,24 @@ public class MessageController {
         json.append("}");
 
         String data = json.toString();
-        List<SseEmitter> toRemove = new ArrayList<>();
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("new-message").data(data));
-            } catch (IOException e) {
-                toRemove.add(emitter);
-            }
-        }
-        emitters.removeAll(toRemove);
+        sseEmitterRegistry.emit(userId, "new-message", data);
     }
 
-    public static void pushUnreadCount(Long userId, long unreadCount) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
-        if (emitters == null || emitters.isEmpty()) {
-            return;
-        }
+    private void pushUnreadCount(Long userId, long unreadCount) {
         String data = "{\"count\":" + unreadCount + "}";
-        List<SseEmitter> toRemove = new ArrayList<>();
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("unread").data(data));
-            } catch (IOException e) {
-                toRemove.add(emitter);
-            }
-        }
-        emitters.removeAll(toRemove);
+        sseEmitterRegistry.emit(userId, "unread", data);
     }
 
-    private static void doPushUnreadCount(Long userId, long unreadCount) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
-        if (emitters == null || emitters.isEmpty()) {
-            return;
-        }
+    private void doPushUnreadCount(Long userId, long unreadCount) {
         String data = "{\"count\":" + unreadCount + "}";
-        List<SseEmitter> toRemove = new ArrayList<>();
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("unread").data(data));
-            } catch (IOException e) {
-                toRemove.add(emitter);
-            }
-        }
-        emitters.removeAll(toRemove);
+        sseEmitterRegistry.emit(userId, "unread", data);
     }
 
-    private static void pushPresence(Long receiverId, Map<String, Object> presenceData) {
+    private void pushPresence(Long receiverId, Map<String, Object> presenceData) {
         doPushPresence(receiverId, presenceData);
     }
 
-    private static void doPushPresence(Long receiverId, Map<String, Object> presenceData) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(receiverId);
-        if (emitters == null || emitters.isEmpty()) {
-            return;
-        }
+    private void doPushPresence(Long receiverId, Map<String, Object> presenceData) {
         StringBuilder json = new StringBuilder("{");
         for (Map.Entry<String, Object> entry : presenceData.entrySet()) {
             json.append("\"").append(entry.getKey()).append("\":");
@@ -305,22 +254,10 @@ public class MessageController {
         json.append("}");
 
         String data = json.toString();
-        List<SseEmitter> toRemove = new ArrayList<>();
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("presence").data(data));
-            } catch (IOException e) {
-                toRemove.add(emitter);
-            }
-        }
-        emitters.removeAll(toRemove);
+        sseEmitterRegistry.emit(receiverId, "presence", data);
     }
 
-    private static void pushMessageRecalled(Long userId, Map<String, Object> recallData) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
-        if (emitters == null || emitters.isEmpty()) {
-            return;
-        }
+    private void pushMessageRecalled(Long userId, Map<String, Object> recallData) {
         StringBuilder json = new StringBuilder("{");
         for (Map.Entry<String, Object> entry : recallData.entrySet()) {
             json.append("\"").append(entry.getKey()).append("\":");
@@ -338,22 +275,10 @@ public class MessageController {
         json.append("}");
 
         String data = json.toString();
-        List<SseEmitter> toRemove = new ArrayList<>();
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("message-recalled").data(data));
-            } catch (IOException e) {
-                toRemove.add(emitter);
-            }
-        }
-        emitters.removeAll(toRemove);
+        sseEmitterRegistry.emit(userId, "message-recalled", data);
     }
 
-    private static void doPushNewMessage(Long userId, Map<String, Object> messageData) {
-        CopyOnWriteArrayList<SseEmitter> emitters = MESSAGE_EMITTERS.get(userId);
-        if (emitters == null || emitters.isEmpty()) {
-            return;
-        }
+    private void doPushNewMessage(Long userId, Map<String, Object> messageData) {
         StringBuilder json = new StringBuilder("{");
         for (Map.Entry<String, Object> entry : messageData.entrySet()) {
             json.append("\"").append(entry.getKey()).append("\":");
@@ -371,15 +296,7 @@ public class MessageController {
         json.append("}");
 
         String data = json.toString();
-        List<SseEmitter> toRemove = new ArrayList<>();
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("new-message").data(data));
-            } catch (IOException e) {
-                toRemove.add(emitter);
-            }
-        }
-        emitters.removeAll(toRemove);
+        sseEmitterRegistry.emit(userId, "new-message", data);
     }
 
     @PostMapping("/conversations")
