@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HOST_NAME="43.155.132.161"
-USER_NAME="root"
+HOST_NAME=""
+USER_NAME=""
 PORT="22"
 IDENTITY_FILE=""
 SKIP_TESTS="false"
