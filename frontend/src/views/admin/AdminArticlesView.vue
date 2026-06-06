@@ -17,6 +17,7 @@ import {getArticleApi} from '@/api/articles';
 import {
   createPagedState,
   formatAdminDateTime,
+  formatAdminStatusLabel,
   readPositiveInt,
   readQueryText,
   resolveAdminOverflowPage,
@@ -421,7 +422,7 @@ watch(
                                 <td>{{ article.category || '-' }}</td>
                                 <td>
                                     <span class="status-pill" :class="{ warning: article.status === 'OFFLINE' }">
-                                        {{ article.status }}
+                                        {{ formatAdminStatusLabel(article.status) }}
                                     </span>
                                     <span v-if="article.warnFlag" class="status-pill review-pending" title="含敏感词，待审核">待审核</span>
                                 </td>
@@ -545,7 +546,9 @@ watch(
                             <span>{{ previewArticle.author?.name }}</span>
                             <span>{{ previewArticle.category }}</span>
                             <span>{{ previewArticle.publishedText }}</span>
-                            <span class="status-pill" :class="{ warning: previewArticle.status === 'OFFLINE' }">{{ previewArticle.status }}</span>
+                            <span class="status-pill" :class="{ warning: previewArticle.status === 'OFFLINE' }">
+                                {{ formatAdminStatusLabel(previewArticle.status) }}
+                            </span>
                         </div>
                         <p v-if="previewArticle.summary" class="preview-article-summary">{{ previewArticle.summary }}</p>
                         <div class="preview-article-tags">

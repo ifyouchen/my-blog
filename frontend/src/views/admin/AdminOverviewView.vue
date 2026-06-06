@@ -2,7 +2,11 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getAdminLogsApi, getAdminStatsApi } from '@/api/admin';
-import { formatAdminDateTime, useAdminRefresh } from '@/views/admin/adminShared';
+import {
+    formatAdminDateTime,
+    formatAdminOperationLabel,
+    useAdminRefresh
+} from '@/views/admin/adminShared';
 
 const loading = ref(false);
 const error = ref('');
@@ -294,7 +298,7 @@ onMounted(loadOverview);
             <div v-if="recentLogs.length" class="admin-log-list">
                 <article v-for="log in recentLogs" :key="log.id" class="admin-log-item">
                     <div>
-                        <strong>{{ log.operation }}</strong>
+                        <strong>{{ formatAdminOperationLabel(log.operation) }}</strong>
                         <p>{{ log.detail }}</p>
                     </div>
                     <span>{{ formatAdminDateTime(log.createdAt) }}</span>

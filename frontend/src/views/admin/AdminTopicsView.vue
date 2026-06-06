@@ -69,6 +69,7 @@ const state = reactive({
     searchResults: [],
     searching: false,
     articleActionLoadingId: null,
+    draggingArticleId: null,
     articleSortDrafts: {},
     searchSortDrafts: {}
 });
@@ -231,9 +232,9 @@ const stopManageArticles = async () => {
     state.topicArticles = [];
     state.searchKeyword = '';
     state.searchResults = [];
+    state.draggingArticleId = null;
     state.articleSortDrafts = {};
     state.searchSortDrafts = {};
-    await loadTopics();
 };
 
 const loadTopicArticles = async () => {
@@ -266,6 +267,78 @@ const syncArticleSortDrafts = () => {
         drafts[article.id] = Number(article.relationSortOrder ?? (index + 1) * 10);
         return drafts;
     }, {});
+};
+
+const updateManagedTopicArticleCount = () => {
+    if (!state.managingTopic) {
+        return;
+    }
+    const articleCount = state.topicArticles.length;
+    state.managingTopic.articleCount = articleCount;
+    const topic = state.items.find((item) => item.id === state.managingTopic.id);
+    if (topic) {
+        topic.articleCount = articleCount;
+    }
+};
+
+const applyArticleSortLocally = (articleId, sortOrder) => {
+    const article = state.topicArticles.find((item) => item.id === articleId);
+    if (article) {
+        article.relationSortOrder = sortOrder;
+    }
+    state.articleSortDrafts = {
+        ...state.articleSortDrafts,
+        [articleId]: sortOrder
+    };
+};
+
+const reorderTopicArticles = (fromIndex, toIndex) => {
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return false;
+    }
+    const nextArticles = [...state.topicArticles];
+    const [moved] = nextArticles.splice(fromIndex, 1);
+    nextArticles.splice(toIndex, 0, moved);
+    state.topicArticles = nextArticles.map((article, index) => ({
+        ...article,
+        relationSortOrder: (index + 1) * 10
+    }));
+    syncArticleSortDrafts();
+    return true;
+};
+
+const startArticleDrag = (article, event) => {
+    state.draggingArticleId = article.id;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(article.id));
+};
+
+const dropArticle = async (targetArticle) => {
+    const sourceArticleId = state.draggingArticleId;
+    state.draggingArticleId = null;
+    if (!state.managingTopic || !sourceArticleId || sourceArticleId === targetArticle.id || state.articleActionLoadingId) {
+        return;
+    }
+    const fromIndex = state.topicArticles.findIndex((article) => article.id === sourceArticleId);
+    const toIndex = state.topicArticles.findIndex((article) => article.id === targetArticle.id);
+    if (!reorderTopicArticles(fromIndex, toIndex)) {
+        return;
+    }
+    state.articleActionLoadingId = sourceArticleId;
+    try {
+        await Promise.all(state.topicArticles.map((article) => (
+            addAdminTopicArticleApi(state.managingTopic.id, {
+                articleId: article.id,
+                sortOrder: Number(state.articleSortDrafts[article.id] || 0)
+            })
+        )));
+        toast.success('拖拽排序已保存');
+    } catch (error) {
+        toast.error(error.message || '拖拽排序保存失败');
+        await loadTopicArticles();
+    } finally {
+        state.articleActionLoadingId = null;
+    }
 };
 
 const handleSearchArticles = async () => {
@@ -301,6 +374,7 @@ const handleAddArticle = async (articleId) => {
             sortOrder: Number(state.searchSortDrafts[articleId] || 0)
         });
         await loadTopicArticles();
+        updateManagedTopicArticleCount();
         state.searchResults = state.searchResults.filter((a) => a.id !== articleId);
         delete state.searchSortDrafts[articleId];
     } catch (error) {
@@ -318,7 +392,7 @@ const handleSaveArticleSort = async (articleId) => {
             articleId,
             sortOrder: Number(state.articleSortDrafts[articleId] || 0)
         });
-        await loadTopicArticles();
+        applyArticleSortLocally(articleId, Number(state.articleSortDrafts[articleId] || 0));
         toast.success('文章顺序已更新');
     } catch (error) {
         toast.error(error.message || '保存排序失败');
@@ -334,6 +408,7 @@ const handleRemoveArticle = async (articleId) => {
         await removeAdminTopicArticleApi(state.managingTopic.id, articleId);
         state.topicArticles = state.topicArticles.filter((a) => a.id !== articleId);
         syncArticleSortDrafts();
+        updateManagedTopicArticleCount();
     } catch (error) {
         toast.error(error.message || '移除失败');
     } finally {
@@ -632,7 +707,18 @@ watch(
                         <p class="modal-section-title">已有文章（{{ state.topicArticles.length }} 篇）</p>
                         <div v-if="state.topicArticlesLoading" class="modal-hint">加载中...</div>
                         <div v-else-if="state.topicArticles.length" class="modal-article-list" style="flex:1; overflow-y:auto;">
-                            <div v-for="article in state.topicArticles" :key="'c-' + article.id" class="modal-article-row">
+                            <div
+                                v-for="article in state.topicArticles"
+                                :key="'c-' + article.id"
+                                class="modal-article-row"
+                                :class="{ dragging: state.draggingArticleId === article.id }"
+                                draggable="true"
+                                @dragstart="startArticleDrag(article, $event)"
+                                @dragover.prevent
+                                @drop.prevent="dropArticle(article)"
+                                @dragend="state.draggingArticleId = null"
+                            >
+                                <button type="button" class="drag-handle" aria-label="拖拽调整文章顺序">⋮⋮</button>
                                 <div class="modal-article-info">
                                     <span class="modal-article-id">#{{ article.id }}</span>
                                     <span class="modal-article-title">{{ article.title }}</span>

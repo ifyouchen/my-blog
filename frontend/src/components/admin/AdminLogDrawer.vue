@@ -1,5 +1,9 @@
 <script setup>
-import { formatAdminDateTime } from '@/views/admin/adminShared';
+import {
+    formatAdminDateTime,
+    formatAdminOperationLabel,
+    formatAdminStatusLabel
+} from '@/views/admin/adminShared';
 
 const props = defineProps({
     open: {
@@ -27,7 +31,7 @@ const hasLog = () => Boolean(props.log);
             <div class="admin-drawer-head">
                 <div>
                     <p class="eyebrow">日志详情</p>
-                    <h2>{{ hasLog() ? log.operation : '操作日志' }}</h2>
+                    <h2>{{ hasLog() ? formatAdminOperationLabel(log.operation) : '操作日志' }}</h2>
                 </div>
                 <button type="button" @click="closeDrawer">关闭</button>
             </div>
@@ -48,7 +52,7 @@ const hasLog = () => Boolean(props.log);
                     </div>
                     <div>
                         <dt>结果</dt>
-                        <dd>{{ log.resultStatus || '-' }}</dd>
+                        <dd>{{ formatAdminStatusLabel(log.resultStatus) }}</dd>
                     </div>
                     <div>
                         <dt>请求</dt>

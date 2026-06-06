@@ -71,6 +71,38 @@
     border: 1px solid var(--line);
 }
 
+.modal-article-row.dragging {
+    opacity: 0.55;
+    background: #eef4ff;
+}
+
+.modal-article-row .drag-handle {
+    width: 28px;
+    min-height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--muted);
+    cursor: grab;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.modal-article-row .drag-handle:hover:not(:disabled) {
+    background: #fff;
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.modal-article-row .drag-handle:active {
+    cursor: grabbing;
+}
+
 .modal-article-info {
     flex: 1;
     display: flex;

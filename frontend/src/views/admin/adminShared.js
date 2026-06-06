@@ -95,6 +95,84 @@ export const formatAdminDateTime = (value, fallback = '-') => {
     return text.length > 19 ? text.slice(0, 19) : text;
 };
 
+const STATUS_LABELS = {
+    PUBLISHED: '已发布',
+    DRAFT: '草稿',
+    SCHEDULED: '定时发布',
+    REVIEW_PENDING: '待审核',
+    OFFLINE: '已下架',
+    DELETED: '已删除',
+    NORMAL: '正常',
+    DISABLED: '禁用',
+    PENDING: '待处理',
+    SUCCESS: '成功',
+    FAILED: '失败',
+    REJECTED: '已驳回'
+};
+
+const OPERATION_LABELS = {
+    UPDATE_USER_STATUS: '更新用户状态',
+    UPDATE_USER_ROLE: '更新用户角色',
+    DISABLE_USER: '禁用用户',
+    RECOMMEND_USER: '推荐用户',
+    UNRECOMMEND_USER: '取消推荐用户',
+    UPDATE_ARTICLE_STATUS: '更新文章状态',
+    BATCH_UPDATE_ARTICLE_STATUS: '批量更新文章状态',
+    DELETE_ARTICLE: '删除文章',
+    BATCH_DELETE_ARTICLE: '批量删除文章',
+    FEATURE_ARTICLE: '设置精选文章',
+    UNFEATURE_ARTICLE: '取消精选文章',
+    DELETE_COMMENT: '删除评论',
+    APPROVE_COMMENT: '通过评论',
+    REJECT_COMMENT: '驳回评论',
+    CREATE_CATEGORY: '创建分类',
+    UPDATE_CATEGORY: '更新分类',
+    DELETE_CATEGORY: '删除分类',
+    CREATE_CATEGORY_GROUP: '创建分类组',
+    UPDATE_CATEGORY_GROUP: '更新分类组',
+    DELETE_CATEGORY_GROUP: '删除分类组',
+    CREATE_TAG: '创建标签',
+    UPDATE_TAG: '更新标签',
+    DELETE_TAG: '删除标签',
+    CREATE_COLUMN: '创建专栏',
+    UPDATE_COLUMN: '更新专栏',
+    DELETE_COLUMN: '删除专栏',
+    ADD_COLUMN_ARTICLE: '添加专栏文章',
+    REMOVE_COLUMN_ARTICLE: '移除专栏文章',
+    CREATE_TOPIC: '创建专题',
+    UPDATE_TOPIC: '更新专题',
+    DELETE_TOPIC: '删除专题',
+    ADD_TOPIC_ARTICLE: '添加专题文章',
+    REMOVE_TOPIC_ARTICLE: '移除专题文章',
+    BIND_TOPIC_ARTICLE: '添加专题文章',
+    UNBIND_TOPIC_ARTICLE: '移除专题文章',
+    CREATE_AD: '创建广告',
+    UPDATE_AD: '更新广告',
+    DELETE_AD: '删除广告',
+    CREATE_ANNOUNCEMENT: '创建公告',
+    UPDATE_ANNOUNCEMENT: '更新公告',
+    DELETE_ANNOUNCEMENT: '删除公告',
+    PUBLISH_ANNOUNCEMENT: '发布公告',
+    UNPUBLISH_ANNOUNCEMENT: '撤回公告',
+    CREATE_SENSITIVE_WORD: '创建敏感词',
+    UPDATE_SENSITIVE_WORD: '更新敏感词',
+    DELETE_SENSITIVE_WORD: '删除敏感词'
+};
+
+export const formatAdminStatusLabel = (status, fallback = '-') => {
+    if (!status) {
+        return fallback;
+    }
+    return STATUS_LABELS[status] || status;
+};
+
+export const formatAdminOperationLabel = (operation, fallback = '-') => {
+    if (!operation) {
+        return fallback;
+    }
+    return OPERATION_LABELS[operation] || operation;
+};
+
 export const syncAdminQuery = async (router, route, patch = {}) => {
     const nextQuery = {
         ...route.query,

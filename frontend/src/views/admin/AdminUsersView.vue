@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import {
@@ -315,7 +315,9 @@ watch(
                             <tr v-for="user in state.items" :key="user.id">
                                 <td>#{{ user.id }}</td>
                                 <td>
-                                    <strong>{{ user.nickname || user.username }}</strong>
+                                    <RouterLink class="admin-user-link" :to="`/users/${user.id}`">
+                                        {{ user.nickname || user.username }}
+                                    </RouterLink>
                                     <p class="admin-subtext">@{{ user.username }}</p>
                                 </td>
                                 <td>{{ user.email }}</td>

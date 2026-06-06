@@ -194,6 +194,31 @@
     background: var(--surface-soft);
 }
 
+.drawer-article-item.dragging {
+    opacity: 0.55;
+    background: #eef4ff;
+}
+
+.drag-handle {
+    width: 28px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: grab;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
 .drawer-article-info {
     flex: 1;
     min-width: 0;

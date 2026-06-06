@@ -51,6 +51,7 @@ const drawerLoading = ref(false);
 const drawerError = ref('');
 const drawerArticleActionId = ref(null);
 const drawerSortDrafts = ref({});
+const drawerDraggingArticleId = ref(null);
 
 // 弹窗：从已有文章里选择加入专栏
 const showPickArticle = ref(false);
@@ -92,6 +93,35 @@ const syncDrawerSortDrafts = () => {
         drafts[article.id] = Number(article.relationSortOrder ?? (index + 1) * 10);
         return drafts;
     }, {});
+};
+
+const replaceDrawerSortDraft = (articleId, sortOrder) => {
+    drawerSortDrafts.value = {
+        ...drawerSortDrafts.value,
+        [articleId]: sortOrder
+    };
+};
+
+const applyDrawerArticleSortLocally = (articleId, sortOrder) => {
+    drawerArticles.value = drawerArticles.value.map((item) => (
+        item.id === articleId ? { ...item, relationSortOrder: sortOrder } : item
+    ));
+    replaceDrawerSortDraft(articleId, sortOrder);
+};
+
+const reorderDrawerArticles = (fromIndex, toIndex) => {
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return false;
+    }
+    const nextArticles = [...drawerArticles.value];
+    const [moved] = nextArticles.splice(fromIndex, 1);
+    nextArticles.splice(toIndex, 0, moved);
+    drawerArticles.value = nextArticles.map((article, index) => ({
+        ...article,
+        relationSortOrder: (index + 1) * 10
+    }));
+    syncDrawerSortDrafts();
+    return true;
 };
 
 const openCreateForm = () => {
@@ -224,6 +254,7 @@ const closeDrawer = () => {
     showPickArticle.value = false;
     pickArticleFeedback.value = '';
     pickSortDrafts.value = {};
+    drawerDraggingArticleId.value = null;
 };
 
 const removeArticleFromColumn = async (article) => {
@@ -254,12 +285,42 @@ const saveArticleSort = async (article) => {
     drawerError.value = '';
     try {
         await addMyColumnArticleApi(drawerColumnId.value, article.id, sortOrder);
-        const result = await getColumnArticlesApi(drawerColumnId.value, { page: 1, pageSize: 100 });
-        drawerArticles.value = result.items || [];
-        syncDrawerSortDrafts();
+        applyDrawerArticleSortLocally(article.id, sortOrder);
         showFeedback('文章顺序已更新');
     } catch (e) {
         drawerError.value = e.message || '保存排序失败';
+    } finally {
+        drawerArticleActionId.value = null;
+    }
+};
+
+const startDrawerArticleDrag = (article, event) => {
+    drawerDraggingArticleId.value = article.id;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(article.id));
+};
+
+const dropDrawerArticle = async (targetArticle) => {
+    const sourceArticleId = drawerDraggingArticleId.value;
+    drawerDraggingArticleId.value = null;
+    if (!sourceArticleId || sourceArticleId === targetArticle.id || drawerArticleActionId.value) {
+        return;
+    }
+    const fromIndex = drawerArticles.value.findIndex((article) => article.id === sourceArticleId);
+    const toIndex = drawerArticles.value.findIndex((article) => article.id === targetArticle.id);
+    if (!reorderDrawerArticles(fromIndex, toIndex)) {
+        return;
+    }
+    drawerArticleActionId.value = sourceArticleId;
+    drawerError.value = '';
+    try {
+        await Promise.all(drawerArticles.value.map((article) => (
+            addMyColumnArticleApi(drawerColumnId.value, article.id, Number(drawerSortDrafts.value[article.id] || 0))
+        )));
+        showFeedback('拖拽排序已保存');
+    } catch (e) {
+        drawerError.value = e.message || '拖拽排序保存失败';
+        await openDrawer(drawerColumn.value);
     } finally {
         drawerArticleActionId.value = null;
     }
@@ -541,7 +602,14 @@ onMounted(fetchColumns);
                         v-for="article in drawerArticles"
                         :key="article.id"
                         class="drawer-article-item"
+                        :class="{ dragging: drawerDraggingArticleId === article.id }"
+                        draggable="true"
+                        @dragstart="startDrawerArticleDrag(article, $event)"
+                        @dragover.prevent
+                        @drop.prevent="dropDrawerArticle(article)"
+                        @dragend="drawerDraggingArticleId = null"
                     >
+                        <button type="button" class="drag-handle" aria-label="拖拽调整文章顺序">⋮⋮</button>
                         <div class="drawer-article-info">
                             <span class="drawer-article-title">{{ article.title }}</span>
                             <span class="drawer-article-meta">{{ article.stats?.views || `${article.viewCount} 阅读` }}</span>

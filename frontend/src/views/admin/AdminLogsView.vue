@@ -7,6 +7,8 @@ import { getAdminLogsApi } from '@/api/admin';
 import {
     createPagedState,
     formatAdminDateTime,
+    formatAdminOperationLabel,
+    formatAdminStatusLabel,
     readPositiveInt,
     readQueryText,
     resolveAdminOverflowPage,
@@ -217,11 +219,11 @@ watch(
                             <tr v-for="log in state.items" :key="log.id">
                                 <td>#{{ log.id }}</td>
                                 <td>{{ log.adminUsername || `#${log.adminUserId}` }}</td>
-                                <td>{{ log.operation }}</td>
+                                <td>{{ formatAdminOperationLabel(log.operation) }}</td>
                                 <td>{{ log.requestMethod || '-' }} {{ log.requestUri || '-' }}</td>
                                 <td>
                                     <span class="status-pill" :class="{ danger: log.resultStatus !== 'SUCCESS' }">
-                                        {{ log.resultStatus || '-' }}
+                                        {{ formatAdminStatusLabel(log.resultStatus) }}
                                     </span>
                                 </td>
                                 <td>{{ log.targetType }} #{{ log.targetId ?? '-' }}</td>
