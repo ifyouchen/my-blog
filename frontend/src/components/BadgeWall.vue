@@ -6,8 +6,14 @@ const props = defineProps({
     badges: {
         type: Array,
         default: () => []
+    },
+    saving: {
+        type: Boolean,
+        default: false
     }
 });
+
+const emit = defineEmits(['equip']);
 
 const GROUPS = [
     {key: 'LEVEL', label: '等级徽章'},
@@ -28,6 +34,13 @@ const toggle = (key) => {
         [key]: !expanded.value[key]
     };
 };
+
+const equipBadge = (badge) => {
+    if (!badge?.owned || props.saving || badge.equipped) {
+        return;
+    }
+    emit('equip', badge.code);
+};
 </script>
 
 <template>
@@ -38,15 +51,19 @@ const toggle = (key) => {
                 <strong>{{ group.items.filter((item) => item.owned).length }}/{{ group.items.length }}</strong>
             </button>
             <div v-if="expanded[group.key]" class="badge-grid">
-                <article
+                <button
                     v-for="badge in group.items"
                     :key="badge.code"
+                    type="button"
                     class="badge-card"
                     :class="{ locked: !badge.owned, equipped: badge.equipped }"
+                    :disabled="saving || !badge.owned || badge.equipped"
+                    :title="badge.owned ? (badge.equipped ? '当前佩戴中' : '点击佩戴该徽章') : '尚未获得'"
+                    @click="equipBadge(badge)"
                 >
                     <UserEquippedBadge :badge="badge" />
                     <p>{{ badge.description }}</p>
-                </article>
+                </button>
             </div>
         </section>
     </div>

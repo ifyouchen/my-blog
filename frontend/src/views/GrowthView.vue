@@ -719,7 +719,11 @@ onMounted(async () => {
                     </div>
                     <span>{{ badgeState.badges.filter((badge) => badge.owned).length }} / {{ badgeState.badges.length }}</span>
                 </div>
-                <BadgeWall :badges="badgeState.badges" />
+                <BadgeWall
+                    :badges="badgeState.badges"
+                    :saving="badgeSaving"
+                    @equip="equipBadge"
+                />
             </section>
 
             <!-- 流水记录区 -->
