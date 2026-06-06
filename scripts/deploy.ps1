@@ -1,7 +1,7 @@
 param(
-    [string]$HostName = "43.155.132.161",
-    [string]$User = "root",
-    [string]$Password = "Aa18379574807.",
+    [string]$HostName = "",
+    [string]$User = "",
+    [string]$Password = "",
     [int]$Port = 22,
     [switch]$SkipTests
 )
