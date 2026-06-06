@@ -91,6 +91,32 @@ public interface ConversationMapper {
                           @Param("column") String column);
 
     /**
+     * 更新指定用户在会话上的置顶状态。
+     *
+     * @param id             会话 ID
+     * @param pinnedColumn   置顶字段名
+     * @param pinnedAtColumn 置顶时间字段名
+     * @param pinned         是否置顶
+     * @return 影响行数
+     */
+    int updatePinnedByUser(@Param("id") Long id,
+                           @Param("pinnedColumn") String pinnedColumn,
+                           @Param("pinnedAtColumn") String pinnedAtColumn,
+                           @Param("pinned") boolean pinned);
+
+    /**
+     * 更新指定用户在会话上的免打扰状态。
+     *
+     * @param id          会话 ID
+     * @param mutedColumn 免打扰字段名
+     * @param muted       是否免打扰
+     * @return 影响行数
+     */
+    int updateMutedByUser(@Param("id") Long id,
+                          @Param("mutedColumn") String mutedColumn,
+                          @Param("muted") boolean muted);
+
+    /**
      * 查询下一个会话 ID。
      *
      * @return 下一个会话 ID

@@ -75,9 +75,9 @@
         AND m.sender_deleted_at IS NULL
         AND m.receiver_deleted_at IS NULL
         AND (
-            (c.participant_a_id = #{userId} AND c.a_deleted_at IS NULL)
+            (c.participant_a_id = #{userId} AND c.a_deleted_at IS NULL AND c.a_muted = 0)
             OR
-            (c.participant_b_id = #{userId} AND c.b_deleted_at IS NULL)
+            (c.participant_b_id = #{userId} AND c.b_deleted_at IS NULL AND c.b_muted = 0)
         )
     </select>
 

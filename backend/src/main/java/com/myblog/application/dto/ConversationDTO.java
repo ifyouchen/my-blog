@@ -18,6 +18,10 @@ public class ConversationDTO {
     private String lastMessageAt;
     /** 未读消息数 */
     private long unreadCount;
+    /** 当前用户是否置顶该会话 */
+    private boolean pinned;
+    /** 当前用户是否开启该会话消息免打扰 */
+    private boolean muted;
 
     /**
      * 获取会话 ID。
@@ -107,5 +111,41 @@ public class ConversationDTO {
      */
     public void setUnreadCount(long unreadCount) {
         this.unreadCount = unreadCount;
+    }
+
+    /**
+     * 获取当前用户是否置顶该会话。
+     *
+     * @return 已置顶返回 true，否则返回 false
+     */
+    public boolean isPinned() {
+        return pinned;
+    }
+
+    /**
+     * 设置当前用户是否置顶该会话。
+     *
+     * @param pinned 是否置顶
+     */
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
+    }
+
+    /**
+     * 获取当前用户是否开启该会话消息免打扰。
+     *
+     * @return 已免打扰返回 true，否则返回 false
+     */
+    public boolean isMuted() {
+        return muted;
+    }
+
+    /**
+     * 设置当前用户是否开启该会话消息免打扰。
+     *
+     * @param muted 是否免打扰
+     */
+    public void setMuted(boolean muted) {
+        this.muted = muted;
     }
 }

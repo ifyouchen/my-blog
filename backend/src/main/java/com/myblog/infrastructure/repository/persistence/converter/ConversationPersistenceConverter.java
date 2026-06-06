@@ -35,6 +35,12 @@ public final class ConversationPersistenceConverter {
             conversationDO.getLastMessageAt(),
             conversationDO.getADeletedAt(),
             conversationDO.getBDeletedAt(),
+            conversationDO.getAPinned(),
+            conversationDO.getAPinnedAt(),
+            conversationDO.getAMuted(),
+            conversationDO.getBPinned(),
+            conversationDO.getBPinnedAt(),
+            conversationDO.getBMuted(),
             conversationDO.getCreatedAt(),
             conversationDO.getUpdatedAt(),
             conversationDO.getDeletedAt(),
@@ -57,6 +63,12 @@ public final class ConversationPersistenceConverter {
         conversationDO.setLastMessageAt(conversation.getLastMessageAt());
         conversationDO.setADeletedAt(conversation.getADeletedAt());
         conversationDO.setBDeletedAt(conversation.getBDeletedAt());
+        conversationDO.setAPinned(conversation.getAPinned());
+        conversationDO.setAPinnedAt(conversation.getAPinnedAt());
+        conversationDO.setAMuted(conversation.getAMuted());
+        conversationDO.setBPinned(conversation.getBPinned());
+        conversationDO.setBPinnedAt(conversation.getBPinnedAt());
+        conversationDO.setBMuted(conversation.getBMuted());
         conversationDO.setCreatedAt(conversation.getCreatedAt());
         conversationDO.setUpdatedAt(conversation.getUpdatedAt());
         conversationDO.setDeletedAt(conversation.getDeletedAt());

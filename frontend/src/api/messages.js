@@ -27,6 +27,26 @@ export const deleteConversationApi = async (conversationId) => {
 };
 
 /**
+ * 更新会话置顶状态。
+ */
+export const updateConversationPinApi = async (conversationId, pinned) => {
+    return await request(`/messages/conversations/${conversationId}/pin`, {
+        method: 'PUT',
+        body: { pinned }
+    });
+};
+
+/**
+ * 更新会话消息免打扰状态。
+ */
+export const updateConversationMuteApi = async (conversationId, muted) => {
+    return await request(`/messages/conversations/${conversationId}/mute`, {
+        method: 'PUT',
+        body: { muted }
+    });
+};
+
+/**
  * 获取消息历史。
  */
 export const getMessagesApi = async ({ conversationId, page = 1, pageSize = 50 }) => {

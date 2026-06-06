@@ -83,6 +83,24 @@ public interface ConversationRepository {
     void deleteByUser(Long conversationId, Long userId);
 
     /**
+     * 更新指定用户的会话置顶状态。
+     *
+     * @param conversationId 会话 ID
+     * @param userId         当前用户 ID
+     * @param pinned         是否置顶
+     */
+    void updatePinnedByUser(Long conversationId, Long userId, boolean pinned);
+
+    /**
+     * 更新指定用户的会话免打扰状态。
+     *
+     * @param conversationId 会话 ID
+     * @param userId         当前用户 ID
+     * @param muted          是否免打扰
+     */
+    void updateMutedByUser(Long conversationId, Long userId, boolean muted);
+
+    /**
      * 生成下一个会话 ID。
      *
      * @return 会话 ID

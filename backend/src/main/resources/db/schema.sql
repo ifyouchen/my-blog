@@ -775,14 +775,20 @@ CREATE TABLE `blog_conversation` (
     `last_message_at`  datetime        DEFAULT NULL COMMENT '最后一条消息时间',
     `a_deleted_at`     datetime        DEFAULT NULL COMMENT 'A方删除时间',
     `b_deleted_at`     datetime        DEFAULT NULL COMMENT 'B方删除时间',
+    `a_pinned`         tinyint(1)      NOT NULL DEFAULT 0 COMMENT 'A方是否置顶',
+    `a_pinned_at`      datetime        DEFAULT NULL COMMENT 'A方置顶时间',
+    `a_muted`          tinyint(1)      NOT NULL DEFAULT 0 COMMENT 'A方是否免打扰',
+    `b_pinned`         tinyint(1)      NOT NULL DEFAULT 0 COMMENT 'B方是否置顶',
+    `b_pinned_at`      datetime        DEFAULT NULL COMMENT 'B方置顶时间',
+    `b_muted`          tinyint(1)      NOT NULL DEFAULT 0 COMMENT 'B方是否免打扰',
     `created_at`       datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at`       datetime        DEFAULT NULL,
     `version`          bigint          NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_participants` (`participant_a_id`, `participant_b_id`),
-    KEY `idx_participant_a` (`participant_a_id`, `a_deleted_at`, `last_message_at` DESC),
-    KEY `idx_participant_b` (`participant_b_id`, `b_deleted_at`, `last_message_at` DESC)
+    KEY `idx_participant_a` (`participant_a_id`, `a_deleted_at`, `a_pinned`, `last_message_at` DESC),
+    KEY `idx_participant_b` (`participant_b_id`, `b_deleted_at`, `b_pinned`, `last_message_at` DESC)
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci
   COMMENT = '私信会话表' ROW_FORMAT = Dynamic;

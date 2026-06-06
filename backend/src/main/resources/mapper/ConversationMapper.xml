@@ -11,6 +11,12 @@
         <result column="last_message_at" property="lastMessageAt"/>
         <result column="a_deleted_at" property="aDeletedAt"/>
         <result column="b_deleted_at" property="bDeletedAt"/>
+        <result column="a_pinned" property="APinned"/>
+        <result column="a_pinned_at" property="APinnedAt"/>
+        <result column="a_muted" property="AMuted"/>
+        <result column="b_pinned" property="BPinned"/>
+        <result column="b_pinned_at" property="BPinnedAt"/>
+        <result column="b_muted" property="BMuted"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="deleted_at" property="deletedAt"/>
@@ -19,7 +25,8 @@
 
     <sql id="Base_Column_List">
         id, participant_a_id, participant_b_id, last_message, last_message_at,
-        a_deleted_at, b_deleted_at, created_at, updated_at, deleted_at, version
+        a_deleted_at, b_deleted_at, a_pinned, a_pinned_at, a_muted,
+        b_pinned, b_pinned_at, b_muted, created_at, updated_at, deleted_at, version
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -46,7 +53,17 @@
             OR
             (participant_b_id = #{userId} AND b_deleted_at IS NULL)
         )
-        ORDER BY last_message_at DESC, id DESC
+        ORDER BY
+            CASE
+                WHEN participant_a_id = #{userId} THEN a_pinned
+                ELSE b_pinned
+            END DESC,
+            CASE
+                WHEN participant_a_id = #{userId} THEN a_pinned_at
+                ELSE b_pinned_at
+            END DESC,
+            last_message_at DESC,
+            id DESC
         LIMIT #{offset}, #{limit}
     </select>
 
@@ -96,6 +113,25 @@
     <update id="markDeletedByUser">
         UPDATE blog_conversation
         SET ${column} = NOW(),
+            updated_at = NOW(),
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="updatePinnedByUser">
+        UPDATE blog_conversation
+        SET ${pinnedColumn} = #{pinned},
+            ${pinnedAtColumn} = CASE WHEN #{pinned} = TRUE THEN NOW() ELSE NULL END,
+            updated_at = NOW(),
+            version = version + 1
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="updateMutedByUser">
+        UPDATE blog_conversation
+        SET ${mutedColumn} = #{muted},
             updated_at = NOW(),
             version = version + 1
         WHERE id = #{id}

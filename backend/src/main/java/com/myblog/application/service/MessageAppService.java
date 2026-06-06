@@ -140,6 +140,54 @@ public class MessageAppService {
     }
 
     /**
+     * 更新当前用户的会话置顶状态。
+     *
+     * @param conversationId 会话 ID
+     * @param pinned         是否置顶
+     * @return 更新后的会话 DTO
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ConversationDTO updateConversationPinned(Long conversationId, boolean pinned) {
+        long _start = System.currentTimeMillis();
+        Long currentUserId = AuthContext.getRequiredUserId();
+        loadOwnedConversation(conversationId, currentUserId);
+        conversationRepository.updatePinnedByUser(conversationId, currentUserId, pinned);
+        Conversation conversation = loadOwnedConversation(conversationId, currentUserId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            pinned ? "置顶会话" : "取消置顶会话",
+            BizLogHelper.params("conversationId", conversationId),
+            BizLogHelper.result("pinned=" + pinned),
+            BizLogHelper.elapsed(_start));
+        return toConversationDTO(conversation, currentUserId);
+    }
+
+    /**
+     * 更新当前用户的会话消息免打扰状态。
+     *
+     * @param conversationId 会话 ID
+     * @param muted          是否免打扰
+     * @return 更新后的会话 DTO
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ConversationDTO updateConversationMuted(Long conversationId, boolean muted) {
+        long _start = System.currentTimeMillis();
+        Long currentUserId = AuthContext.getRequiredUserId();
+        loadOwnedConversation(conversationId, currentUserId);
+        conversationRepository.updateMutedByUser(conversationId, currentUserId, muted);
+        Conversation conversation = loadOwnedConversation(conversationId, currentUserId);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(currentUserId),
+            muted ? "开启会话免打扰" : "关闭会话免打扰",
+            BizLogHelper.params("conversationId", conversationId),
+            BizLogHelper.result("muted=" + muted),
+            BizLogHelper.elapsed(_start));
+        return toConversationDTO(conversation, currentUserId);
+    }
+
+    /**
      * 获取消息历史（按时间倒序，前端反转展示）。
      */
     public PageResult<MessageDTO> listMessages(Long conversationId, int page, int pageSize) {
@@ -360,6 +408,8 @@ public class MessageAppService {
         dto.setLastMessage(conversation.getLastMessage());
         dto.setLastMessageAt(conversation.getLastMessageAt() != null
             ? conversation.getLastMessageAt().format(DTF) : null);
+        dto.setPinned(conversation.isPinnedByUser(currentUserId));
+        dto.setMuted(conversation.isMutedByUser(currentUserId));
 
         long unread = messageRepository.countUnreadByConversation(
             conversation.getId().getValue(), currentUserId);

@@ -24,6 +24,18 @@ public class ConversationDO {
     private LocalDateTime aDeletedAt;
     /** 参与者 B 删除会话的时间，为 null 表示未删除。 */
     private LocalDateTime bDeletedAt;
+    /** 参与者 A 是否置顶会话。 */
+    private Boolean aPinned;
+    /** 参与者 A 置顶时间。 */
+    private LocalDateTime aPinnedAt;
+    /** 参与者 A 是否开启消息免打扰。 */
+    private Boolean aMuted;
+    /** 参与者 B 是否置顶会话。 */
+    private Boolean bPinned;
+    /** 参与者 B 置顶时间。 */
+    private LocalDateTime bPinnedAt;
+    /** 参与者 B 是否开启消息免打扰。 */
+    private Boolean bMuted;
     /** 记录创建时间。 */
     private LocalDateTime createdAt;
     /** 记录最后更新时间。 */
@@ -157,6 +169,114 @@ public class ConversationDO {
      */
     public void setBDeletedAt(LocalDateTime bDeletedAt) {
         this.bDeletedAt = bDeletedAt;
+    }
+
+    /**
+     * 获取参与者 A 是否置顶会话。
+     *
+     * @return 已置顶返回 true，否则返回 false
+     */
+    public Boolean getAPinned() {
+        return aPinned;
+    }
+
+    /**
+     * 设置参与者 A 是否置顶会话。
+     *
+     * @param aPinned 是否置顶
+     */
+    public void setAPinned(Boolean aPinned) {
+        this.aPinned = aPinned;
+    }
+
+    /**
+     * 获取参与者 A 置顶时间。
+     *
+     * @return 置顶时间
+     */
+    public LocalDateTime getAPinnedAt() {
+        return aPinnedAt;
+    }
+
+    /**
+     * 设置参与者 A 置顶时间。
+     *
+     * @param aPinnedAt 置顶时间
+     */
+    public void setAPinnedAt(LocalDateTime aPinnedAt) {
+        this.aPinnedAt = aPinnedAt;
+    }
+
+    /**
+     * 获取参与者 A 是否开启消息免打扰。
+     *
+     * @return 已免打扰返回 true，否则返回 false
+     */
+    public Boolean getAMuted() {
+        return aMuted;
+    }
+
+    /**
+     * 设置参与者 A 是否开启消息免打扰。
+     *
+     * @param aMuted 是否免打扰
+     */
+    public void setAMuted(Boolean aMuted) {
+        this.aMuted = aMuted;
+    }
+
+    /**
+     * 获取参与者 B 是否置顶会话。
+     *
+     * @return 已置顶返回 true，否则返回 false
+     */
+    public Boolean getBPinned() {
+        return bPinned;
+    }
+
+    /**
+     * 设置参与者 B 是否置顶会话。
+     *
+     * @param bPinned 是否置顶
+     */
+    public void setBPinned(Boolean bPinned) {
+        this.bPinned = bPinned;
+    }
+
+    /**
+     * 获取参与者 B 置顶时间。
+     *
+     * @return 置顶时间
+     */
+    public LocalDateTime getBPinnedAt() {
+        return bPinnedAt;
+    }
+
+    /**
+     * 设置参与者 B 置顶时间。
+     *
+     * @param bPinnedAt 置顶时间
+     */
+    public void setBPinnedAt(LocalDateTime bPinnedAt) {
+        this.bPinnedAt = bPinnedAt;
+    }
+
+    /**
+     * 获取参与者 B 是否开启消息免打扰。
+     *
+     * @return 已免打扰返回 true，否则返回 false
+     */
+    public Boolean getBMuted() {
+        return bMuted;
+    }
+
+    /**
+     * 设置参与者 B 是否开启消息免打扰。
+     *
+     * @param bMuted 是否免打扰
+     */
+    public void setBMuted(Boolean bMuted) {
+        this.bMuted = bMuted;
     }
 
     /**

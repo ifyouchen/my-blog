@@ -49,6 +49,36 @@ public class Conversation {
     private LocalDateTime bDeletedAt;
 
     /**
+     * 参与者 A 是否置顶会话
+     */
+    private Boolean aPinned;
+
+    /**
+     * 参与者 A 置顶时间
+     */
+    private LocalDateTime aPinnedAt;
+
+    /**
+     * 参与者 A 是否开启消息免打扰
+     */
+    private Boolean aMuted;
+
+    /**
+     * 参与者 B 是否置顶会话
+     */
+    private Boolean bPinned;
+
+    /**
+     * 参与者 B 置顶时间
+     */
+    private LocalDateTime bPinnedAt;
+
+    /**
+     * 参与者 B 是否开启消息免打扰
+     */
+    private Boolean bMuted;
+
+    /**
      * 会话创建时间
      */
     private LocalDateTime createdAt;
@@ -87,6 +117,10 @@ public class Conversation {
         conversation.createdAt = LocalDateTime.now();
         conversation.updatedAt = conversation.createdAt;
         conversation.deletedAt = null;
+        conversation.aPinned = false;
+        conversation.aMuted = false;
+        conversation.bPinned = false;
+        conversation.bMuted = false;
         conversation.version = 0L;
         return conversation;
     }
@@ -101,6 +135,12 @@ public class Conversation {
      * @param lastMessageAt  最后一条消息时间
      * @param aDeletedAt     参与者 A 删除时间
      * @param bDeletedAt     参与者 B 删除时间
+     * @param aPinned        参与者 A 是否置顶
+     * @param aPinnedAt      参与者 A 置顶时间
+     * @param aMuted         参与者 A 是否免打扰
+     * @param bPinned        参与者 B 是否置顶
+     * @param bPinnedAt      参与者 B 置顶时间
+     * @param bMuted         参与者 B 是否免打扰
      * @param createdAt      创建时间
      * @param updatedAt      更新时间
      * @param deletedAt      删除时间
@@ -110,6 +150,8 @@ public class Conversation {
     public static Conversation restore(Long id, Long participantAId, Long participantBId,
                                        String lastMessage, LocalDateTime lastMessageAt,
                                        LocalDateTime aDeletedAt, LocalDateTime bDeletedAt,
+                                       Boolean aPinned, LocalDateTime aPinnedAt, Boolean aMuted,
+                                       Boolean bPinned, LocalDateTime bPinnedAt, Boolean bMuted,
                                        LocalDateTime createdAt, LocalDateTime updatedAt,
                                        LocalDateTime deletedAt, Long version) {
         Conversation conversation = new Conversation();
@@ -120,6 +162,12 @@ public class Conversation {
         conversation.lastMessageAt = lastMessageAt;
         conversation.aDeletedAt = aDeletedAt;
         conversation.bDeletedAt = bDeletedAt;
+        conversation.aPinned = Boolean.TRUE.equals(aPinned);
+        conversation.aPinnedAt = aPinnedAt;
+        conversation.aMuted = Boolean.TRUE.equals(aMuted);
+        conversation.bPinned = Boolean.TRUE.equals(bPinned);
+        conversation.bPinnedAt = bPinnedAt;
+        conversation.bMuted = Boolean.TRUE.equals(bMuted);
         conversation.createdAt = createdAt;
         conversation.updatedAt = updatedAt;
         conversation.deletedAt = deletedAt;
@@ -146,8 +194,14 @@ public class Conversation {
     public void deleteByUser(Long userId) {
         if (userId.equals(participantAId)) {
             this.aDeletedAt = LocalDateTime.now();
+            this.aPinned = false;
+            this.aPinnedAt = null;
+            this.aMuted = false;
         } else if (userId.equals(participantBId)) {
             this.bDeletedAt = LocalDateTime.now();
+            this.bPinned = false;
+            this.bPinnedAt = null;
+            this.bMuted = false;
         }
         this.updatedAt = LocalDateTime.now();
     }
@@ -188,6 +242,38 @@ public class Conversation {
             return participantBId;
         }
         return participantAId;
+    }
+
+    /**
+     * 判断指定用户是否置顶该会话。
+     *
+     * @param userId 用户 ID
+     * @return 已置顶返回 true，否则返回 false
+     */
+    public boolean isPinnedByUser(Long userId) {
+        if (userId.equals(participantAId)) {
+            return Boolean.TRUE.equals(aPinned);
+        }
+        if (userId.equals(participantBId)) {
+            return Boolean.TRUE.equals(bPinned);
+        }
+        return false;
+    }
+
+    /**
+     * 判断指定用户是否开启该会话消息免打扰。
+     *
+     * @param userId 用户 ID
+     * @return 已开启返回 true，否则返回 false
+     */
+    public boolean isMutedByUser(Long userId) {
+        if (userId.equals(participantAId)) {
+            return Boolean.TRUE.equals(aMuted);
+        }
+        if (userId.equals(participantBId)) {
+            return Boolean.TRUE.equals(bMuted);
+        }
+        return false;
     }
 
     /**
@@ -251,6 +337,60 @@ public class Conversation {
      */
     public LocalDateTime getBDeletedAt() {
         return bDeletedAt;
+    }
+
+    /**
+     * 获取参与者 A 是否置顶会话。
+     *
+     * @return 已置顶返回 true，否则返回 false
+     */
+    public Boolean getAPinned() {
+        return aPinned;
+    }
+
+    /**
+     * 获取参与者 A 置顶时间。
+     *
+     * @return 置顶时间
+     */
+    public LocalDateTime getAPinnedAt() {
+        return aPinnedAt;
+    }
+
+    /**
+     * 获取参与者 A 是否开启消息免打扰。
+     *
+     * @return 已免打扰返回 true，否则返回 false
+     */
+    public Boolean getAMuted() {
+        return aMuted;
+    }
+
+    /**
+     * 获取参与者 B 是否置顶会话。
+     *
+     * @return 已置顶返回 true，否则返回 false
+     */
+    public Boolean getBPinned() {
+        return bPinned;
+    }
+
+    /**
+     * 获取参与者 B 置顶时间。
+     *
+     * @return 置顶时间
+     */
+    public LocalDateTime getBPinnedAt() {
+        return bPinnedAt;
+    }
+
+    /**
+     * 获取参与者 B 是否开启消息免打扰。
+     *
+     * @return 已免打扰返回 true，否则返回 false
+     */
+    public Boolean getBMuted() {
+        return bMuted;
     }
 
     /**

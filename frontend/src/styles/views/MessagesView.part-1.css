@@ -52,6 +52,10 @@
     background: var(--brand-soft);
 }
 
+.conversation-item.pinned:not(.active) {
+    background: #f8fbff;
+}
+
 .conversation-item.active::before {
     content: '';
     position: absolute;
@@ -139,6 +143,22 @@
 
 .conv-presence-dot.online {
     background: #22c55e;
+}
+
+.conv-status-badge {
+    flex: 0 0 auto;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #eaf2ff;
+    color: var(--brand);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.conv-status-badge.muted {
+    background: #f1f5f9;
+    color: var(--muted);
 }
 
 .conv-preview {

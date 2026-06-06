@@ -82,6 +82,15 @@
     color: var(--brand);
 }
 
+.message-context-menu button.danger {
+    color: var(--accent);
+}
+
+.message-context-menu button.danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--accent);
+}
+
 /* 已撤回消息通知 */
 .message-recalled-notice {
     font-size: 12px;

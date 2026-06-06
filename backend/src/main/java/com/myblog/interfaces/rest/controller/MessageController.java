@@ -405,6 +405,40 @@ public class MessageController {
         return Result.success(null);
     }
 
+    /**
+     * 更新当前用户的会话置顶状态。
+     *
+     * @param id      会话 ID
+     * @param request 请求体，包含 pinned 字段
+     * @return 更新后的会话
+     */
+    @PutMapping("/conversations/{id}/pin")
+    public Result<ConversationDTO> updateConversationPinned(@PathVariable Long id,
+                                                            @RequestBody Map<String, Boolean> request) {
+        Boolean pinned = request == null ? null : request.get("pinned");
+        if (pinned == null) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "置顶状态不能为空");
+        }
+        return Result.success(messageAppService.updateConversationPinned(id, pinned));
+    }
+
+    /**
+     * 更新当前用户的会话消息免打扰状态。
+     *
+     * @param id      会话 ID
+     * @param request 请求体，包含 muted 字段
+     * @return 更新后的会话
+     */
+    @PutMapping("/conversations/{id}/mute")
+    public Result<ConversationDTO> updateConversationMuted(@PathVariable Long id,
+                                                           @RequestBody Map<String, Boolean> request) {
+        Boolean muted = request == null ? null : request.get("muted");
+        if (muted == null) {
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "免打扰状态不能为空");
+        }
+        return Result.success(messageAppService.updateConversationMuted(id, muted));
+    }
+
     @GetMapping("/conversations/{id}/messages")
     public Result<PageResult<MessageDTO>> listMessages(
             @PathVariable Long id,

@@ -150,6 +150,46 @@ public class MyBatisConversationRepository implements ConversationRepository {
     }
 
     /**
+     * 更新指定用户的会话置顶状态。
+     *
+     * @param conversationId 会话 ID
+     * @param userId         当前用户 ID
+     * @param pinned         是否置顶
+     */
+    @Override
+    public void updatePinnedByUser(Long conversationId, Long userId, boolean pinned) {
+        ConversationDO conversationDO = conversationMapper.selectById(conversationId);
+        if (conversationDO == null) {
+            return;
+        }
+        if (userId.equals(conversationDO.getParticipantAId())) {
+            conversationMapper.updatePinnedByUser(conversationId, "a_pinned", "a_pinned_at", pinned);
+        } else if (userId.equals(conversationDO.getParticipantBId())) {
+            conversationMapper.updatePinnedByUser(conversationId, "b_pinned", "b_pinned_at", pinned);
+        }
+    }
+
+    /**
+     * 更新指定用户的会话免打扰状态。
+     *
+     * @param conversationId 会话 ID
+     * @param userId         当前用户 ID
+     * @param muted          是否免打扰
+     */
+    @Override
+    public void updateMutedByUser(Long conversationId, Long userId, boolean muted) {
+        ConversationDO conversationDO = conversationMapper.selectById(conversationId);
+        if (conversationDO == null) {
+            return;
+        }
+        if (userId.equals(conversationDO.getParticipantAId())) {
+            conversationMapper.updateMutedByUser(conversationId, "a_muted", muted);
+        } else if (userId.equals(conversationDO.getParticipantBId())) {
+            conversationMapper.updateMutedByUser(conversationId, "b_muted", muted);
+        }
+    }
+
+    /**
      * 生成下一个会话 ID。
      *
      * @return 会话 ID

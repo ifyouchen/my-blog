@@ -14,7 +14,9 @@ import {
     sendMessageApi,
     recallMessageApi,
     markMessagesReadApi,
-    subscribeMessageStream
+    subscribeMessageStream,
+    updateConversationMuteApi,
+    updateConversationPinApi
 } from '@/api/messages';
 import {uploadImage} from '@/api/uploads';
 import EmojiPicker from '@/components/EmojiPicker.vue';
@@ -86,6 +88,13 @@ const contextMenu = reactive({
     message: null
 });
 
+const conversationContextMenu = reactive({
+    visible: false,
+    x: 0,
+    y: 0,
+    conversation: null
+});
+
 const messagesCache = new Map();
 
 const isMine = (msg) => String(msg.senderId) === String(sessionState.user?.id);
@@ -141,6 +150,7 @@ const scrollToMessage = (messageId) => {
 
 const showContextMenu = (event, msg) => {
     event.preventDefault();
+    closeConversationContextMenu();
     contextMenu.visible = true;
     contextMenu.x = event.clientX;
     contextMenu.y = event.clientY;
@@ -152,14 +162,48 @@ const closeContextMenu = () => {
     contextMenu.message = null;
 };
 
+const showConversationContextMenu = (event, conv) => {
+    event.preventDefault();
+    closeContextMenu();
+    conversationContextMenu.visible = true;
+    conversationContextMenu.x = event.clientX;
+    conversationContextMenu.y = event.clientY;
+    conversationContextMenu.conversation = conv;
+};
+
+const closeConversationContextMenu = () => {
+    conversationContextMenu.visible = false;
+    conversationContextMenu.conversation = null;
+};
+
 const messagePreview = (msg) => isImageMessage(msg) ? '[图片]' : (msg.content || '');
 const formatConversationPreview = (content) => isUploadedImageUrl(content) ? '[图片]' : (content || '');
+
+const conversationTimeValue = (conv) => {
+    const time = new Date(conv?.lastMessageAt || conv?.updatedAt || conv?.createdAt || 0).getTime();
+    return Number.isNaN(time) ? 0 : time;
+};
+
+const sortConversations = (items) => [...items].sort((a, b) => {
+    if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+        return a.pinned ? -1 : 1;
+    }
+    return conversationTimeValue(b) - conversationTimeValue(a);
+});
+
+const applyConversationUpdate = (updated) => {
+    if (!updated?.id) return;
+    state.conversations = sortConversations(state.conversations.map((conv) => (
+        String(conv.id) === String(updated.id) ? { ...conv, ...updated } : conv
+    )));
+};
 
 const updateConversationPreview = (conversationId, preview, lastMessageAt) => {
     const conv = state.conversations.find(c => String(c.id) === String(conversationId));
     if (!conv) return;
     conv.lastMessage = preview;
     conv.lastMessageAt = lastMessageAt || conv.lastMessageAt;
+    state.conversations = sortConversations(state.conversations);
 };
 
 const buildUser = (msg) => ({
@@ -257,7 +301,7 @@ const loadConversations = async ({silent = false} = {}) => {
     }
     try {
         const result = await getConversationsApi();
-        state.conversations = result.items || [];
+        state.conversations = sortConversations(result.items || []);
         if (state.activeConversationId) {
             clearConversationUnread(state.activeConversationId);
         }
@@ -348,6 +392,7 @@ const loadMessages = async (conversationId, append = false) => {
 };
 
 const selectConversation = async (conv) => {
+    closeConversationContextMenu();
     state.activeConversationId = conv.id;
     await loadMessages(conv.id);
     // 更新未读计数
@@ -654,6 +699,7 @@ const handleImageLoad = () => {
 };
 
 const deleteConversation = (conv) => {
+    closeConversationContextMenu();
     const name = conv.participant?.nickname || conv.participant?.username || '未知用户';
     openConfirmDialog({
         title: '删除会话',
@@ -674,6 +720,33 @@ const deleteConversation = (conv) => {
             }
         }
     });
+};
+
+const toggleConversationPinned = async (conv) => {
+    if (!conv) return;
+    closeConversationContextMenu();
+    const nextPinned = !conv.pinned;
+    try {
+        const updated = await updateConversationPinApi(conv.id, nextPinned);
+        applyConversationUpdate(updated);
+        toast.success(nextPinned ? '已置顶会话' : '已取消置顶');
+    } catch (error) {
+        toast.error(error.message || '更新置顶状态失败');
+    }
+};
+
+const toggleConversationMuted = async (conv) => {
+    if (!conv) return;
+    closeConversationContextMenu();
+    const nextMuted = !conv.muted;
+    try {
+        const updated = await updateConversationMuteApi(conv.id, nextMuted);
+        applyConversationUpdate(updated);
+        refreshHeaderMessageUnread();
+        toast.success(nextMuted ? '已开启消息免打扰' : '已关闭消息免打扰');
+    } catch (error) {
+        toast.error(error.message || '更新免打扰状态失败');
+    }
 };
 
 const handleKeydown = handleBackspacePendingImage;
@@ -944,6 +1017,7 @@ onMounted(async () => {
     setupSSE();
     document.addEventListener('click', handleEmojiPickerClickOutside);
     document.addEventListener('click', closeContextMenu);
+    document.addEventListener('click', closeConversationContextMenu);
     document.addEventListener('keydown', handlePreviewKeydown);
 
     // 如果路由中有 conversationId，自动选中
@@ -971,6 +1045,7 @@ watch(() => route.params.conversationId, (newId) => {
 onUnmounted(() => {
     document.removeEventListener('click', handleEmojiPickerClickOutside);
     document.removeEventListener('click', closeContextMenu);
+    document.removeEventListener('click', closeConversationContextMenu);
     document.removeEventListener('keydown', handlePreviewKeydown);
     stopPreviewDrag();
     clearPendingImage();
@@ -1011,8 +1086,9 @@ watch(() => state.sending, (sending) => {
                     v-for="conv in state.conversations"
                     :key="conv.id"
                     class="conversation-item"
-                    :class="{ active: state.activeConversationId === conv.id }"
+                    :class="{ active: state.activeConversationId === conv.id, pinned: conv.pinned, muted: conv.muted }"
                     @click="selectConversation(conv)"
+                    @contextmenu.prevent="showConversationContextMenu($event, conv)"
                 >
                     <div class="conv-avatar">
                         <img v-if="conv.participant?.avatarUrl" :src="conv.participant.avatarUrl" alt="">
@@ -1027,15 +1103,11 @@ watch(() => state.sending, (sending) => {
                                 :class="{ online: conv.participant?.online }"
                                 :title="formatPresenceText(conv.participant)"
                             ></span>
+                            <span v-if="conv.pinned" class="conv-status-badge">置顶</span>
+                            <span v-if="conv.muted" class="conv-status-badge muted">免打扰</span>
                         </div>
                         <div class="conv-preview">{{ formatConversationPreview(conv.lastMessage) }}</div>
                     </div>
-                    <!-- 删除按钮 -->
-                    <button class="conv-delete-btn" title="删除会话" @click.stop="deleteConversation(conv)">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4v7.5a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
                     <div class="conv-time" v-if="conv.lastMessageAt">{{ formatRelativeTime(conv.lastMessageAt) }}</div>
                 </div>
             </div>
@@ -1263,6 +1335,20 @@ watch(() => state.sending, (sending) => {
     <div v-if="contextMenu.visible" class="message-context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click.stop>
         <button v-if="canRecall(contextMenu.message)" @click="handleRecall(contextMenu.message); closeContextMenu()">撤回</button>
         <button @click="startReply(contextMenu.message); closeContextMenu()">回复</button>
+    </div>
+    <div
+        v-if="conversationContextMenu.visible"
+        class="message-context-menu conversation-context-menu"
+        :style="{ left: conversationContextMenu.x + 'px', top: conversationContextMenu.y + 'px' }"
+        @click.stop
+    >
+        <button @click="toggleConversationPinned(conversationContextMenu.conversation)">
+            {{ conversationContextMenu.conversation?.pinned ? '取消置顶' : '置顶会话' }}
+        </button>
+        <button @click="toggleConversationMuted(conversationContextMenu.conversation)">
+            {{ conversationContextMenu.conversation?.muted ? '关闭免打扰' : '消息免打扰' }}
+        </button>
+        <button class="danger" @click="deleteConversation(conversationContextMenu.conversation)">删除会话</button>
     </div>
     <div
         v-if="previewImageSrc"
