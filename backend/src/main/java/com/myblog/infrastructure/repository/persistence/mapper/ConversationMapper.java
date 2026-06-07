@@ -83,37 +83,35 @@ public interface ConversationMapper {
     /**
      * 标记用户已删除会话（软删除，更新对应的 deleted_at 字段）。
      *
-     * @param id     会话 ID
-     * @param column 要更新的字段名（a_deleted_at 或 b_deleted_at）
+     * @param id   会话 ID
+     * @param role 参与者角色（"A" 更新 a_deleted_at，否则更新 b_deleted_at）
      * @return 影响行数
      */
     int markDeletedByUser(@Param("id") Long id,
-                          @Param("column") String column);
+                          @Param("role") String role);
 
     /**
      * 更新指定用户在会话上的置顶状态。
      *
-     * @param id             会话 ID
-     * @param pinnedColumn   置顶字段名
-     * @param pinnedAtColumn 置顶时间字段名
-     * @param pinned         是否置顶
+     * @param id     会话 ID
+     * @param role   参与者角色（"A" 更新 a_pinned，否则更新 b_pinned）
+     * @param pinned 是否置顶
      * @return 影响行数
      */
     int updatePinnedByUser(@Param("id") Long id,
-                           @Param("pinnedColumn") String pinnedColumn,
-                           @Param("pinnedAtColumn") String pinnedAtColumn,
+                           @Param("role") String role,
                            @Param("pinned") boolean pinned);
 
     /**
      * 更新指定用户在会话上的免打扰状态。
      *
-     * @param id          会话 ID
-     * @param mutedColumn 免打扰字段名
-     * @param muted       是否免打扰
+     * @param id    会话 ID
+     * @param role  参与者角色（"A" 更新 a_muted，否则更新 b_muted）
+     * @param muted 是否免打扰
      * @return 影响行数
      */
     int updateMutedByUser(@Param("id") Long id,
-                          @Param("mutedColumn") String mutedColumn,
+                          @Param("role") String role,
                           @Param("muted") boolean muted);
 
     /**

@@ -90,16 +90,17 @@ public class InviteCodeAppService {
      *
      * @param code   邀请码字符串
      * @param userId 使用者用户 ID
+     * @return 邀请码创建者（邀请人）的 userId，码无效时返回 null
      */
     @Transactional(rollbackFor = Exception.class)
-    public void useCode(String code, Long userId) {
+    public Long useCode(String code, Long userId) {
         long _start = System.currentTimeMillis();
-        if (code == null || code.trim().isEmpty()) return;
+        if (code == null || code.trim().isEmpty()) return null;
         InviteCodeDO row = mapper.selectByCode(code.trim());
-        if (row == null) return;
-        if (row.getExpiredAt() != null && row.getExpiredAt().isBefore(LocalDateTime.now())) return;
+        if (row == null) return null;
+        if (row.getExpiredAt() != null && row.getExpiredAt().isBefore(LocalDateTime.now())) return null;
         if (row.getUseCount() != null && row.getMaxUses() != null
-                && row.getUseCount() >= row.getMaxUses()) return;
+                && row.getUseCount() >= row.getMaxUses()) return null;
         mapper.useCode(row.getId(), userId, row.getVersion());
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
             BizLogHelper.trace(),
@@ -108,6 +109,7 @@ public class InviteCodeAppService {
             BizLogHelper.params(),
             BizLogHelper.result("used=true"),
             BizLogHelper.elapsed(_start));
+        return row.getCreatorId();
     }
 
     /**

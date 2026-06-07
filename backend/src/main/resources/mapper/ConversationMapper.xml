@@ -112,28 +112,48 @@
 
     <update id="markDeletedByUser">
         UPDATE blog_conversation
-        SET ${column} = NOW(),
+        <set>
+            <choose>
+                <when test="role == 'A'">a_deleted_at = NOW(),</when>
+                <otherwise>b_deleted_at = NOW(),</otherwise>
+            </choose>
             updated_at = NOW(),
             version = version + 1
+        </set>
         WHERE id = #{id}
         AND deleted_at IS NULL
     </update>
 
     <update id="updatePinnedByUser">
         UPDATE blog_conversation
-        SET ${pinnedColumn} = #{pinned},
-            ${pinnedAtColumn} = CASE WHEN #{pinned} = TRUE THEN NOW() ELSE NULL END,
+        <set>
+            <choose>
+                <when test="role == 'A'">
+                    a_pinned = #{pinned},
+                    a_pinned_at = CASE WHEN #{pinned} = TRUE THEN NOW() ELSE NULL END,
+                </when>
+                <otherwise>
+                    b_pinned = #{pinned},
+                    b_pinned_at = CASE WHEN #{pinned} = TRUE THEN NOW() ELSE NULL END,
+                </otherwise>
+            </choose>
             updated_at = NOW(),
             version = version + 1
+        </set>
         WHERE id = #{id}
         AND deleted_at IS NULL
     </update>
 
     <update id="updateMutedByUser">
         UPDATE blog_conversation
-        SET ${mutedColumn} = #{muted},
+        <set>
+            <choose>
+                <when test="role == 'A'">a_muted = #{muted},</when>
+                <otherwise>b_muted = #{muted},</otherwise>
+            </choose>
             updated_at = NOW(),
             version = version + 1
+        </set>
         WHERE id = #{id}
         AND deleted_at IS NULL
     </update>

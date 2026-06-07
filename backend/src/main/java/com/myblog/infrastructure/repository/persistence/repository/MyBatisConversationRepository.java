@@ -140,13 +140,8 @@ public class MyBatisConversationRepository implements ConversationRepository {
         if (conversationDO == null) {
             return;
         }
-        String column;
-        if (userId.equals(conversationDO.getParticipantAId())) {
-            column = "a_deleted_at";
-        } else {
-            column = "b_deleted_at";
-        }
-        conversationMapper.markDeletedByUser(conversationId, column);
+        String role = userId.equals(conversationDO.getParticipantAId()) ? "A" : "B";
+        conversationMapper.markDeletedByUser(conversationId, role);
     }
 
     /**
@@ -163,9 +158,9 @@ public class MyBatisConversationRepository implements ConversationRepository {
             return;
         }
         if (userId.equals(conversationDO.getParticipantAId())) {
-            conversationMapper.updatePinnedByUser(conversationId, "a_pinned", "a_pinned_at", pinned);
+            conversationMapper.updatePinnedByUser(conversationId, "A", pinned);
         } else if (userId.equals(conversationDO.getParticipantBId())) {
-            conversationMapper.updatePinnedByUser(conversationId, "b_pinned", "b_pinned_at", pinned);
+            conversationMapper.updatePinnedByUser(conversationId, "B", pinned);
         }
     }
 
@@ -183,9 +178,9 @@ public class MyBatisConversationRepository implements ConversationRepository {
             return;
         }
         if (userId.equals(conversationDO.getParticipantAId())) {
-            conversationMapper.updateMutedByUser(conversationId, "a_muted", muted);
+            conversationMapper.updateMutedByUser(conversationId, "A", muted);
         } else if (userId.equals(conversationDO.getParticipantBId())) {
-            conversationMapper.updateMutedByUser(conversationId, "b_muted", muted);
+            conversationMapper.updateMutedByUser(conversationId, "B", muted);
         }
     }
 

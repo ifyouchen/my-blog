@@ -5,6 +5,7 @@ import com.myblog.application.command.LoginCommand;
 import com.myblog.application.command.RegisterCommand;
 import com.myblog.application.dto.AuthDTO;
 import com.myblog.application.dto.UserDTO;
+import com.myblog.growth.application.service.InviteRewardAppService;
 import com.myblog.growth.application.service.PointAppService;
 import com.myblog.domain.model.aggregate.User;
 import com.myblog.domain.model.valueobject.UserId;
@@ -41,10 +42,16 @@ public class AuthAppService {
     private final PointAppService pointAppService;
     private final UserLevelAppService userLevelAppService;
     private InviteCodeAppService inviteCodeAppService;
+    private InviteRewardAppService inviteRewardAppService;
 
     @Autowired(required = false)
     public void setInviteCodeAppService(InviteCodeAppService inviteCodeAppService) {
         this.inviteCodeAppService = inviteCodeAppService;
+    }
+
+    @Autowired(required = false)
+    public void setInviteRewardAppService(InviteRewardAppService inviteRewardAppService) {
+        this.inviteRewardAppService = inviteRewardAppService;
     }
 
     /**
@@ -102,7 +109,10 @@ public class AuthAppService {
         User user = User.create(userRepository.nextId(), command.getUsername(), normalizedEmail, passwordHash);
         userRepository.save(user);
         if (inviteCodeAppService != null && command.getInviteCode() != null && !command.getInviteCode().isEmpty()) {
-            inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
+            Long inviterUserId = inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
+            if (inviterUserId != null && inviteRewardAppService != null) {
+                inviteRewardAppService.triggerReward(inviterUserId, user.getId().getValue());
+            }
         }
         pointAppService.addPoints(
             user.getId().getValue(),
