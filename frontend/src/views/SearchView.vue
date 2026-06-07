@@ -72,7 +72,7 @@ const {
 const guestRecentSearches = ref([]);
 
 useHead({
-    title: computed(() => keyword.value ? `搜索: ${keyword.value} - DevNotes` : '搜索 - DevNotes')
+    title: computed(() => keyword.value ? `搜索: ${keyword.value} - Inkflow` : '搜索 - Inkflow')
 });
 
 // Expand/collapse state for filters

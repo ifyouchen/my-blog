@@ -220,9 +220,14 @@ const handleSignInCompleted = () => {
 <template>
     <header class="site-header" data-testid="site-header">
         <div class="header-inner header-inner--article">
-            <RouterLink class="brand" to="/" aria-label="DevNotes 首页" data-testid="site-brand">
-                <span class="brand-mark">M</span>
-                <span class="brand-name">DevNotes</span>
+            <RouterLink class="brand" to="/" aria-label="Inkflow 首页" data-testid="site-brand">
+                <span class="brand-mark">
+                    <svg viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 1C12 1 3 12 3 18a9 9 0 0 0 18 0C21 12 12 1 12 1z" fill="white"/>
+                        <path d="M8.5 15c0-2.8 2-6 3.5-8.5" stroke="rgba(255,255,255,0.35)" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </span>
+                <span class="brand-name">Inkflow</span>
             </RouterLink>
 
             <nav class="main-nav" aria-label="主导航">

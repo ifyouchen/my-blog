@@ -45,9 +45,9 @@ public class SmtpEmailSender implements EmailSender {
      */
     @Override
     public void sendRegisterCode(String email, String code) {
-        String text = "你正在注册 DevNotes，验证码为：" + code + "\n\n"
+        String text = "你正在注册 Inkflow，验证码为：" + code + "\n\n"
             + "验证码 10 分钟内有效。如非本人操作，请忽略本邮件。";
-        sendSimpleMail(email, "DevNotes 注册验证码", text);
+        sendSimpleMail(email, "Inkflow 注册验证码", text);
     }
 
     /**
@@ -60,10 +60,10 @@ public class SmtpEmailSender implements EmailSender {
     @Override
     public void sendPasswordResetLink(String email, String username, String resetLink) {
         String text = "你好，" + username + "：\n\n"
-            + "你正在重置 my-blog 账号密码，请在 30 分钟内打开以下链接完成设置：\n"
+            + "你正在重置 Inkflow 账号密码，请在 30 分钟内打开以下链接完成设置：\n"
             + resetLink + "\n\n"
             + "如非本人操作，请忽略本邮件。";
-        sendSimpleMail(email, "my-blog 密码重置", text);
+        sendSimpleMail(email, "Inkflow 密码重置", text);
     }
 
     /**

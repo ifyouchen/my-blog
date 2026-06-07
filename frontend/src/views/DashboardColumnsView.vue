@@ -18,7 +18,7 @@ import {
 import {getMyArticlesApi} from '@/api/articles';
 import {uploadImage} from '@/api/uploads';
 
-useHead({ title: '我的专栏 - DevNotes' });
+useHead({ title: '我的专栏 - Inkflow' });
 
 const {
     confirmDialog,

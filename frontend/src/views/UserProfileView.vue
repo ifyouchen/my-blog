@@ -49,9 +49,9 @@ let columnLoadObserver = null;
 useHead({
     title: computed(() => {
         if (profile.value?.user?.username) {
-            return `${profile.value.user.username} 的个人主页 - DevNotes`;
+            return `${profile.value.user.username} 的个人主页 - Inkflow`;
         }
-        return '用户主页 - DevNotes';
+        return '用户主页 - Inkflow';
     })
 });
 const pageSize = 10;

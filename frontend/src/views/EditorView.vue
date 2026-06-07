@@ -78,7 +78,7 @@ const editorArticleId = computed(() => (isEditMode.value ? String(route.params.i
 const storageKey = computed(() => `${DRAFT_STORAGE_PREFIX}:${editorArticleId.value}`);
 
 useHead({
-    title: computed(() => isEditMode.value ? '编辑文章 - DevNotes' : '写文章 - DevNotes')
+    title: computed(() => isEditMode.value ? '编辑文章 - Inkflow' : '写文章 - Inkflow')
 });
 
 const draft = reactive({ ...defaultDraft });
