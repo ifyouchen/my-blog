@@ -17,6 +17,7 @@ import com.myblog.shared.exception.ApplicationException;
 import com.myblog.shared.exception.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -25,6 +26,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 创作者工作台应用服务。
@@ -44,15 +48,18 @@ public class DashboardAppService {
     private final UserFollowRepository userFollowRepository;
     private final NotificationAppService notificationAppService;
     private final SearchHistoryAppService searchHistoryAppService;
+    private final Executor taskExecutor;
 
     public DashboardAppService(ArticleRepository articleRepository,
                                UserFollowRepository userFollowRepository,
                                NotificationAppService notificationAppService,
-                               SearchHistoryAppService searchHistoryAppService) {
+                               SearchHistoryAppService searchHistoryAppService,
+                               @Qualifier("taskExecutor") Executor taskExecutor) {
         this.articleRepository = articleRepository;
         this.userFollowRepository = userFollowRepository;
         this.notificationAppService = notificationAppService;
         this.searchHistoryAppService = searchHistoryAppService;
+        this.taskExecutor = taskExecutor;
     }
 
     /**
@@ -62,8 +69,18 @@ public class DashboardAppService {
      * @return 工作台概览 DTO
      */
     public DashboardOverviewDTO getOverview(Long userId) {
-        AuthorArticleMetrics metrics = articleRepository.summarizeByAuthor(userId, null);
-        Article latestArticle = articleRepository.findLatestByAuthorId(userId).orElse(null);
+        // Three independent read queries — safe to run in parallel
+        CompletableFuture<AuthorArticleMetrics> metricsFuture = CompletableFuture.supplyAsync(
+            () -> articleRepository.summarizeByAuthor(userId, null), taskExecutor);
+        CompletableFuture<Optional<Article>> latestFuture = CompletableFuture.supplyAsync(
+            () -> articleRepository.findLatestByAuthorId(userId), taskExecutor);
+        CompletableFuture<Integer> followerFuture = CompletableFuture.supplyAsync(
+            () -> userFollowRepository.countFollowers(new UserId(userId)), taskExecutor);
+
+        AuthorArticleMetrics metrics = metricsFuture.join();
+        Article latestArticle = latestFuture.join().orElse(null);
+        int followerCount = followerFuture.join();
+
         DashboardOverviewDTO overview = new DashboardOverviewDTO();
         overview.setTotalCount(safeInt(metrics != null ? metrics.getArticleCount() : null));
         overview.setDraftCount(safeInt(metrics != null ? metrics.getDraftCount() : null));
@@ -74,7 +91,7 @@ public class DashboardAppService {
         overview.setTotalLikeCount(safeLong(metrics != null ? metrics.getTotalLikes() : null));
         overview.setTotalFavoriteCount(safeLong(metrics != null ? metrics.getTotalFavorites() : null));
         overview.setTotalCommentCount(safeLong(metrics != null ? metrics.getTotalComments() : null));
-        overview.setFollowerCount(userFollowRepository.countFollowers(new UserId(userId)));
+        overview.setFollowerCount(followerCount);
         if (latestArticle != null) {
             overview.setLatestArticleId(latestArticle.getId().getValue());
             overview.setLatestArticleTitle(latestArticle.getTitle());
@@ -97,12 +114,9 @@ public class DashboardAppService {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1L);
         List<DashboardTrendPoint> rows = articleRepository.findAuthorTrendPoints(userId, startDate, endDate);
-        Map<LocalDate, DashboardTrendPoint> rowMap = new HashMap<LocalDate, DashboardTrendPoint>(rows.size());
-        for (DashboardTrendPoint row : rows) {
-            rowMap.put(row.getStatDate(), row);
-        }
+        Map<LocalDate, DashboardTrendPoint> rowMap = toRowMap(rows);
 
-        List<DashboardTrendPointDTO> points = new ArrayList<DashboardTrendPointDTO>(days);
+        List<DashboardTrendPointDTO> points = new ArrayList<>(days);
         for (int i = 0; i < days; i++) {
             LocalDate date = startDate.plusDays(i);
             DashboardTrendPoint row = rowMap.get(date);
@@ -205,11 +219,8 @@ public class DashboardAppService {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1L);
         List<DashboardTrendPoint> rows = articleRepository.findArticleTrendPoints(articleId, startDate, endDate);
-        Map<LocalDate, DashboardTrendPoint> rowMap = new HashMap<LocalDate, DashboardTrendPoint>(rows.size());
-        for (DashboardTrendPoint row : rows) {
-            rowMap.put(row.getStatDate(), row);
-        }
-        List<ArticleStatsTrendPointDTO> trends = new ArrayList<ArticleStatsTrendPointDTO>(days);
+        Map<LocalDate, DashboardTrendPoint> rowMap = toRowMap(rows);
+        List<ArticleStatsTrendPointDTO> trends = new ArrayList<>(days);
         for (int i = 0; i < days; i++) {
             LocalDate date = startDate.plusDays(i);
             DashboardTrendPoint row = rowMap.get(date);
@@ -286,6 +297,14 @@ public class DashboardAppService {
      * @param dateTime 日期时间
      * @return 格式化后的字符串，null 时返回 null
      */
+    private Map<LocalDate, DashboardTrendPoint> toRowMap(List<DashboardTrendPoint> rows) {
+        Map<LocalDate, DashboardTrendPoint> map = new HashMap<>(rows.size());
+        for (DashboardTrendPoint row : rows) {
+            map.put(row.getStatDate(), row);
+        }
+        return map;
+    }
+
     private String formatDateTime(java.time.LocalDateTime dateTime) {
         return dateTime == null ? null : DATETIME_FORMATTER.format(dateTime);
     }

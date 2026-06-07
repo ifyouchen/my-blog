@@ -27,7 +27,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 专栏应用服务。
@@ -151,31 +154,51 @@ public class ColumnAppService {
      */
     public PageResult<ArticleDTO> pageColumnArticles(Long columnId, int page, int pageSize) {
         loadPublishedColumn(columnId);
-        List<ArticleDTO> items = new ArrayList<ArticleDTO>();
-        List<Article> visibleArticles = new ArrayList<Article>();
-        List<Integer> visibleSortOrders = new ArrayList<Integer>();
         List<LearningPathArticle> relations = columnRepository.findArticleRelations(new ColumnId(columnId));
+
+        // Batch-load all articles in the column (eliminates N individual queries)
+        List<Long> allArticleIds = relations.stream()
+            .map(LearningPathArticle::getArticleId)
+            .collect(Collectors.toList());
+        Map<Long, Article> articleMap = articleRepository.findByIds(allArticleIds).stream()
+            .collect(Collectors.toMap(a -> a.getId().getValue(), a -> a));
+
+        List<Article> visibleArticles = new ArrayList<>();
+        List<Integer> visibleSortOrders = new ArrayList<>();
         for (LearningPathArticle relation : relations) {
-            Long articleId = relation.getArticleId();
-            Article article = articleRepository.findById(new ArticleId(articleId)).orElse(null);
+            Article article = articleMap.get(relation.getArticleId());
             if (article != null && ArticleStatus.PUBLISHED.equals(article.getStatus())) {
                 visibleArticles.add(article);
                 visibleSortOrders.add(relation.getStepOrder());
             }
         }
+
         int currentPage = Math.max(page, 1);
         int currentPageSize = Math.max(pageSize, 1);
         int fromIndex = Math.min((currentPage - 1) * currentPageSize, visibleArticles.size());
         int toIndex = Math.min(fromIndex + currentPageSize, visibleArticles.size());
-        for (int index = fromIndex; index < toIndex; index++) {
-            Article article = visibleArticles.get(index);
-            User author = userRepository.findById(article.getAuthorId())
-                .orElseThrow(() -> new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在"));
+        List<Article> pageArticles = visibleArticles.subList(fromIndex, toIndex);
+
+        // Batch-load authors for only the current page slice
+        List<Long> authorIds = pageArticles.stream()
+            .map(a -> a.getAuthorId().getValue())
+            .distinct()
+            .collect(Collectors.toList());
+        Map<Long, User> authorMap = userRepository.findByIds(authorIds).stream()
+            .collect(Collectors.toMap(u -> u.getId().getValue(), u -> u));
+
+        List<ArticleDTO> items = new ArrayList<>(pageArticles.size());
+        for (int i = 0; i < pageArticles.size(); i++) {
+            Article article = pageArticles.get(i);
+            User author = authorMap.get(article.getAuthorId().getValue());
+            if (author == null) {
+                throw new ApplicationException(ErrorCode.NOT_FOUND, "文章作者不存在");
+            }
             ArticleDTO item = articleAssembler.toDTO(article, author);
-            item.setRelationSortOrder(visibleSortOrders.get(index));
+            item.setRelationSortOrder(visibleSortOrders.get(fromIndex + i));
             items.add(item);
         }
-        return new PageResult<ArticleDTO>(items, currentPage, currentPageSize, visibleArticles.size());
+        return new PageResult<>(items, currentPage, currentPageSize, visibleArticles.size());
     }
 
     /**
@@ -188,28 +211,51 @@ public class ColumnAppService {
     public java.util.Map<String, ArticleDTO> getColumnArticleNeighbors(Long columnId, Long articleId) {
         loadPublishedColumn(columnId);
         List<Long> articleIds = columnRepository.findArticleIds(new ColumnId(columnId));
-        List<Long> visibleIds = new ArrayList<Long>();
+
+        // Batch-load all articles to filter PUBLISHED ones (eliminates N individual queries)
+        Map<Long, Article> articleMap = articleRepository.findByIds(articleIds).stream()
+            .collect(Collectors.toMap(a -> a.getId().getValue(), a -> a));
+
+        List<Long> visibleIds = new ArrayList<>();
         for (Long id : articleIds) {
-            Article article = articleRepository.findById(new ArticleId(id)).orElse(null);
+            Article article = articleMap.get(id);
             if (article != null && ArticleStatus.PUBLISHED.equals(article.getStatus())) {
                 visibleIds.add(id);
             }
         }
+
         int idx = visibleIds.indexOf(articleId);
+        Long prevId = idx > 0 ? visibleIds.get(idx - 1) : null;
+        Long nextId = idx >= 0 && idx < visibleIds.size() - 1 ? visibleIds.get(idx + 1) : null;
+
+        // Batch-load authors for prev and next in one query
+        List<Long> neighborIds = new ArrayList<>(2);
+        if (prevId != null) neighborIds.add(prevId);
+        if (nextId != null) neighborIds.add(nextId);
+
+        Map<Long, User> authorMap = java.util.Collections.emptyMap();
+        if (!neighborIds.isEmpty()) {
+            List<Long> neighborAuthorIds = neighborIds.stream()
+                .map(id -> articleMap.get(id))
+                .filter(a -> a != null)
+                .map(a -> a.getAuthorId().getValue())
+                .distinct()
+                .collect(Collectors.toList());
+            authorMap = userRepository.findByIds(neighborAuthorIds).stream()
+                .collect(Collectors.toMap(u -> u.getId().getValue(), u -> u));
+        }
+
+        final Map<Long, User> finalAuthorMap = authorMap;
         java.util.Map<String, ArticleDTO> result = new java.util.LinkedHashMap<>();
-        result.put("prev", idx > 0 ? toNeighborDTO(visibleIds.get(idx - 1)) : null);
-        result.put("next", idx >= 0 && idx < visibleIds.size() - 1 ? toNeighborDTO(visibleIds.get(idx + 1)) : null);
+        result.put("prev", prevId != null ? toNeighborDTOFromMap(articleMap.get(prevId), finalAuthorMap) : null);
+        result.put("next", nextId != null ? toNeighborDTOFromMap(articleMap.get(nextId), finalAuthorMap) : null);
         return result;
     }
 
-    private ArticleDTO toNeighborDTO(Long articleId) {
-        Article article = articleRepository.findById(new ArticleId(articleId)).orElse(null);
-        if (article == null) {
-            return null;
-        }
-        return userRepository.findById(article.getAuthorId())
-            .map(author -> articleAssembler.toDTO(article, author))
-            .orElse(null);
+    private ArticleDTO toNeighborDTOFromMap(Article article, Map<Long, User> authorMap) {
+        if (article == null) return null;
+        User author = authorMap.get(article.getAuthorId().getValue());
+        return author != null ? articleAssembler.toDTO(article, author) : null;
     }
 
     /**

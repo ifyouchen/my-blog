@@ -1,4 +1,4 @@
-import { request } from './http';
+import { buildParams, request } from './http';
 import {normalizeArticle, normalizeColumn, normalizeTopic} from './transformers';
 
 export const getSearchBootstrapApi = async () => {
@@ -11,11 +11,11 @@ export const getSearchBootstrapApi = async () => {
 };
 
 export const searchUsersApi = async ({ keyword, page = 1, pageSize = 10 }) => {
-    return await request(`/search/users?keyword=${encodeURIComponent(keyword || '')}&page=${page}&pageSize=${pageSize}`);
+    return await request(`/search/users?${buildParams({ keyword: keyword || '', page, pageSize })}`);
 };
 
 export const searchColumnsApi = async ({ keyword, page = 1, pageSize = 10 }) => {
-    return await request(`/search/columns?keyword=${encodeURIComponent(keyword || '')}&page=${page}&pageSize=${pageSize}`);
+    return await request(`/search/columns?${buildParams({ keyword: keyword || '', page, pageSize })}`);
 };
 
 export const unifiedSearchApi = async ({

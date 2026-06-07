@@ -3,7 +3,7 @@
  *
  * 包含：等级经验、积分账户、积分流水、签到、邀请、文章解锁、分账查询
  */
-import {request} from './http';
+import {buildParams, request} from './http';
 
 // ─────────────────────── 等级 & 经验 ──────────────────────────────
 
@@ -43,11 +43,8 @@ export const getPointAccountApi = () => request('/points/account');
  * @returns {Promise<PageResult>}
  */
 export const getPointJournalsApi = (params = {}) => {
-    const query = new URLSearchParams();
-    if (params.sourceType) query.set('sourceType', params.sourceType);
-    if (params.page) query.set('page', params.page);
-    if (params.size) query.set('size', params.size);
-    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const query = buildParams({ sourceType: params.sourceType, page: params.page, size: params.size });
+    const suffix = query.toString() ? `?${query}` : '';
     return request(`/points/journals${suffix}`);
 };
 
@@ -111,10 +108,8 @@ export const getUnlockStatusApi = (articleId) =>
  * @returns {Promise<PageResult>}
  */
 export const getMyRevenueApi = (params = {}) => {
-    const query = new URLSearchParams();
-    if (params.page) query.set('page', params.page);
-    if (params.size) query.set('size', params.size);
-    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const query = buildParams({ page: params.page, size: params.size });
+    const suffix = query.toString() ? `?${query}` : '';
     return request(`/revenue/my${suffix}`);
 };
 
@@ -220,13 +215,14 @@ export const adminGetPointAccountApi = (user) => {
  * @returns {Promise<PageResult>}
  */
 export const adminGetPointJournalsApi = (params = {}) => {
-    const query = new URLSearchParams();
-    if (params.userId) query.set('userId', params.userId);
-    if (params.userKeyword) query.set('userKeyword', params.userKeyword);
-    if (params.sourceType) query.set('sourceType', params.sourceType);
-    if (params.page) query.set('page', params.page);
-    if (params.size) query.set('size', params.size);
-    return request(`/admin/points/journals?${query.toString()}`);
+    const query = buildParams({
+        userId: params.userId,
+        userKeyword: params.userKeyword,
+        sourceType: params.sourceType,
+        page: params.page,
+        size: params.size
+    });
+    return request(`/admin/points/journals?${query}`);
 };
 
 /**
@@ -235,13 +231,14 @@ export const adminGetPointJournalsApi = (params = {}) => {
  * @returns {Promise<PageResult>}
  */
 export const getAdminRevenueSharesApi = (params = {}) => {
-    const query = new URLSearchParams();
-    if (params.authorId) query.set('authorId', params.authorId);
-    if (params.authorKeyword) query.set('authorKeyword', params.authorKeyword);
-    if (params.settlementStatus) query.set('settlementStatus', params.settlementStatus);
-    if (params.page) query.set('page', params.page);
-    if (params.size) query.set('size', params.size);
-    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const query = buildParams({
+        authorId: params.authorId,
+        authorKeyword: params.authorKeyword,
+        settlementStatus: params.settlementStatus,
+        page: params.page,
+        size: params.size
+    });
+    const suffix = query.toString() ? `?${query}` : '';
     return request(`/admin/revenue-shares${suffix}`);
 };
 

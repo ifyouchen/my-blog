@@ -148,145 +148,110 @@ public class ArticleAppService {
         int page = Math.max(query.getPage(), 1);
         int pageSize = Math.max(query.getPageSize(), 1);
         int offset = (page - 1) * pageSize;
-
-        // Check if enhanced search is needed
-        boolean needsEnhancedSearch = query.getAuthorKeyword() != null && !query.getAuthorKeyword().isEmpty()
-            || query.getDateFrom() != null && !query.getDateFrom().isEmpty()
-            || query.getDateTo() != null && !query.getDateTo().isEmpty()
-            || (query.getKeyword() != null && !query.getKeyword().isEmpty());
-
+        boolean needsEnhancedSearch = hasEnhancedSearchFilters(query);
         // Use full-text search if keyword length >= 2 (ngram minimum token size)
-        String kw = query.getKeyword();
-        boolean useFulltext = kw != null && kw.trim().length() >= 2;
-
-        List<Article> articles;
-        long total;
+        boolean useFulltext = query.getKeyword() != null && query.getKeyword().trim().length() >= 2;
 
         if (isRecommendFeedCacheable(query, needsEnhancedSearch)) {
-            PageResult<Article> recommendedPage = loadRecommendedArticlePage(
-                query.getCategory(),
-                page,
-                pageSize
-            );
-            List<ArticleDTO> items = toDTOList(recommendedPage.getItems(), query.getCurrentUserId());
-            return new PageResult<ArticleDTO>(items, page, pageSize, recommendedPage.getTotal());
+            PageResult<Article> recommended = loadRecommendedArticlePage(query.getCategory(), page, pageSize);
+            return new PageResult<>(toDTOList(recommended.getItems(), query.getCurrentUserId()),
+                page, pageSize, recommended.getTotal());
         }
         if (isPublishedPageCacheable(query)) {
             ArticlePageCacheKey key = ArticlePageCacheKey.of(query, useFulltext);
-            PageResult<Article> cachedPage = publishedArticlePageCache.getIfPresent(key);
-            if (cachedPage != null) {
-                List<ArticleDTO> items = toDTOList(cachedPage.getItems(), query.getCurrentUserId());
-                return new PageResult<ArticleDTO>(items, cachedPage.getPage(), cachedPage.getPageSize(),
-                    cachedPage.getTotal());
+            PageResult<Article> cached = publishedArticlePageCache.getIfPresent(key);
+            if (cached != null) {
+                return new PageResult<>(toDTOList(cached.getItems(), query.getCurrentUserId()),
+                    cached.getPage(), cached.getPageSize(), cached.getTotal());
             }
         }
 
+        ArticlesAndTotal raw = fetchArticlesAndTotal(query, page, pageSize, offset, needsEnhancedSearch, useFulltext);
+        List<ArticleDTO> items = toDTOList(raw.articles, query.getCurrentUserId());
+        if (isPublishedPageCacheable(query)) {
+            publishedArticlePageCache.put(ArticlePageCacheKey.of(query, useFulltext),
+                new PageResult<>(raw.articles, page, pageSize, raw.total));
+        }
+        return new PageResult<>(items, page, pageSize, raw.total);
+    }
+
+    private boolean hasEnhancedSearchFilters(ArticlePageQuery query) {
+        return (query.getAuthorKeyword() != null && !query.getAuthorKeyword().isEmpty())
+            || (query.getDateFrom() != null && !query.getDateFrom().isEmpty())
+            || (query.getDateTo() != null && !query.getDateTo().isEmpty())
+            || (query.getKeyword() != null && !query.getKeyword().isEmpty());
+    }
+
+    private ArticlesAndTotal fetchArticlesAndTotal(ArticlePageQuery query, int page, int pageSize,
+                                                   int offset, boolean needsEnhancedSearch, boolean useFulltext) {
         if (query.isFollowingOnly() && query.getCurrentUserId() != null) {
-            // Get following authors
-            List<Long> followingIds = getFollowingAuthorIds(query.getCurrentUserId());
-            if (followingIds.isEmpty()) {
-                return new PageResult<>(new ArrayList<>(), page, pageSize, 0);
-            }
-            if (needsEnhancedSearch) {
-                articles = articleRepository.findPublishedEnhancedByAuthorIds(
-                    followingIds,
-                    query.getKeyword(),
-                    query.getCategory(),
-                    query.getTag(),
-                    query.getSort(),
-                    query.getAuthorKeyword(),
-                    query.getDateFrom(),
-                    query.getDateTo(),
-                    page,
-                    pageSize,
-                    useFulltext
-                );
-                total = articleRepository.countPublishedEnhancedByAuthorIds(
-                    followingIds,
-                    query.getKeyword(),
-                    query.getCategory(),
-                    query.getTag(),
-                    query.getSort(),
-                    query.getAuthorKeyword(),
-                    query.getDateFrom(),
-                    query.getDateTo(),
-                    useFulltext
-                );
-            } else {
-                articles = articleRepository.findPublishedByAuthorIds(
-                    followingIds,
-                    query.getSort(),
-                    page,
-                    pageSize
-                );
-                total = articleRepository.countPublishedByAuthorIds(followingIds, query.getSort());
-            }
+            return fetchFollowingArticles(query, page, pageSize, needsEnhancedSearch, useFulltext);
         } else if (needsEnhancedSearch) {
-            articles = articleRepository.findPublishedEnhanced(
-                query.getKeyword(),
-                query.getCategory(),
-                query.getTag(),
-                query.getSort(),
-                query.getAuthorKeyword(),
-                query.getDateFrom(),
-                query.getDateTo(),
-                pageSize,
-                offset,
-                useFulltext
-            );
-            total = articleRepository.countPublishedEnhanced(
-                query.getKeyword(),
-                query.getCategory(),
-                query.getTag(),
-                query.getSort(),
-                query.getAuthorKeyword(),
-                query.getDateFrom(),
-                query.getDateTo(),
-                useFulltext
-            );
+            return fetchEnhancedPublicArticles(query, pageSize, offset, useFulltext);
         } else {
-            String categoryGroup = query.getCategoryGroup();
-            if (StringUtils.hasText(categoryGroup)) {
-                articles = articleRepository.findPublishedWithLimit(
-                    query.getKeyword(),
-                    query.getCategory(),
-                    categoryGroup,
-                    query.getTag(),
-                    query.getSort(),
-                    pageSize,
-                    offset
-                );
-                total = articleRepository.countPublished(
-                    query.getKeyword(),
-                    query.getCategory(),
-                    categoryGroup,
-                    query.getTag(),
-                    query.getSort()
-                );
-            } else {
-                articles = articleRepository.findPublishedWithLimit(
-                    query.getKeyword(),
-                    query.getCategory(),
-                    query.getTag(),
-                    query.getSort(),
-                    pageSize,
-                    offset
-                );
-                total = articleRepository.countPublished(
-                    query.getKeyword(),
-                    query.getCategory(),
-                    query.getTag(),
-                    query.getSort()
-                );
-            }
+            return fetchRegularPublicArticles(query, pageSize, offset);
         }
+    }
 
-        List<ArticleDTO> items = toDTOList(articles, query.getCurrentUserId());
-        if (isPublishedPageCacheable(query)) {
-            ArticlePageCacheKey key = ArticlePageCacheKey.of(query, useFulltext);
-            publishedArticlePageCache.put(key, new PageResult<Article>(articles, page, pageSize, total));
+    private ArticlesAndTotal fetchFollowingArticles(ArticlePageQuery query, int page, int pageSize,
+                                                    boolean needsEnhancedSearch, boolean useFulltext) {
+        List<Long> followingIds = getFollowingAuthorIds(query.getCurrentUserId());
+        if (followingIds.isEmpty()) {
+            return new ArticlesAndTotal(new ArrayList<>(), 0L);
         }
-        return new PageResult<ArticleDTO>(items, page, pageSize, total);
+        List<Article> articles;
+        long total;
+        if (needsEnhancedSearch) {
+            articles = articleRepository.findPublishedEnhancedByAuthorIds(
+                followingIds, query.getKeyword(), query.getCategory(), query.getTag(), query.getSort(),
+                query.getAuthorKeyword(), query.getDateFrom(), query.getDateTo(), page, pageSize, useFulltext);
+            total = articleRepository.countPublishedEnhancedByAuthorIds(
+                followingIds, query.getKeyword(), query.getCategory(), query.getTag(), query.getSort(),
+                query.getAuthorKeyword(), query.getDateFrom(), query.getDateTo(), useFulltext);
+        } else {
+            articles = articleRepository.findPublishedByAuthorIds(followingIds, query.getSort(), page, pageSize);
+            total = articleRepository.countPublishedByAuthorIds(followingIds, query.getSort());
+        }
+        return new ArticlesAndTotal(articles, total);
+    }
+
+    private ArticlesAndTotal fetchEnhancedPublicArticles(ArticlePageQuery query, int pageSize,
+                                                         int offset, boolean useFulltext) {
+        List<Article> articles = articleRepository.findPublishedEnhanced(
+            query.getKeyword(), query.getCategory(), query.getTag(), query.getSort(),
+            query.getAuthorKeyword(), query.getDateFrom(), query.getDateTo(), pageSize, offset, useFulltext);
+        long total = articleRepository.countPublishedEnhanced(
+            query.getKeyword(), query.getCategory(), query.getTag(), query.getSort(),
+            query.getAuthorKeyword(), query.getDateFrom(), query.getDateTo(), useFulltext);
+        return new ArticlesAndTotal(articles, total);
+    }
+
+    private ArticlesAndTotal fetchRegularPublicArticles(ArticlePageQuery query, int pageSize, int offset) {
+        String categoryGroup = query.getCategoryGroup();
+        List<Article> articles;
+        long total;
+        if (StringUtils.hasText(categoryGroup)) {
+            articles = articleRepository.findPublishedWithLimit(
+                query.getKeyword(), query.getCategory(), categoryGroup, query.getTag(), query.getSort(),
+                pageSize, offset);
+            total = articleRepository.countPublished(
+                query.getKeyword(), query.getCategory(), categoryGroup, query.getTag(), query.getSort());
+        } else {
+            articles = articleRepository.findPublishedWithLimit(
+                query.getKeyword(), query.getCategory(), query.getTag(), query.getSort(), pageSize, offset);
+            total = articleRepository.countPublished(
+                query.getKeyword(), query.getCategory(), query.getTag(), query.getSort());
+        }
+        return new ArticlesAndTotal(articles, total);
+    }
+
+    private static final class ArticlesAndTotal {
+        final List<Article> articles;
+        final long total;
+        ArticlesAndTotal(List<Article> articles, long total) {
+            this.articles = articles;
+            this.total = total;
+        }
     }
 
     /**
@@ -1085,19 +1050,17 @@ public class ArticleAppService {
      */
     private SanitizedArticleContent sanitizeArticleContent(String title, String summary,
                                                            String content, String action) {
-        // FIXME: detectBlockWords and detectWarnWords scan the same text independently — consider a single-pass scan
         String sensitiveText = buildArticleSensitiveText(title, summary, content);
-        List<String> blockHits = sensitiveWordAppService.detectBlockWords(sensitiveText);
-        if (!blockHits.isEmpty()) {
+        SensitiveWordAppService.ScanResult scan = sensitiveWordAppService.scan(sensitiveText);
+        if (!scan.getBlockHits().isEmpty()) {
             throw new ApplicationException(ErrorCode.PARAM_ERROR,
-                action + "失败：内容包含被禁止的敏感词（" + String.join("、", blockHits) + "），请修改后重试");
+                action + "失败：内容包含被禁止的敏感词（" + String.join("、", scan.getBlockHits()) + "），请修改后重试");
         }
-        List<String> warnHits = sensitiveWordAppService.detectWarnWords(sensitiveText);
         return new SanitizedArticleContent(
             sensitiveWordAppService.maskWarnWords(title),
             sensitiveWordAppService.maskWarnWords(summary),
             sensitiveWordAppService.maskWarnWords(content),
-            !warnHits.isEmpty()
+            !scan.getWarnHits().isEmpty()
         );
     }
 

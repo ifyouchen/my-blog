@@ -198,18 +198,51 @@ public class SensitiveWordAppService {
         return result;
     }
 
+    /**
+     * 同时检测 BLOCK 和 WARN 级别敏感词，文本只做一次 toLowerCase 转换。
+     * 当存在 BLOCK 命中时，WARN 列表留空（BLOCK 已足够拦截，无需继续扫描）。
+     */
+    public ScanResult scan(String text) {
+        if (text == null || text.isEmpty()) {
+            return new ScanResult(new ArrayList<>(), new ArrayList<>());
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        List<String> blockHits = findHitsInLower(lower, sensitiveWordCache.getBlockWords());
+        if (!blockHits.isEmpty()) {
+            return new ScanResult(blockHits, new ArrayList<>());
+        }
+        List<String> warnHits = findHitsInLower(lower, sensitiveWordCache.getWarnWords());
+        return new ScanResult(blockHits, warnHits);
+    }
+
     private List<String> findHits(String text, List<String> words) {
         if (text == null || text.isEmpty()) {
             return new ArrayList<String>();
         }
-        String lower = text.toLowerCase(Locale.ROOT);
-        List<String> hits = new ArrayList<String>();
+        return findHitsInLower(text.toLowerCase(Locale.ROOT), words);
+    }
+
+    private List<String> findHitsInLower(String lower, List<String> words) {
+        List<String> hits = new ArrayList<>();
         for (String word : normalizeWords(words)) {
             if (lower.contains(word.toLowerCase(Locale.ROOT))) {
                 hits.add(word);
             }
         }
         return hits;
+    }
+
+    public static final class ScanResult {
+        private final List<String> blockHits;
+        private final List<String> warnHits;
+
+        ScanResult(List<String> blockHits, List<String> warnHits) {
+            this.blockHits = blockHits;
+            this.warnHits = warnHits;
+        }
+
+        public List<String> getBlockHits() { return blockHits; }
+        public List<String> getWarnHits() { return warnHits; }
     }
 
     private List<String> normalizeWords(List<String> words) {

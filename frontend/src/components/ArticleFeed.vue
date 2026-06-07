@@ -137,12 +137,18 @@ const escapeHtml = (value) => String(value ?? '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+// Build the regex once per keyword change instead of on every article render
+const highlightRegex = computed(() => {
+    const kw = props.highlightKeyword ? props.highlightKeyword.trim() : '';
+    if (!kw) return null;
+    const escaped = escapeHtml(kw).replace(/[.*+?^()|\[\]\\]/g, '\\$&');
+    return new RegExp(escaped, 'gi');
+});
+
 const highlightHtml = (text) => {
-    const kw = props.highlightKeyword ? props.highlightKeyword.trim() : "";
     const safeText = escapeHtml(text);
-    if (!kw || !safeText) return safeText;
-    const escapedKeyword = escapeHtml(kw).replace(/[.*+?^()|\[\]\\]/g, '\\$&');
-    return safeText.replace(new RegExp(escapedKeyword, "gi"), m => `<mark class="search-highlight">${m}</mark>`);
+    if (!highlightRegex.value || !safeText) return safeText;
+    return safeText.replace(highlightRegex.value, m => `<mark class="search-highlight">${m}</mark>`);
 };
 const hasUsableCover = (article) => Boolean(article?.cover);
 const setCoverFallback = (event) => {
@@ -234,7 +240,7 @@ const setupLoadMoreObserver = () => {
         loadMoreTriggerVisible.value = entries.some((entry) => entry.isIntersecting);
         maybeAutoLoadMore();
     }, {
-        rootMargin: '360px 0px',
+        rootMargin: '200px 0px',
         threshold: 0
     });
     loadMoreObserver.observe(loadMoreTrigger.value);
@@ -322,6 +328,7 @@ onBeforeUnmount(teardownLoadMoreObserver);
             <article
                 v-for="article in articles"
                 :key="article.id"
+                v-memo="[article.id, article.liked, article.favorited, article.stats?.views, article.stats?.likes, article.stats?.comments, highlightRegex]"
                 class="post-item"
                 :class="{
                     'featured-post': article.featured,

@@ -322,3 +322,16 @@ export const subscribeAuthorizedEventStream = (path, handlers = {}, options = {}
     connect();
     return close;
 };
+
+/**
+ * 从对象构建 URLSearchParams，自动过滤 null / undefined / '' 值。
+ */
+export const buildParams = (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+            query.set(key, value);
+        }
+    });
+    return query;
+};

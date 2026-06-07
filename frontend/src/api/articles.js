@@ -1,14 +1,9 @@
-import {downloadFile, request} from './http';
+import {buildParams, downloadFile, request} from './http';
 import {normalizeArticle} from './transformers';
 
 export const listArticlesApi = async (params = {}) => {
-    const query = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-            query.set(key, value);
-        }
-    });
-    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const query = buildParams(params);
+    const suffix = query.toString() ? `?${query}` : '';
     const data = await request(`/articles${suffix}`, {
         suppressAuthPrompt: true
     });
