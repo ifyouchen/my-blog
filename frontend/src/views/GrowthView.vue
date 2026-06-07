@@ -903,14 +903,6 @@ onMounted(async () => {
                                     >
                                         {{ copiedCode === inviteCode.code ? '已复制 ✓' : '复制链接' }}
                                     </button>
-                                    <button
-                                        type="button"
-                                        class="invite-regenerate-btn"
-                                        :disabled="inviteGenerating"
-                                        @click="regenerateCode"
-                                    >
-                                        {{ inviteGenerating ? '刷新中...' : '刷新邀请码' }}
-                                    </button>
                                 </div>
                             </div>
                             <div v-else class="invite-empty">

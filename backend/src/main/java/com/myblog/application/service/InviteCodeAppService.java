@@ -22,14 +22,12 @@ import java.util.UUID;
 /**
  * 邀请码应用服务。
  * <p>
- * 每个用户拥有一个可复用的邀请码，默认有效期 30 天。
+ * 每个用户拥有一个可复用的邀请码，永久有效。
  * 可随时重新生成，旧码自动失效。
  * </p>
  */
 @Service
 public class InviteCodeAppService {
-
-    private static final int VALID_DAYS = 30;
 
     private static final Logger log = LoggerFactory.getLogger(InviteCodeAppService.class);
 
@@ -67,7 +65,7 @@ public class InviteCodeAppService {
         InviteCodeDO row = new InviteCodeDO();
         row.setCode(UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         row.setCreatorId(userId);
-        row.setExpiredAt(LocalDateTime.now().plusDays(VALID_DAYS));
+        row.setExpiredAt(null);
         row.setMaxUses(9999);
         row.setUseCount(0);
         mapper.insert(row);
@@ -99,7 +97,7 @@ public class InviteCodeAppService {
         InviteCodeDO row = new InviteCodeDO();
         row.setCode(UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         row.setCreatorId(userId);
-        row.setExpiredAt(LocalDateTime.now().plusDays(VALID_DAYS));
+        row.setExpiredAt(null);
         row.setMaxUses(9999);
         row.setUseCount(0);
         mapper.insert(row);
