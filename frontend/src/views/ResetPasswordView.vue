@@ -58,7 +58,7 @@ const submit = async () => {
     <SiteHeader />
     <main class="auth-layout" data-testid="reset-password-page">
         <section class="auth-visual">
-            <p class="eyebrow">Inkflow</p>
+            <p class="eyebrow">DevNotes</p>
             <h1>设置新密码</h1>
             <p>通过安全链接重置密码，重置后原密码将立即失效。</p>
         </section>

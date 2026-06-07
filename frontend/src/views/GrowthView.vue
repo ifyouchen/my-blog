@@ -22,7 +22,7 @@ import {
 import {generateInviteCodeApi, getMyInviteCodesApi} from '@/api/auth';
 import {useSession} from '@/stores/session';
 
-useHead({title: '经验积分 - Inkflow'});
+useHead({title: '经验积分 - DevNotes'});
 
 const {state: session, updateCurrentUser} = useSession();
 
