@@ -45,9 +45,9 @@ public class SmtpEmailSender implements EmailSender {
      */
     @Override
     public void sendRegisterCode(String email, String code) {
-        String text = "你正在注册 DevNotes，验证码为：" + code + "\n\n"
+        String text = "你正在注册小蓝书，验证码为：" + code + "\n\n"
             + "验证码 10 分钟内有效。如非本人操作，请忽略本邮件。";
-        sendSimpleMail(email, "DevNotes 注册验证码", text);
+        sendSimpleMail(email, "小蓝书 注册验证码", text);
     }
 
     /**

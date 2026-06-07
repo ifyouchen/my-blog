@@ -211,12 +211,12 @@ const articleMarkdown = computed(() => {
 });
 const pageTitle = computed(() => {
     if (article.value?.title) {
-        return `${article.value.title} - DevNotes`;
+        return `${article.value.title} - 小蓝书`;
     }
     if (isLoading.value) {
-        return '加载中 - DevNotes';
+        return '加载中 - 小蓝书';
     }
-    return '文章详情 - DevNotes';
+    return '文章详情 - 小蓝书';
 });
 
 useHead({

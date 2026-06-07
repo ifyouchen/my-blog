@@ -220,9 +220,9 @@ const handleSignInCompleted = () => {
 <template>
     <header class="site-header" data-testid="site-header">
         <div class="header-inner header-inner--article">
-            <RouterLink class="brand" to="/" aria-label="DevNotes 首页" data-testid="site-brand">
-                <span class="brand-mark">M</span>
-                <span class="brand-name">DevNotes</span>
+            <RouterLink class="brand" to="/" aria-label="小蓝书 首页" data-testid="site-brand">
+                <span class="brand-mark"><svg viewBox="0 0 96 96" width="22" height="22" fill="none"><path d="M48 76 L12 64 L20 22 L48 34 Z" fill="#fff"/><path d="M48 76 L84 64 L76 22 L48 34 Z" fill="#fff"/><line x1="48" y1="34" x2="48" y2="76" stroke="#bfdbfe" stroke-width="3" stroke-linecap="round"/><line x1="22" y1="30" x2="44" y2="40" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/><line x1="20" y1="44" x2="44" y2="52" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/><line x1="52" y1="40" x2="74" y2="30" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/><line x1="52" y1="52" x2="76" y2="44" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/></svg></span>
+                <span class="brand-name">小蓝书</span>
             </RouterLink>
 
             <nav class="main-nav" aria-label="主导航">

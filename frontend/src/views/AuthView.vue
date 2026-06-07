@@ -140,7 +140,7 @@ const submit = async () => {
                 account: form.account.trim(),
                 password: form.password
             });
-            successMessage.value = '登录成功，已为你进入创作者后台';
+            successMessage.value = '登录成功，欢迎回来';
             window.setTimeout(() => {
                 router.push('/dashboard/articles');
             }, 500);
@@ -169,23 +169,23 @@ onBeforeUnmount(() => {
     <SiteHeader />
     <main class="auth-layout" :data-testid="isRegister ? 'register-page' : 'login-page'">
         <section class="auth-visual">
-            <p class="eyebrow">DevNotes</p>
-            <h1>把工程经验沉淀成作品</h1>
-            <p>登录后可以发布文章、保存草稿、评论互动、收藏文章，并进入自己的创作者中心。</p>
+            <p class="eyebrow">小蓝书</p>
+            <h1>用文字记录世界</h1>
+            <p>写作、分享、交流——让你的文字被更多人看见。</p>
             <div class="auth-highlights">
                 <span class="auth-highlight">文章发布与草稿管理</span>
                 <span class="auth-highlight">评论、点赞、收藏互动</span>
-                <span class="auth-highlight">创作者中心与数据看板</span>
+                <span class="auth-highlight">个人创作中心</span>
             </div>
         </section>
 
         <section class="auth-panel" :aria-labelledby="isRegister ? 'register-title' : 'login-title'">
             <p class="eyebrow">{{ isRegister ? '创建账号' : '欢迎回来' }}</p>
             <h2 :id="isRegister ? 'register-title' : 'login-title'">
-                {{ isRegister ? '注册 DevNotes' : '登录 DevNotes' }}
+                {{ isRegister ? '注册小蓝书' : '登录小蓝书' }}
             </h2>
             <p class="auth-panel-copy">
-                {{ isRegister ? '创建账号后即可进入创作中心，搭建自己的内容主页。' : '登录后继续写作、管理内容，并查看站内互动。' }}
+                {{ isRegister ? '创建账号后即可进入创作中心，搭建自己的内容主页。' : '登录后继续写作、管理内容，查看站内互动。' }}
             </p>
 
             <div v-if="isRegister && inviteCode" class="invite-banner">
@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
                             <path d="M20 32l8 8 16-16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                    <h2 id="welcome-title">欢迎加入 DevNotes 👋</h2>
+                    <h2 id="welcome-title">欢迎加入小蓝书 👋</h2>
                     <p class="welcome-greeting">嗨，<strong>{{ welcomeUsername }}</strong>！你已成功创建账号。</p>
                     <ul class="welcome-checklist">
                         <li>
@@ -300,7 +300,7 @@ onBeforeUnmount(() => {
                     </ul>
                     <div class="welcome-actions">
                         <button class="primary-action" type="button" @click="closeWelcome">
-                            进入创作者中心
+                            进入创作中心
                         </button>
                         <RouterLink class="welcome-action-secondary" to="/settings/profile" @click="showWelcome = false">
                             先完善个人资料

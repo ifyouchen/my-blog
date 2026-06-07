@@ -25,10 +25,10 @@ const formatNumber = (num) => {
 <template>
     <section class="quick-panel" aria-labelledby="quick-title">
         <div>
-            <p class="eyebrow">技术创作者平台</p>
-            <h1 id="quick-title">发现今天值得读的工程内容</h1>
+            <p class="eyebrow">内容创作平台</p>
+            <h1 id="quick-title">发现今天值得读的好内容</h1>
             <p class="quick-copy">
-                覆盖后端架构、前端体验、数据库调优与团队实践，把可以直接落地到项目里的文章放到最前面。
+                精选优质文章，涵盖多个领域，把最值得读的内容放在最前面。
             </p>
         </div>
         <div class="quick-stats" aria-label="平台数据">

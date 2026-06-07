@@ -382,7 +382,7 @@ onMounted(loadData);
                         </RouterLink>
                         <div class="explore-author-copy">
                             <RouterLink :to="`/users/${author.id}`">{{ author.name }}</RouterLink>
-                            <p>{{ author.bio || '持续输出技术内容' }}</p>
+                            <p>{{ author.bio || '持续创作优质内容' }}</p>
                         </div>
                         <div class="explore-author-stats">
                             <span>{{ author.articleCount }} 文章</span>
