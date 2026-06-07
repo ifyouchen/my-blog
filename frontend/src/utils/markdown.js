@@ -364,6 +364,7 @@ export const renderMarkdownForExport = (markdown = '') => {
 
 const escapeTableCell = (text = '') => {
     return String(text)
+        .replace(/\\/g, '\\\\')
         .replace(/\|/g, '\\|')
         .replace(/\n+/g, ' ')
         .trim();

@@ -34,7 +34,7 @@ public class RechargeOrderRepositoryImpl implements RechargeOrderRepository {
      * <p>注意：channel 参数当前版本暂不存表，如需存储请在表中添加字段。</p>
      */
     @Override
-    public int insertIgnore(Long userId, String payOrderNo, int amount, int pointAmount, String channel) {
+    public int insertIgnore(Long userId, String payOrderNo, long amount, int pointAmount, String channel) {
         return mapper.insertIgnore(userId, payOrderNo, amount, pointAmount);
     }
 

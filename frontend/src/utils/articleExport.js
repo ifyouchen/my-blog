@@ -253,7 +253,7 @@ const MIME_TYPES = {
     md: 'text/markdown;charset=utf-8',
     zip: 'application/zip'
 };
-const MARKDOWN_IMAGE_REGEX = /!\[([^\]\n]*(?:\\.[^\]\n]*)*)\]\(([^)\n]*)\)/g;
+const MARKDOWN_IMAGE_REGEX = /!\[((?:[^\]\n\\]|\\.)*)\]\(([^)\n]*)\)/g;
 const HTML_IMAGE_SRC_REGEX = /(<img\b[^>]*?\bsrc\s*=\s*)(["'])([^"']+)(\2)/gi;
 const HTML_IMAGE_SRC_UNQUOTED_REGEX = /(<img\b[^>]*?\bsrc\s*=\s*)(?!["'])([^\s>]+)/gi;
 const IMAGE_EXTENSION_BY_MIME = {

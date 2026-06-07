@@ -32,7 +32,7 @@ public class LocalFileStorage implements FileStorage {
 
     @Override
     public String upload(String key, InputStream inputStream, String contentType) {
-        Path targetFile = uploadRoot.resolve(key).normalize();
+        Path targetFile = safeResolve(key);
         try {
             Files.createDirectories(targetFile.getParent());
             Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
@@ -50,11 +50,19 @@ public class LocalFileStorage implements FileStorage {
     @Override
     public void delete(String key) {
         try {
-            Path targetFile = uploadRoot.resolve(key).normalize();
+            Path targetFile = safeResolve(key);
             Files.deleteIfExists(targetFile);
         } catch (IOException exception) {
             throw new RuntimeException("文件删除失败: " + key, exception);
         }
+    }
+
+    private Path safeResolve(String key) {
+        Path targetFile = uploadRoot.resolve(key).normalize();
+        if (!targetFile.startsWith(uploadRoot)) {
+            throw new IllegalArgumentException("非法文件路径: " + key);
+        }
+        return targetFile;
     }
 
     @Override

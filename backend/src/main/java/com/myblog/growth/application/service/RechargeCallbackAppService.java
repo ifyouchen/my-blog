@@ -125,10 +125,10 @@ public class RechargeCallbackAppService {
             // pointAmount 在 RECHARGE 规则中代表"每元（100分）获得的积分数"
             // pointsGranted = amountFen / 100 * pointAmount
             int pointsPerYuan = ruleOpt.get().getPointAmount();
-            int pointsGranted = (int) (amountFen / 100 * pointsPerYuan);
+            long pointsGranted = amountFen / 100 * pointsPerYuan;
             return doInsertAndGrantPoints(payOrderNo, userId, amountFen, pointsGranted);
         } else {
-            int pointsGranted = (int) (amountFen / fenPerPoint);
+            long pointsGranted = amountFen / fenPerPoint;
             return doInsertAndGrantPoints(payOrderNo, userId, amountFen, pointsGranted);
         }
     }
@@ -136,10 +136,10 @@ public class RechargeCallbackAppService {
     // ────────────────────────── 私有辅助方法 ──────────────────────────────
 
     private CallbackResult doInsertAndGrantPoints(String payOrderNo, Long userId,
-                                                  long amountFen, int pointsGranted) {
+                                                  long amountFen, long pointsGranted) {
         // ③ INSERT IGNORE recharge_order(PENDING)
         int inserted = rechargeOrderRepository.insertIgnore(userId, payOrderNo,
-                (int) amountFen, pointsGranted, null);
+                amountFen, (int) pointsGranted, null);
         if (inserted == 0) {
             // 已存在记录（并发场景），直接幂等返回
             log.info("[充值回调] 并发幂等跳过，payOrderNo={}", payOrderNo);
@@ -147,7 +147,7 @@ public class RechargeCallbackAppService {
         }
 
         // ⑤ 积分入账
-        pointAppService.addPoints(userId, pointsGranted, SOURCE_RECHARGE, payOrderNo,
+        pointAppService.addPoints(userId, (int) pointsGranted, SOURCE_RECHARGE, payOrderNo,
                 "充值 " + amountFen + " 分，获得 " + pointsGranted + " 积分", null);
 
         // ⑥ 更新状态为 SUCCESS
@@ -156,7 +156,7 @@ public class RechargeCallbackAppService {
         log.info("[充值回调] 成功。payOrderNo={}, userId={}, amountFen={}, pointsGranted={}",
                 payOrderNo, userId, amountFen, pointsGranted);
 
-        return new CallbackResult(payOrderNo, pointsGranted, "SUCCESS", null);
+        return new CallbackResult(payOrderNo, (int) pointsGranted, "SUCCESS", null);
     }
 }
 

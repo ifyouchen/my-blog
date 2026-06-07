@@ -21,7 +21,7 @@ public class Email {
      * @param value 邮箱地址
      */
     public Email(String value) {
-        if (value == null || !EMAIL_PATTERN.matcher(value).matches()) {
+        if (value == null || value.length() > 254 || !EMAIL_PATTERN.matcher(value).matches()) {
             throw new IllegalArgumentException("邮箱格式不正确");
         }
         this.value = value;

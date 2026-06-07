@@ -24,7 +24,7 @@ public interface RechargeOrderRepository {
      * @param channel     支付渠道（如 WECHAT / ALIPAY）
      * @return 插入行数（1=成功，0=已存在）
      */
-    int insertIgnore(Long userId, String payOrderNo, int amount, int pointAmount, String channel);
+    int insertIgnore(Long userId, String payOrderNo, long amount, int pointAmount, String channel);
 
     /**
      * 将充值订单标记为已到账（SUCCESS）.

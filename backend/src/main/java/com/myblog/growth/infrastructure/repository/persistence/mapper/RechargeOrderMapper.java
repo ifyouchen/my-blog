@@ -29,7 +29,7 @@ public interface RechargeOrderMapper {
      */
     int insertIgnore(@Param("userId") Long userId,
                      @Param("payOrderNo") String payOrderNo,
-                     @Param("amountFen") int amountFen,
+                     @Param("amountFen") long amountFen,
                      @Param("pointsGranted") int pointsGranted);
 
     /**
