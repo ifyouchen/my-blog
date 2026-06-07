@@ -188,6 +188,11 @@ onBeforeUnmount(() => {
                 {{ isRegister ? '创建账号后即可进入创作中心，搭建自己的内容主页。' : '登录后继续写作、管理内容，并查看站内互动。' }}
             </p>
 
+            <div v-if="isRegister && inviteCode" class="invite-banner">
+                <span class="invite-banner-icon" aria-hidden="true">🎉</span>
+                <span>你正在通过邀请链接注册，成功后双方均可获得积分奖励</span>
+            </div>
+
             <form class="form-stack" :data-testid="isRegister ? 'register-form' : 'login-form'" @submit.prevent="submit">
                 <label v-if="isRegister">
                     <span>用户名</span>

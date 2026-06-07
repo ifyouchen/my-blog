@@ -470,3 +470,250 @@
         font-size: 12px;
     }
 }
+
+/* ── 邀请好友区块 ────────────────────────────── */
+.invite-section {
+    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.invite-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.invite-head h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.invite-stats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+}
+
+.invite-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.invite-stat strong {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent, #6c63ff);
+    line-height: 1;
+}
+
+.invite-stat span {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.invite-stat-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--line);
+}
+
+.invite-desc {
+    margin: 0 0 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.invite-loading,
+.invite-empty {
+    padding: 20px 0;
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.invite-error {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+}
+
+.invite-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+
+.invite-table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.invite-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--line);
+}
+
+.invite-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+}
+
+.invite-table tr:last-child td {
+    border-bottom: none;
+}
+
+.invite-table tr:hover td {
+    background: var(--surface-soft);
+}
+
+.invite-code-text {
+    font-family: Consolas, 'Liberation Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-strong);
+}
+
+.invite-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.invite-status.active {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.invite-status.used {
+    background: var(--surface-soft);
+    color: var(--text-muted);
+}
+
+.invite-status.expired {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.invite-expiry {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.invite-copy-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-hover);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.invite-copy-btn:hover {
+    background: var(--brand-hover);
+}
+
+.invite-copy-btn.copied {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+}
+
+.invite-copy-disabled {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.invite-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.invite-generate-btn {
+    padding: 9px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent, #6c63ff);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.invite-generate-btn:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.invite-generate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.invite-limit-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+    .invite-section {
+        margin: 0 -14px 14px;
+        padding: 14px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .invite-head {
+        gap: 10px;
+    }
+
+    .invite-stats {
+        gap: 8px;
+        padding: 6px 12px;
+    }
+
+    .invite-stat strong {
+        font-size: 15px;
+    }
+
+    .invite-table {
+        min-width: 420px;
+    }
+}
