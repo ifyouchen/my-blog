@@ -80,10 +80,11 @@ public class InviteRewardAppService {
      *
      * @param inviterUserId 邀请人用户 ID
      * @param inviteeUserId 被邀请人用户 ID
+     * @param inviteCode    使用的邀请码（可空，用于记录）
      * @return 奖励触发结果
      */
     @Transactional(rollbackFor = Exception.class)
-    public InviteRewardResult triggerReward(Long inviterUserId, Long inviteeUserId) {
+    public InviteRewardResult triggerReward(Long inviterUserId, Long inviteeUserId, String inviteCode) {
         if (inviterUserId == null || inviteeUserId == null) {
             throw new GrowthBusinessException(GrowthErrorCode.PARAM_INVALID, "邀请人和受邀人 ID 不能为空");
         }
@@ -102,7 +103,7 @@ public class InviteRewardAppService {
         inviteRiskControlService.check(inviterUserId);
 
         // INSERT IGNORE invite_relation(PENDING)
-        int inserted = inviteRelationRepository.insertIgnore(inviterUserId, inviteeUserId);
+        int inserted = inviteRelationRepository.insertIgnore(inviterUserId, inviteeUserId, inviteCode);
         if (inserted == 0) {
             log.info("[拉新奖励] 并发幂等跳过，inviteeUserId={}", inviteeUserId);
             return new InviteRewardResult(inviterUserId, inviteeUserId, 0,
@@ -142,6 +143,14 @@ public class InviteRewardAppService {
                 inviterUserId, inviteeUserId, pointAmount);
 
         return new InviteRewardResult(inviterUserId, inviteeUserId, pointAmount, "GRANTED", null);
+    }
+
+    /**
+     * 触发拉新奖励（无邀请码的旧调用向后兼容）.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public InviteRewardResult triggerReward(Long inviterUserId, Long inviteeUserId) {
+        return triggerReward(inviterUserId, inviteeUserId, null);
     }
 
     /**

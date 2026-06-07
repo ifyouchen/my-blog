@@ -396,6 +396,9 @@ CREATE TABLE IF NOT EXISTS `invite_relation` (
     INDEX `idx_inviter_status` (`inviter_user_id`, `reward_status`, `deleted_at`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='邀请关系表';
 
+-- v3 migration: 追加邀请码字段
+ALTER TABLE `invite_relation`
+    ADD COLUMN `invite_code` varchar(20) NULL DEFAULT NULL COMMENT '使用的邀请码' AFTER `invitee_user_id`;
 
 -- ========================
 -- 5. 充值

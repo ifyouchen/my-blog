@@ -16,6 +16,7 @@ const RewardGrantLogTab = defineAsyncComponent(() => import('@/views/admin/Rewar
 const RecommendationApplicationTab = defineAsyncComponent(() => import('@/views/admin/RecommendationApplicationTab.vue'));
 const AnnualCreatorCandidateTab = defineAsyncComponent(() => import('@/views/admin/AnnualCreatorCandidateTab.vue'));
 const SignInRewardTab = defineAsyncComponent(() => import('@/views/admin/SignInRewardTab.vue'));
+const InviteRecordsTab = defineAsyncComponent(() => import('@/views/admin/InviteRecordsTab.vue'));
 
 const TABS = [
     {key: 'dashboard', label: '概览'},
@@ -28,6 +29,7 @@ const TABS = [
     {key: 'reward-logs', label: '奖励记录'},
     {key: 'recommendation-applications', label: '推荐申请'},
     {key: 'annual-candidates', label: '年度候选'},
+    {key: 'invite-records', label: '邀请记录'},
     {key: 'revenue', label: '分账流水'},
 ];
 
@@ -42,6 +44,7 @@ const TAB_COMPONENTS = {
     'reward-logs': RewardGrantLogTab,
     'recommendation-applications': RecommendationApplicationTab,
     'annual-candidates': AnnualCreatorCandidateTab,
+    'invite-records': InviteRecordsTab,
     revenue: RevenueShareTab
 };
 const activeTabComponent = computed(() => TAB_COMPONENTS[activeTab.value] || null);

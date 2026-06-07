@@ -4,7 +4,7 @@
 <mapper namespace="com.myblog.growth.infrastructure.repository.persistence.mapper.InviteRelationMapper">
 
     <sql id="Base_Column_List">
-        id, inviter_user_id, invitee_user_id, reward_status,
+        id, inviter_user_id, invitee_user_id, invite_code, reward_status,
         reward_granted_at, trigger_biz_no, skip_reason,
         created_at, updated_at, deleted_at, version
     </sql>
@@ -20,9 +20,9 @@
     <!-- INSERT IGNORE：uk_invitee 冲突时静默忽略 -->
     <insert id="insertIgnore">
         INSERT IGNORE INTO invite_relation
-            (inviter_user_id, invitee_user_id, reward_status)
+            (inviter_user_id, invitee_user_id, invite_code, reward_status)
         VALUES
-            (#{inviterUserId}, #{inviteeUserId}, 'PENDING')
+            (#{inviterUserId}, #{inviteeUserId}, #{inviteCode}, 'PENDING')
     </insert>
 
     <!-- 将指定受邀人的邀请奖励状态更新为 GRANTED -->
@@ -67,6 +67,59 @@
           AND ir.reward_status   = 'GRANTED'
           AND ir.deleted_at IS NULL
         ORDER BY ir.created_at DESC
+    </select>
+
+    <!-- 管理端：统计邀请记录总数 -->
+    <select id="countForAdmin" resultType="long">
+        SELECT COUNT(*)
+        FROM invite_relation ir
+        <if test="keyword != null and keyword != ''">
+            LEFT JOIN blog_user inviter ON ir.inviter_user_id = inviter.id AND inviter.deleted_at IS NULL
+            LEFT JOIN blog_user invitee ON ir.invitee_user_id = invitee.id AND invitee.deleted_at IS NULL
+        </if>
+        WHERE ir.deleted_at IS NULL
+        <if test="rewardStatus != null and rewardStatus != ''">
+            AND ir.reward_status = #{rewardStatus}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                inviter.username LIKE CONCAT('%', #{keyword}, '%')
+                OR invitee.username LIKE CONCAT('%', #{keyword}, '%')
+                OR ir.invite_code LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </select>
+
+    <!-- 管理端：分页查询邀请记录 -->
+    <select id="selectPageForAdmin" resultType="java.util.LinkedHashMap">
+        SELECT
+            ir.id,
+            ir.inviter_user_id   AS inviterUserId,
+            inviter.username     AS inviterUsername,
+            ir.invitee_user_id   AS inviteeUserId,
+            invitee.username     AS inviteeUsername,
+            ir.invite_code       AS inviteCode,
+            ir.reward_status     AS rewardStatus,
+            ir.reward_granted_at AS rewardGrantedAt,
+            ir.skip_reason       AS skipReason,
+            ir.trigger_biz_no    AS triggerBizNo,
+            ir.created_at        AS createdAt
+        FROM invite_relation ir
+        LEFT JOIN blog_user inviter ON ir.inviter_user_id = inviter.id AND inviter.deleted_at IS NULL
+        LEFT JOIN blog_user invitee ON ir.invitee_user_id = invitee.id AND invitee.deleted_at IS NULL
+        WHERE ir.deleted_at IS NULL
+        <if test="rewardStatus != null and rewardStatus != ''">
+            AND ir.reward_status = #{rewardStatus}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                inviter.username LIKE CONCAT('%', #{keyword}, '%')
+                OR invitee.username LIKE CONCAT('%', #{keyword}, '%')
+                OR ir.invite_code LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY ir.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
 </mapper>

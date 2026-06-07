@@ -36,8 +36,8 @@ public class InviteRelationRepositoryImpl implements InviteRelationRepository {
      * {@inheritDoc}
      */
     @Override
-    public int insertIgnore(Long inviterId, Long inviteeId) {
-        return mapper.insertIgnore(inviterId, inviteeId);
+    public int insertIgnore(Long inviterId, Long inviteeId, String inviteCode) {
+        return mapper.insertIgnore(inviterId, inviteeId, inviteCode);
     }
 
     /**
@@ -73,6 +73,16 @@ public class InviteRelationRepositoryImpl implements InviteRelationRepository {
     @Override
     public List<Map<String, Object>> selectInvitedUsers(Long inviterId) {
         return mapper.selectInvitedUsersByInviterId(inviterId);
+    }
+
+    @Override
+    public long countForAdmin(String keyword, String rewardStatus) {
+        return mapper.countForAdmin(keyword, rewardStatus);
+    }
+
+    @Override
+    public List<Map<String, Object>> findPageForAdmin(String keyword, String rewardStatus, int offset, int limit) {
+        return mapper.selectPageForAdmin(keyword, rewardStatus, offset, limit);
     }
 }
 

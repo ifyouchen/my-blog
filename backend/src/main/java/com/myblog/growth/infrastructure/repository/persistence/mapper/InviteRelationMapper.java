@@ -26,10 +26,12 @@ public interface InviteRelationMapper {
      *
      * @param inviterUserId 邀请人用户 ID
      * @param inviteeUserId 受邀人用户 ID
+     * @param inviteCode    使用的邀请码
      * @return 插入行数（1=成功，0=重复）
      */
     int insertIgnore(@Param("inviterUserId") Long inviterUserId,
-                     @Param("inviteeUserId") Long inviteeUserId);
+                     @Param("inviteeUserId") Long inviteeUserId,
+                     @Param("inviteCode") String inviteCode);
 
     /**
      * 将指定受邀人的邀请奖励状态更新为 GRANTED.
@@ -63,5 +65,29 @@ public interface InviteRelationMapper {
      * @return 被邀请用户列表（userId, username, invitedAt）
      */
     List<Map<String, Object>> selectInvitedUsersByInviterId(@Param("inviterUserId") Long inviterUserId);
+
+    /**
+     * 管理端统计邀请记录总数.
+     *
+     * @param keyword      搜索关键词（用户名/邀请码）
+     * @param rewardStatus 奖励状态筛选
+     * @return 记录总数
+     */
+    long countForAdmin(@Param("keyword") String keyword,
+                       @Param("rewardStatus") String rewardStatus);
+
+    /**
+     * 管理端分页查询邀请记录.
+     *
+     * @param keyword      搜索关键词
+     * @param rewardStatus 奖励状态筛选
+     * @param offset       偏移量
+     * @param limit        每页条数
+     * @return 邀请记录列表
+     */
+    List<Map<String, Object>> selectPageForAdmin(@Param("keyword") String keyword,
+                                                 @Param("rewardStatus") String rewardStatus,
+                                                 @Param("offset") int offset,
+                                                 @Param("limit") int limit);
 }
 

@@ -425,6 +425,22 @@ export const backfillAdminGrowthRewardsApi = ({ mode = 'ALL', userId } = {}) =>
         }
     });
 
+/**
+ * 管理员分页查询邀请记录.
+ * @param {{ keyword?: string, rewardStatus?: string, page?: number, size?: number }} params
+ * @returns {Promise<PageResult>}
+ */
+export const getAdminInviteRecordsApi = (params = {}) => {
+    const query = buildParams({
+        keyword: params.keyword,
+        rewardStatus: params.rewardStatus,
+        page: params.page,
+        size: params.size
+    });
+    const suffix = query.toString() ? `?${query}` : '';
+    return request(`/admin/invite/records${suffix}`);
+};
+
 // ─────────────────────── 管理员接口：积分规则 ─────────────────────
 
 /**

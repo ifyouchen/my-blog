@@ -1,0 +1,101 @@
+/* ── 筛选栏 ─────────────────────────────────── */
+.invite-toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 16px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.invite-keyword-input {
+    max-width: 280px;
+}
+
+.invite-status-select {
+    max-width: 160px;
+}
+
+/* ── 表格 ───────────────────────────────────── */
+.invite-table {
+    min-width: 720px;
+}
+
+.user-name {
+    font-size: 0.85em;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.invite-code-tag {
+    font-family: Consolas, 'Liberation Mono', monospace;
+    font-size: 12px;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    color: #374151;
+}
+
+.no-value {
+    color: #9ca3af;
+}
+
+.biz-no {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── 状态标签 ───────────────────────────────── */
+.status-chip.granted {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.status-chip.skipped {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* ── 防闪烁 overlay ─────────────────────────── */
+.ag-table-outer-wrap {
+    position: relative;
+    min-height: 120px;
+}
+
+.ag-table-loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--brand, #2563eb);
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/* ── 响应式 ─────────────────────────────────── */
+@media (max-width: 640px) {
+    .invite-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .invite-keyword-input,
+    .invite-status-select {
+        max-width: none;
+        width: 100%;
+    }
+
+    .invite-table {
+        min-width: 600px;
+    }
+}

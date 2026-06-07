@@ -111,7 +111,7 @@ public class AuthAppService {
         if (inviteCodeAppService != null && command.getInviteCode() != null && !command.getInviteCode().isEmpty()) {
             Long inviterUserId = inviteCodeAppService.useCode(command.getInviteCode(), user.getId().getValue());
             if (inviterUserId != null && inviteRewardAppService != null) {
-                inviteRewardAppService.triggerReward(inviterUserId, user.getId().getValue());
+                inviteRewardAppService.triggerReward(inviterUserId, user.getId().getValue(), command.getInviteCode());
             }
         }
         pointAppService.addPoints(
