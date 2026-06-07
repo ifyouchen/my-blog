@@ -207,3 +207,64 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── 注册页紧凑布局 ──────────────────────────── */
+[data-testid="register-page"] {
+    gap: 16px;
+    padding: 16px;
+}
+
+[data-testid="register-page"] .auth-visual {
+    min-height: 200px;
+    padding: 16px;
+    gap: 6px;
+    justify-content: center;
+}
+
+[data-testid="register-page"] .auth-visual h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+}
+
+[data-testid="register-page"] .auth-visual p:not(.eyebrow) {
+    line-height: 1.5;
+}
+
+[data-testid="register-page"] .auth-highlights {
+    display: none;
+}
+
+[data-testid="register-page"] .auth-panel {
+    padding: 16px;
+}
+
+[data-testid="register-page"] .auth-panel h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+}
+
+[data-testid="register-page"] .auth-panel-copy {
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+[data-testid="register-page"] .form-stack {
+    gap: 8px;
+}
+
+[data-testid="register-page"] .form-stack label {
+    gap: 3px;
+}
+
+[data-testid="register-page"] .form-stack span {
+    font-size: 12px;
+}
+
+[data-testid="register-page"] .form-stack input {
+    padding: 7px 10px;
+}
+
+[data-testid="register-page"] .auth-switch {
+    margin: 8px 0 0;
+}
