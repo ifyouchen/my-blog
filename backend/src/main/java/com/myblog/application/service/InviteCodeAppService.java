@@ -22,14 +22,14 @@ import java.util.UUID;
  * 邀请码应用服务。
  * <p>
  * 提供邀请码的生成、查询、使用和管理功能。
- * 每个用户最多同时持有 3 个有效邀请码，默认有效期 7 天。
+ * 每个用户最多同时持有 10 个有效邀请码，默认有效期 7 天。
  * </p>
  */
 @Service
 public class InviteCodeAppService {
 
-    private static final int MAX_ACTIVE = 3;
-    private static final int VALID_DAYS = 7;
+    private static final int MAX_ACTIVE = 10;
+    private static final int VALID_DAYS = 30;
 
     private static final Logger log = LoggerFactory.getLogger(InviteCodeAppService.class);
 
@@ -50,7 +50,7 @@ public class InviteCodeAppService {
     public Map<String, Object> generate(Long userId) {
         long _start = System.currentTimeMillis();
         if (mapper.countActiveByCreatorId(userId) >= MAX_ACTIVE) {
-            throw new ApplicationException(ErrorCode.PARAM_ERROR, "最多同时持有 3 个有效邀请码");
+            throw new ApplicationException(ErrorCode.PARAM_ERROR, "最多同时持有 10 个有效邀请码");
         }
         InviteCodeDO row = new InviteCodeDO();
         row.setCode(UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());

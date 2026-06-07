@@ -159,7 +159,7 @@ const doSignIn = async () => {
 };
 
 // ── 积分流水 ─────────────────────────────────────────────────────
-const journalTab = ref('points'); // 'points' | 'exp' | 'revenue'
+const journalTab = ref('points'); // 'points' | 'exp' | 'revenue' | 'invite'
 const journalDisplayTab = ref('points');
 const journals = ref([]);
 const journalTotal = ref(0);
@@ -587,7 +587,7 @@ const loadInvite = async () => {
 };
 
 const generateCode = async () => {
-    if (inviteGenerating.value || activeInviteCount.value >= 3) return;
+    if (inviteGenerating.value || activeInviteCount.value >= 10) return;
     inviteGenerating.value = true;
     inviteError.value = '';
     try {
@@ -787,88 +787,6 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- 邀请好友 -->
-            <section class="invite-section">
-                <div class="invite-head">
-                    <div>
-                        <p class="eyebrow">拉新奖励</p>
-                        <h2>邀请好友</h2>
-                    </div>
-                    <div v-if="inviteSummary" class="invite-stats">
-                        <span class="invite-stat">
-                            <strong>{{ inviteSummary.totalGrantedCount ?? 0 }}</strong>
-                            <span>人已加入</span>
-                        </span>
-                        <span class="invite-stat-divider"></span>
-                        <span class="invite-stat">
-                            <strong>+{{ inviteSummary.totalPointsEarned ?? 0 }}</strong>
-                            <span>积分已到账</span>
-                        </span>
-                    </div>
-                </div>
-
-                <p class="invite-desc">
-                    每邀请一位新用户注册，双方均可获得积分奖励。复制下方邀请链接发送给好友即可。
-                </p>
-
-                <div v-if="inviteError" class="invite-error">{{ inviteError }}</div>
-
-                <div v-if="inviteLoading" class="invite-loading">加载中...</div>
-
-                <template v-else>
-                    <div v-if="inviteCodes.length > 0" class="invite-table-wrap">
-                        <table class="invite-table">
-                            <thead>
-                                <tr>
-                                    <th>邀请码</th>
-                                    <th>状态</th>
-                                    <th>过期时间</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in inviteCodes" :key="item.id">
-                                    <td>
-                                        <code class="invite-code-text">{{ item.code }}</code>
-                                    </td>
-                                    <td>
-                                        <span :class="['invite-status', item.status.toLowerCase()]">
-                                            {{ item.status === 'ACTIVE' ? '有效' : item.status === 'USED' ? '已使用' : '已过期' }}
-                                        </span>
-                                    </td>
-                                    <td class="invite-expiry">{{ fmtExpiry(item.expiredAt) }}</td>
-                                    <td>
-                                        <button
-                                            v-if="item.status === 'ACTIVE'"
-                                            type="button"
-                                            :class="['invite-copy-btn', { copied: copiedCode === item.code }]"
-                                            @click="copyInviteLink(item.code)"
-                                        >
-                                            {{ copiedCode === item.code ? '已复制 ✓' : '复制邀请链接' }}
-                                        </button>
-                                        <span v-else class="invite-copy-disabled">—</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div v-else class="invite-empty">暂无邀请码，点击下方按钮生成</div>
-
-                    <div class="invite-actions">
-                        <button
-                            type="button"
-                            class="invite-generate-btn"
-                            :disabled="inviteGenerating || activeInviteCount >= 3"
-                            @click="generateCode"
-                        >
-                            {{ inviteGenerating ? '生成中...' : '生成邀请码' }}
-                        </button>
-                        <span v-if="activeInviteCount >= 3" class="invite-limit-hint">
-                            最多同时持有 3 个有效邀请码
-                        </span>
-                    </div>
-                </template>
-            </section>
 
             <section class="badge-wall-section">
                 <div class="badge-wall-head">
@@ -912,12 +830,92 @@ onMounted(async () => {
                         }]"
                         @click="switchTab('revenue')"
                     >分账收益</button>
+                    <button
+                        type="button"
+                        :class="['tab-btn', { active: journalTab === 'invite' }]"
+                        @click="switchTab('invite')"
+                    >邀请奖励</button>
                 </div>
 
                 <div class="journal-content" :aria-busy="journalLoading">
-                    <div v-if="journalInitialLoading" class="journal-loading">加载中...</div>
-                    <div v-else-if="journalError" class="journal-error">{{ journalError }}</div>
-                    <template v-else-if="journals.length > 0">
+                    <div v-if="journalTab === 'invite'">
+                        <div class="invite-head">
+                            <div>
+                                <p class="eyebrow">拉新奖励</p>
+                                <h2>邀请好友</h2>
+                            </div>
+                            <div v-if="inviteSummary" class="invite-stats">
+                                <span class="invite-stat">
+                                    <strong>{{ inviteSummary.totalGrantedCount ?? 0 }}</strong>
+                                    <span>人已加入</span>
+                                </span>
+                                <span class="invite-stat-divider"></span>
+                                <span class="invite-stat">
+                                    <strong>+{{ inviteSummary.totalPointsEarned ?? 0 }}</strong>
+                                    <span>积分已到账</span>
+                                </span>
+                            </div>
+                        </div>
+                        <p class="invite-desc">
+                            每邀请一位新用户注册，双方均可获得积分奖励。复制下方邀请链接发送给好友即可。
+                        </p>
+                        <div v-if="inviteError" class="invite-error">{{ inviteError }}</div>
+                        <div v-if="inviteLoading" class="invite-loading">加载中...</div>
+                        <template v-else>
+                            <div v-if="inviteCodes.length > 0" class="invite-table-wrap">
+                                <table class="invite-table">
+                                    <thead>
+                                        <tr>
+                                            <th>邀请码</th>
+                                            <th>状态</th>
+                                            <th>过期时间</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="item in inviteCodes" :key="item.id">
+                                            <td><code class="invite-code-text">{{ item.code }}</code></td>
+                                            <td>
+                                                <span :class="['invite-status', item.status.toLowerCase()]">
+                                                    {{ item.status === 'ACTIVE' ? '有效' : item.status === 'USED' ? '已使用' : '已过期' }}
+                                                </span>
+                                            </td>
+                                            <td class="invite-expiry">{{ fmtExpiry(item.expiredAt) }}</td>
+                                            <td>
+                                                <button
+                                                    v-if="item.status === 'ACTIVE'"
+                                                    type="button"
+                                                    :class="['invite-copy-btn', { copied: copiedCode === item.code }]"
+                                                    @click="copyInviteLink(item.code)"
+                                                >
+                                                    {{ copiedCode === item.code ? '已复制 ✓' : '复制邀请链接' }}
+                                                </button>
+                                                <span v-else class="invite-copy-disabled">—</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div v-else class="invite-empty">暂无邀请码，点击下方按钮生成</div>
+                            <div class="invite-actions">
+                                <button
+                                    type="button"
+                                    class="invite-generate-btn"
+                                    :disabled="inviteGenerating || activeInviteCount >= 10"
+                                    @click="generateCode"
+                                >
+                                    {{ inviteGenerating ? '生成中...' : '生成邀请码' }}
+                                </button>
+                                <span v-if="activeInviteCount >= 10" class="invite-limit-hint">
+                                    最多同时持有 10 个有效邀请码
+                                </span>
+                            </div>
+                        </template>
+                    </div>
+                    <template v-else>
+                        <div v-if="journalInitialLoading" class="journal-loading">加载中...</div>
+                        <div v-else-if="journalError" class="journal-error">{{ journalError }}</div>
+                        <template v-else-if="journals.length > 0">
                         <table class="journal-table">
                             <thead>
                                 <tr v-if="journalDisplayTab !== 'revenue'">
@@ -1034,6 +1032,7 @@ onMounted(async () => {
                     <div v-if="journalLoading && !journalInitialLoading" class="journal-loading-overlay">
                         加载中...
                     </div>
+                    </template>
                 </div>
             </section>
         </section>
