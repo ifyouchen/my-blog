@@ -55,5 +55,19 @@
           AND deleted_at IS NULL
     </select>
 
+    <!-- 查询被邀请用户列表 -->
+    <select id="selectInvitedUsersByInviterId" resultType="java.util.LinkedHashMap">
+        SELECT
+            ir.invitee_user_id AS userId,
+            u.username,
+            ir.created_at      AS invitedAt
+        FROM invite_relation ir
+        LEFT JOIN blog_user u ON ir.invitee_user_id = u.id
+        WHERE ir.inviter_user_id = #{inviterUserId}
+          AND ir.reward_status   = 'GRANTED'
+          AND ir.deleted_at IS NULL
+        ORDER BY ir.created_at DESC
+    </select>
+
 </mapper>
 

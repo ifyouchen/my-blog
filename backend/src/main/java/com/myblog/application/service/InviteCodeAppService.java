@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,14 +22,13 @@ import java.util.UUID;
 /**
  * 邀请码应用服务。
  * <p>
- * 提供邀请码的生成、查询、使用和管理功能。
- * 每个用户最多同时持有 10 个有效邀请码，默认有效期 7 天。
+ * 每个用户拥有一个可复用的邀请码，默认有效期 30 天。
+ * 可随时重新生成，旧码自动失效。
  * </p>
  */
 @Service
 public class InviteCodeAppService {
 
-    private static final int MAX_ACTIVE = 10;
     private static final int VALID_DAYS = 30;
 
     private static final Logger log = LoggerFactory.getLogger(InviteCodeAppService.class);
@@ -40,23 +40,35 @@ public class InviteCodeAppService {
     }
 
     /**
-     * 生成新的邀请码。
+     * 获取或创建用户的邀请码。
+     * <p>
+     * 每个用户只有一个可复用邀请码，如有活跃码则直接返回，否则创建新码。
+     * </p>
      *
-     * @param userId 创建者用户 ID
+     * @param userId 用户 ID
      * @return 邀请码详情 Map
-     * @throws ApplicationException 当前有效邀请码数量达到上限时抛出
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> generate(Long userId) {
         long _start = System.currentTimeMillis();
-        if (mapper.countActiveByCreatorId(userId) >= MAX_ACTIVE) {
-            throw new ApplicationException(ErrorCode.PARAM_ERROR, "最多同时持有 10 个有效邀请码");
+        // 先查是否有活跃码
+        InviteCodeDO existing = mapper.selectActiveByCreatorId(userId);
+        if (existing != null) {
+            log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+                BizLogHelper.trace(),
+                BizLogHelper.who(userId),
+                "获取已有邀请码",
+                BizLogHelper.params(),
+                BizLogHelper.result("codeId=" + existing.getId()),
+                BizLogHelper.elapsed(_start));
+            return toMap(existing);
         }
+        // 无活跃码则创建
         InviteCodeDO row = new InviteCodeDO();
         row.setCode(UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         row.setCreatorId(userId);
         row.setExpiredAt(LocalDateTime.now().plusDays(VALID_DAYS));
-        row.setMaxUses(1);
+        row.setMaxUses(9999);
         row.setUseCount(0);
         mapper.insert(row);
         log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
@@ -70,15 +82,47 @@ public class InviteCodeAppService {
     }
 
     /**
-     * 查询指定用户创建的邀请码列表。
+     * 重新生成邀请码（旧码软删除，创建新码）。
+     *
+     * @param userId 用户 ID
+     * @return 新邀请码详情 Map
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> regenerate(Long userId) {
+        long _start = System.currentTimeMillis();
+        // 软删除旧码
+        InviteCodeDO old = mapper.selectActiveByCreatorId(userId);
+        if (old != null) {
+            mapper.softDelete(old.getId());
+        }
+        // 创建新码
+        InviteCodeDO row = new InviteCodeDO();
+        row.setCode(UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
+        row.setCreatorId(userId);
+        row.setExpiredAt(LocalDateTime.now().plusDays(VALID_DAYS));
+        row.setMaxUses(9999);
+        row.setUseCount(0);
+        mapper.insert(row);
+        log.info("{} | {} {} | 入参({}) | 结果({}) | {}",
+            BizLogHelper.trace(),
+            BizLogHelper.who(userId),
+            "重新生成邀请码",
+            BizLogHelper.params(),
+            BizLogHelper.result("codeId=" + row.getId()),
+            BizLogHelper.elapsed(_start));
+        return toMap(row);
+    }
+
+    /**
+     * 查询用户的邀请码（返回单个码的列表，兼容前端旧逻辑）。
      *
      * @param userId 用户 ID
      * @return 邀请码详情 Map 列表
      */
     public List<Map<String, Object>> listByUser(Long userId) {
-        List<InviteCodeDO> rows = mapper.selectByCreatorId(userId);
+        InviteCodeDO code = mapper.selectActiveByCreatorId(userId);
         List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
-        for (InviteCodeDO r : rows) result.add(toMap(r));
+        if (code != null) result.add(toMap(code));
         return result;
     }
 

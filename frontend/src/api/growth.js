@@ -82,6 +82,12 @@ export const getSignInStatsApi = () =>
  */
 export const getInviteSummaryApi = () => request('/points/invite/summary');
 
+/**
+ * 查询被邀请用户列表.
+ * @returns {Promise<[{userId, username, invitedAt}]>}
+ */
+export const getInvitedUsersApi = () => request('/points/invite/invited-users');
+
 // ─────────────────────── 文章解锁 ────────────────────────────────
 
 /**

@@ -9,7 +9,6 @@ const route = useRoute();
 const router = useRouter();
 const { login, register } = useSession();
 const isRegister = computed(() => route.name === 'register');
-const inviteCode = computed(() => route.query.invite || '');
 
 const form = reactive({
     username: '',
@@ -17,8 +16,12 @@ const form = reactive({
     email: '',
     emailCode: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    inviteCode: route.query.invite || ''
 });
+
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 
 const errors = reactive({});
 const successMessage = ref('');
@@ -131,7 +134,7 @@ const submit = async () => {
                 email: form.email.trim(),
                 emailCode: form.emailCode.trim(),
                 password: form.password,
-                inviteCode: inviteCode.value || undefined
+                inviteCode: form.inviteCode.trim() || undefined
             });
             welcomeUsername.value = form.username.trim();
             showWelcome.value = true;
@@ -188,11 +191,6 @@ onBeforeUnmount(() => {
                 {{ isRegister ? '创建账号后即可进入创作中心，搭建自己的内容主页。' : '登录后继续写作、管理内容，查看站内互动。' }}
             </p>
 
-            <div v-if="isRegister && inviteCode" class="invite-banner">
-                <span class="invite-banner-icon" aria-hidden="true">🎉</span>
-                <span>你正在通过邀请链接注册，成功后双方均可获得积分奖励</span>
-            </div>
-
             <form class="form-stack" :data-testid="isRegister ? 'register-form' : 'login-form'" @submit.prevent="submit">
                 <label v-if="isRegister">
                     <span>用户名</span>
@@ -241,14 +239,30 @@ onBeforeUnmount(() => {
                     </div>
                     <small v-if="errors.emailCode">{{ errors.emailCode }}</small>
                 </label>
+                <label v-if="isRegister">
+                    <span>邀请码（选填）</span>
+                    <input v-model.trim="form.inviteCode" type="text" placeholder="请输入邀请码" data-testid="register-invite-code-input">
+                </label>
                 <label>
                     <span>密码</span>
-                    <input v-model="form.password" type="password" placeholder="请输入密码" :data-testid="isRegister ? 'register-password-input' : 'login-password-input'">
+                    <div class="password-wrapper">
+                        <input v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="请输入密码" :data-testid="isRegister ? 'register-password-input' : 'login-password-input'">
+                        <button type="button" class="password-toggle" @click="showPassword = !showPassword" :aria-label="showPassword ? '隐藏密码' : '显示密码'" tabindex="-1">
+                            <svg v-if="showPassword" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
                     <small v-if="errors.password">{{ errors.password }}</small>
                 </label>
                 <label v-if="isRegister">
                     <span>确认密码</span>
-                    <input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" data-testid="register-confirm-password-input">
+                    <div class="password-wrapper">
+                        <input v-model="form.confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" placeholder="请再次输入密码" data-testid="register-confirm-password-input">
+                        <button type="button" class="password-toggle" @click="showConfirmPassword = !showConfirmPassword" :aria-label="showConfirmPassword ? '隐藏密码' : '显示密码'" tabindex="-1">
+                            <svg v-if="showConfirmPassword" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
                     <small v-if="errors.confirmPassword">{{ errors.confirmPassword }}</small>
                 </label>
                 <button class="primary-action form-submit" type="submit" :disabled="submitting" :data-testid="isRegister ? 'register-submit' : 'login-submit'">

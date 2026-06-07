@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -148,6 +150,16 @@ public class InviteRewardAppService {
     public InviteSummary getSummary(Long inviterUserId) {
         int totalInvited = inviteRelationRepository.countGrantedByInviterId(inviterUserId);
         return new InviteSummary(inviterUserId, totalInvited);
+    }
+
+    /**
+     * 查询被邀请人列表.
+     *
+     * @param inviterUserId 邀请人用户 ID
+     * @return 被邀请用户列表
+     */
+    public List<Map<String, Object>> getInvitedUsers(Long inviterUserId) {
+        return inviteRelationRepository.selectInvitedUsers(inviterUserId);
     }
 
     /**

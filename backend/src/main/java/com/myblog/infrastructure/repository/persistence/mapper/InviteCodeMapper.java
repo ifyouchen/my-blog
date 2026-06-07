@@ -38,6 +38,14 @@ public interface InviteCodeMapper {
     List<InviteCodeDO> selectByCreatorId(@Param("creatorId") Long creatorId);
 
     /**
+     * 查询创建者的单个活跃邀请码。
+     *
+     * @param creatorId 创建者用户 ID
+     * @return 活跃邀请码，不存在返回 null
+     */
+    InviteCodeDO selectActiveByCreatorId(@Param("creatorId") Long creatorId);
+
+    /**
      * 统计创建者的有效邀请码数量。
      *
      * @param creatorId 创建者用户 ID

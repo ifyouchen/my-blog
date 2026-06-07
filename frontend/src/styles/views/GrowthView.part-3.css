@@ -691,6 +691,80 @@
     color: var(--text-muted);
 }
 
+/* ── 单邀请码展示 ──────────────────────────── */
+.invite-code-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, var(--brand-soft) 0%, rgba(255,255,255,0.5) 100%);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.invite-code-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.invite-code-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.invite-code-value {
+    font-family: Consolas, 'Liberation Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent, #6c63ff);
+    letter-spacing: 0.12em;
+    line-height: 1;
+}
+
+.invite-code-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.invite-regenerate-btn {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.invite-regenerate-btn:hover:not(:disabled) {
+    background: var(--surface-soft);
+    border-color: var(--text-muted);
+}
+
+.invite-regenerate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.invited-users-title {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
 @media (max-width: 640px) {
     .invite-section {
         margin: 0 -14px 14px;
@@ -715,5 +789,22 @@
 
     .invite-table {
         min-width: 420px;
+    }
+
+    .invite-code-display {
+        padding: 16px;
+    }
+
+    .invite-code-value {
+        font-size: 22px;
+    }
+
+    .invite-code-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .invite-code-actions button {
+        width: 100%;
     }
 }

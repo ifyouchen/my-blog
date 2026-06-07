@@ -47,6 +47,17 @@
         ORDER BY created_at DESC
     </select>
 
+    <select id="selectActiveByCreatorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM blog_invite_code
+        WHERE creator_id = #{creatorId}
+        AND deleted_at IS NULL
+        AND (expired_at IS NULL OR expired_at > NOW())
+        AND use_count &lt; max_uses
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
     <select id="countActiveByCreatorId" resultType="long">
         SELECT COUNT(1)
         FROM blog_invite_code

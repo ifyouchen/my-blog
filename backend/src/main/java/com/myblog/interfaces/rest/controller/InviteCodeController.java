@@ -34,7 +34,7 @@ public class InviteCodeController {
     }
 
     /**
-     * 当前用户生成一个邀请码。
+     * 当前用户获取或创建邀请码。
      */
     @PostMapping("/generate")
     public Result<Map<String, Object>> generate() {
@@ -43,7 +43,16 @@ public class InviteCodeController {
     }
 
     /**
-     * 获取当前用户生成的邀请码列表。
+     * 当前用户重新生成邀请码（旧码失效）。
+     */
+    @PostMapping("/regenerate")
+    public Result<Map<String, Object>> regenerate() {
+        Long userId = AuthContext.getRequiredUserId();
+        return Result.success(inviteCodeAppService.regenerate(userId));
+    }
+
+    /**
+     * 获取当前用户的邀请码信息。
      */
     @GetMapping("/my")
     public Result<List<Map<String, Object>>> myList() {

@@ -4,6 +4,9 @@ import com.myblog.growth.domain.repository.InviteRelationRepository;
 import com.myblog.growth.infrastructure.repository.persistence.mapper.InviteRelationMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 邀请关系 Repository 实现.
  */
@@ -65,6 +68,11 @@ public class InviteRelationRepositoryImpl implements InviteRelationRepository {
      */
     public int countGrantedByInviterId(Long inviterId) {
         return mapper.countGrantedByInviterId(inviterId);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectInvitedUsers(Long inviterId) {
+        return mapper.selectInvitedUsersByInviterId(inviterId);
     }
 }
 

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,6 +46,17 @@ public class InviteController {
         data.put("totalGrantedCount", summary.getTotalGrantedCount());
         data.put("totalPointsEarned", summary.getTotalGrantedCount() * 50);
         return Result.success(data);
+    }
+
+    /**
+     * 查询被我邀请的用户列表.
+     *
+     * @return 被邀请用户列表
+     */
+    @GetMapping("/api/points/invite/invited-users")
+    public Result<List<Map<String, Object>>> getInvitedUsers() {
+        Long userId = AuthContext.getRequiredUserId();
+        return Result.success(inviteRewardAppService.getInvitedUsers(userId));
     }
 }
 

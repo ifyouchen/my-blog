@@ -3,6 +3,9 @@ package com.myblog.growth.infrastructure.repository.persistence.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 邀请关系 MyBatis Mapper.
  * <p>对应表 {@code invite_relation}，XML 在 {@code mapper/growth/InviteRelationMapper.xml}。</p>
@@ -52,5 +55,13 @@ public interface InviteRelationMapper {
      * @return 今日获得奖励次数
      */
     int countGrantedTodayByInviterId(@Param("inviterUserId") Long inviterUserId);
+
+    /**
+     * 查询被邀请用户列表.
+     *
+     * @param inviterUserId 邀请人用户 ID
+     * @return 被邀请用户列表（userId, username, invitedAt）
+     */
+    List<Map<String, Object>> selectInvitedUsersByInviterId(@Param("inviterUserId") Long inviterUserId);
 }
 

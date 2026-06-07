@@ -19,7 +19,8 @@ import {
   getInviteSummaryApi,
   signInApi,
 } from '@/api/growth';
-import {generateInviteCodeApi, getMyInviteCodesApi} from '@/api/auth';
+import {generateInviteCodeApi, getMyInviteCodesApi, regenerateInviteCodeApi} from '@/api/auth';
+import {getInvitedUsersApi} from '@/api/growth';
 import {useSession} from '@/stores/session';
 
 useHead({title: '经验积分 - 小蓝书'});
@@ -555,16 +556,14 @@ const handleRewardDialogPointerUp = (event) => {
 };
 
 // ── 邀请好友 ─────────────────────────────────────────────────────
-const inviteCodes = ref([]);
+const inviteCode = ref(null);
 const inviteSummary = ref(null);
+const invitedUsers = ref([]);
 const inviteLoading = ref(false);
 const inviteGenerating = ref(false);
 const inviteError = ref('');
 const copiedCode = ref('');
-
-const activeInviteCount = computed(() =>
-    inviteCodes.value.filter((c) => c.status === 'ACTIVE').length
-);
+const invitedUsersLoading = ref(false);
 
 const buildInviteLink = (code) =>
     `${window.location.origin}/register?invite=${code}`;
@@ -577,7 +576,8 @@ const loadInvite = async () => {
             getMyInviteCodesApi(),
             getInviteSummaryApi().catch(() => null),
         ]);
-        inviteCodes.value = Array.isArray(codes) ? codes : [];
+        const list = Array.isArray(codes) ? codes : [];
+        inviteCode.value = list.length > 0 ? list[0] : null;
         inviteSummary.value = summary;
     } catch (e) {
         inviteError.value = e.message || '加载邀请信息失败';
@@ -586,15 +586,42 @@ const loadInvite = async () => {
     }
 };
 
+const loadInvitedUsers = async () => {
+    invitedUsersLoading.value = true;
+    try {
+        invitedUsers.value = await getInvitedUsersApi() || [];
+    } catch {
+        invitedUsers.value = [];
+    } finally {
+        invitedUsersLoading.value = false;
+    }
+};
+
 const generateCode = async () => {
-    if (inviteGenerating.value || activeInviteCount.value >= 10) return;
+    if (inviteGenerating.value) return;
     inviteGenerating.value = true;
     inviteError.value = '';
     try {
-        await generateInviteCodeApi();
+        const result = await generateInviteCodeApi();
+        inviteCode.value = result;
         await loadInvite();
     } catch (e) {
         inviteError.value = e.message || '生成失败，请稍后重试';
+    } finally {
+        inviteGenerating.value = false;
+    }
+};
+
+const regenerateCode = async () => {
+    if (inviteGenerating.value) return;
+    inviteGenerating.value = true;
+    inviteError.value = '';
+    try {
+        const result = await regenerateInviteCodeApi();
+        inviteCode.value = result;
+        await Promise.all([loadInvite(), loadInvitedUsers()]);
+    } catch (e) {
+        inviteError.value = e.message || '重新生成失败，请稍后重试';
     } finally {
         inviteGenerating.value = false;
     }
@@ -629,7 +656,7 @@ const fmtExpiry = (dateStr) => {
 };
 
 onMounted(async () => {
-    await Promise.all([loadGrowth(), loadAccount(), loadBadges(), loadCalendar(calendarMonth.value), loadInvite()]);
+    await Promise.all([loadGrowth(), loadAccount(), loadBadges(), loadCalendar(calendarMonth.value), loadInvite(), loadInvitedUsers()]);
     await loadJournals({tab: 'points', page: 1});
     warmJournalCache();
 });
@@ -857,59 +884,65 @@ onMounted(async () => {
                             </div>
                         </div>
                         <p class="invite-desc">
-                            每邀请一位新用户注册，双方均可获得积分奖励。复制下方邀请链接发送给好友即可。
+                            每邀请一位新用户注册，双方均可获得积分奖励。复制你的专属邀请链接发送给好友即可。
                         </p>
                         <div v-if="inviteError" class="invite-error">{{ inviteError }}</div>
                         <div v-if="inviteLoading" class="invite-loading">加载中...</div>
                         <template v-else>
-                            <div v-if="inviteCodes.length > 0" class="invite-table-wrap">
-                                <table class="invite-table">
-                                    <thead>
-                                        <tr>
-                                            <th>邀请码</th>
-                                            <th>状态</th>
-                                            <th>过期时间</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="item in inviteCodes" :key="item.id">
-                                            <td><code class="invite-code-text">{{ item.code }}</code></td>
-                                            <td>
-                                                <span :class="['invite-status', item.status.toLowerCase()]">
-                                                    {{ item.status === 'ACTIVE' ? '有效' : item.status === 'USED' ? '已使用' : '已过期' }}
-                                                </span>
-                                            </td>
-                                            <td class="invite-expiry">{{ fmtExpiry(item.expiredAt) }}</td>
-                                            <td>
-                                                <button
-                                                    v-if="item.status === 'ACTIVE'"
-                                                    type="button"
-                                                    :class="['invite-copy-btn', { copied: copiedCode === item.code }]"
-                                                    @click="copyInviteLink(item.code)"
-                                                >
-                                                    {{ copiedCode === item.code ? '已复制 ✓' : '复制邀请链接' }}
-                                                </button>
-                                                <span v-else class="invite-copy-disabled">—</span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <div v-if="inviteCode" class="invite-code-display">
+                                <div class="invite-code-box">
+                                    <span class="invite-code-label">你的邀请码</span>
+                                    <strong class="invite-code-value">{{ inviteCode.code }}</strong>
+                                </div>
+                                <div class="invite-code-actions">
+                                    <button
+                                        type="button"
+                                        class="invite-copy-btn"
+                                        :class="{ copied: copiedCode === inviteCode.code }"
+                                        @click="copyInviteLink(inviteCode.code)"
+                                    >
+                                        {{ copiedCode === inviteCode.code ? '已复制 ✓' : '复制链接' }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="invite-regenerate-btn"
+                                        :disabled="inviteGenerating"
+                                        @click="regenerateCode"
+                                    >
+                                        {{ inviteGenerating ? '刷新中...' : '刷新邀请码' }}
+                                    </button>
+                                </div>
                             </div>
-                            <div v-else class="invite-empty">暂无邀请码，点击下方按钮生成</div>
-                            <div class="invite-actions">
+                            <div v-else class="invite-empty">
                                 <button
                                     type="button"
                                     class="invite-generate-btn"
-                                    :disabled="inviteGenerating || activeInviteCount >= 10"
+                                    :disabled="inviteGenerating"
                                     @click="generateCode"
                                 >
                                     {{ inviteGenerating ? '生成中...' : '生成邀请码' }}
                                 </button>
-                                <span v-if="activeInviteCount >= 10" class="invite-limit-hint">
-                                    最多同时持有 10 个有效邀请码
-                                </span>
                             </div>
+
+                            <h3 class="invited-users-title">已邀请好友（{{ invitedUsers.length }}）</h3>
+                            <div v-if="invitedUsersLoading" class="invite-loading">加载中...</div>
+                            <div v-else-if="invitedUsers.length > 0" class="invite-table-wrap">
+                                <table class="invite-table">
+                                    <thead>
+                                        <tr>
+                                            <th>用户名</th>
+                                            <th>加入时间</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="user in invitedUsers" :key="user.userId">
+                                            <td>{{ user.username }}</td>
+                                            <td class="invite-expiry">{{ fmtTime(user.invitedAt) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p v-else class="invite-empty">暂无好友通过你的邀请加入</p>
                         </template>
                     </div>
                     <template v-else>

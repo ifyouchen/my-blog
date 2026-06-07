@@ -96,4 +96,6 @@ export const changeEmailApi = async (email, password) => normalizeUser(
 
 export const generateInviteCodeApi = async () => await request('/invite-codes/generate', { method: 'POST' });
 
+export const regenerateInviteCodeApi = async () => await request('/invite-codes/regenerate', { method: 'POST' });
+
 export const getMyInviteCodesApi = async () => await request('/invite-codes/my');
