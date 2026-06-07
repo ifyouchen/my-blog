@@ -20,9 +20,6 @@ const form = reactive({
     inviteCode: route.query.invite || ''
 });
 
-const showPassword = ref(false);
-const showConfirmPassword = ref(false);
-
 const errors = reactive({});
 const successMessage = ref('');
 const showWelcome = ref(false);
@@ -246,22 +243,14 @@ onBeforeUnmount(() => {
                 <label>
                     <span>密码</span>
                     <div class="password-wrapper">
-                        <input v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="请输入密码" :data-testid="isRegister ? 'register-password-input' : 'login-password-input'">
-                        <button type="button" class="password-toggle" @click="showPassword = !showPassword" :aria-label="showPassword ? '隐藏密码' : '显示密码'" tabindex="-1">
-                            <svg v-if="showPassword" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                        </button>
+                        <input v-model="form.password" type="password" placeholder="请输入密码" :data-testid="isRegister ? 'register-password-input' : 'login-password-input'">
                     </div>
                     <small v-if="errors.password">{{ errors.password }}</small>
                 </label>
                 <label v-if="isRegister">
                     <span>确认密码</span>
                     <div class="password-wrapper">
-                        <input v-model="form.confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" placeholder="请再次输入密码" data-testid="register-confirm-password-input">
-                        <button type="button" class="password-toggle" @click="showConfirmPassword = !showConfirmPassword" :aria-label="showConfirmPassword ? '隐藏密码' : '显示密码'" tabindex="-1">
-                            <svg v-if="showConfirmPassword" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                        </button>
+                        <input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" data-testid="register-confirm-password-input">
                     </div>
                     <small v-if="errors.confirmPassword">{{ errors.confirmPassword }}</small>
                 </label>

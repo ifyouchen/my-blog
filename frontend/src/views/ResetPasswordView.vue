@@ -72,21 +72,15 @@ const submit = async () => {
                 <form class="form-stack" data-testid="reset-password-form" @submit.prevent="submit">
                     <label>
                         <span>新密码</span>
-                        <input
-                            v-model="form.newPassword"
-                            type="password"
-                            placeholder="请输入新密码（至少 6 位）"
-                            data-testid="reset-new-password-input"
-                        >
+                        <div class="password-wrapper">
+                            <input v-model="form.newPassword" type="password" placeholder="请输入新密码（至少 6 位）" data-testid="reset-new-password-input">
+                        </div>
                     </label>
                     <label>
                         <span>确认新密码</span>
-                        <input
-                            v-model="form.confirmPassword"
-                            type="password"
-                            placeholder="请再次输入新密码"
-                            data-testid="reset-confirm-password-input"
-                        >
+                        <div class="password-wrapper">
+                            <input v-model="form.confirmPassword" type="password" placeholder="请再次输入新密码" data-testid="reset-confirm-password-input">
+                        </div>
                     </label>
                     <button class="primary-action form-submit" type="submit" :disabled="loading || !token" data-testid="reset-submit">
                         {{ loading ? '重置中...' : '确认重置密码' }}

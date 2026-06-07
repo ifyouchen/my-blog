@@ -5,30 +5,6 @@
 
 .password-wrapper input {
     width: 100%;
-    padding-right: 40px;
-}
-
-.password-toggle {
-    position: absolute;
-    top: 50%;
-    right: 8px;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    color: var(--muted);
-    background: none;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: color 0.15s;
-}
-
-.password-toggle:hover {
-    color: var(--text);
 }
 
 .auth-forgot {
