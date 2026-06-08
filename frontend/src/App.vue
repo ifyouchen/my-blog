@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, provide } from 'vue';
 import { RouterView, useRouter } from 'vue-router';
 import LoginModal from '@/components/LoginModal.vue';
 import Toast from '@/components/Toast.vue';
+import BackToTop from '@/components/BackToTop.vue';
 import { useLoginModal } from '@/composables/useLoginModal';
 import { useToast } from '@/composables/useToast';
 import { useSession } from '@/stores/session';
@@ -66,4 +67,5 @@ onUnmounted(() => {
         @success="onLoginSuccess"
     />
     <Toast />
+    <BackToTop />
 </template>
