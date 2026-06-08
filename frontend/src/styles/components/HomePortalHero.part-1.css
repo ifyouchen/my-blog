@@ -3,7 +3,7 @@
     grid-template-columns: minmax(0, 1.14fr) minmax(300px, 0.82fr) minmax(280px, 0.64fr);
     gap: 16px;
     align-items: stretch;
-    margin: 12px 0 20px;
+    margin: 8px 0 16px;
 }
 
 .portal-focus-card,
@@ -19,7 +19,7 @@
 .portal-focus-card {
     position: relative;
     display: grid;
-    min-height: 342px;
+    min-height: 240px;
     overflow: hidden;
     color: #ffffff;
     text-decoration: none;
@@ -71,9 +71,9 @@
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 6px;
     min-width: 0;
-    padding: 24px;
+    padding: 16px;
 }
 
 .portal-eyebrow {
@@ -92,23 +92,16 @@
     display: -webkit-box;
     overflow: hidden;
     color: inherit;
-    font-size: 28px;
+    font-size: 20px;
     font-weight: 800;
-    line-height: 1.25;
+    line-height: 1.3;
     letter-spacing: 0;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 }
 
 .portal-focus-summary {
-    display: -webkit-box;
-    overflow: hidden;
-    max-width: 640px;
-    color: rgba(255, 255, 255, 0.86);
-    font-size: 14px;
-    line-height: 1.65;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: none;
 }
 
 .portal-meta {
@@ -171,8 +164,8 @@
 .portal-hotspots {
     display: grid;
     align-content: start;
-    gap: 14px;
-    padding: 18px;
+    gap: 10px;
+    padding: 14px;
 }
 
 .portal-panel-head {
@@ -183,7 +176,7 @@
 .portal-panel-head h2 {
     margin: 0;
     color: var(--text-strong);
-    font-size: 20px;
+    font-size: 17px;
     line-height: 1.3;
 }
 
@@ -209,13 +202,13 @@
 .portal-pick-list,
 .portal-hot-list {
     display: grid;
-    gap: 8px;
+    gap: 2px;
 }
 
 .portal-pick-item {
     display: grid;
     gap: 5px;
-    padding: 12px 0;
+    padding: 8px 0;
     color: inherit;
     text-decoration: none;
     border-top: 1px solid var(--line);
@@ -240,9 +233,9 @@
     display: -webkit-box;
     overflow: hidden;
     color: var(--text-strong);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
-    line-height: 1.45;
+    line-height: 1.4;
     transition: color 0.12s;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -262,7 +255,7 @@
 
 .portal-hot-section {
     display: grid;
-    gap: 9px;
+    gap: 6px;
 }
 
 .portal-hot-item,
@@ -272,7 +265,7 @@
     justify-content: space-between;
     gap: 12px;
     min-width: 0;
-    padding: 10px 0;
+    padding: 8px 0;
     color: var(--text);
     text-decoration: none;
     border-top: 1px solid var(--line);

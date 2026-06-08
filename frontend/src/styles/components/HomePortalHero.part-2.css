@@ -26,7 +26,7 @@
 .portal-rank-card {
     align-items: flex-start;
     margin-top: 2px;
-    padding: 14px;
+    padding: 10px 12px;
     background: var(--surface-soft);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
@@ -124,7 +124,7 @@
     }
 
     .portal-focus-card {
-        min-height: 300px;
+        min-height: 200px;
     }
 }
 
@@ -135,16 +135,16 @@
     }
 
     .portal-focus-card {
-        min-height: 220px;
+        min-height: 180px;
     }
 
     .portal-focus-body {
-        gap: 8px;
-        padding: 16px;
+        gap: 6px;
+        padding: 14px;
     }
 
     .portal-focus-title {
-        font-size: 20px;
+        font-size: 18px;
     }
 
     .portal-focus-summary {
@@ -164,15 +164,15 @@
     }
 
     .portal-focus-card {
-        min-height: 210px;
+        min-height: 170px;
     }
 
     .portal-focus-body {
-        padding: 18px;
+        padding: 14px;
     }
 
     .portal-focus-title {
-        font-size: 22px;
+        font-size: 18px;
     }
 
     .portal-picks,
