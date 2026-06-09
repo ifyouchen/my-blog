@@ -3,3 +3,4 @@ logs/
 *.log
 *.iml
 .idea/
+deploy.ps1
