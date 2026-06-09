@@ -38,6 +38,7 @@ const articleTab = ref('latest');
 const columnItems = ref([]);
 const columnPage = ref(1);
 const columnTotal = ref(0);
+const columnTotalLoaded = ref(false);
 const columnLoadedOnce = ref(false);
 const columnInitialLoading = ref(false);
 const columnLoadingMore = ref(false);
@@ -95,6 +96,9 @@ const summarySubtitle = computed(() => (
 const isMutualFollow = computed(() => !!(followStatus.value && followStatus.value.mutual));
 const articleFeedTitle = computed(() => (articleTab.value === 'hot' ? '热门文章' : '最新发布'));
 const hasMoreColumns = computed(() => columnItems.value.length < columnTotal.value);
+const displayColumnTotal = computed(() => (
+    columnTotalLoaded.value || columnLoadedOnce.value ? columnTotal.value : null
+));
 const buildFeedCacheKey = (targetUserId = userId.value) => `user:${String(targetUserId || '')}:latest`;
 
 const mergeColumns = (currentItems, nextItems) => {
@@ -116,6 +120,7 @@ const resetColumns = () => {
     columnItems.value = [];
     columnPage.value = 1;
     columnTotal.value = 0;
+    columnTotalLoaded.value = false;
     columnLoadedOnce.value = false;
     columnInitialLoading.value = false;
     columnLoadingMore.value = false;
@@ -172,6 +177,27 @@ const loadProfile = async ({ reset = false } = {}) => {
     if (!isOwnProfile.value && state.user) {
         getFollowStatusApi(userId.value).then(function(s) { followStatus.value = s; }).catch(function() {});
     }
+    loadColumnTotal();
+};
+
+const loadColumnTotal = async () => {
+    if (columnTotalLoaded.value || columnLoadedOnce.value) {
+        return;
+    }
+    const requestUserId = userId.value;
+    try {
+        const pageResult = await getUserColumnsApi(requestUserId, {
+            page: 1,
+            pageSize: 1
+        });
+        if (requestUserId !== userId.value) {
+            return;
+        }
+        columnTotal.value = pageResult.total || 0;
+        columnTotalLoaded.value = true;
+    } catch (error) {
+        // Keep the article feed usable; the columns tab can still retry when opened.
+    }
 };
 
 const loadColumns = async ({ reset = false } = {}) => {
@@ -203,6 +229,7 @@ const loadColumns = async ({ reset = false } = {}) => {
             : mergeColumns(columnItems.value, pageResult.items || []);
         columnPage.value = pageResult.page || nextPage;
         columnTotal.value = pageResult.total || 0;
+        columnTotalLoaded.value = true;
         columnLoadedOnce.value = true;
     } catch (error) {
         if (requestUserId !== userId.value) {
@@ -535,7 +562,7 @@ onBeforeUnmount(teardownColumnObserver);
                 @click="switchContentTab('columns')"
             >
                 专栏
-                <span v-if="columnLoadedOnce">{{ columnTotal }}</span>
+                <span v-if="displayColumnTotal !== null">{{ displayColumnTotal }}</span>
             </button>
         </section>
 
@@ -580,7 +607,7 @@ onBeforeUnmount(teardownColumnObserver);
                     <p class="eyebrow">专栏</p>
                     <h2 id="profile-columns-title">作者专栏</h2>
                 </div>
-                <span v-if="columnLoadedOnce">共 {{ columnTotal }} 个公开专栏</span>
+                <span v-if="displayColumnTotal !== null">共 {{ displayColumnTotal }} 个公开专栏</span>
             </div>
 
             <div v-if="columnInitialLoading" class="profile-columns-state" aria-live="polite">

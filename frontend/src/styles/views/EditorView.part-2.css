@@ -247,6 +247,90 @@
     border-color: rgba(37, 99, 235, 0.32);
 }
 
+.editor-tag-input-wrapper {
+    position: relative;
+}
+
+.editor-tag-input-wrapper input {
+    padding-right: 36px;
+}
+
+.editor-tag-dropdown-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 0;
+    border-radius: 4px;
+}
+
+.editor-tag-dropdown-toggle:hover {
+    color: var(--text);
+    background: var(--surface-muted);
+}
+
+.editor-tag-dropdown-toggle.open svg {
+    transform: rotate(180deg);
+}
+
+.editor-tag-dropdown-toggle svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+}
+
+.editor-tag-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-soft);
+    z-index: 100;
+    padding: 4px;
+}
+
+.editor-tag-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.editor-tag-dropdown button:hover,
+.editor-tag-dropdown button.active {
+    background: var(--surface-muted);
+    color: var(--brand);
+}
+
+.editor-tag-dropdown button :deep(mark) {
+    background: #eef2f7;
+    color: var(--muted);
+    font-weight: 700;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
 .editor-tag-warning {
     margin: 0;
     color: var(--warning);

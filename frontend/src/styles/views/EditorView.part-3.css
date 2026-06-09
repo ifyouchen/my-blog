@@ -174,9 +174,11 @@
     box-shadow: none;
 }
 
-.cover-upload-button:hover {
+.upload-box .cover-upload-button:hover:not(:disabled) {
     filter: brightness(1.08);
     color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
 }
 
 .cover-upload-button:disabled {

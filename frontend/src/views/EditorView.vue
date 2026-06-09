@@ -89,6 +89,9 @@ const publishedArticle = ref(null);
 const feedbackType = ref('info');
 const categoryOptions = ref(topics.slice(1).map(name => ({ name, groupName: '' })));
 const tagOptions = ref([]);
+const tagDropdownOpen = ref(false);
+const tagDropdownActiveIndex = ref(0);
+const committedTagValue = ref('');
 const categorySearchKeyword = ref('');
 const expandedCategoryGroups = ref(new Set());
 const unavailableCategory = computed(() =>
@@ -489,8 +492,14 @@ function createDraftSnapshot(currentDraft) {
 }
 
 function parseTags(sourceTags) {
-    const source = Array.isArray(sourceTags) ? sourceTags : String(sourceTags || '').split(',');
+    const source = Array.isArray(sourceTags)
+        ? sourceTags.flatMap((item) => normalizeTagSeparators(item).split(','))
+        : normalizeTagSeparators(sourceTags).split(',');
     return source.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function normalizeTagSeparators(sourceTags) {
+    return String(sourceTags || '').replace(/，/g, ',');
 }
 
 function appendDraftTag(tagName) {
@@ -503,7 +512,176 @@ function appendDraftTag(tagName) {
         return;
     }
     draft.tags = [...currentTags, tag].join(', ');
+    committedTagValue.value = draft.tags;
 }
+
+const currentTagInput = computed(() => {
+    const value = String(draft.tags || '').trim();
+    if (value && value === committedTagValue.value) {
+        return '';
+    }
+    return getActiveTagFragment();
+});
+
+const completedDraftTags = computed(() => {
+    const value = normalizeTagSeparators(draft.tags);
+    if (currentTagInput.value) {
+        return parseTags(value.split(',').slice(0, -1));
+    }
+    return parseTags(value);
+});
+
+const filteredDropdownTags = computed(() => {
+    const selected = new Set(completedDraftTags.value.map((t) => t.toLowerCase()));
+    const keyword = currentTagInput.value.toLowerCase();
+    return tagOptions.value.filter((tag) => {
+        if (selected.has(tag.toLowerCase())) return false;
+        if (!keyword) return true;
+        return tag.toLowerCase().includes(keyword);
+    });
+});
+
+const showTagDropdown = computed(() =>
+    tagDropdownOpen.value && filteredDropdownTags.value.length > 0
+);
+
+watch(filteredDropdownTags, (tags) => {
+    if (!tags.length) {
+        tagDropdownActiveIndex.value = 0;
+        return;
+    }
+    if (tagDropdownActiveIndex.value >= tags.length) {
+        tagDropdownActiveIndex.value = tags.length - 1;
+    }
+});
+
+function selectTagFromDropdown(tagName) {
+    replaceActiveDraftTag(tagName);
+    tagDropdownOpen.value = false;
+    tagDropdownActiveIndex.value = 0;
+}
+
+function toggleTagDropdown() {
+    if (!tagDropdownOpen.value) {
+        syncCommittedTagValue();
+        tagDropdownActiveIndex.value = 0;
+    }
+    tagDropdownOpen.value = !tagDropdownOpen.value;
+}
+
+function onTagInput() {
+    const previousCommittedValue = committedTagValue.value;
+    let currentValue = String(draft.tags || '');
+    const normalizedValue = normalizeTagSeparators(currentValue);
+    if (normalizedValue !== currentValue) {
+        draft.tags = normalizedValue;
+        currentValue = normalizedValue;
+    }
+    if (
+        previousCommittedValue
+        && currentValue.startsWith(previousCommittedValue)
+        && currentValue.length > previousCommittedValue.length
+    ) {
+        const suffix = currentValue.slice(previousCommittedValue.length).trimStart();
+        if (suffix && !suffix.startsWith(',')) {
+            draft.tags = `${previousCommittedValue}, ${suffix}`;
+        }
+    }
+    committedTagValue.value = '';
+    if (filteredDropdownTags.value.length) {
+        tagDropdownOpen.value = true;
+        tagDropdownActiveIndex.value = 0;
+    } else {
+        tagDropdownOpen.value = false;
+    }
+}
+
+function onTagFocus() {
+    syncCommittedTagValue();
+    if (filteredDropdownTags.value.length) {
+        tagDropdownOpen.value = true;
+        tagDropdownActiveIndex.value = 0;
+    }
+}
+
+function onTagKeydown(event) {
+    if (!filteredDropdownTags.value.length) {
+        return;
+    }
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        tagDropdownOpen.value = true;
+        tagDropdownActiveIndex.value = (tagDropdownActiveIndex.value + 1) % filteredDropdownTags.value.length;
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        tagDropdownOpen.value = true;
+        tagDropdownActiveIndex.value = (
+            tagDropdownActiveIndex.value - 1 + filteredDropdownTags.value.length
+        ) % filteredDropdownTags.value.length;
+    } else if (event.key === 'Enter' && tagDropdownOpen.value) {
+        event.preventDefault();
+        selectTagFromDropdown(filteredDropdownTags.value[tagDropdownActiveIndex.value]);
+    } else if (event.key === 'Escape' && tagDropdownOpen.value) {
+        event.preventDefault();
+        tagDropdownOpen.value = false;
+    }
+}
+
+function highlightMatch(tag, keyword) {
+    if (!keyword) return tag;
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    return tag.replace(regex, '<mark>$1</mark>');
+}
+
+function closeTagDropdown() {
+    tagDropdownOpen.value = false;
+}
+
+function getActiveTagFragment() {
+    const segments = normalizeTagSeparators(draft.tags).split(',');
+    return String(segments[segments.length - 1] || '').trim();
+}
+
+function replaceActiveDraftTag(tagName) {
+    const tag = String(tagName || '').trim();
+    if (!tag) {
+        return;
+    }
+    const nextTags = [...completedDraftTags.value];
+    if (nextTags.some((item) => item.toLowerCase() === tag.toLowerCase())) {
+        committedTagValue.value = nextTags.join(', ');
+        return;
+    }
+    draft.tags = [...nextTags, tag].join(', ');
+    committedTagValue.value = draft.tags;
+}
+
+function syncCommittedTagValue() {
+    const tags = parseTags(draft.tags);
+    if (!tags.length || !configuredTagNameSet.value.size) {
+        committedTagValue.value = '';
+        return;
+    }
+    const allTagsConfigured = tags.every((tag) => configuredTagNameSet.value.has(tag.toLowerCase()));
+    committedTagValue.value = allTagsConfigured ? tags.join(', ') : '';
+}
+
+const tagInputWrapperRef = ref(null);
+
+function handleDocumentClick(event) {
+    if (tagInputWrapperRef.value && !tagInputWrapperRef.value.contains(event.target)) {
+        tagDropdownOpen.value = false;
+    }
+}
+
+onMounted(() => {
+    document.addEventListener('click', handleDocumentClick);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleDocumentClick);
+});
 
 function stripMarkdown(source) {
     return String(source || '')
@@ -1454,16 +1632,41 @@ onUnmounted(() => {
             </section>
             <section class="editor-side-block">
                 <p class="eyebrow">标签</p>
-                <input
-                    v-model="draft.tags"
-                    type="text"
-                    maxlength="500"
-                    list="editor-tag-options"
-                    :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'"
-                >
-                <datalist id="editor-tag-options">
-                    <option v-for="tag in tagOptions" :key="tag" :value="tag"></option>
-                </datalist>
+                <div class="editor-tag-input-wrapper" ref="tagInputWrapperRef">
+                    <input
+                        v-model="draft.tags"
+                        type="text"
+                        maxlength="500"
+                        :placeholder="tagOptions.length ? `例如：${tagOptions.slice(0, 3).join(', ')}` : '多个标签用英文逗号分隔'"
+                        @input="onTagInput"
+                        @focus="onTagFocus"
+                        @keydown="onTagKeydown"
+                    >
+                    <button
+                        v-if="tagOptions.length"
+                        type="button"
+                        class="editor-tag-dropdown-toggle"
+                        :class="{ open: tagDropdownOpen }"
+                        @click="toggleTagDropdown"
+                        aria-label="选择标签"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </button>
+                    <div v-if="showTagDropdown" class="editor-tag-dropdown">
+                        <button
+                            v-for="(tag, index) in filteredDropdownTags"
+                            :key="tag"
+                            type="button"
+                            :class="{ active: index === tagDropdownActiveIndex }"
+                            @click="selectTagFromDropdown(tag)"
+                            @mouseenter="tagDropdownActiveIndex = index"
+                            v-html="highlightMatch(tag, currentTagInput)"
+                        >
+                        </button>
+                    </div>
+                </div>
                 <div v-if="tagOptions.length" class="editor-tag-suggestions">
                     <button
                         v-for="tag in tagOptions.slice(0, 8)"
