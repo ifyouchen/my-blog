@@ -1,1 +1,3 @@
 scripts/*.pem
+scripts/quanxiaoha-import/.auth/
+scripts/quanxiaoha-import/output/
