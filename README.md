@@ -1,7 +1,7 @@
 # my-blog
 
 面向技术创作者和技术读者的博客社区平台，具备完整的文章发布、阅读、互动、管理后台以及用户成长体系。
-预览地址：https://www.gemini4.click/
+预览地址：https://www.xiaolanshu.click/
 
 ## 技术栈
 
