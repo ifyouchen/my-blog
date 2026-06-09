@@ -254,7 +254,6 @@ const selectionComment = ref({
     x: 0,
     y: 0
 });
-const showBackToTop = ref(false);
 const readingProgress = ref(0);
 const likeSubmitting = ref(false);
 const favoriteSubmitting = ref(false);
@@ -1186,13 +1185,8 @@ const shareToWeibo = () => {
     showShareMenu.value = false;
 };
 
-const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
 const handleScroll = () => {
     const scrollY = window.scrollY;
-    showBackToTop.value = scrollY > 500;
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     readingProgress.value = docHeight > 0 ? Math.min(100, Math.round((scrollY / docHeight) * 100)) : 0;
     if (selectionComment.value.visible) {
@@ -1916,14 +1910,6 @@ watch(tocDrawerOpen, (open) => {
         </section>
     </main>
 
-    <button
-        v-show="showBackToTop"
-        class="back-to-top"
-        type="button"
-        @click="scrollToTop"
-    >
-        ↑
-    </button>
     <button
         v-if="remoteArticle"
         class="mobile-toc-trigger"

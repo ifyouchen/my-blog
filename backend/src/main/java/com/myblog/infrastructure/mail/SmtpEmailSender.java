@@ -51,6 +51,23 @@ public class SmtpEmailSender implements EmailSender {
         }
     }
 
+    private static String buildBrandMarkSvg() {
+        return "  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"30\" viewBox=\"0 0 96 96\""
+            + " fill=\"none\" style=\"display:block;margin:0 auto 6px;\">\n"
+            + "    <rect x=\"6\" y=\"6\" width=\"84\" height=\"84\" rx=\"20\" fill=\"#eff6ff\"/>\n"
+            + "    <rect x=\"6\" y=\"6\" width=\"84\" height=\"84\" rx=\"20\" stroke=\"#bfdbfe\" stroke-width=\"3\"/>\n"
+            + "    <path d=\"M48 76 L14 64 L20 21 L48 33 Z\" fill=\"#2563eb\"/>\n"
+            + "    <path d=\"M48 76 L82 64 L76 21 L48 33 Z\" fill=\"#3b82f6\"/>\n"
+            + "    <path d=\"M48 33 V76\" stroke=\"#dbeafe\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n"
+            + "    <path d=\"M24 31 L43 39 M22 45 L43 52\" stroke=\"#dbeafe\" stroke-width=\"3\""
+            + " stroke-linecap=\"round\"/>\n"
+            + "    <path d=\"M53 39 L72 31 M53 52 L74 45\" stroke=\"#eff6ff\" stroke-width=\"3\""
+            + " stroke-linecap=\"round\"/>\n"
+            + "    <path d=\"M20 21 L48 33 L76 21\" stroke=\"#93c5fd\" stroke-width=\"3\""
+            + " stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n"
+            + "  </svg>\n";
+    }
+
     private String buildRegisterCodeHtml(String code) {
         return "<!DOCTYPE html>\n"
             + "<html>\n"
@@ -73,16 +90,7 @@ public class SmtpEmailSender implements EmailSender {
             + "<table class=\"card\" style=\"width:100%;max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(37,99,235,0.08);\">\n"
             // ── Header ──
             + "<tr><td style=\"background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:18px 20px;text-align:center;\">\n"
-            + "  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 96 96\" style=\"display:block;margin:0 auto 6px;\">\n"
-            + "    <rect width=\"96\" height=\"96\" rx=\"18\" fill=\"#ffffff\"/>\n"
-            + "    <path d=\"M48 76 L12 64 L20 22 L48 34 Z\" fill=\"#2563eb\" opacity=\"0.9\"/>\n"
-            + "    <path d=\"M48 76 L84 64 L76 22 L48 34 Z\" fill=\"#2563eb\" opacity=\"0.9\"/>\n"
-            + "    <line x1=\"48\" y1=\"34\" x2=\"48\" y2=\"76\" stroke=\"#bfdbfe\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"22\" y1=\"30\" x2=\"44\" y2=\"40\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"20\" y1=\"44\" x2=\"44\" y2=\"52\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"52\" y1=\"40\" x2=\"74\" y2=\"30\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"52\" y1=\"52\" x2=\"76\" y2=\"44\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "  </svg>\n"
+            + buildBrandMarkSvg()
             + "  <h1 class=\"brand-title\" style=\"margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">小蓝书</h1>\n"
             + "</td></tr>\n"
             // ── Body ──
@@ -133,16 +141,7 @@ public class SmtpEmailSender implements EmailSender {
             + "<table class=\"card\" style=\"width:100%;max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(37,99,235,0.08);\">\n"
             // ── Header ──
             + "<tr><td style=\"background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:18px 20px;text-align:center;\">\n"
-            + "  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 96 96\" style=\"display:block;margin:0 auto 6px;\">\n"
-            + "    <rect width=\"96\" height=\"96\" rx=\"18\" fill=\"#ffffff\"/>\n"
-            + "    <path d=\"M48 76 L12 64 L20 22 L48 34 Z\" fill=\"#2563eb\" opacity=\"0.9\"/>\n"
-            + "    <path d=\"M48 76 L84 64 L76 22 L48 34 Z\" fill=\"#2563eb\" opacity=\"0.9\"/>\n"
-            + "    <line x1=\"48\" y1=\"34\" x2=\"48\" y2=\"76\" stroke=\"#bfdbfe\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"22\" y1=\"30\" x2=\"44\" y2=\"40\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"20\" y1=\"44\" x2=\"44\" y2=\"52\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"52\" y1=\"40\" x2=\"74\" y2=\"30\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "    <line x1=\"52\" y1=\"52\" x2=\"76\" y2=\"44\" stroke=\"#e2e8f0\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n"
-            + "  </svg>\n"
+            + buildBrandMarkSvg()
             + "  <h1 class=\"brand-title\" style=\"margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">小蓝书</h1>\n"
             + "</td></tr>\n"
             // ── Body ──
