@@ -140,7 +140,7 @@ public class ColumnAppService {
     public ColumnDTO getColumnDetail(Long columnId, Long currentUserId) {
         Column column = loadPublishedColumn(columnId);
         ColumnDTO dto = toDTO(column, currentUserId);
-        populateLearningPath(dto, currentUserId);
+        populateLearningProgress(dto, currentUserId);
         return dto;
     }
 
@@ -700,15 +700,9 @@ public class ColumnAppService {
         return dto;
     }
 
-    private void populateLearningPath(ColumnDTO dto, Long currentUserId) {
+    private void populateLearningProgress(ColumnDTO dto, Long currentUserId) {
         List<LearningPathArticle> relations = columnRepository.findArticleRelations(new ColumnId(dto.getId()));
         dto.setProgress(learningProgressAppService.buildProgress(
-            LearningProgressAppService.ASSET_TYPE_COLUMN,
-            dto.getId(),
-            relations,
-            currentUserId
-        ));
-        dto.setOutline(learningProgressAppService.buildOutline(
             LearningProgressAppService.ASSET_TYPE_COLUMN,
             dto.getId(),
             relations,
