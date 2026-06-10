@@ -199,7 +199,7 @@
 .mobile-toc-trigger {
     position: fixed;
     right: 16px;
-    bottom: 72px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     z-index: 70;
     display: none;
     padding: 10px 14px;

@@ -572,47 +572,60 @@ const getSelectionContext = (root, range, selectedText) => {
     }
 };
 
-const handleArticleSelection = () => {
+const updateArticleSelectionComment = (attempt = 0) => {
+    if (selectionComment.value.composing) {
+        return;
+    }
+    const root = getArticleQuoteRoot();
+    const selection = window.getSelection?.();
+    if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        if (attempt < 1) {
+            window.setTimeout(() => updateArticleSelectionComment(attempt + 1), 180);
+            return;
+        }
+        hideSelectionComment();
+        return;
+    }
+    const anchorNode = selection.anchorNode;
+    const focusNode = selection.focusNode;
+    if (!root.contains(anchorNode) || !root.contains(focusNode)) {
+        hideSelectionComment();
+        return;
+    }
+    const quoteText = normalizeSelectionText(selection.toString()).slice(0, 300);
+    if (quoteText.length < 2) {
+        if (attempt < 1) {
+            window.setTimeout(() => updateArticleSelectionComment(attempt + 1), 180);
+            return;
+        }
+        hideSelectionComment();
+        return;
+    }
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) {
+        hideSelectionComment();
+        return;
+    }
+    const context = getSelectionContext(root, range, quoteText);
+    selectionComment.value = {
+        visible: true,
+        composing: false,
+        quoteText,
+        ...context,
+        draft: '',
+        feedback: '',
+        submitting: false,
+        x: Math.min(Math.max(rect.left + rect.width / 2, 56), window.innerWidth - 56),
+        y: Math.max(rect.top - 46, 80)
+    };
+};
+
+const handleArticleSelection = (event) => {
+    const delay = event?.type?.startsWith('touch') ? 240 : 0;
     window.setTimeout(() => {
-        if (selectionComment.value.composing) {
-            return;
-        }
-        const root = getArticleQuoteRoot();
-        const selection = window.getSelection?.();
-        if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
-            hideSelectionComment();
-            return;
-        }
-        const anchorNode = selection.anchorNode;
-        const focusNode = selection.focusNode;
-        if (!root.contains(anchorNode) || !root.contains(focusNode)) {
-            hideSelectionComment();
-            return;
-        }
-        const quoteText = normalizeSelectionText(selection.toString()).slice(0, 300);
-        if (quoteText.length < 2) {
-            hideSelectionComment();
-            return;
-        }
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        if (!rect.width && !rect.height) {
-            hideSelectionComment();
-            return;
-        }
-        const context = getSelectionContext(root, range, quoteText);
-        selectionComment.value = {
-            visible: true,
-            composing: false,
-            quoteText,
-            ...context,
-            draft: '',
-            feedback: '',
-            submitting: false,
-            x: Math.min(Math.max(rect.left + rect.width / 2, 56), window.innerWidth - 56),
-            y: Math.max(rect.top - 46, 80)
-        };
-    }, 0);
+        updateArticleSelectionComment();
+    }, delay);
 };
 
 const startInlineQuotedComment = async () => {
@@ -1709,6 +1722,7 @@ watch(tocDrawerOpen, (open) => {
                         class="article-selection-comment"
                         :style="{ left: `${selectionComment.x}px`, top: `${selectionComment.y}px` }"
                         @mousedown.prevent
+                        @touchend.prevent.stop="startInlineQuotedComment"
                         @click="startInlineQuotedComment"
                     >
                         评论
@@ -1718,6 +1732,8 @@ watch(tocDrawerOpen, (open) => {
                         class="article-selection-composer"
                         :style="{ left: `${selectionComment.x}px`, top: `${selectionComment.y}px` }"
                         @mousedown.stop
+                        @touchstart.stop
+                        @touchend.stop
                         @click.stop
                     >
                         <div class="article-selection-quote">
