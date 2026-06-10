@@ -48,7 +48,9 @@ let observerInitToken = 0;
 const TOC_COLLAPSE_THRESHOLD = 10;
 const TOC_COLLAPSE_LEVEL = 3; // 三级以下（level >= 3）默认折叠
 
-const toc = computed(() => extractToc(props.content));
+const domToc = ref([]);
+const fallbackToc = computed(() => extractToc(props.content));
+const toc = computed(() => domToc.value.length > 0 ? domToc.value : fallbackToc.value);
 
 // 当标题总数超过阈值时，自动初始化为折叠状态
 const deepCollapsed = ref(false);
@@ -88,15 +90,34 @@ const scrollActiveItemIntoView = () => {
     }
 };
 
+const collectRenderedHeadings = () => Array.from(document.querySelectorAll(
+    `${props.targetSelector} h1, ${props.targetSelector} h2, ${props.targetSelector} h3, `
+    + `${props.targetSelector} h4, ${props.targetSelector} h5`
+));
+
+const buildRenderedToc = (headings) => headings.map((heading, index) => {
+    const level = Number((heading.tagName || '').replace(/^H/i, '')) || 2;
+    const id = heading.id || `toc-heading-${index + 1}`;
+    heading.id = id;
+    return {
+        id,
+        text: (heading.textContent || '').replace(/\s+/g, ' ').trim(),
+        level
+    };
+}).filter((item) => item.text);
+
 const initObserver = () => {
     if (observer.value) {
         observer.value.disconnect();
     }
 
-    const headings = document.querySelectorAll(
-        `${props.targetSelector} h1, ${props.targetSelector} h2, ${props.targetSelector} h3, `
-        + `${props.targetSelector} h4, ${props.targetSelector} h5`
-    );
+    const headings = collectRenderedHeadings();
+    if (!props.useCustomNavigation) {
+        domToc.value = buildRenderedToc(headings);
+    } else {
+        domToc.value = [];
+    }
+
     if (headings.length === 0) {
         return;
     }
@@ -117,10 +138,8 @@ const initObserver = () => {
         }
     );
 
-    headings.forEach((heading, index) => {
-        const tocItem = toc.value[index];
-        if (tocItem && heading) {
-            heading.id = tocItem.id;
+    headings.forEach((heading) => {
+        if (heading.id) {
             observer.value.observe(heading);
         }
     });
