@@ -32,6 +32,8 @@ const loading = ref(false);
 const errorMsg = ref('');
 const feedback = ref('');
 const feedbackType = ref('success');
+const COLUMN_MANAGE_ARTICLE_PAGE_SIZE = 500;
+const PICK_ARTICLE_PAGE_SIZE = 500;
 
 // 弹窗：创建/编辑专栏
 const showColumnForm = ref(false);
@@ -236,7 +238,10 @@ const openDrawer = async (column) => {
     drawerError.value = '';
     drawerLoading.value = true;
     try {
-        const result = await getColumnArticlesApi(column.id, { page: 1, pageSize: 100 });
+        const result = await getColumnArticlesApi(column.id, {
+            page: 1,
+            pageSize: COLUMN_MANAGE_ARTICLE_PAGE_SIZE
+        });
         drawerArticles.value = result.items || [];
         syncDrawerSortDrafts();
     } catch (e) {
@@ -333,7 +338,11 @@ const openPickArticle = async () => {
     pickArticleFeedback.value = '';
     myArticlesLoading.value = true;
     try {
-        const result = await getMyArticlesApi({ page: 1, pageSize: 100, status: 'PUBLISHED' });
+        const result = await getMyArticlesApi({
+            page: 1,
+            pageSize: PICK_ARTICLE_PAGE_SIZE,
+            status: 'PUBLISHED'
+        });
         const existIds = new Set(drawerArticles.value.map((a) => a.id));
         myArticles.value = (result.items || []).filter((a) => !existIds.has(a.id));
         const nextSortOrder = getNextSortOrder();
@@ -352,7 +361,10 @@ const addArticleToColumn = async (article) => {
     try {
         await addMyColumnArticleApi(drawerColumnId.value, article.id, Number(pickSortDrafts.value[article.id] || 0));
         // 重新拉取专栏文章
-        const result = await getColumnArticlesApi(drawerColumnId.value, { page: 1, pageSize: 100 });
+        const result = await getColumnArticlesApi(drawerColumnId.value, {
+            page: 1,
+            pageSize: COLUMN_MANAGE_ARTICLE_PAGE_SIZE
+        });
         drawerArticles.value = result.items || [];
         syncDrawerSortDrafts();
         // 更新本地 articleCount

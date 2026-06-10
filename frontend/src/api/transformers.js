@@ -53,6 +53,29 @@ export const extractToc = (content) => {
     let headingIndex = 0;
     let fencedCode = null;
 
+    const decodeHtmlText = (value = '') => String(value)
+        .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+        .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&(?:#(\d+)|#x([0-9a-f]+)|amp|lt|gt|quot|apos|nbsp);/gi, (matched, dec, hex) => {
+            if (dec) {
+                return String.fromCodePoint(Number(dec));
+            }
+            if (hex) {
+                return String.fromCodePoint(parseInt(hex, 16));
+            }
+            return ({
+                '&amp;': '&',
+                '&lt;': '<',
+                '&gt;': '>',
+                '&quot;': '"',
+                '&apos;': "'",
+                '&nbsp;': ' '
+            })[matched.toLowerCase()] || matched;
+        })
+        .replace(/\s+/g, ' ')
+        .trim();
+
     for (const rawLine of lines) {
         const fenceMatched = rawLine.match(/^ {0,3}(`{3,}|~{3,})/);
         if (fencedCode) {
@@ -70,6 +93,25 @@ export const extractToc = (content) => {
                 marker: fenceMatched[1][0],
                 length: fenceMatched[1].length
             };
+            continue;
+        }
+
+        const htmlHeadingPattern = /<h([1-5])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
+        let htmlHeadingMatched = false;
+        let htmlHeading;
+        while ((htmlHeading = htmlHeadingPattern.exec(rawLine)) !== null) {
+            const text = decodeHtmlText(htmlHeading[2]);
+            if (text) {
+                headingIndex++;
+                toc.push({
+                    id: `toc-heading-${headingIndex}`,
+                    text,
+                    level: Number(htmlHeading[1])
+                });
+            }
+            htmlHeadingMatched = true;
+        }
+        if (htmlHeadingMatched) {
             continue;
         }
 

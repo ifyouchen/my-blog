@@ -42,6 +42,7 @@ const COLUMN_STATUS_OPTIONS = [
     {value: 'PUBLISHED', label: '已发布'},
     {value: 'DRAFT', label: '草稿'}
 ];
+const COLUMN_MANAGE_ARTICLE_PAGE_SIZE = 500;
 
 const form = reactive({
     authorId: '',
@@ -258,7 +259,10 @@ const loadColumnArticles = async () => {
     if (!state.managingColumn) return;
     state.columnArticlesLoading = true;
     try {
-        const result = await getColumnArticlesApi(state.managingColumn.id, { page: 1, pageSize: 100 });
+        const result = await getColumnArticlesApi(state.managingColumn.id, {
+            page: 1,
+            pageSize: COLUMN_MANAGE_ARTICLE_PAGE_SIZE
+        });
         state.columnArticles = result.items || [];
         syncArticleSortDrafts();
     } catch (error) {
