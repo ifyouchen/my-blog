@@ -52,6 +52,20 @@ const domToc = ref([]);
 const fallbackToc = computed(() => extractToc(props.content));
 const toc = computed(() => domToc.value.length > 0 ? domToc.value : fallbackToc.value);
 
+const resetRenderedToc = () => {
+    observerInitToken++;
+    if (observer.value) {
+        observer.value.disconnect();
+        observer.value = null;
+    }
+    domToc.value = [];
+    activeId.value = fallbackToc.value[0]?.id || '';
+    tocTooltip.value.visible = false;
+    if (tocNavRef.value) {
+        tocNavRef.value.scrollTop = 0;
+    }
+};
+
 // 当标题总数超过阈值时，自动初始化为折叠状态
 const deepCollapsed = ref(false);
 
@@ -232,6 +246,11 @@ watch(toc, async (nextToc, previousToc) => {
 watch(() => props.targetSelector, () => {
     scheduleObserverRefresh();
 });
+
+watch(() => props.content, () => {
+    resetRenderedToc();
+    scheduleObserverRefresh();
+}, { deep: true });
 
 onMounted(() => {
     scheduleObserverRefresh();

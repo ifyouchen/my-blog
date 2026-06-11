@@ -1927,14 +1927,19 @@ watch(tocDrawerOpen, (open) => {
     </main>
 
     <button
-        v-if="remoteArticle"
+        v-if="isCurrentArticleLoaded"
         class="mobile-toc-trigger"
         type="button"
         @click="tocDrawerOpen = true"
     >
         目录
     </button>
-    <div v-show="tocDrawerOpen" class="mobile-toc-overlay" @click.self="tocDrawerOpen = false">
+    <div
+        v-if="isCurrentArticleLoaded"
+        v-show="tocDrawerOpen"
+        class="mobile-toc-overlay"
+        @click.self="tocDrawerOpen = false"
+    >
         <section class="mobile-toc-drawer" aria-label="文章目录抽屉">
             <div class="mobile-toc-header">
                 <h3>文章目录</h3>
